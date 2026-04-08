@@ -110,9 +110,10 @@ app.put('/api/habitaciones/:id/status', auth, (req, res) => {
 });
 
 app.put('/api/habitaciones/:id', auth, adminOnly, (req, res) => {
-  const { tipo, capacidad, precio_noche, precio_hora } = req.body;
-  db.prepare('UPDATE habitaciones SET tipo=?, capacidad=?, precio_noche=?, precio_hora=? WHERE id=?')
-    .run(tipo, capacidad, precio_noche, precio_hora, req.params.id);
+  const { nombre, tipo, capacidad, precio_noche, precio_hora } = req.body;
+  db.prepare('UPDATE habitaciones SET nombre=?, tipo=?, capacidad=?, precio_noche=?, precio_hora=? WHERE id=?')
+    .run(nombre || '', tipo, capacidad, precio_noche, precio_hora, req.params.id);
+  log(req.user.id, req.user.nombre, 'EDITAR_HAB', `Hab ${req.params.id}: ${nombre||''}`);
   res.json({ ok: true });
 });
 
