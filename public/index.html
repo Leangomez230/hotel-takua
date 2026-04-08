@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Hotel Takuá</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--danger:#ef4444;--warn:#f59e0b}
+body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px;overflow-x:hidden}
+
+/* LOGIN */
+#login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e3a5f 60%,#0f172a);padding:24px}
+.login-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:40px 36px;width:100%;max-width:380px;backdrop-filter:blur(10px)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo .logo-sq{width:56px;height:56px;background:var(--accent);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;margin-bottom:10px}
+.login-logo h1{color:#fff;font-size:24px;font-weight:900}
+.login-logo p{color:#94a3b8;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-top:2px}
+.login-field{margin-bottom:14px}
+.login-field label{display:block;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.login-field input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:11px 14px;color:#fff;font-size:14px;font-family:'Nunito',sans-serif}
+.login-field input:focus{outline:none;border-color:var(--accent)}
+.login-field input::placeholder{color:#64748b}
+.login-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:12px;padding:14px;color:#fff;font-size:15px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:8px;transition:opacity .15s}
+.login-btn:active{opacity:.85}
+.login-error{color:#f87171;font-size:12px;text-align:center;margin-top:8px;display:none}
+
+/* LAYOUT */
+#app{display:none;min-height:100vh}
+.sidebar{width:var(--sw);background:var(--sidebar);position:fixed;top:0;left:0;bottom:0;z-index:200;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:2px}
+.s-logo{width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff;margin-bottom:18px;flex-shrink:0}
+.nav-btn{width:58px;height:52px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:#64748b;border:none;background:none;font-family:'Nunito',sans-serif;transition:all .15s;flex-shrink:0}
+.nav-btn:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-btn.active{background:rgba(0,201,177,.18);color:var(--accent)}
+.nav-btn .ni{font-size:18px;line-height:1}
+.nav-btn .nl{font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.nav-btn.bottom{margin-top:auto}
+.main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
+.tb-left{flex:1}
+.tb-left h2{font-size:17px;font-weight:800}
+.tb-left p{font-size:11px;color:#8a9ab0;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.tb-btn{display:flex;align-items:center;gap:6px;background:#f5f7fb;border:1.5px solid #e0e6ef;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;color:#1a2035;cursor:pointer;font-family:'Nunito',sans-serif}
+.tb-btn.caja{background:#f0fdf9;border-color:#a7f3e4;color:#059669}
+.tb-btn.pro{background:linear-gradient(135deg,#fbbf24,#f59e0b);border:none;color:#fff}
+.user-av{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#0094ff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;cursor:pointer;flex-shrink:0}
+.content{padding:20px 22px;flex:1}
+
+/* STAT CARDS */
+.stat-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.sc{border-radius:16px;padding:16px 14px;color:#fff;position:relative;overflow:hidden;min-height:100px}
+.sc::after{content:'';position:absolute;right:-15px;bottom:-15px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08)}
+.sc .label{font-size:9px;font-weight:700;letter-spacing:1px;opacity:.75;text-transform:uppercase}
+.sc .title{font-size:12px;font-weight:800;opacity:.9;margin-bottom:3px}
+.sc .val{font-size:20px;font-weight:900;line-height:1.1}
+.sc.occ{background:linear-gradient(135deg,#1a2035,#2d3a5a)}
+.sc.hosp{background:linear-gradient(135deg,#2563eb,#3b82f6)}
+.sc.tienda{background:linear-gradient(135deg,#f59e0b,#fbbf24)}
+.sc.gastos{background:linear-gradient(135deg,#ec4899,#f43f5e)}
+.sc.balance{background:linear-gradient(135deg,#059669,#10b981)}
+.occ-big{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:900;color:var(--accent)}
+.occ-pills{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.op{background:rgba(255,255,255,.13);border-radius:6px;padding:2px 6px;font-size:10px;font-weight:700;text-align:center}
+.op span{display:block;font-size:8px;opacity:.7;font-weight:500}
+.alert-badge{position:absolute;top:8px;right:8px;background:#ef4444;color:#fff;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:800}
+
+/* SECTION CARD */
+.section-card{background:#fff;border-radius:18px;padding:20px;margin-bottom:20px}
+.sc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:gap}
+.sc-head h2{font-size:18px;font-weight:800}
+.filters-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filter-pill{border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .15s}
+.filter-pill.active{background:var(--accent);color:#fff}
+.filter-pill:not(.active){background:#f0f4f8;color:#64748b}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:10px;padding:8px 16px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif}
+.btn-secondary{background:#f0f4f8;border:1.5px solid #e0e6ef;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;color:#374151;cursor:pointer;font-family:'Nunito',sans-serif}
+
+/* ROOM GRID */
+.room-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+.rcard{border-radius:14px;padding:12px 10px;border:2px solid transparent;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative;min-height:140px}
+.rcard:active{transform:scale(.96)}
+.rcard.libre{background:#f0fdf4;border-color:#bbf7d0}
+.rcard.ocupada{background:#fff5f5;border-color:#fca5a5}
+.rcard.reservada{background:#fefce8;border-color:#fde68a}
+.rcard.limpieza{background:#fffbeb;border-color:#fde68a}
+.rcard.selected{box-shadow:0 0 0 3px var(--accent),0 6px 20px rgba(0,201,177,.2)!important}
+.rcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.room-icon{font-size:18px}
+.sbadge{font-size:9px;font-weight:800;border-radius:5px;padding:2px 6px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.sb-libre{background:#dcfce7;color:#16a34a}
+.sb-ocupada{background:#fee2e2;color:#dc2626}
+.sb-reservada{background:#fef9c3;color:#b45309}
+.sb-limpieza{background:#fef3c7;color:#d97706}
+.rnum{font-size:22px;font-weight:900;color:#1a2035;line-height:1}
+.rtipo{font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.rguest{font-size:10px;font-weight:600;color:#374151;display:flex;align-items:center;gap:3px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rdates{display:flex;gap:6px;margin-bottom:4px}
+.rdate-col{display:flex;flex-direction:column;gap:1px}
+.rdl{font-size:8px;font-weight:700;text-transform:uppercase}
+.rdl.in{color:#2563eb}.rdl.out{color:#dc2626}
+.rdv{font-size:9px;font-weight:600;color:#374151}
+.ravail{display:flex;flex-direction:column;align-items:center;justify-content:center;height:52px;gap:3px}
+.ravail-circle{width:36px;height:36px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:18px}
+.ravail-label{font-size:10px;font-weight:700;color:#16a34a}
+.rclean{display:flex;flex-direction:column;align-items:center;justify-content:center;height:52px;gap:2px}
+.rclean-icon{font-size:28px;opacity:.35}
+.rclean-label{font-size:10px;font-weight:700;color:#d97706}
+.ala-label{font-size:11px;font-weight:700;color:#64748b;letter-spacing:2px;text-transform:uppercase;padding:8px 0 8px;border-bottom:1px solid #f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.ala-tag{background:#1a2035;color:#fff;font-size:10px;border-radius:6px;padding:2px 8px}
+
+/* TABLES */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;padding:8px 12px;text-align:left;border-bottom:1px solid #f1f5f9}
+.data-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.data-table tr:hover td{background:#fafbfc}
+.pill{display:inline-block;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700}
+.pill-green{background:#dcfce7;color:#16a34a}
+.pill-red{background:#fee2e2;color:#dc2626}
+.pill-blue{background:#dbeafe;color:#2563eb}
+.pill-yellow{background:#fef9c3;color:#b45309}
+.pill-gray{background:#f3f4f6;color:#4b5563}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;padding:22px;max-height:85vh;overflow-y:auto;animation:up .22s ease}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-hd h3{font-size:17px;font-weight:800}
+.modal-close{background:#f1f5f9;border:none;border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer}
+.form-row{display:flex;gap:10px;margin-bottom:12px}
+.form-col{flex:1;display:flex;flex-direction:column;gap:4px}
+.form-col label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px}
+.form-col input,.form-col select,.form-col textarea{border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 11px;font-size:13px;font-family:'Nunito',sans-serif;color:#1a2035;width:100%}
+.form-col input:focus,.form-col select:focus,.form-col textarea:focus{outline:none;border-color:var(--accent)}
+.total-box{background:#f0fdf9;border:1px solid #a7f3e4;border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.total-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
+.total-row.big{font-size:15px;font-weight:800;color:#059669;margin-top:4px;padding-top:6px;border-top:1px solid #a7f3e4}
+.confirm-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif}
+.action-btns-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.act-btn{flex:1;min-width:120px;border:none;border-radius:10px;padding:11px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif}
+.save-nota{width:100%;background:#f0f4f8;border:1px solid #e0e6ef;border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:#374151;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:6px}
+.status-info{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;margin-bottom:14px}
+
+/* FORM HELPERS */
+.section-title{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin:14px 0 8px}
+.divider{border:none;border-top:1px solid #f1f5f9;margin:14px 0}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2035;color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* CAJA */
+.caja-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+.caja-box{border-radius:12px;padding:14px;text-align:center}
+.caja-box.ing{background:#f0fdf9;border:1px solid #a7f3e4}
+.caja-box.eg{background:#fff5f5;border:1px solid #fca5a5}
+.caja-box.bal{background:#eff6ff;border:1px solid #bfdbfe}
+.caja-box .cb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:4px}
+.caja-box .cb-val{font-size:18px;font-weight:900}
+.caja-box.ing .cb-val{color:#059669}
+.caja-box.eg .cb-val{color:#dc2626}
+.caja-box.bal .cb-val{color:#2563eb}
+
+/* TIENDA CARRITO */
+.cart-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9}
+.cart-item:last-child{border:none}
+.qty-ctrl{display:flex;align-items:center;gap:8px}
+.qty-btn{width:26px;height:26px;border-radius:8px;border:1px solid #e0e6ef;background:#f8fafc;cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.room-grid{grid-template-columns:repeat(4,1fr)}.stat-cards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.room-grid{grid-template-columns:repeat(2,1fr)}.stat-cards{grid-template-columns:1fr 1fr}:root{--sw:56px}.nav-btn .nl{display:none}.nav-btn{width:44px;height:44px}.content{padding:12px 10px}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-sq">T</div>
+      <h1>Hotel Takuá</h1>
+      <p>Sistema de gestión</p>
+    </div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="l-email" placeholder="admin@hoteltakua.com" value="admin@hoteltakua.com">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="l-pass" placeholder="••••••••" value="admin123" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Iniciar sesión</button>
+    <div class="login-error" id="login-err">Email o contraseña incorrectos</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <nav class="sidebar">
+    <div class="s-logo">T</div>
+    <button class="nav-btn active" onclick="goTo('dashboard',this)" title="Dashboard"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
+    <button class="nav-btn" onclick="goTo('habitaciones',this)" title="Habitaciones"><span class="ni">🛏</span><span class="nl">Hab.</span></button>
+    <button class="nav-btn" onclick="goTo('reservas',this)" title="Reservas"><span class="ni">📅</span><span class="nl">Reservas</span></button>
+    <button class="nav-btn" onclick="goTo('huespedes',this)" title="Huéspedes"><span class="ni">👤</span><span class="nl">Huésp.</span></button>
+    <button class="nav-btn" onclick="goTo('tienda',this)" title="Tienda POS"><span class="ni">🛒</span><span class="nl">Tienda</span></button>
+    <button class="nav-btn" onclick="goTo('inventario',this)" title="Inventario"><span class="ni">📦</span><span class="nl">Inv.</span></button>
+    <button class="nav-btn" onclick="goTo('caja',this)" title="Caja"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn" onclick="goTo('finanzas',this)" title="Finanzas"><span class="ni">📊</span><span class="nl">Finanz.</span></button>
+    <button class="nav-btn bottom" onclick="goTo('config',this)" title="Configuración"><span class="ni">⚙️</span><span class="nl">Config.</span></button>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="tb-left">
+        <h2 id="tb-welcome">Bienvenido</h2>
+        <p id="tb-fecha"></p>
+      </div>
+      <div class="tb-right">
+        <div class="tb-btn">🏨 Hotel Takuá</div>
+        <button class="tb-btn caja" id="tb-caja" onclick="goTo('caja',null)">💰 Caja</button>
+        <div class="user-av" id="user-av">A</div>
+        <button class="tb-btn" onclick="doLogout()" style="color:#dc2626">Salir</button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-box" onclick="event.stopPropagation()"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let token = localStorage.getItem('takua_token');
+let currentUser = JSON.parse(localStorage.getItem('takua_user') || 'null');
+let currentPage = 'dashboard';
+let habitaciones = [];
+let selectedHabId = null;
+let cart = [];
+let dashData = {};
+
+const API = '/api';
+const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+// ── HELPERS ──
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  if (r.status === 401) { doLogout(); return; }
+  return r.json();
+}
+function fmt(n) { return '$ ' + Math.round(n || 0).toLocaleString('es-AR'); }
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+    dt.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+}
+function toast(msg, ok = true) {
+  const t = document.getElementById('toast');
+  t.textContent = (ok ? '✅ ' : '❌ ') + msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function openModal(html) {
+  document.getElementById('modal-box').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function closeMod() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+// ── AUTH ──
+async function doLogin() {
+  const email = document.getElementById('l-email').value;
+  const pass = document.getElementById('l-pass').value;
+  const err = document.getElementById('login-err');
+  err.style.display = 'none';
+  const data = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pass }) }).then(r => r.json());
+  if (data.token) {
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('takua_token', token);
+    localStorage.setItem('takua_user', JSON.stringify(currentUser));
+    startApp();
+  } else {
+    err.style.display = 'block';
+  }
+}
+function doLogout() {
+  localStorage.removeItem('takua_token');
+  localStorage.removeItem('takua_user');
+  token = null; currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+}
+function startApp() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const now = new Date();
+  document.getElementById('tb-fecha').textContent = `${dias[now.getDay()]}, ${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
+  document.getElementById('tb-welcome').textContent = `Bienvenido, ${currentUser?.nombre || ''}`;
+  document.getElementById('user-av').textContent = (currentUser?.nombre || 'A')[0].toUpperCase();
+  goTo('dashboard', document.querySelector('.nav-btn'));
+}
+
+// ── NAVIGATION ──
+function goTo(page, btn) {
+  currentPage = page;
+  if (btn) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const pages = { dashboard: renderDashboard, habitaciones: renderHabitaciones, reservas: renderReservas, huespedes: renderHuespedes, tienda: renderTienda, inventario: renderInventario, caja: renderCaja, finanzas: renderFinanzas, config: renderConfig };
+  if (pages[page]) pages[page]();
+}
+
+// ══════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════
+async function renderDashboard() {
+  const [dash, habs] = await Promise.all([api('GET', '/dashboard'), api('GET', '/habitaciones')]);
+  dashData = dash;
+  habitaciones = habs;
+
+  const occ = (habs || []).filter(h => h.status === 'ocupada').length;
+  const libre = (habs || []).filter(h => h.status === 'libre').length;
+  const limp = (habs || []).filter(h => h.status === 'limpieza').length;
+  const total = habs?.length || 28;
+  const pct = Math.round(occ / total * 100);
+
+  document.getElementById('content').innerHTML = `
+    <div class="stat-cards">
+      <div class="sc occ">
+        <div class="label">Turno actual</div><div class="title">OCUPACIÓN</div>
+        <div class="occ-big">${pct}%</div>
+        <div class="occ-pills">
+          <div class="op">${occ}<span>Ocup.</span></div>
+          <div class="op">${libre}<span>Libres</span></div>
+          <div class="op">${limp}<span>Limp.</span></div>
+        </div>
+        ${(dash?.alertas_stock || 0) > 0 ? `<div class="alert-badge">⚠️ ${dash.alertas_stock} stock bajo</div>` : ''}
+      </div>
+      <div class="sc hosp"><div class="label">Turno actual</div><div class="title">HOSPEDAJE</div><div class="val">${fmt(dash?.hospedaje)}</div></div>
+      <div class="sc tienda"><div class="label">Turno actual</div><div class="title">TIENDA</div><div class="val">${fmt(dash?.tienda)}</div></div>
+      <div class="sc gastos"><div class="label">Turno actual</div><div class="title">GASTOS</div><div class="val">${fmt(dash?.egresos)}</div></div>
+      <div class="sc balance"><div class="label">Turno actual</div><div class="title">BALANCE</div><div class="val">${fmt(dash?.balance)}</div></div>
+    </div>
+    <div class="section-card">
+      <div class="sc-head">
+        <h2>Mapa de Habitaciones</h2>
+        <div class="filters-row">
+          <button class="filter-pill active" onclick="filterAla('todas',this)">Todas</button>
+          <button class="filter-pill" onclick="filterAla('Este',this)">Ala Este</button>
+          <button class="filter-pill" onclick="filterAla('Oeste',this)">Ala Oeste</button>
+          <button class="btn-secondary" onclick="loadLog()">📋 Historial</button>
+        </div>
+      </div>
+      <div id="room-map"></div>
+    </div>`;
+  renderRoomMap(habs, 'todas');
+}
+
+function filterAla(ala, btn) {
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRoomMap(habitaciones, ala);
+}
+
+function renderRoomMap(habs, ala) {
+  const map = document.getElementById('room-map');
+  if (!map) return;
+  const alas = ala === 'todas' ? ['Este', 'Oeste'] : [ala];
+  map.innerHTML = alas.map(a => {
+    const list = habs.filter(h => h.ala === a);
+    return `<div class="ala-label"><span class="ala-tag">ALA ${a.toUpperCase()}</span>${list.length} habitaciones</div>
+    <div class="room-grid" style="margin-bottom:18px">${list.map(h => roomCard(h)).join('')}</div>`;
+  }).join('');
+}
+
+function roomCard(h) {
+  const icons = { libre: '🟢', ocupada: '🔴', reservada: '🟡', limpieza: '🟡' };
+  const badges = { libre: 'sb-libre', ocupada: 'sb-ocupada', reservada: 'sb-reservada', limpieza: 'sb-limpieza' };
+  const labels = { libre: 'Libre', ocupada: 'Ocupada', reservada: 'Reservada', limpieza: 'Limpieza' };
+  const tipos = { simple: 'Simple', doble: 'Doble', suite: 'Suite' };
+  const sel = selectedHabId === h.id ? ' selected' : '';
+
+  let body = '';
+  if (h.status === 'libre') {
+    body = `<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label">Disponible</div></div>`;
+  } else if (h.status === 'limpieza') {
+    body = `<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">En Limpieza</div></div>`;
+  } else {
+    body = `${h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : ''}`;
+  }
+
+  return `<div class="rcard ${h.status}${sel}" onclick="selectHab('${h.id}')">
+    <div class="rcard-top"><span class="room-icon">${icons[h.status] || '⚪'}</span><span class="sbadge ${badges[h.status] || ''}">${labels[h.status] || h.status}</span></div>
+    <div class="rnum">${h.numero}</div>
+    <div class="rtipo">${tipos[h.tipo] || h.tipo}</div>
+    ${body}
+  </div>`;
+}
+
+function selectHab(id) {
+  selectedHabId = id;
+  const hab = habitaciones.find(h => h.id === id);
+  if (!hab) return;
+  renderRoomMap(habitaciones, 'todas');
+  showHabModal(hab);
+}
+
+function showHabModal(hab) {
+  const transitions = {
+    libre: [{ s: 'check-in', label: '✅ Check-in', color: '#00c9b1' }, { s: 'reservada', label: '📋 Reservar', color: '#7c3aed' }, { s: 'mantenimiento', label: '🔧 Mantenimiento', color: '#6b7280' }],
+    ocupada: [{ s: 'checkout', label: '🚪 Check-out', color: '#dc2626' }],
+    reservada: [{ s: 'check-in', label: '✅ Check-in', color: '#00c9b1' }, { s: 'libre', label: '✕ Cancelar reserva', color: '#6b7280' }],
+    limpieza: [{ s: 'libre', label: '✅ Lista / Disponible', color: '#16a34a' }],
+    mantenimiento: [{ s: 'libre', label: '✅ Lista', color: '#16a34a' }],
+  };
+  const colors = { libre: '#16a34a', ocupada: '#dc2626', reservada: '#b45309', limpieza: '#d97706', mantenimiento: '#6b7280' };
+  const bgs = { libre: '#dcfce7', ocupada: '#fee2e2', reservada: '#fef9c3', limpieza: '#fef3c7', mantenimiento: '#f3f4f6' };
+  const labels = { libre: '✅ Libre', ocupada: '🔴 Ocupada', reservada: '📋 Reservada', limpieza: '🧹 Limpieza', mantenimiento: '🔧 Mantenimiento' };
+  const tipos = { simple: 'Simple', doble: 'Doble', suite: 'Suite' };
+
+  const acts = (transitions[hab.status] || []).map(t =>
+    `<button class="act-btn" style="background:${t.color}" onclick="habAction('${hab.id}','${t.s}')">${t.label}</button>`
+  ).join('');
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>Habitación ${hab.numero} — Ala ${hab.ala}</h3>
+      <button class="modal-close" onclick="closeMod()">✕</button>
+    </div>
+    <div class="status-info" style="background:${bgs[hab.status]||'#f3f4f6'}">
+      <span style="font-weight:800;color:${colors[hab.status]||'#374151'};font-size:14px">${labels[hab.status] || hab.status}</span>
+      <span style="color:#64748b;font-size:12px">· ${tipos[hab.tipo]} · ${hab.capacidad} pers. · ${fmt(hab.precio_noche)}/noche</span>
+    </div>
+    ${hab.nota ? `<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:12px">📝 ${hab.nota}</div>` : ''}
+    <div class="form-col" style="margin-bottom:14px">
+      <label>Nota / Observación</label>
+      <input type="text" id="hab-nota" value="${hab.nota || ''}" placeholder="Nombre huésped, solicitud especial...">
+    </div>
+    <div class="section-title">Acciones</div>
+    <div class="action-btns-grid">${acts}</div>
+    <button class="save-nota" onclick="saveHabNota('${hab.id}')">💾 Guardar nota</button>
+  `);
+}
+
+async function habAction(id, action) {
+  const nota = document.getElementById('hab-nota')?.value || '';
+  if (action === 'check-in') { closeMod(); showCheckinModal(id); return; }
+  if (action === 'checkout') {
+    if (!confirm('¿Confirmar check-out? La habitación pasará a limpieza.')) return;
+    await api('POST', `/checkout/${id}`);
+    toast('Check-out realizado. Habitación a limpieza.');
+  } else if (action === 'reservada') {
+    closeMod(); showReservaModal(id); return;
+  } else {
+    await api('PUT', `/habitaciones/${id}/status`, { status: action, nota });
+    toast('Estado actualizado');
+  }
+  closeMod(); selectedHabId = null; refreshMap();
+}
+
+async function saveHabNota(id) {
+  const nota = document.getElementById('hab-nota').value;
+  const hab = habitaciones.find(h => h.id === id);
+  await api('PUT', `/habitaciones/${id}/status`, { status: hab.status, nota });
+  toast('Nota guardada'); closeMod(); selectedHabId = null; refreshMap();
+}
+
+async function refreshMap() {
+  habitaciones = await api('GET', '/habitaciones');
+  if (currentPage === 'dashboard') renderDashboard();
+  else if (currentPage === 'habitaciones') renderHabitaciones();
+}
+
+// ══════════════════════════════════════
+// HABITACIONES PAGE
+// ══════════════════════════════════════
+async function renderHabitaciones() {
+  habitaciones = await api('GET', '/habitaciones');
+  document.getElementById('content').innerHTML = `
+    <div class="section-card">
+      <div class="sc-head">
+        <h2>Mapa de Habitaciones</h2>
+        <div class="filters-row">
+          <button class="filter-pill active" onclick="filterAla2('todas',this)">Todas</button>
+          <button class="filter-pill" onclick="filterAla2('Este',this)">Ala Este</button>
+          <button class="filter-pill" onclick="filterAla2('Oeste',this)">Ala Oeste</button>
+        </div>
+      </div>
+      <div id="room-map"></div>
+    </div>`;
+  renderRoomMap(habitaciones, 'todas');
+}
+function filterAla2(ala, btn) {
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRoomMap(habitaciones, ala);
+}
+
+// ══════════════════════════════════════
+// CHECK-IN MODAL
+// ══════════════════════════════════════
+function showCheckinModal(habId) {
+  const hab = habitaciones.find(h => h.id === habId);
+  const now = new Date();
+  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+  const toISO = d => d.toISOString().slice(0, 16);
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>Check-in — Hab. ${hab?.numero} Ala ${hab?.ala}</h3>
+      <button class="modal-close" onclick="closeMod()">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label>Tipo de documento</label>
+        <select id="ci-tipodoc"><option>DNI</option><option>Pasaporte</option><option>Carnet</option></select>
+      </div>
+      <div class="form-col">
+        <label>N° de documento</label>
+        <input type="text" id="ci-doc" placeholder="12345678" oninput="buscarHuesped()">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label>Nombre completo</label>
+        <input type="text" id="ci-nombre" placeholder="Juan García">
+      </div>
+      <div class="form-col">
+        <label>Teléfono</label>
+        <input type="text" id="ci-tel" placeholder="+54 9 11 ...">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label>Entrada</label>
+        <input type="datetime-local" id="ci-in" value="${toISO(now)}" oninput="calcCI()">
+      </div>
+      <div class="form-col">
+        <label>Salida</label>
+        <input type="datetime-local" id="ci-out" value="${toISO(tomorrow)}" oninput="calcCI()">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label>Tarifa por noche</label>
+        <input type="number" id="ci-tarifa" value="${hab?.precio_noche || 50000}" oninput="calcCI()">
+      </div>
+      <div class="form-col">
+        <label>Método de pago</label>
+        <select id="ci-pago"><option>Efectivo</option><option>Tarjeta débito</option><option>Tarjeta crédito</option><option>Transferencia</option></select>
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:12px">
+      <label>Notas</label>
+      <input type="text" id="ci-notas" placeholder="Patente vehículo, solicitudes...">
+    </div>
+    <div class="total-box">
+      <div class="total-row"><span>Noches:</span><span id="ci-noches">1</span></div>
+      <div class="total-row"><span>Tarifa/noche:</span><span id="ci-tshow">$ 0</span></div>
+      <div class="total-row big"><span>Total a cobrar:</span><span id="ci-total">$ 0</span></div>
+    </div>
+    <button class="confirm-btn" onclick="confirmCI('${habId}')">✅ Confirmar Check-in</button>
+    <div id="ci-huesped-info" style="margin-top:8px;font-size:11px;color:#059669;font-weight:600"></div>
+  `);
+  calcCI();
+}
+
+async function buscarHuesped() {
+  const doc = document.getElementById('ci-doc').value;
+  if (doc.length < 6) return;
+  const h = await api('GET', `/huespedes/doc/${doc}`);
+  if (h) {
+    document.getElementById('ci-nombre').value = h.nombre;
+    document.getElementById('ci-tel').value = h.telefono || '';
+    document.getElementById('ci-huesped-info').textContent = `✅ Huésped encontrado — ${h.visitas} visitas previas`;
+  }
+}
+
+function calcCI() {
+  const inp = document.getElementById('ci-in')?.value;
+  const out = document.getElementById('ci-out')?.value;
+  const tarifa = parseFloat(document.getElementById('ci-tarifa')?.value) || 0;
+  if (!inp || !out) return;
+  const noches = Math.max(1, Math.ceil((new Date(out) - new Date(inp)) / 86400000));
+  const total = noches * tarifa;
+  document.getElementById('ci-noches').textContent = noches;
+  document.getElementById('ci-tshow').textContent = fmt(tarifa);
+  document.getElementById('ci-total').textContent = fmt(total);
+}
+
+async function confirmCI(habId) {
+  const nombre = document.getElementById('ci-nombre').value.trim();
+  if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
+  const noches = parseInt(document.getElementById('ci-noches').textContent) || 1;
+  const tarifa = parseFloat(document.getElementById('ci-tarifa').value) || 0;
+  const data = {
+    habitacion_id: habId,
+    documento: document.getElementById('ci-doc').value,
+    tipo_doc: document.getElementById('ci-tipodoc').value,
+    nombre,
+    telefono: document.getElementById('ci-tel').value,
+    entrada: document.getElementById('ci-in').value,
+    salida: document.getElementById('ci-out').value,
+    noches,
+    precio_total: noches * tarifa,
+    metodo_pago: document.getElementById('ci-pago').value,
+    notas: document.getElementById('ci-notas').value,
+  };
+  const r = await api('POST', '/checkin', data);
+  if (r?.ok) { toast('Check-in realizado con éxito'); closeMod(); selectedHabId = null; refreshMap(); }
+  else toast(r?.error || 'Error al hacer check-in', false);
+}
+
+// ══════════════════════════════════════
+// RESERVA MODAL
+// ══════════════════════════════════════
+function showReservaModal(habId) {
+  const hab = habitaciones.find(h => h.id === habId);
+  const now = new Date();
+  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+  const toISO = d => d.toISOString().slice(0, 16);
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>Reserva — Hab. ${hab?.numero} Ala ${hab?.ala}</h3>
+      <button class="modal-close" onclick="closeMod()">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label>Nombre del huésped</label>
+        <input type="text" id="res-nombre" placeholder="Juan García">
+      </div>
+      <div class="form-col">
+        <label>Documento</label>
+        <input type="text" id="res-doc" placeholder="12345678">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label>Entrada</label>
+        <input type="datetime-local" id="res-in" value="${toISO(now)}" oninput="calcRes()">
+      </div>
+      <div class="form-col">
+        <label>Salida</label>
+        <input type="datetime-local" id="res-out" value="${toISO(tomorrow)}" oninput="calcRes()">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label>Tarifa/noche</label>
+        <input type="number" id="res-tarifa" value="${hab?.precio_noche || 50000}" oninput="calcRes()">
+      </div>
+      <div class="form-col">
+        <label>Método de pago</label>
+        <select id="res-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:12px">
+      <label>Notas</label>
+      <input type="text" id="res-notas" placeholder="Observaciones...">
+    </div>
+    <div class="total-box">
+      <div class="total-row"><span>Noches:</span><span id="res-noches">1</span></div>
+      <div class="total-row big"><span>Total estimado:</span><span id="res-total">$ 0</span></div>
+    </div>
+    <button class="confirm-btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7)" onclick="confirmRes('${habId}')">📋 Confirmar Reserva</button>
+  `);
+  calcRes();
+}
+function calcRes() {
+  const inp = document.getElementById('res-in')?.value;
+  const out = document.getElementById('res-out')?.value;
+  const tarifa = parseFloat(document.getElementById('res-tarifa')?.value) || 0;
+  if (!inp || !out) return;
+  const noches = Math.max(1, Math.ceil((new Date(out) - new Date(inp)) / 86400000));
+  document.getElementById('res-noches').textContent = noches;
+  document.getElementById('res-total').textContent = fmt(noches * tarifa);
+}
+async function confirmRes(habId) {
+  const nombre = document.getElementById('res-nombre').value.trim();
+  if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
+  const noches = parseInt(document.getElementById('res-noches').textContent) || 1;
+  const tarifa = parseFloat(document.getElementById('res-tarifa').value) || 0;
+  const r = await api('POST', '/reservas', {
+    habitacion_id: habId,
+    nombre_huesped: nombre,
+    documento: document.getElementById('res-doc').value,
+    entrada: document.getElementById('res-in').value,
+    salida: document.getElementById('res-out').value,
+    noches, precio_total: noches * tarifa,
+    metodo_pago: document.getElementById('res-pago').value,
+    notas: document.getElementById('res-notas').value,
+  });
+  if (r?.ok) { toast('Reserva creada'); closeMod(); selectedHabId = null; refreshMap(); }
+  else toast(r?.error || 'Error', false);
+}
+
+// ══════════════════════════════════════
+// RESERVAS PAGE
+// ══════════════════════════════════════
+async function renderReservas() {
+  const reservas = await api('GET', '/reservas');
+  const rows = (reservas || []).map(r => `
+    <tr>
+      <td><strong>Hab. ${r.habitacion_id}</strong><br><small style="color:#94a3b8">Ala ${r.ala || ''}</small></td>
+      <td>${r.nombre_huesped}<br><small style="color:#94a3b8">${r.documento || ''}</small></td>
+      <td>${fmtDate(r.entrada)}</td>
+      <td>${fmtDate(r.salida)}</td>
+      <td><strong>${fmt(r.precio_total)}</strong></td>
+      <td>${r.metodo_pago}</td>
+      <td><span class="pill ${r.estado === 'activa' ? 'pill-green' : r.estado === 'futura' ? 'pill-blue' : 'pill-gray'}">${r.estado}</span></td>
+    </tr>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-card">
+      <div class="sc-head">
+        <h2>📅 Reservas</h2>
+        <button class="btn-primary" onclick="goTo('habitaciones',null)">+ Nueva reserva</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Habitación</th><th>Huésped</th><th>Entrada</th><th>Salida</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px">Sin reservas aún</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════
+// HUÉSPEDES
+// ══════════════════════════════════════
+async function renderHuespedes() {
+  const huespedes = await api('GET', '/huespedes?q=');
+  const rows = (huespedes || []).map(h => `
+    <tr>
+      <td><strong>${h.nombre}</strong></td>
+      <td>${h.tipo_doc}: ${h.documento}</td>
+      <td>${h.telefono || '—'}</td>
+      <td>${h.email || '—'}</td>
+      <td>${h.nacionalidad}</td>
+      <td><span class="pill pill-blue">${h.visitas} visitas</span></td>
+    </tr>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-card">
+      <div class="sc-head">
+        <h2>👤 Huéspedes</h2>
+        <input type="text" placeholder="Buscar por nombre o DNI..." oninput="searchH(this.value)"
+          style="border:1.5px solid #e0e6ef;border-radius:10px;padding:8px 14px;font-size:13px;font-family:'Nunito',sans-serif;width:240px">
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="h-table">
+          <thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Nac.</th><th>Historial</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Sin huéspedes registrados</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+async function searchH(q) {
+  const huespedes = await api('GET', `/huespedes?q=${encodeURIComponent(q)}`);
+  const rows = (huespedes || []).map(h => `
+    <tr><td><strong>${h.nombre}</strong></td><td>${h.tipo_doc}: ${h.documento}</td>
+    <td>${h.telefono||'—'}</td><td>${h.email||'—'}</td><td>${h.nacionalidad}</td>
+    <td><span class="pill pill-blue">${h.visitas} visitas</span></td></tr>`).join('');
+  document.querySelector('#h-table tbody').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;color:#94a3b8">Sin resultados</td></tr>';
+}
+
+// ══════════════════════════════════════
+// TIENDA / POS
+// ══════════════════════════════════════
+async function renderTienda() {
+  const productos = await api('GET', '/productos');
+  cart = [];
+  renderTiendaUI(productos);
+}
+
+function renderTiendaUI(productos) {
+  const cats = [...new Set((productos || []).map(p => p.categoria))];
+  document.getElementById('content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
+      <div class="section-card">
+        <div class="sc-head"><h2>🛒 Tienda</h2>
+          <div class="filters-row">
+            ${cats.map(c => `<button class="filter-pill active" onclick="filterCat('${c}',this)">${c}</button>`).join('')}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px" id="prod-grid">
+          ${(productos || []).map(p => `
+            <div onclick="addToCart(${p.id},'${p.nombre}',${p.precio})"
+              style="background:#f8fafc;border:1.5px solid #e0e6ef;border-radius:12px;padding:14px;cursor:pointer;transition:all .15s;text-align:center"
+              onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='#e0e6ef'">
+              <div style="font-size:13px;font-weight:700;margin-bottom:4px">${p.nombre}</div>
+              <div style="font-size:12px;color:var(--accent);font-weight:800">${fmt(p.precio)}</div>
+              <div style="font-size:10px;color:#94a3b8;margin-top:2px">Stock: ${p.stock}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="section-card">
+        <h2 style="font-size:16px;margin-bottom:14px">🧾 Ticket</h2>
+        <div id="cart-items" style="min-height:80px"></div>
+        <hr class="divider">
+        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;margin-bottom:14px">
+          <span>Total</span><span id="cart-total" style="color:var(--accent)">$ 0</span>
+        </div>
+        <button class="confirm-btn" onclick="cobrarVenta()">💳 Cobrar</button>
+        <button class="save-nota" onclick="cart=[];renderCartItems()" style="margin-top:8px">🗑 Limpiar</button>
+      </div>
+    </div>`;
+  renderCartItems();
+}
+
+function addToCart(id, nombre, precio) {
+  const existing = cart.find(i => i.id === id);
+  if (existing) existing.qty++;
+  else cart.push({ id, nombre, precio, qty: 1 });
+  renderCartItems();
+}
+
+function renderCartItems() {
+  const el = document.getElementById('cart-items');
+  if (!el) return;
+  if (!cart.length) { el.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:13px;padding:20px">Sin productos</div>'; document.getElementById('cart-total').textContent = '$ 0'; return; }
+  el.innerHTML = cart.map(i => `
+    <div class="cart-item">
+      <div><div style="font-size:12px;font-weight:700">${i.nombre}</div><div style="font-size:11px;color:#94a3b8">${fmt(i.precio)} c/u</div></div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty(${i.id},-1)">−</button>
+        <span style="font-weight:700;font-size:13px">${i.qty}</span>
+        <button class="qty-btn" onclick="changeQty(${i.id},1)">+</button>
+      </div>
+    </div>`).join('');
+  const total = cart.reduce((a, i) => a + i.precio * i.qty, 0);
+  const el2 = document.getElementById('cart-total');
+  if (el2) el2.textContent = fmt(total);
+}
+
+function changeQty(id, delta) {
+  const i = cart.find(x => x.id === id);
+  if (!i) return;
+  i.qty += delta;
+  if (i.qty <= 0) cart = cart.filter(x => x.id !== id);
+  renderCartItems();
+}
+
+async function cobrarVenta() {
+  if (!cart.length) { toast('Agregá productos al carrito', false); return; }
+  const items = cart.map(i => ({ producto_id: i.id, cantidad: i.qty }));
+  const r = await api('POST', '/tienda/venta', { items });
+  if (r?.ok) { toast(`Venta registrada: ${fmt(r.total)}`); cart = []; renderCartItems(); }
+  else toast(r?.error || 'Error', false);
+}
+
+// ══════════════════════════════════════
+// INVENTARIO
+// ══════════════════════════════════════
+async function renderInventario() {
+  const [productos, alertas] = await Promise.all([api('GET', '/productos'), api('GET', '/inventario/alertas')]);
+  const alertHtml = (alertas || []).length > 0 ? `
+    <div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+      <div style="font-weight:800;color:#dc2626;margin-bottom:8px">⚠️ Stock bajo (${alertas.length} productos)</div>
+      ${alertas.map(a => `<div style="font-size:12px;color:#374151">• ${a.nombre}: <strong>${a.stock}</strong> unidades (mínimo: ${a.stock_minimo})</div>`).join('')}
+    </div>` : '';
+
+  const rows = (productos || []).map(p => `
+    <tr>
+      <td><strong>${p.nombre}</strong></td>
+      <td><span class="pill pill-gray">${p.categoria}</span></td>
+      <td>${fmt(p.precio)}</td>
+      <td><span style="font-weight:800;color:${p.stock <= p.stock_minimo ? '#dc2626' : '#16a34a'}">${p.stock}</span></td>
+      <td>${p.stock_minimo}</td>
+      <td><button class="btn-secondary" style="padding:4px 10px;font-size:11px" onclick="entradaStock(${p.id},'${p.nombre}')">+ Entrada</button></td>
+    </tr>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-card">
+      <div class="sc-head"><h2>📦 Inventario</h2>
+        <button class="btn-primary" onclick="nuevoProducto()">+ Nuevo producto</button>
+      </div>
+      ${alertHtml}
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Mín.</th><th>Acción</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function entradaStock(id, nombre) {
+  openModal(`
+    <div class="modal-hd"><h3>Entrada de stock — ${nombre}</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="form-row">
+      <div class="form-col"><label>Cantidad a ingresar</label><input type="number" id="es-cant" value="10" min="1"></div>
+      <div class="form-col"><label>Descripción</label><input type="text" id="es-desc" placeholder="Compra proveedor..."></div>
+    </div>
+    <button class="confirm-btn" onclick="confirmEntrada(${id})">✅ Confirmar entrada</button>
+  `);
+}
+async function confirmEntrada(id) {
+  const cant = parseInt(document.getElementById('es-cant').value);
+  const desc = document.getElementById('es-desc').value;
+  await api('POST', '/inventario/entrada', { producto_id: id, cantidad: cant, descripcion: desc });
+  toast(`+${cant} unidades ingresadas`); closeMod(); renderInventario();
+}
+function nuevoProducto() {
+  openModal(`
+    <div class="modal-hd"><h3>Nuevo producto</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="form-row">
+      <div class="form-col"><label>Nombre</label><input type="text" id="np-nom" placeholder="Agua mineral"></div>
+      <div class="form-col"><label>Categoría</label><input type="text" id="np-cat" placeholder="Bebidas"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Precio</label><input type="number" id="np-precio" placeholder="1000"></div>
+      <div class="form-col"><label>Stock inicial</label><input type="number" id="np-stock" placeholder="20"></div>
+      <div class="form-col"><label>Stock mínimo</label><input type="number" id="np-min" placeholder="5"></div>
+    </div>
+    <button class="confirm-btn" onclick="crearProducto()">✅ Crear producto</button>
+  `);
+}
+async function crearProducto() {
+  const r = await api('POST', '/productos', {
+    nombre: document.getElementById('np-nom').value,
+    categoria: document.getElementById('np-cat').value,
+    precio: parseFloat(document.getElementById('np-precio').value),
+    stock: parseInt(document.getElementById('np-stock').value),
+    stock_minimo: parseInt(document.getElementById('np-min').value),
+  });
+  if (r?.id) { toast('Producto creado'); closeMod(); renderInventario(); }
+  else toast('Error al crear producto', false);
+}
+
+// ══════════════════════════════════════
+// CAJA
+// ══════════════════════════════════════
+async function renderCaja() {
+  const [caja, movs] = await Promise.all([api('GET', '/caja/activa'), api('GET', '/caja/movimientos')]);
+  const ingresos = (movs || []).filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0);
+  const egresos = (movs || []).filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0);
+
+  const movRows = (movs || []).map(m => `
+    <tr>
+      <td>${fmtDate(m.created_at)}</td>
+      <td>${m.descripcion}</td>
+      <td><span class="pill ${m.tipo === 'ingreso' ? 'pill-green' : 'pill-red'}">${m.tipo}</span></td>
+      <td><strong style="color:${m.tipo === 'ingreso' ? '#059669' : '#dc2626'}">${m.tipo === 'egreso' ? '−' : '+'}${fmt(m.monto)}</strong></td>
+      <td>${m.metodo_pago}</td>
+    </tr>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-card">
+      <div class="sc-head">
+        <h2>💰 Caja ${caja ? `<span style="font-size:12px;background:#dcfce7;color:#16a34a;border-radius:6px;padding:2px 8px;margin-left:8px">Abierta</span>` : `<span style="font-size:12px;background:#fee2e2;color:#dc2626;border-radius:6px;padding:2px 8px;margin-left:8px">Cerrada</span>`}</h2>
+        ${!caja ? `<button class="btn-primary" onclick="abrirCaja()">+ Abrir caja</button>` : `<button class="btn-secondary" onclick="cerrarCaja()">🔒 Cerrar caja</button>`}
+      </div>
+      ${caja ? `
+      <div class="caja-summary">
+        <div class="caja-box ing"><div class="cb-label">Ingresos</div><div class="cb-val">${fmt(ingresos)}</div></div>
+        <div class="caja-box eg"><div class="cb-label">Egresos</div><div class="cb-val">${fmt(egresos)}</div></div>
+        <div class="caja-box bal"><div class="cb-label">Balance</div><div class="cb-val">${fmt(ingresos - egresos)}</div></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <button class="btn-primary" onclick="nuevoMovModal('ingreso')">+ Ingreso manual</button>
+        <button class="btn-secondary" onclick="nuevoMovModal('egreso')">− Registrar gasto</button>
+      </div>` : ''}
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Monto</th><th>Pago</th></tr></thead>
+          <tbody>${movRows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px">Sin movimientos</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function abrirCaja() {
+  openModal(`
+    <div class="modal-hd"><h3>Abrir caja</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="form-col" style="margin-bottom:14px"><label>Monto inicial en efectivo</label><input type="number" id="ac-monto" placeholder="0" value="0"></div>
+    <button class="confirm-btn" onclick="confirmAbrirCaja()">✅ Abrir caja</button>
+  `);
+}
+async function confirmAbrirCaja() {
+  const r = await api('POST', '/caja/abrir', { monto_inicial: parseFloat(document.getElementById('ac-monto').value) || 0 });
+  if (r?.id) { toast('Caja abierta'); closeMod(); renderCaja(); }
+  else toast(r?.error || 'Error', false);
+}
+async function cerrarCaja() {
+  if (!confirm('¿Cerrar la caja del turno actual?')) return;
+  const r = await api('POST', '/caja/cerrar');
+  if (r?.ok) { toast(`Caja cerrada. Total: ${fmt(r.monto_final)}`); renderCaja(); }
+  else toast(r?.error || 'Error', false);
+}
+function nuevoMovModal(tipo) {
+  openModal(`
+    <div class="modal-hd"><h3>${tipo === 'ingreso' ? '+ Ingreso manual' : '− Registrar gasto'}</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="form-row">
+      <div class="form-col"><label>Descripción</label><input type="text" id="nm-desc" placeholder="${tipo === 'ingreso' ? 'Concepto del ingreso' : 'Concepto del gasto'}"></div>
+      <div class="form-col"><label>Monto</label><input type="number" id="nm-monto" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Categoría</label><input type="text" id="nm-cat" value="${tipo === 'ingreso' ? 'general' : 'operativo'}"></div>
+      <div class="form-col"><label>Método de pago</label><select id="nm-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select></div>
+    </div>
+    <button class="confirm-btn" style="background:${tipo === 'ingreso' ? 'linear-gradient(135deg,var(--accent),#0094ff)' : 'linear-gradient(135deg,#ec4899,#f43f5e)'}" onclick="confirmMov('${tipo}')">✅ Registrar</button>
+  `);
+}
+async function confirmMov(tipo) {
+  const r = await api('POST', '/caja/movimiento', {
+    tipo, categoria: document.getElementById('nm-cat').value,
+    descripcion: document.getElementById('nm-desc').value,
+    monto: parseFloat(document.getElementById('nm-monto').value),
+    metodo_pago: document.getElementById('nm-pago').value,
+  });
+  if (r?.ok) { toast('Movimiento registrado'); closeMod(); renderCaja(); }
+  else toast('Error', false);
+}
+
+// ══════════════════════════════════════
+// FINANZAS
+// ══════════════════════════════════════
+async function renderFinanzas() {
+  const today = new Date().toISOString().slice(0, 10);
+  const monthStart = today.slice(0, 7) + '-01';
+  await loadFinanzas(monthStart, today);
+}
+async function loadFinanzas(desde, hasta) {
+  const data = await api('GET', `/finanzas/resumen?desde=${desde}&hasta=${hasta}`);
+  const movs = await api('GET', `/finanzas/movimientos?desde=${desde}&hasta=${hasta}`);
+  const today = new Date().toISOString().slice(0, 10);
+  const monthStart = today.slice(0, 7) + '-01';
+
+  const rows = (movs || []).map(m => `
+    <tr>
+      <td>${fmtDate(m.created_at)}</td>
+      <td>${m.descripcion}</td>
+      <td><span class="pill pill-gray">${m.categoria}</span></td>
+      <td><span class="pill ${m.tipo === 'ingreso' ? 'pill-green' : 'pill-red'}">${m.tipo}</span></td>
+      <td><strong style="color:${m.tipo === 'ingreso' ? '#059669' : '#dc2626'}">${fmt(m.monto)}</strong></td>
+      <td>${m.metodo_pago}</td>
+    </tr>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-card">
+      <div class="sc-head">
+        <h2>📊 Finanzas</h2>
+        <div class="filters-row">
+          <input type="date" id="fin-desde" value="${monthStart}" style="border:1.5px solid #e0e6ef;border-radius:8px;padding:6px 10px;font-size:12px;font-family:'Nunito',sans-serif">
+          <input type="date" id="fin-hasta" value="${today}" style="border:1.5px solid #e0e6ef;border-radius:8px;padding:6px 10px;font-size:12px;font-family:'Nunito',sans-serif">
+          <button class="btn-primary" onclick="loadFinanzas(document.getElementById('fin-desde').value,document.getElementById('fin-hasta').value)">Filtrar</button>
+        </div>
+      </div>
+      <div class="caja-summary" style="margin-bottom:20px">
+        <div class="caja-box ing"><div class="cb-label">Total Ingresos</div><div class="cb-val">${fmt(data?.ingresos)}</div></div>
+        <div class="caja-box eg"><div class="cb-label">Total Egresos</div><div class="cb-val">${fmt(data?.egresos)}</div></div>
+        <div class="caja-box bal"><div class="cb-label">Balance</div><div class="cb-val">${fmt(data?.balance)}</div></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Tipo</th><th>Monto</th><th>Pago</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Sin movimientos en el período</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════
+async function renderConfig() {
+  const usuarios = await api('GET', '/usuarios');
+  const rows = (usuarios || []).map(u => `
+    <tr>
+      <td><strong>${u.nombre}</strong></td>
+      <td>${u.email}</td>
+      <td><span class="pill ${u.rol === 'admin' ? 'pill-blue' : 'pill-gray'}">${u.rol}</span></td>
+      <td><span class="pill ${u.activo ? 'pill-green' : 'pill-red'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+    </tr>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-card">
+      <div class="sc-head"><h2>⚙️ Usuarios y accesos</h2>
+        <button class="btn-primary" onclick="nuevoUsuario()">+ Nuevo usuario</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="section-card">
+      <h2 style="margin-bottom:12px">🏨 Hotel Takuá</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+        <div><span style="color:#94a3b8">Total habitaciones:</span> <strong>28</strong></div>
+        <div><span style="color:#94a3b8">Ala Este:</span> <strong>14 hab.</strong></div>
+        <div><span style="color:#94a3b8">Ala Oeste:</span> <strong>14 hab.</strong></div>
+        <div><span style="color:#94a3b8">Versión:</span> <strong>1.0.0</strong></div>
+      </div>
+    </div>`;
+}
+function nuevoUsuario() {
+  openModal(`
+    <div class="modal-hd"><h3>Nuevo usuario</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="form-row">
+      <div class="form-col"><label>Nombre</label><input type="text" id="nu-nom" placeholder="María García"></div>
+      <div class="form-col"><label>Email</label><input type="email" id="nu-email" placeholder="maria@hotel.com"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Contraseña</label><input type="password" id="nu-pass" placeholder="min. 6 caracteres"></div>
+      <div class="form-col"><label>Rol</label><select id="nu-rol"><option value="recepcionista">Recepcionista</option><option value="mucama">Mucama</option><option value="admin">Administrador</option></select></div>
+    </div>
+    <button class="confirm-btn" onclick="crearUsuario()">✅ Crear usuario</button>
+  `);
+}
+async function crearUsuario() {
+  const r = await api('POST', '/usuarios', {
+    nombre: document.getElementById('nu-nom').value,
+    email: document.getElementById('nu-email').value,
+    password: document.getElementById('nu-pass').value,
+    rol: document.getElementById('nu-rol').value,
+  });
+  if (r?.id) { toast('Usuario creado'); closeMod(); renderConfig(); }
+  else toast(r?.error || 'Error al crear usuario', false);
+}
+
+// ── LOG HISTORIAL ──
+async function loadLog() {
+  const log = await api('GET', '/log');
+  openModal(`
+    <div class="modal-hd"><h3>📋 Historial de acciones</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div style="max-height:400px;overflow-y:auto">
+      ${(log || []).map(e => `
+        <div style="border-left:3px solid #e0e6ef;padding-left:10px;margin-bottom:12px">
+          <div style="font-size:10px;color:#94a3b8">${fmtDate(e.created_at)} · ${e.usuario_nombre || 'Sistema'}</div>
+          <div style="font-size:13px;font-weight:700">${e.accion}</div>
+          <div style="font-size:12px;color:#64748b">${e.detalle}</div>
+        </div>`).join('') || '<div style="text-align:center;color:#94a3b8;padding:20px">Sin acciones registradas</div>'}
+    </div>
+  `);
+}
+
+// ── INIT ──
+if (token && currentUser) startApp();
+</script>
+</body>
+</html>
