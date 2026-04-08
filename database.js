@@ -22,6 +22,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS habitaciones (
     id TEXT PRIMARY KEY,
     numero TEXT NOT NULL,
+    nombre TEXT DEFAULT '',
     ala TEXT NOT NULL,
     tipo TEXT NOT NULL DEFAULT 'simple',
     piso INTEGER DEFAULT 1,
@@ -120,6 +121,14 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now','localtime'))
   );
 `);
+
+// ── MIGRACIÓN: agregar columna nombre si no existe ──
+try {
+  db.exec("ALTER TABLE habitaciones ADD COLUMN nombre TEXT DEFAULT ''");
+  console.log('✅ Columna nombre agregada a habitaciones');
+} catch(e) {
+  // Ya existe, ignorar
+}
 
 // ── SEED: Habitaciones 28 hab. (Ala Este + Ala Oeste) ──
 const countHab = db.prepare('SELECT COUNT(*) as c FROM habitaciones').get();
