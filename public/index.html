@@ -170,9 +170,60 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .qty-ctrl{display:flex;align-items:center;gap:8px}
 .qty-btn{width:26px;height:26px;border-radius:8px;border:1px solid #e0e6ef;background:#f8fafc;cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
 
-/* RESPONSIVE */
-@media(max-width:1100px){.room-grid{grid-template-columns:repeat(4,1fr)}.stat-cards{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:700px){.room-grid{grid-template-columns:repeat(2,1fr)}.stat-cards{grid-template-columns:1fr 1fr}:root{--sw:56px}.nav-btn .nl{display:none}.nav-btn{width:44px;height:44px}.content{padding:12px 10px}}
+/* ZOOM CONTROL */
+.zoom-bar{display:flex;align-items:center;gap:8px;background:#f0f4f8;border-radius:20px;padding:4px 10px;border:1px solid #e0e6ef}
+.zoom-bar span{font-size:11px;font-weight:700;color:#64748b;min-width:32px;text-align:center}
+.zoom-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e0e6ef;background:#fff;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#374151;transition:all .15s}
+.zoom-btn:active{background:#e0e6ef}
+
+/* SIDEBAR OVERLAY (tablet/mobile) */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
+.sidebar-overlay.open{display:block}
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:4px;color:#1a2035;font-size:22px;line-height:1}
+
+/* SIDEBAR EXPANDED (tablet) */
+.sidebar.expanded{width:180px;align-items:flex-start;padding:14px 10px}
+.sidebar.expanded .s-logo{margin-left:6px}
+.sidebar.expanded .nav-btn{width:100%;justify-content:flex-start;gap:10px;padding:0 10px}
+.sidebar.expanded .nav-btn .nl{display:block;font-size:12px;letter-spacing:0;text-transform:none;font-weight:700}
+.sidebar.expanded ~ .main{margin-left:180px}
+
+/* RESPONSIVE — TABLET (768px - 1100px) */
+@media(max-width:1100px){
+  .stat-cards{grid-template-columns:repeat(3,1fr)}
+  .room-grid{grid-template-columns:repeat(var(--room-cols,4),1fr)}
+}
+
+/* RESPONSIVE — TABLET PORTRAIT / LARGE PHONE (max 900px) */
+@media(max-width:900px){
+  :root{--sw:0px}
+  .sidebar{transform:translateX(-100%);transition:transform .25s ease;width:200px;align-items:flex-start;padding:14px 10px}
+  .sidebar .nav-btn{width:100%;justify-content:flex-start;gap:10px;padding:0 10px}
+  .sidebar .nav-btn .nl{display:block;font-size:13px;letter-spacing:0;text-transform:none;font-weight:700}
+  .sidebar .s-logo{margin-left:6px}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0!important}
+  .hamburger{display:flex;align-items:center;justify-content:center}
+  .stat-cards{grid-template-columns:repeat(2,1fr);gap:10px}
+  .room-grid{grid-template-columns:repeat(var(--room-cols,3),1fr);gap:8px}
+  .section-card{padding:14px 12px}
+  .content{padding:14px 12px}
+  .topbar{padding:10px 14px}
+  .tb-btn:not(.caja){display:none}
+  .tb-left h2{font-size:15px}
+  .caja-summary{grid-template-columns:1fr 1fr 1fr}
+  .sc-head{flex-direction:column;align-items:flex-start;gap:10px}
+}
+
+/* RESPONSIVE — SMALL TABLET (max 600px) */
+@media(max-width:600px){
+  .stat-cards{grid-template-columns:1fr 1fr;gap:8px}
+  .room-grid{grid-template-columns:repeat(var(--room-cols,2),1fr);gap:8px}
+  .caja-summary{grid-template-columns:1fr}
+  .form-row{flex-direction:column;gap:8px}
+  .rnum{font-size:18px}
+  .sc .val{font-size:17px}
+}
 </style>
 </head>
 <body>
@@ -200,27 +251,33 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 
 <!-- APP -->
 <div id="app">
-  <nav class="sidebar">
+  <!-- Sidebar overlay para tablet/mobile -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <nav class="sidebar" id="sidebar">
     <div class="s-logo">T</div>
     <button class="nav-btn active" onclick="goTo('dashboard',this)" title="Dashboard"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
-    <button class="nav-btn" onclick="goTo('habitaciones',this)" title="Habitaciones"><span class="ni">🛏</span><span class="nl">Hab.</span></button>
+    <button class="nav-btn" onclick="goTo('habitaciones',this)" title="Habitaciones"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
     <button class="nav-btn" onclick="goTo('reservas',this)" title="Reservas"><span class="ni">📅</span><span class="nl">Reservas</span></button>
-    <button class="nav-btn" onclick="goTo('huespedes',this)" title="Huéspedes"><span class="ni">👤</span><span class="nl">Huésp.</span></button>
-    <button class="nav-btn" onclick="goTo('tienda',this)" title="Tienda POS"><span class="ni">🛒</span><span class="nl">Tienda</span></button>
-    <button class="nav-btn" onclick="goTo('inventario',this)" title="Inventario"><span class="ni">📦</span><span class="nl">Inv.</span></button>
+    <button class="nav-btn" onclick="goTo('huespedes',this)" title="Huéspedes"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
+    <button class="nav-btn" onclick="goTo('tienda',this)" title="Tienda POS"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
+    <button class="nav-btn" onclick="goTo('inventario',this)" title="Inventario"><span class="ni">📦</span><span class="nl">Inventario</span></button>
     <button class="nav-btn" onclick="goTo('caja',this)" title="Caja"><span class="ni">💰</span><span class="nl">Caja</span></button>
-    <button class="nav-btn" onclick="goTo('finanzas',this)" title="Finanzas"><span class="ni">📊</span><span class="nl">Finanz.</span></button>
-    <button class="nav-btn bottom" onclick="goTo('config',this)" title="Configuración"><span class="ni">⚙️</span><span class="nl">Config.</span></button>
+    <button class="nav-btn" onclick="goTo('finanzas',this)" title="Finanzas"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
+    <button class="nav-btn bottom" onclick="goTo('config',this)" title="Configuración"><span class="ni">⚙️</span><span class="nl">Configuración</span></button>
+    <button class="nav-btn" onclick="doLogout()" style="color:#ef4444" title="Salir"><span class="ni">🚪</span><span class="nl">Salir</span></button>
   </nav>
 
-  <div class="main">
+  <div class="main" id="main">
     <div class="topbar">
+      <!-- Hamburger solo visible en tablet/mobile -->
+      <button class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</button>
       <div class="tb-left">
         <h2 id="tb-welcome">Bienvenido</h2>
         <p id="tb-fecha"></p>
       </div>
       <div class="tb-right">
-        <div class="tb-btn">🏨 Hotel Takuá</div>
+        <div class="tb-btn" style="display:none" id="tb-hotel">🏨 Hotel Takuá</div>
         <button class="tb-btn caja" id="tb-caja" onclick="goTo('caja',null)">💰 Caja</button>
         <div class="user-av" id="user-av">A</div>
         <button class="tb-btn" onclick="doLogout()" style="color:#dc2626">Salir</button>
@@ -231,8 +288,8 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 </div>
 
 <!-- MODALS -->
-<div class="overlay" id="modal-overlay" onclick="closeModal(event)">
-  <div class="modal" id="modal-box" onclick="event.stopPropagation()"></div>
+<div class="overlay" id="modal-overlay">
+  <div class="modal" id="modal-box"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -246,8 +303,44 @@ let habitaciones = [];
 let selectedHabId = null;
 let cart = [];
 let dashData = {};
+let roomCols = 0;
 
 const API = '/api';
+
+// ── SIDEBAR TOGGLE ──
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+// ── ZOOM ──
+const zoomLevels = [2,3,4,5,6,7];
+function initZoom() {
+  const saved = parseInt(localStorage.getItem('takua_zoom')||'0');
+  if (saved > 0) { roomCols = saved; document.documentElement.style.setProperty('--room-cols', roomCols); }
+}
+function setZoom(delta) {
+  if (roomCols === 0) {
+    const w = window.innerWidth;
+    roomCols = w<=600 ? 2 : w<=900 ? 3 : w<=1100 ? 4 : 5;
+  }
+  let idx = zoomLevels.indexOf(roomCols);
+  if (idx === -1) idx = 2;
+  const ni = Math.max(0, Math.min(zoomLevels.length-1, idx+delta));
+  roomCols = zoomLevels[ni];
+  localStorage.setItem('takua_zoom', roomCols);
+  document.documentElement.style.setProperty('--room-cols', roomCols);
+  const lbl = document.getElementById('zoom-label');
+  if (lbl) lbl.textContent = roomCols + ' col.';
+}
+function getZoomLabel() {
+  if (roomCols === 0) return 'Auto';
+  return roomCols + ' col.';
+}
 const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
@@ -270,17 +363,24 @@ function toast(msg, ok = true) {
   const t = document.getElementById('toast');
   t.textContent = (ok ? '✅ ' : '❌ ') + msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  setTimeout(() => t.classList.remove('show'), 2800);
 }
 function openModal(html) {
-  document.getElementById('modal-box').innerHTML = html;
-  document.getElementById('modal-overlay').classList.add('open');
+  const box = document.getElementById('modal-box');
+  const ov = document.getElementById('modal-overlay');
+  box.innerHTML = html;
+  ov.classList.add('open');
 }
-function closeModal(e) {
-  if (e && e.target !== document.getElementById('modal-overlay')) return;
+function closeMod() {
   document.getElementById('modal-overlay').classList.remove('open');
 }
-function closeMod() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+// Click outside modal to close
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeMod();
+  });
+});
 
 // ── AUTH ──
 async function doLogin() {
@@ -309,6 +409,7 @@ function doLogout() {
 function startApp() {
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  initZoom();
   const now = new Date();
   document.getElementById('tb-fecha').textContent = `${dias[now.getDay()]}, ${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
   document.getElementById('tb-welcome').textContent = `Bienvenido, ${currentUser?.nombre || ''}`;
@@ -319,6 +420,7 @@ function startApp() {
 // ── NAVIGATION ──
 function goTo(page, btn) {
   currentPage = page;
+  closeSidebar();
   if (btn) {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -365,6 +467,11 @@ async function renderDashboard() {
           <button class="filter-pill active" onclick="filterAla('todas',this)">Todas</button>
           <button class="filter-pill" onclick="filterAla('Este',this)">Ala Este</button>
           <button class="filter-pill" onclick="filterAla('Oeste',this)">Ala Oeste</button>
+          <div class="zoom-bar">
+            <button class="zoom-btn" onclick="setZoom(-1)" title="Tarjetas más grandes">＋</button>
+            <span id="zoom-label">${getZoomLabel()}</span>
+            <button class="zoom-btn" onclick="setZoom(1)" title="Tarjetas más chicas">－</button>
+          </div>
           <button class="btn-secondary" onclick="loadLog()">📋 Historial</button>
         </div>
       </div>
@@ -424,62 +531,76 @@ function selectHab(id) {
 
 function showHabModal(hab) {
   const transitions = {
-    libre: [{ s: 'check-in', label: '✅ Check-in', color: '#00c9b1' }, { s: 'reservada', label: '📋 Reservar', color: '#7c3aed' }, { s: 'mantenimiento', label: '🔧 Mantenimiento', color: '#6b7280' }],
-    ocupada: [{ s: 'checkout', label: '🚪 Check-out', color: '#dc2626' }],
-    reservada: [{ s: 'check-in', label: '✅ Check-in', color: '#00c9b1' }, { s: 'libre', label: '✕ Cancelar reserva', color: '#6b7280' }],
-    limpieza: [{ s: 'libre', label: '✅ Lista / Disponible', color: '#16a34a' }],
-    mantenimiento: [{ s: 'libre', label: '✅ Lista', color: '#16a34a' }],
+    libre:        [{ s:'check-in',   label:'✅ Check-in',          color:'#00c9b1' },
+                   { s:'reservada',  label:'📋 Reservar',          color:'#7c3aed' },
+                   { s:'mantenimiento', label:'🔧 Mantenimiento',  color:'#6b7280' }],
+    ocupada:      [{ s:'checkout',   label:'🚪 Check-out',         color:'#dc2626' }],
+    reservada:    [{ s:'check-in',   label:'✅ Check-in',          color:'#00c9b1' },
+                   { s:'libre',      label:'✕ Cancelar reserva',   color:'#6b7280' }],
+    limpieza:     [{ s:'libre',      label:'✅ Lista / Disponible', color:'#16a34a' }],
+    mantenimiento:[{ s:'libre',      label:'✅ Lista',              color:'#16a34a' }],
   };
-  const colors = { libre: '#16a34a', ocupada: '#dc2626', reservada: '#b45309', limpieza: '#d97706', mantenimiento: '#6b7280' };
-  const bgs = { libre: '#dcfce7', ocupada: '#fee2e2', reservada: '#fef9c3', limpieza: '#fef3c7', mantenimiento: '#f3f4f6' };
-  const labels = { libre: '✅ Libre', ocupada: '🔴 Ocupada', reservada: '📋 Reservada', limpieza: '🧹 Limpieza', mantenimiento: '🔧 Mantenimiento' };
-  const tipos = { simple: 'Simple', doble: 'Doble', suite: 'Suite' };
+  const colors = { libre:'#16a34a', ocupada:'#dc2626', reservada:'#b45309', limpieza:'#d97706', mantenimiento:'#6b7280' };
+  const bgs    = { libre:'#dcfce7', ocupada:'#fee2e2', reservada:'#fef9c3', limpieza:'#fef3c7', mantenimiento:'#f3f4f6' };
+  const labels = { libre:'✅ Libre', ocupada:'🔴 Ocupada', reservada:'📋 Reservada', limpieza:'🧹 Limpieza', mantenimiento:'🔧 Mantenimiento' };
+  const tipos  = { simple:'Simple', doble:'Doble', suite:'Suite' };
 
   const acts = (transitions[hab.status] || []).map(t =>
-    `<button class="act-btn" style="background:${t.color}" onclick="habAction('${hab.id}','${t.s}')">${t.label}</button>`
+    `<button class="act-btn hab-action-btn" data-id="${hab.id}" data-action="${t.s}" style="background:${t.color}">${t.label}</button>`
   ).join('');
 
   openModal(`
     <div class="modal-hd">
       <h3>Habitación ${hab.numero} — Ala ${hab.ala}</h3>
-      <button class="modal-close" onclick="closeMod()">✕</button>
+      <button class="modal-close" id="btn-close-modal">✕</button>
     </div>
     <div class="status-info" style="background:${bgs[hab.status]||'#f3f4f6'}">
-      <span style="font-weight:800;color:${colors[hab.status]||'#374151'};font-size:14px">${labels[hab.status] || hab.status}</span>
+      <span style="font-weight:800;color:${colors[hab.status]||'#374151'};font-size:14px">${labels[hab.status]||hab.status}</span>
       <span style="color:#64748b;font-size:12px">· ${tipos[hab.tipo]} · ${hab.capacidad} pers. · ${fmt(hab.precio_noche)}/noche</span>
     </div>
     ${hab.nota ? `<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:12px">📝 ${hab.nota}</div>` : ''}
     <div class="form-col" style="margin-bottom:14px">
       <label>Nota / Observación</label>
-      <input type="text" id="hab-nota" value="${hab.nota || ''}" placeholder="Nombre huésped, solicitud especial...">
+      <input type="text" id="hab-nota" value="${hab.nota||''}" placeholder="Nombre huésped, solicitud especial...">
     </div>
-    <div class="section-title">Acciones</div>
+    <div class="section-title">Acciones disponibles</div>
     <div class="action-btns-grid">${acts}</div>
-    <button class="save-nota" onclick="saveHabNota('${hab.id}')">💾 Guardar nota</button>
+    <button class="save-nota" id="btn-save-nota" data-id="${hab.id}">💾 Guardar nota</button>
   `);
-}
 
-async function habAction(id, action) {
-  const nota = document.getElementById('hab-nota')?.value || '';
-  if (action === 'check-in') { closeMod(); showCheckinModal(id); return; }
-  if (action === 'checkout') {
-    if (!confirm('¿Confirmar check-out? La habitación pasará a limpieza.')) return;
-    await api('POST', `/checkout/${id}`);
-    toast('Check-out realizado. Habitación a limpieza.');
-  } else if (action === 'reservada') {
-    closeMod(); showReservaModal(id); return;
-  } else {
-    await api('PUT', `/habitaciones/${id}/status`, { status: action, nota });
-    toast('Estado actualizado');
-  }
-  closeMod(); selectedHabId = null; refreshMap();
-}
+  // Bind close button
+  document.getElementById('btn-close-modal').addEventListener('click', () => { closeMod(); selectedHabId = null; });
 
-async function saveHabNota(id) {
-  const nota = document.getElementById('hab-nota').value;
-  const hab = habitaciones.find(h => h.id === id);
-  await api('PUT', `/habitaciones/${id}/status`, { status: hab.status, nota });
-  toast('Nota guardada'); closeMod(); selectedHabId = null; refreshMap();
+  // Bind save nota
+  document.getElementById('btn-save-nota').addEventListener('click', async (e) => {
+    const id = e.currentTarget.dataset.id;
+    const nota = document.getElementById('hab-nota').value;
+    const room = habitaciones.find(h => h.id === id);
+    await api('PUT', `/habitaciones/${id}/status`, { status: room.status, nota });
+    toast('Nota guardada'); closeMod(); selectedHabId = null; refreshMap();
+  });
+
+  // Bind action buttons
+  document.querySelectorAll('.hab-action-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      const nota = document.getElementById('hab-nota')?.value || '';
+      if (action === 'check-in') { closeMod(); showCheckinModal(id); return; }
+      if (action === 'reservada') { closeMod(); showReservaModal(id); return; }
+      if (action === 'checkout') {
+        if (!confirm('¿Confirmar check-out? La habitación pasará a limpieza.')) return;
+        const r = await api('POST', `/checkout/${id}`);
+        if (r?.ok) toast('Check-out realizado. Habitación a limpieza.');
+        else toast(r?.error || 'Error', false);
+      } else {
+        const r = await api('PUT', `/habitaciones/${id}/status`, { status: action, nota });
+        if (r?.ok) toast('Estado actualizado');
+        else toast(r?.error || 'Error al actualizar', false);
+      }
+      closeMod(); selectedHabId = null; refreshMap();
+    });
+  });
 }
 
 async function refreshMap() {
@@ -501,6 +622,11 @@ async function renderHabitaciones() {
           <button class="filter-pill active" onclick="filterAla2('todas',this)">Todas</button>
           <button class="filter-pill" onclick="filterAla2('Este',this)">Ala Este</button>
           <button class="filter-pill" onclick="filterAla2('Oeste',this)">Ala Oeste</button>
+          <div class="zoom-bar">
+            <button class="zoom-btn" onclick="setZoom(-1)">＋</button>
+            <span id="zoom-label">${getZoomLabel()}</span>
+            <button class="zoom-btn" onclick="setZoom(1)">－</button>
+          </div>
         </div>
       </div>
       <div id="room-map"></div>
@@ -525,7 +651,7 @@ function showCheckinModal(habId) {
   openModal(`
     <div class="modal-hd">
       <h3>Check-in — Hab. ${hab?.numero} Ala ${hab?.ala}</h3>
-      <button class="modal-close" onclick="closeMod()">✕</button>
+      <button class="modal-close" id="ci-close">✕</button>
     </div>
     <div class="form-row">
       <div class="form-col">
@@ -534,7 +660,7 @@ function showCheckinModal(habId) {
       </div>
       <div class="form-col">
         <label>N° de documento</label>
-        <input type="text" id="ci-doc" placeholder="12345678" oninput="buscarHuesped()">
+        <input type="text" id="ci-doc" placeholder="12345678">
       </div>
     </div>
     <div class="form-row">
@@ -550,17 +676,17 @@ function showCheckinModal(habId) {
     <div class="form-row">
       <div class="form-col">
         <label>Entrada</label>
-        <input type="datetime-local" id="ci-in" value="${toISO(now)}" oninput="calcCI()">
+        <input type="datetime-local" id="ci-in" value="${toISO(now)}">
       </div>
       <div class="form-col">
         <label>Salida</label>
-        <input type="datetime-local" id="ci-out" value="${toISO(tomorrow)}" oninput="calcCI()">
+        <input type="datetime-local" id="ci-out" value="${toISO(tomorrow)}">
       </div>
     </div>
     <div class="form-row">
       <div class="form-col">
         <label>Tarifa por noche</label>
-        <input type="number" id="ci-tarifa" value="${hab?.precio_noche || 50000}" oninput="calcCI()">
+        <input type="number" id="ci-tarifa" value="${hab?.precio_noche || 50000}">
       </div>
       <div class="form-col">
         <label>Método de pago</label>
@@ -568,64 +694,69 @@ function showCheckinModal(habId) {
       </div>
     </div>
     <div class="form-col" style="margin-bottom:12px">
-      <label>Notas</label>
+      <label>Notas (patente, solicitudes...)</label>
       <input type="text" id="ci-notas" placeholder="Patente vehículo, solicitudes...">
     </div>
     <div class="total-box">
       <div class="total-row"><span>Noches:</span><span id="ci-noches">1</span></div>
-      <div class="total-row"><span>Tarifa/noche:</span><span id="ci-tshow">$ 0</span></div>
-      <div class="total-row big"><span>Total a cobrar:</span><span id="ci-total">$ 0</span></div>
+      <div class="total-row"><span>Tarifa/noche:</span><span id="ci-tshow">${fmt(hab?.precio_noche||50000)}</span></div>
+      <div class="total-row big"><span>Total a cobrar:</span><span id="ci-total">${fmt(hab?.precio_noche||50000)}</span></div>
     </div>
-    <button class="confirm-btn" onclick="confirmCI('${habId}')">✅ Confirmar Check-in</button>
-    <div id="ci-huesped-info" style="margin-top:8px;font-size:11px;color:#059669;font-weight:600"></div>
+    <div id="ci-huesped-info" style="margin-bottom:8px;font-size:11px;color:#059669;font-weight:600;min-height:16px"></div>
+    <button class="confirm-btn" id="ci-confirm">✅ Confirmar Check-in</button>
   `);
-  calcCI();
-}
 
-async function buscarHuesped() {
-  const doc = document.getElementById('ci-doc').value;
-  if (doc.length < 6) return;
-  const h = await api('GET', `/huespedes/doc/${doc}`);
-  if (h) {
-    document.getElementById('ci-nombre').value = h.nombre;
-    document.getElementById('ci-tel').value = h.telefono || '';
-    document.getElementById('ci-huesped-info').textContent = `✅ Huésped encontrado — ${h.visitas} visitas previas`;
-  }
-}
-
-function calcCI() {
-  const inp = document.getElementById('ci-in')?.value;
-  const out = document.getElementById('ci-out')?.value;
-  const tarifa = parseFloat(document.getElementById('ci-tarifa')?.value) || 0;
-  if (!inp || !out) return;
-  const noches = Math.max(1, Math.ceil((new Date(out) - new Date(inp)) / 86400000));
-  const total = noches * tarifa;
-  document.getElementById('ci-noches').textContent = noches;
-  document.getElementById('ci-tshow').textContent = fmt(tarifa);
-  document.getElementById('ci-total').textContent = fmt(total);
-}
-
-async function confirmCI(habId) {
-  const nombre = document.getElementById('ci-nombre').value.trim();
-  if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
-  const noches = parseInt(document.getElementById('ci-noches').textContent) || 1;
-  const tarifa = parseFloat(document.getElementById('ci-tarifa').value) || 0;
-  const data = {
-    habitacion_id: habId,
-    documento: document.getElementById('ci-doc').value,
-    tipo_doc: document.getElementById('ci-tipodoc').value,
-    nombre,
-    telefono: document.getElementById('ci-tel').value,
-    entrada: document.getElementById('ci-in').value,
-    salida: document.getElementById('ci-out').value,
-    noches,
-    precio_total: noches * tarifa,
-    metodo_pago: document.getElementById('ci-pago').value,
-    notas: document.getElementById('ci-notas').value,
+  // Calcular al cambiar fechas o tarifa
+  const recalc = () => {
+    const inp = document.getElementById('ci-in')?.value;
+    const out = document.getElementById('ci-out')?.value;
+    const tarifa = parseFloat(document.getElementById('ci-tarifa')?.value) || 0;
+    if (!inp || !out) return;
+    const noches = Math.max(1, Math.ceil((new Date(out) - new Date(inp)) / 86400000));
+    document.getElementById('ci-noches').textContent = noches;
+    document.getElementById('ci-tshow').textContent = fmt(tarifa);
+    document.getElementById('ci-total').textContent = fmt(noches * tarifa);
   };
-  const r = await api('POST', '/checkin', data);
-  if (r?.ok) { toast('Check-in realizado con éxito'); closeMod(); selectedHabId = null; refreshMap(); }
-  else toast(r?.error || 'Error al hacer check-in', false);
+  document.getElementById('ci-in').addEventListener('input', recalc);
+  document.getElementById('ci-out').addEventListener('input', recalc);
+  document.getElementById('ci-tarifa').addEventListener('input', recalc);
+
+  // Buscar huésped por doc
+  document.getElementById('ci-doc').addEventListener('input', async () => {
+    const doc = document.getElementById('ci-doc').value;
+    if (doc.length < 6) return;
+    const h = await api('GET', `/huespedes/doc/${doc}`);
+    if (h) {
+      document.getElementById('ci-nombre').value = h.nombre;
+      document.getElementById('ci-tel').value = h.telefono || '';
+      document.getElementById('ci-huesped-info').textContent = `✅ Huésped encontrado — ${h.visitas} visitas previas`;
+    }
+  });
+
+  document.getElementById('ci-close').addEventListener('click', closeMod);
+
+  document.getElementById('ci-confirm').addEventListener('click', async () => {
+    const nombre = document.getElementById('ci-nombre').value.trim();
+    if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
+    const noches = parseInt(document.getElementById('ci-noches').textContent) || 1;
+    const tarifa = parseFloat(document.getElementById('ci-tarifa').value) || 0;
+    const data = {
+      habitacion_id: habId,
+      documento: document.getElementById('ci-doc').value,
+      tipo_doc: document.getElementById('ci-tipodoc').value,
+      nombre,
+      telefono: document.getElementById('ci-tel').value,
+      entrada: document.getElementById('ci-in').value,
+      salida: document.getElementById('ci-out').value,
+      noches,
+      precio_total: noches * tarifa,
+      metodo_pago: document.getElementById('ci-pago').value,
+      notas: document.getElementById('ci-notas').value,
+    };
+    const r = await api('POST', '/checkin', data);
+    if (r?.ok) { toast('Check-in realizado con éxito'); closeMod(); selectedHabId = null; refreshMap(); }
+    else toast(r?.error || 'Error al hacer check-in', false);
+  });
 }
 
 // ══════════════════════════════════════
@@ -640,7 +771,7 @@ function showReservaModal(habId) {
   openModal(`
     <div class="modal-hd">
       <h3>Reserva — Hab. ${hab?.numero} Ala ${hab?.ala}</h3>
-      <button class="modal-close" onclick="closeMod()">✕</button>
+      <button class="modal-close" id="res-close">✕</button>
     </div>
     <div class="form-row">
       <div class="form-col">
@@ -655,17 +786,17 @@ function showReservaModal(habId) {
     <div class="form-row">
       <div class="form-col">
         <label>Entrada</label>
-        <input type="datetime-local" id="res-in" value="${toISO(now)}" oninput="calcRes()">
+        <input type="datetime-local" id="res-in" value="${toISO(now)}">
       </div>
       <div class="form-col">
         <label>Salida</label>
-        <input type="datetime-local" id="res-out" value="${toISO(tomorrow)}" oninput="calcRes()">
+        <input type="datetime-local" id="res-out" value="${toISO(tomorrow)}">
       </div>
     </div>
     <div class="form-row">
       <div class="form-col">
         <label>Tarifa/noche</label>
-        <input type="number" id="res-tarifa" value="${hab?.precio_noche || 50000}" oninput="calcRes()">
+        <input type="number" id="res-tarifa" value="${hab?.precio_noche || 50000}">
       </div>
       <div class="form-col">
         <label>Método de pago</label>
@@ -678,38 +809,43 @@ function showReservaModal(habId) {
     </div>
     <div class="total-box">
       <div class="total-row"><span>Noches:</span><span id="res-noches">1</span></div>
-      <div class="total-row big"><span>Total estimado:</span><span id="res-total">$ 0</span></div>
+      <div class="total-row big"><span>Total estimado:</span><span id="res-total">${fmt(hab?.precio_noche||50000)}</span></div>
     </div>
-    <button class="confirm-btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7)" onclick="confirmRes('${habId}')">📋 Confirmar Reserva</button>
+    <button class="confirm-btn" id="res-confirm" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">📋 Confirmar Reserva</button>
   `);
-  calcRes();
-}
-function calcRes() {
-  const inp = document.getElementById('res-in')?.value;
-  const out = document.getElementById('res-out')?.value;
-  const tarifa = parseFloat(document.getElementById('res-tarifa')?.value) || 0;
-  if (!inp || !out) return;
-  const noches = Math.max(1, Math.ceil((new Date(out) - new Date(inp)) / 86400000));
-  document.getElementById('res-noches').textContent = noches;
-  document.getElementById('res-total').textContent = fmt(noches * tarifa);
-}
-async function confirmRes(habId) {
-  const nombre = document.getElementById('res-nombre').value.trim();
-  if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
-  const noches = parseInt(document.getElementById('res-noches').textContent) || 1;
-  const tarifa = parseFloat(document.getElementById('res-tarifa').value) || 0;
-  const r = await api('POST', '/reservas', {
-    habitacion_id: habId,
-    nombre_huesped: nombre,
-    documento: document.getElementById('res-doc').value,
-    entrada: document.getElementById('res-in').value,
-    salida: document.getElementById('res-out').value,
-    noches, precio_total: noches * tarifa,
-    metodo_pago: document.getElementById('res-pago').value,
-    notas: document.getElementById('res-notas').value,
+
+  const recalc = () => {
+    const inp = document.getElementById('res-in')?.value;
+    const out = document.getElementById('res-out')?.value;
+    const tarifa = parseFloat(document.getElementById('res-tarifa')?.value) || 0;
+    if (!inp || !out) return;
+    const noches = Math.max(1, Math.ceil((new Date(out) - new Date(inp)) / 86400000));
+    document.getElementById('res-noches').textContent = noches;
+    document.getElementById('res-total').textContent = fmt(noches * tarifa);
+  };
+  document.getElementById('res-in').addEventListener('input', recalc);
+  document.getElementById('res-out').addEventListener('input', recalc);
+  document.getElementById('res-tarifa').addEventListener('input', recalc);
+  document.getElementById('res-close').addEventListener('click', closeMod);
+
+  document.getElementById('res-confirm').addEventListener('click', async () => {
+    const nombre = document.getElementById('res-nombre').value.trim();
+    if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
+    const noches = parseInt(document.getElementById('res-noches').textContent) || 1;
+    const tarifa = parseFloat(document.getElementById('res-tarifa').value) || 0;
+    const r = await api('POST', '/reservas', {
+      habitacion_id: habId,
+      nombre_huesped: nombre,
+      documento: document.getElementById('res-doc').value,
+      entrada: document.getElementById('res-in').value,
+      salida: document.getElementById('res-out').value,
+      noches, precio_total: noches * tarifa,
+      metodo_pago: document.getElementById('res-pago').value,
+      notas: document.getElementById('res-notas').value,
+    });
+    if (r?.ok) { toast('Reserva creada'); closeMod(); selectedHabId = null; refreshMap(); }
+    else toast(r?.error || 'Error', false);
   });
-  if (r?.ok) { toast('Reserva creada'); closeMod(); selectedHabId = null; refreshMap(); }
-  else toast(r?.error || 'Error', false);
 }
 
 // ══════════════════════════════════════
@@ -905,23 +1041,24 @@ async function renderInventario() {
 
 function entradaStock(id, nombre) {
   openModal(`
-    <div class="modal-hd"><h3>Entrada de stock — ${nombre}</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="modal-hd"><h3>Entrada de stock — ${nombre}</h3><button class="modal-close" id="es-close">✕</button></div>
     <div class="form-row">
       <div class="form-col"><label>Cantidad a ingresar</label><input type="number" id="es-cant" value="10" min="1"></div>
       <div class="form-col"><label>Descripción</label><input type="text" id="es-desc" placeholder="Compra proveedor..."></div>
     </div>
-    <button class="confirm-btn" onclick="confirmEntrada(${id})">✅ Confirmar entrada</button>
+    <button class="confirm-btn" id="es-confirm">✅ Confirmar entrada</button>
   `);
-}
-async function confirmEntrada(id) {
-  const cant = parseInt(document.getElementById('es-cant').value);
-  const desc = document.getElementById('es-desc').value;
-  await api('POST', '/inventario/entrada', { producto_id: id, cantidad: cant, descripcion: desc });
-  toast(`+${cant} unidades ingresadas`); closeMod(); renderInventario();
+  document.getElementById('es-close').addEventListener('click', closeMod);
+  document.getElementById('es-confirm').addEventListener('click', async () => {
+    const cant = parseInt(document.getElementById('es-cant').value);
+    const desc = document.getElementById('es-desc').value;
+    await api('POST', '/inventario/entrada', { producto_id: id, cantidad: cant, descripcion: desc });
+    toast(`+${cant} unidades ingresadas`); closeMod(); renderInventario();
+  });
 }
 function nuevoProducto() {
   openModal(`
-    <div class="modal-hd"><h3>Nuevo producto</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="modal-hd"><h3>Nuevo producto</h3><button class="modal-close" id="np-close">✕</button></div>
     <div class="form-row">
       <div class="form-col"><label>Nombre</label><input type="text" id="np-nom" placeholder="Agua mineral"></div>
       <div class="form-col"><label>Categoría</label><input type="text" id="np-cat" placeholder="Bebidas"></div>
@@ -931,19 +1068,20 @@ function nuevoProducto() {
       <div class="form-col"><label>Stock inicial</label><input type="number" id="np-stock" placeholder="20"></div>
       <div class="form-col"><label>Stock mínimo</label><input type="number" id="np-min" placeholder="5"></div>
     </div>
-    <button class="confirm-btn" onclick="crearProducto()">✅ Crear producto</button>
+    <button class="confirm-btn" id="np-confirm">✅ Crear producto</button>
   `);
-}
-async function crearProducto() {
-  const r = await api('POST', '/productos', {
-    nombre: document.getElementById('np-nom').value,
-    categoria: document.getElementById('np-cat').value,
-    precio: parseFloat(document.getElementById('np-precio').value),
-    stock: parseInt(document.getElementById('np-stock').value),
-    stock_minimo: parseInt(document.getElementById('np-min').value),
+  document.getElementById('np-close').addEventListener('click', closeMod);
+  document.getElementById('np-confirm').addEventListener('click', async () => {
+    const r = await api('POST', '/productos', {
+      nombre: document.getElementById('np-nom').value,
+      categoria: document.getElementById('np-cat').value,
+      precio: parseFloat(document.getElementById('np-precio').value),
+      stock: parseInt(document.getElementById('np-stock').value),
+      stock_minimo: parseInt(document.getElementById('np-min').value),
+    });
+    if (r?.id) { toast('Producto creado'); closeMod(); renderInventario(); }
+    else toast('Error al crear producto', false);
   });
-  if (r?.id) { toast('Producto creado'); closeMod(); renderInventario(); }
-  else toast('Error al crear producto', false);
 }
 
 // ══════════════════════════════════════
@@ -990,15 +1128,16 @@ async function renderCaja() {
 
 function abrirCaja() {
   openModal(`
-    <div class="modal-hd"><h3>Abrir caja</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="modal-hd"><h3>Abrir caja</h3><button class="modal-close" id="ac-close">✕</button></div>
     <div class="form-col" style="margin-bottom:14px"><label>Monto inicial en efectivo</label><input type="number" id="ac-monto" placeholder="0" value="0"></div>
-    <button class="confirm-btn" onclick="confirmAbrirCaja()">✅ Abrir caja</button>
+    <button class="confirm-btn" id="ac-confirm">✅ Abrir caja</button>
   `);
-}
-async function confirmAbrirCaja() {
-  const r = await api('POST', '/caja/abrir', { monto_inicial: parseFloat(document.getElementById('ac-monto').value) || 0 });
-  if (r?.id) { toast('Caja abierta'); closeMod(); renderCaja(); }
-  else toast(r?.error || 'Error', false);
+  document.getElementById('ac-close').addEventListener('click', closeMod);
+  document.getElementById('ac-confirm').addEventListener('click', async () => {
+    const r = await api('POST', '/caja/abrir', { monto_inicial: parseFloat(document.getElementById('ac-monto').value) || 0 });
+    if (r?.id) { toast('Caja abierta'); closeMod(); renderCaja(); }
+    else toast(r?.error || 'Error', false);
+  });
 }
 async function cerrarCaja() {
   if (!confirm('¿Cerrar la caja del turno actual?')) return;
@@ -1008,7 +1147,7 @@ async function cerrarCaja() {
 }
 function nuevoMovModal(tipo) {
   openModal(`
-    <div class="modal-hd"><h3>${tipo === 'ingreso' ? '+ Ingreso manual' : '− Registrar gasto'}</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="modal-hd"><h3>${tipo === 'ingreso' ? '+ Ingreso manual' : '− Registrar gasto'}</h3><button class="modal-close" id="nm-close">✕</button></div>
     <div class="form-row">
       <div class="form-col"><label>Descripción</label><input type="text" id="nm-desc" placeholder="${tipo === 'ingreso' ? 'Concepto del ingreso' : 'Concepto del gasto'}"></div>
       <div class="form-col"><label>Monto</label><input type="number" id="nm-monto" placeholder="0"></div>
@@ -1017,18 +1156,19 @@ function nuevoMovModal(tipo) {
       <div class="form-col"><label>Categoría</label><input type="text" id="nm-cat" value="${tipo === 'ingreso' ? 'general' : 'operativo'}"></div>
       <div class="form-col"><label>Método de pago</label><select id="nm-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select></div>
     </div>
-    <button class="confirm-btn" style="background:${tipo === 'ingreso' ? 'linear-gradient(135deg,var(--accent),#0094ff)' : 'linear-gradient(135deg,#ec4899,#f43f5e)'}" onclick="confirmMov('${tipo}')">✅ Registrar</button>
+    <button class="confirm-btn" id="nm-confirm" style="background:${tipo === 'ingreso' ? 'linear-gradient(135deg,var(--accent),#0094ff)' : 'linear-gradient(135deg,#ec4899,#f43f5e)'}">✅ Registrar</button>
   `);
-}
-async function confirmMov(tipo) {
-  const r = await api('POST', '/caja/movimiento', {
-    tipo, categoria: document.getElementById('nm-cat').value,
-    descripcion: document.getElementById('nm-desc').value,
-    monto: parseFloat(document.getElementById('nm-monto').value),
-    metodo_pago: document.getElementById('nm-pago').value,
+  document.getElementById('nm-close').addEventListener('click', closeMod);
+  document.getElementById('nm-confirm').addEventListener('click', async () => {
+    const r = await api('POST', '/caja/movimiento', {
+      tipo, categoria: document.getElementById('nm-cat').value,
+      descripcion: document.getElementById('nm-desc').value,
+      monto: parseFloat(document.getElementById('nm-monto').value),
+      metodo_pago: document.getElementById('nm-pago').value,
+    });
+    if (r?.ok) { toast('Movimiento registrado'); closeMod(); renderCaja(); }
+    else toast('Error', false);
   });
-  if (r?.ok) { toast('Movimiento registrado'); closeMod(); renderCaja(); }
-  else toast('Error', false);
 }
 
 // ══════════════════════════════════════
@@ -1114,7 +1254,7 @@ async function renderConfig() {
 }
 function nuevoUsuario() {
   openModal(`
-    <div class="modal-hd"><h3>Nuevo usuario</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="modal-hd"><h3>Nuevo usuario</h3><button class="modal-close" id="nu-close">✕</button></div>
     <div class="form-row">
       <div class="form-col"><label>Nombre</label><input type="text" id="nu-nom" placeholder="María García"></div>
       <div class="form-col"><label>Email</label><input type="email" id="nu-email" placeholder="maria@hotel.com"></div>
@@ -1123,25 +1263,26 @@ function nuevoUsuario() {
       <div class="form-col"><label>Contraseña</label><input type="password" id="nu-pass" placeholder="min. 6 caracteres"></div>
       <div class="form-col"><label>Rol</label><select id="nu-rol"><option value="recepcionista">Recepcionista</option><option value="mucama">Mucama</option><option value="admin">Administrador</option></select></div>
     </div>
-    <button class="confirm-btn" onclick="crearUsuario()">✅ Crear usuario</button>
+    <button class="confirm-btn" id="nu-confirm">✅ Crear usuario</button>
   `);
-}
-async function crearUsuario() {
-  const r = await api('POST', '/usuarios', {
-    nombre: document.getElementById('nu-nom').value,
-    email: document.getElementById('nu-email').value,
-    password: document.getElementById('nu-pass').value,
-    rol: document.getElementById('nu-rol').value,
+  document.getElementById('nu-close').addEventListener('click', closeMod);
+  document.getElementById('nu-confirm').addEventListener('click', async () => {
+    const r = await api('POST', '/usuarios', {
+      nombre: document.getElementById('nu-nom').value,
+      email: document.getElementById('nu-email').value,
+      password: document.getElementById('nu-pass').value,
+      rol: document.getElementById('nu-rol').value,
+    });
+    if (r?.id) { toast('Usuario creado'); closeMod(); renderConfig(); }
+    else toast(r?.error || 'Error al crear usuario', false);
   });
-  if (r?.id) { toast('Usuario creado'); closeMod(); renderConfig(); }
-  else toast(r?.error || 'Error al crear usuario', false);
 }
 
 // ── LOG HISTORIAL ──
 async function loadLog() {
   const log = await api('GET', '/log');
   openModal(`
-    <div class="modal-hd"><h3>📋 Historial de acciones</h3><button class="modal-close" onclick="closeMod()">✕</button></div>
+    <div class="modal-hd"><h3>📋 Historial de acciones</h3><button class="modal-close" id="log-close">✕</button></div>
     <div style="max-height:400px;overflow-y:auto">
       ${(log || []).map(e => `
         <div style="border-left:3px solid #e0e6ef;padding-left:10px;margin-bottom:12px">
@@ -1151,6 +1292,7 @@ async function loadLog() {
         </div>`).join('') || '<div style="text-align:center;color:#94a3b8;padding:20px">Sin acciones registradas</div>'}
     </div>
   `);
+  document.getElementById('log-close').addEventListener('click', closeMod);
 }
 
 // ── INIT ──
