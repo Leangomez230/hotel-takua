@@ -426,7 +426,7 @@ function buildCard(h) {
   if (h.status==='libre'||h.status==='limpia') {
     body=`<div class="ravail"><div class="ravail-circle">${h.status==='limpia'?'🌿':'✅'}</div><div class="ravail-label" style="color:${s.color}">${h.status==='limpia'?'Limpia':'Disponible'}</div></div>`;
   } else if (h.status==='lista') {
-    body=`<div class="ravail"><div class="ravail-circle">✨</div><div class="ravail-label" style="color:#0891b2">Lista</div></div>`;
+    body=`<div class="ravail"><div class="ravail-circle">✨</div><div class="ravail-label" style="color:#0891b2">Reserva Lista</div></div>`;
   } else if (h.status==='limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
   } else if (h.status==='mantenimiento') {
