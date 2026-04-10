@@ -410,14 +410,14 @@ function goTo(page) {
 // ── ROOM HELPERS ──
 const SCFG = {
   libre:        {label:'Libre',        badge:'sb-libre',        icon:'🟢', color:'#16a34a', bg:'#dcfce7'},
-  lista:        {label:'Lista',        badge:'sb-lista',        icon:'✨', color:'#0891b2', bg:'#cffafe'},
+  lista:        {label:'Lista',        badge:'sb-lista',        icon:'🟡', color:'#b45309', bg:'#fef9c3'},
   ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴', color:'#dc2626', bg:'#fee2e2'},
   limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7'},
   reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡', color:'#b45309', bg:'#fef9c3'},
   limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
   mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
 };
-const TIPOS={twin:'🛏 Twin', queen:'🛏🛏 Queen', simple:'🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏🛏 Queen'};
+const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
  
 function buildCard(h) {
   const s=SCFG[h.status]||{label:h.status,badge:'sb-libre',icon:'⚪',color:'#94a3b8',bg:'#f8fafc'};
