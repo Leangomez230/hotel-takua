@@ -575,44 +575,78 @@ async function renderHabitaciones() {
 }
  
 // ══════════════════════════════════════
-// HAB MODAL — NUEVA LÓGICA
+// HAB MODAL
 // ══════════════════════════════════════
+/*
+  ESTADOS Y FLUJOS:
+  libre       → recep/admin: check-in, reservar, mantenimiento
+  reservada   → mucama: servicio-lista (limpia y marca lista)
+              → recep/admin: check-in, cancelar reserva
+  lista       → recep/admin: check-in, mantenimiento
+  ocupada     → mucama: servicio-diario (limpia, carga frigobar)
+              → recep/admin: check-out
+  limpieza    → mucama: servicio-post (limpia post-checkout, marca lista)
+              → recep/admin: marcar libre/lista, mantenimiento
+  limpia      → recep/admin: marcar libre, mantenimiento
+  mantenimiento → mucama: marcar lista
+                → recep/admin: marcar libre/lista
+*/
 function showHabModal(hab) {
-  const rol = currentUser?.rol;
+  const rol = currentUser?.rol || 'recepcionista';
   const isMucama = rol === 'mucama';
-  const isAdmin = rol === 'admin';
-  const isRecep = rol === 'recepcionista';
-  const canEdit = isAdmin || isRecep;
+  const isAdmin  = rol === 'admin';
+  const isRecep  = rol === 'recepcionista';
+  const canEdit  = isAdmin || isRecep;
  
-  const s = SCFG[hab.status] || {label:hab.status, color:'#374151', bg:'#f8fafc'};
+  const s = SCFG[hab.status] || {label:hab.status, color:'#374151', bg:'#f8fafc', icon:'⚪'};
   const tipoLabel = TIPOS[hab.tipo] || hab.tipo;
  
-  // ── TRANSICIONES MUCAMA ──
-  // La mucama abre un modal especial de "servicio"
-  const mucamaPuedeServicio = ['ocupada','limpia','limpieza','reservada','lista','mantenimiento'].includes(hab.status);
+  // ── ACCIONES POR ROL Y ESTADO ──
  
-  // ── TRANSICIONES RECEPCION/ADMIN ──
-  const allT = {
-    libre:        [{s:'check-in',  label:'✅ Check-in',         color:'#059669'},
-                   {s:'reservada', label:'📋 Reservar',         color:'#7c3aed'},
-                   {s:'mantenimiento',label:'🔧 Mantenimiento', color:'#6b7280'}],
-    lista:        [{s:'check-in',  label:'✅ Check-in',         color:'#059669'},
-                   {s:'reservada', label:'📋 Reservar',         color:'#7c3aed'},
-                   {s:'mantenimiento',label:'🔧 Mantenimiento', color:'#6b7280'}],
-    limpia:       [{s:'libre',     label:'✅ Marcar Libre',     color:'#16a34a'},
-                   {s:'mantenimiento',label:'🔧 Mantenimiento', color:'#6b7280'}],
-    ocupada:      [{s:'checkout',  label:'🚪 Check-out',        color:'#dc2626'}],
-    reservada:    [{s:'check-in',  label:'✅ Check-in',         color:'#059669'},
-                   {s:'libre',     label:'✕ Cancelar reserva', color:'#6b7280'}],
-    limpieza:     [{s:'libre',     label:'✅ Marcar Libre',     color:'#16a34a'},
-                   {s:'mantenimiento',label:'🔧 Mantenimiento', color:'#6b7280'}],
-    mantenimiento:[{s:'libre',     label:'✅ Disponible',       color:'#16a34a'}],
+  // Mucama: abre modal de servicio específico según estado
+  const mucamaAcciones = {
+    reservada:    { label:'✨ Preparar habitación (pre check-in)', color:'#0891b2', servicio:'pre_checkin',   nuevoStatus:'lista'   },
+    limpieza:     { label:'🧹 Registrar limpieza post-checkout',   color:'#d97706', servicio:'post_checkout', nuevoStatus:'lista'   },
+    ocupada:      { label:'🧹 Registrar servicio diario',          color:'#166534', servicio:'diario',        nuevoStatus:'limpia'  },
+    limpia:       { label:'🧹 Nuevo servicio diario',              color:'#166534', servicio:'diario',        nuevoStatus:'limpia'  },
+    mantenimiento:{ label:'✅ Marcar como lista',                  color:'#0891b2', servicio:'mantenimiento', nuevoStatus:'lista'   },
   };
  
-  const transitions = canEdit ? (allT[hab.status]||[]) : [];
-  const actHTML = transitions.map((t,i)=>
+  // Recep/Admin: transiciones directas de estado
+  const recepTransitions = {
+    libre:        [{s:'check-in',   label:'✅ Check-in',           color:'#059669'},
+                   {s:'reservada',  label:'📋 Reservar',           color:'#7c3aed'},
+                   {s:'mantenimiento',label:'🔧 Mantenimiento',    color:'#6b7280'}],
+    lista:        [{s:'check-in',   label:'✅ Check-in',           color:'#059669'},
+                   {s:'reservada',  label:'📋 Reservar',           color:'#7c3aed'},
+                   {s:'libre',      label:'🟢 Marcar Libre',       color:'#16a34a'},
+                   {s:'mantenimiento',label:'🔧 Mantenimiento',    color:'#6b7280'}],
+    reservada:    [{s:'check-in',   label:'✅ Check-in',           color:'#059669'},
+                   {s:'libre',      label:'✕ Cancelar reserva',   color:'#6b7280'}],
+    ocupada:      [{s:'checkout',   label:'🚪 Check-out',          color:'#dc2626'}],
+    limpieza:     [{s:'lista',      label:'✨ Marcar Lista',        color:'#0891b2'},
+                   {s:'libre',      label:'🟢 Marcar Libre',       color:'#16a34a'},
+                   {s:'mantenimiento',label:'🔧 Mantenimiento',    color:'#6b7280'}],
+    limpia:       [{s:'libre',      label:'🟢 Marcar Libre',       color:'#16a34a'},
+                   {s:'mantenimiento',label:'🔧 Mantenimiento',    color:'#6b7280'}],
+    mantenimiento:[{s:'lista',      label:'✨ Marcar Lista',        color:'#0891b2'},
+                   {s:'libre',      label:'🟢 Marcar Libre',       color:'#16a34a'}],
+  };
+ 
+  const mucamaAccion  = mucamaAcciones[hab.status] || null;
+  const transitions   = canEdit ? (recepTransitions[hab.status] || []) : [];
+  const actHTML = transitions.map((t,i) =>
     `<button class="act-btn" id="hab-act-${i}" style="background:${t.color}">${t.label}</button>`
   ).join('');
+ 
+  // Selector tipo cama (visible para todos)
+  const esTwin  = !['queen','suite'].includes(hab.tipo);
+  const tipoCamaHTML = `
+    <div class="stitle">Tipo de cama</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="tbtn-twin"  style="flex:1;padding:10px;border:2px solid ${esTwin ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
+      <button id="tbtn-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">👑 Queen</button>
+    </div>`;
  
   const adminHTML = isAdmin ? `
     <details style="margin-top:14px;border:1px solid #e0e6ef;border-radius:10px;padding:10px 12px">
@@ -622,17 +656,7 @@ function showHabModal(hab) {
           <input type="text" id="he-nombre" value="${hab.nombre||''}" placeholder="Ej: Hab. Jardín...">
         </div>
         <div class="form-row">
-          <div class="form-col"><label>Tipo de cama</label>
-            <select id="he-tipo">
-              <option value="twin"  ${hab.tipo==='twin'||hab.tipo==='simple'||hab.tipo==='doble'?'selected':''}>🛏 Twin</option>
-              <option value="queen" ${hab.tipo==='queen'||hab.tipo==='suite'?'selected':''}>👑 Queen</option>
-            </select>
-          </div>
-          <div class="form-col"><label>Capacidad (pers.)</label>
-            <input type="number" id="he-cap" value="${hab.capacidad||2}" min="1" max="10">
-          </div>
-        </div>
-        <div class="form-row">
+          <div class="form-col"><label>Capacidad (pers.)</label><input type="number" id="he-cap" value="${hab.capacidad||2}" min="1" max="10"></div>
           <div class="form-col"><label>Precio noche ($)</label><input type="number" id="he-pnoche" value="${hab.precio_noche||50000}"></div>
           <div class="form-col"><label>Precio hora ($)</label><input type="number" id="he-phora" value="${hab.precio_hora||15000}"></div>
         </div>
@@ -640,91 +664,86 @@ function showHabModal(hab) {
       </div>
     </details>` : '';
  
-  // Selector tipo cama para mucama/recep (inline, siempre visible)
-  const tipoCamaHTML = `
-    <div class="stitle">Tipo de cama preparada</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="tipo-btn ${hab.tipo==='twin'||hab.tipo==='simple'||hab.tipo==='doble'?'active-twin':''}" id="tbtn-twin" style="flex:1;padding:10px;border:2px solid ${hab.tipo==='twin'||hab.tipo==='simple'||hab.tipo==='doble'?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${hab.tipo==='twin'||hab.tipo==='simple'||hab.tipo==='doble'?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
-      <button class="tipo-btn ${hab.tipo==='queen'||hab.tipo==='suite'?'active-queen':''}" id="tbtn-queen" style="flex:1;padding:10px;border:2px solid ${hab.tipo==='queen'||hab.tipo==='suite'?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${hab.tipo==='queen'||hab.tipo==='suite'?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">👑 Queen</button>
-    </div>`;
- 
   openModal(`
     <div class="modal-hd">
       <h3>Hab. ${hab.numero}${hab.nombre?' · '+hab.nombre:''} — Ala ${hab.ala}</h3>
       <button class="modal-close" id="hab-close">✕</button>
     </div>
     <div class="status-info" style="background:${s.bg||'#f8fafc'}">
-      <span style="font-weight:800;color:${s.color||'#374151'};font-size:14px">${s.icon||''} ${s.label||hab.status}</span>
+      <span style="font-weight:800;color:${s.color||'#374151'};font-size:15px">${s.icon} ${s.label}</span>
       <span style="color:#64748b;font-size:12px">· ${tipoLabel} · ${hab.capacidad} pers. · ${fmt(hab.precio_noche)}/noche</span>
     </div>
-    ${hab.nota&&hab.status!=='libre'?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:''}
+    ${hab.nota&&!['libre','lista','limpia'].includes(hab.status)?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:''}
  
-    ${isMucama && mucamaPuedeServicio ? `
-      ${tipoCamaHTML}
-      <button class="confirm-btn" id="btn-servicio" style="background:linear-gradient(135deg,#166534,#16a34a);margin-bottom:8px">
-        ${['limpieza','mantenimiento'].includes(hab.status)?'🧹 Registrar limpieza':'🧹 Registrar servicio diario'}
+    ${tipoCamaHTML}
+ 
+    ${isMucama && mucamaAccion ? `
+      <button class="confirm-btn" id="btn-servicio" style="background:linear-gradient(135deg,${mucamaAccion.color},${mucamaAccion.color}cc);margin-bottom:8px">
+        ${mucamaAccion.label}
       </button>
     ` : ''}
  
-    ${canEdit ? `
+    ${canEdit && transitions.length > 0 ? `
       <div class="form-col" style="margin-bottom:12px">
         <label>Nota / Observación</label>
         <input type="text" id="hab-nota" value="${hab.nota||''}" placeholder="Huésped, patente, solicitud...">
       </div>
-      ${tipoCamaHTML}
+      <div class="stitle">Acciones</div>
+      <div class="act-grid">${actHTML}</div>
+      <button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>
     ` : ''}
  
-    ${transitions.length>0 ? `<div class="stitle">Cambiar estado</div><div class="act-grid">${actHTML}</div>` : ''}
-    ${canEdit ? `<button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>` : ''}
+    ${isMucama && !mucamaAccion ? `
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;font-size:13px;color:#64748b;text-align:center">
+        Esta habitación no requiere acción en este momento.
+      </div>
+    ` : ''}
+ 
     ${adminHTML}
   `);
  
   // ── BIND EVENTS ──
   document.getElementById('hab-close').addEventListener('click', closeModal);
  
-  // Selector tipo cama (toggle visual)
-  let tipoCamaSeleccionada = (hab.tipo==='queen'||hab.tipo==='suite') ? 'queen' : 'twin';
+  // Selector tipo cama
+  let tipoCamaSeleccionada = esTwin ? 'twin' : 'queen';
   const btnTwin  = document.getElementById('tbtn-twin');
   const btnQueen = document.getElementById('tbtn-queen');
   function selectTipo(tipo) {
     tipoCamaSeleccionada = tipo;
-    if (btnTwin) {
-      btnTwin.style.borderColor  = tipo==='twin'?'#00c9b1':'#e0e6ef';
-      btnTwin.style.background   = tipo==='twin'?'#f0fdf9':'#f8fafc';
-    }
-    if (btnQueen) {
-      btnQueen.style.borderColor = tipo==='queen'?'#7c3aed':'#e0e6ef';
-      btnQueen.style.background  = tipo==='queen'?'#faf5ff':'#f8fafc';
-    }
+    btnTwin.style.borderColor  = tipo==='twin' ?'#00c9b1':'#e0e6ef';
+    btnTwin.style.background   = tipo==='twin' ?'#f0fdf9':'#f8fafc';
+    btnQueen.style.borderColor = tipo==='queen'?'#7c3aed':'#e0e6ef';
+    btnQueen.style.background  = tipo==='queen'?'#faf5ff':'#f8fafc';
   }
-  btnTwin?.addEventListener('click', ()=>selectTipo('twin'));
-  btnQueen?.addEventListener('click', ()=>selectTipo('queen'));
+  btnTwin?.addEventListener('click',  () => selectTipo('twin'));
+  btnQueen?.addEventListener('click', () => selectTipo('queen'));
  
   // Botón servicio mucama
-  document.getElementById('btn-servicio')?.addEventListener('click', ()=>{
+  document.getElementById('btn-servicio')?.addEventListener('click', () => {
     closeModal();
-    showServicioModal(hab, tipoCamaSeleccionada);
+    showServicioModal(hab, mucamaAccion, tipoCamaSeleccionada);
   });
  
   // Acciones recep/admin
-  transitions.forEach((t,i)=>{
-    document.getElementById(`hab-act-${i}`)?.addEventListener('click', async ()=>{
+  transitions.forEach((t,i) => {
+    document.getElementById(`hab-act-${i}`)?.addEventListener('click', async () => {
       if (t.s==='check-in')  { closeModal(); showCheckinModal(hab.id); return; }
       if (t.s==='reservada') { closeModal(); showReservaModal(hab.id); return; }
-      if (t.s==='checkout') {
-        if (!confirm('¿Confirmar check-out? La habitación pasará a limpieza.')) return;
-        const r=await apiFetch('POST',`/checkout/${hab.id}`);
-        if (r?.ok) toast('Check-out realizado. Pasó a limpieza.');
-        else toast(r?.error||'Error',false);
+      if (t.s==='checkout')  {
+        if (!confirm('¿Confirmar check-out? La habitación pasará a "A Limpiar".')) return;
+        const r = await apiFetch('POST', `/checkout/${hab.id}`);
+        if (r?.ok) toast('Check-out realizado. Habitación a limpiar.');
+        else { toast(r?.error||'Error',false); return; }
       } else {
-        const nota=document.getElementById('hab-nota')?.value||hab.nota||'';
-        const r=await apiFetch('PUT',`/habitaciones/${hab.id}/status`,{status:t.s,nota});
-        if (r?.ok) toast('Estado actualizado: '+t.label);
-        else toast(r?.error||'Error',false);
-      }
-      // Actualizar tipo de cama si cambió
-      if (tipoCamaSeleccionada !== (hab.tipo==='queen'||hab.tipo==='suite'?'queen':'twin')) {
-        await apiFetch('PUT',`/habitaciones/${hab.id}`,{nombre:hab.nombre||'',tipo:tipoCamaSeleccionada,capacidad:hab.capacidad,precio_noche:hab.precio_noche,precio_hora:hab.precio_hora});
+        const nota = document.getElementById('hab-nota')?.value || hab.nota || '';
+        // Guardar tipo de cama si cambió
+        if (tipoCamaSeleccionada !== (esTwin?'twin':'queen')) {
+          await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
+        }
+        const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:t.s, nota });
+        if (r?.ok) toast('Estado actualizado: ' + t.label);
+        else { toast(r?.error||'Error', false); return; }
       }
       closeModal();
       await refreshHabs();
@@ -732,387 +751,183 @@ function showHabModal(hab) {
   });
  
   // Guardar nota
-  document.getElementById('hab-save-nota')?.addEventListener('click', async ()=>{
-    const nota=document.getElementById('hab-nota').value;
-    // Guardar tipo de cama si cambió
-    if (tipoCamaSeleccionada !== (hab.tipo==='queen'||hab.tipo==='suite'?'queen':'twin')) {
-      await apiFetch('PUT',`/habitaciones/${hab.id}`,{nombre:hab.nombre||'',tipo:tipoCamaSeleccionada,capacidad:hab.capacidad,precio_noche:hab.precio_noche,precio_hora:hab.precio_hora});
+  document.getElementById('hab-save-nota')?.addEventListener('click', async () => {
+    const nota = document.getElementById('hab-nota').value;
+    if (tipoCamaSeleccionada !== (esTwin?'twin':'queen')) {
+      await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
     }
-    const r=await apiFetch('PUT',`/habitaciones/${hab.id}/status`,{status:hab.status,nota});
+    const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:hab.status, nota });
     if (r?.ok) toast('Guardado');
-    else toast('Error',false);
-    closeModal(); await refreshHabs();
+    else toast('Error', false);
+    closeModal();
+    await refreshHabs();
   });
  
-  // Admin guardar cambios habitación
-  document.getElementById('btn-save-hab')?.addEventListener('click', async ()=>{
-    const r=await apiFetch('PUT',`/habitaciones/${hab.id}`,{
-      nombre:document.getElementById('he-nombre').value,
-      tipo:document.getElementById('he-tipo').value,
-      capacidad:parseInt(document.getElementById('he-cap').value)||2,
+  // Admin guardar cambios
+  document.getElementById('btn-save-hab')?.addEventListener('click', async () => {
+    const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
+      nombre:      document.getElementById('he-nombre').value,
+      tipo:        tipoCamaSeleccionada,
+      capacidad:   parseInt(document.getElementById('he-cap').value)||2,
       precio_noche:parseFloat(document.getElementById('he-pnoche').value)||0,
-      precio_hora:parseFloat(document.getElementById('he-phora').value)||0,
+      precio_hora: parseFloat(document.getElementById('he-phora').value)||0,
     });
     if (r?.ok) { toast('Habitación actualizada'); closeModal(); await refreshHabs(); }
-    else toast(r?.error||'Error',false);
+    else toast(r?.error||'Error', false);
   });
 }
  
 // ══════════════════════════════════════
 // SERVICIO DE HABITACION (MUCAMA)
 // ══════════════════════════════════════
-async function showServicioModal(hab, tipoCamaInicial) {
-  const productos = await apiFetch('GET','/productos') || [];
-  const tipoServicio = ['limpieza','mantenimiento'].includes(hab.status) ? 'post_checkout' : 'diario';
-  const esDespuesCheckout = tipoServicio === 'post_checkout';
+async function showServicioModal(hab, accion, tipoCamaInicial) {
+  const productos = await apiFetch('GET', '/productos') || [];
+  const esDiario = accion.servicio === 'diario';
  
-  const prodRows = productos.map(p=>`
-    <div class="prod-srv" data-pid="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio}"
-      style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+  // Descripción según tipo
+  const titulos = {
+    pre_checkin:   '✨ Preparar hab. para check-in',
+    post_checkout: '🧹 Limpieza post-checkout',
+    diario:        '🧹 Servicio diario',
+    mantenimiento: '✅ Finalizar mantenimiento',
+  };
+ 
+  const prodRows = productos.map(p => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
       <div>
         <div style="font-size:13px;font-weight:600">${p.nombre}</div>
         <div style="font-size:11px;color:#94a3b8">${fmt(p.precio)} · Stock: ${p.stock}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <button class="qty-btn srv-menos" data-id="${p.id}">−</button>
-        <span class="srv-qty" data-id="${p.id}" style="font-weight:700;min-width:16px;text-align:center">0</span>
+        <span class="srv-qty" data-id="${p.id}" style="font-weight:700;min-width:18px;text-align:center">0</span>
         <button class="qty-btn srv-mas" data-id="${p.id}">+</button>
       </div>
     </div>`).join('');
  
+  const esTwin = tipoCamaInicial !== 'queen';
+ 
   openModal(`
     <div class="modal-hd">
-      <h3>${esDespuesCheckout?'🧹 Limpieza post-checkout':'🧹 Servicio diario'} — Hab. ${hab.numero}</h3>
+      <h3>${titulos[accion.servicio]||'Servicio'} — Hab. ${hab.numero}</h3>
       <button class="modal-close" id="srv-close">✕</button>
+    </div>
+ 
+    <div style="background:${accion.color}18;border:1px solid ${accion.color}40;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:${accion.color};font-weight:700">
+      ${hab.status==='reservada'?'La habitación está reservada. Al terminar quedará <strong>Lista</strong> para recibir al huésped.':
+        hab.status==='limpieza'?'Limpieza post-checkout. Al terminar quedará <strong>Lista</strong> para nueva reserva/venta.':
+        hab.status==='ocupada'||hab.status==='limpia'?'Servicio diario. Al terminar quedará <strong>Limpia</strong> (hab. sigue ocupada).':
+        'Al terminar, indicá el nuevo estado de la habitación.'}
     </div>
  
     <div class="stitle">Tipo de cama preparada</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button id="srv-twin"  style="flex:1;padding:10px;border:2px solid ${tipoCamaInicial==='twin'?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${tipoCamaInicial==='twin'?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
-      <button id="srv-queen" style="flex:1;padding:10px;border:2px solid ${tipoCamaInicial==='queen'?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${tipoCamaInicial==='queen'?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">👑 Queen</button>
+      <button id="srv-twin"  style="flex:1;padding:10px;border:2px solid ${esTwin ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
+      <button id="srv-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">👑 Queen</button>
     </div>
  
-    <div class="stitle">Consumos del frigobar</div>
-    <div style="max-height:200px;overflow-y:auto;margin-bottom:12px">${prodRows}</div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:8px 0;border-top:1px solid #e0e6ef;margin-bottom:14px">
-      <span>Total consumos:</span><span id="srv-total" style="color:var(--accent)">$ 0</span>
-    </div>
- 
-    <div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:12px;padding:12px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <input type="checkbox" id="srv-mant" style="width:18px;height:18px;cursor:pointer">
-        <label for="srv-mant" style="font-size:13px;font-weight:700;color:#dc2626;cursor:pointer">🔧 Necesita mantenimiento</label>
+    ${esDiario || accion.servicio==='post_checkout' ? `
+      <div class="stitle">Consumos del frigobar (opcional)</div>
+      <div style="max-height:180px;overflow-y:auto;margin-bottom:8px">${prodRows}</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:8px 0;border-top:1px solid #e0e6ef;margin-bottom:14px">
+        <span>Total consumos:</span><span id="srv-total" style="color:var(--accent)">$ 0</span>
       </div>
-      <div id="srv-mant-nota-wrap" style="display:none">
-        <textarea id="srv-mant-nota" rows="2" placeholder="Describí el problema (ej: grifo con pérdida, AC sin funcionar...)"
+    ` : ''}
+ 
+    <div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:12px;padding:12px;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="srv-mant" style="width:18px;height:18px">
+        <span style="font-size:13px;font-weight:700;color:#dc2626">🔧 Necesita mantenimiento</span>
+      </label>
+      <div id="srv-mant-wrap" style="display:none;margin-top:8px">
+        <textarea id="srv-mant-nota" rows="2" placeholder="Describí el problema (grifo, AC, puerta...)"
           style="width:100%;border:1.5px solid #fca5a5;border-radius:8px;padding:8px;font-size:13px;font-family:'Nunito',sans-serif;resize:none"></textarea>
       </div>
     </div>
  
-    <button class="confirm-btn" id="srv-confirm" style="background:linear-gradient(135deg,#166534,#16a34a)">
-      ✅ ${esDespuesCheckout?'Confirmar limpieza':'Confirmar servicio diario'}
+    <button class="confirm-btn" id="srv-confirm" style="background:linear-gradient(135deg,${accion.color},${accion.color}bb)">
+      ✅ Confirmar y guardar
     </button>
   `);
  
   // Tipo cama
-  let tipoCama = tipoCamaInicial || 'twin';
+  let tipoCama = esTwin ? 'twin' : 'queen';
   const btnT = document.getElementById('srv-twin');
   const btnQ = document.getElementById('srv-queen');
   function selTipo(t) {
-    tipoCama=t;
-    btnT.style.borderColor = t==='twin'?'#00c9b1':'#e0e6ef'; btnT.style.background = t==='twin'?'#f0fdf9':'#f8fafc';
+    tipoCama = t;
+    btnT.style.borderColor = t==='twin' ?'#00c9b1':'#e0e6ef'; btnT.style.background = t==='twin' ?'#f0fdf9':'#f8fafc';
     btnQ.style.borderColor = t==='queen'?'#7c3aed':'#e0e6ef'; btnQ.style.background = t==='queen'?'#faf5ff':'#f8fafc';
   }
-  btnT.addEventListener('click',()=>selTipo('twin'));
-  btnQ.addEventListener('click',()=>selTipo('queen'));
+  btnT.addEventListener('click', () => selTipo('twin'));
+  btnQ.addEventListener('click', () => selTipo('queen'));
  
   // Cantidades frigobar
   const cantidades = {};
   function updateTotal() {
-    let tot=0;
-    document.querySelectorAll('.prod-srv').forEach(el=>{
-      const id=parseInt(el.dataset.pid), precio=parseFloat(el.dataset.precio);
-      const qty=cantidades[id]||0;
-      tot+=qty*precio;
+    let tot = 0;
+    document.querySelectorAll('.srv-mas').forEach(btn => {
+      const id = parseInt(btn.dataset.id);
+      const qty = cantidades[id] || 0;
+      const prod = productos.find(p => p.id === id || parseInt(p.id) === id);
+      if (prod && qty > 0) tot += qty * prod.precio;
     });
-    document.getElementById('srv-total').textContent=fmt(tot);
+    const el = document.getElementById('srv-total');
+    if (el) el.textContent = fmt(tot);
   }
-  document.querySelectorAll('.srv-mas').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const id=parseInt(btn.dataset.id);
-      cantidades[id]=(cantidades[id]||0)+1;
-      document.querySelector(`.srv-qty[data-id="${id}"]`).textContent=cantidades[id];
+  document.querySelectorAll('.srv-mas').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.id);
+      cantidades[id] = (cantidades[id]||0) + 1;
+      document.querySelector(`.srv-qty[data-id="${id}"]`).textContent = cantidades[id];
       updateTotal();
     });
   });
-  document.querySelectorAll('.srv-menos').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const id=parseInt(btn.dataset.id);
-      if ((cantidades[id]||0)>0) { cantidades[id]--; document.querySelector(`.srv-qty[data-id="${id}"]`).textContent=cantidades[id]; updateTotal(); }
+  document.querySelectorAll('.srv-menos').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.id);
+      if ((cantidades[id]||0) > 0) {
+        cantidades[id]--;
+        document.querySelector(`.srv-qty[data-id="${id}"]`).textContent = cantidades[id];
+        updateTotal();
+      }
     });
   });
  
   // Mantenimiento toggle
-  document.getElementById('srv-mant').addEventListener('change',function(){
-    document.getElementById('srv-mant-nota-wrap').style.display=this.checked?'block':'none';
+  document.getElementById('srv-mant').addEventListener('change', function() {
+    document.getElementById('srv-mant-wrap').style.display = this.checked ? 'block' : 'none';
   });
  
-  document.getElementById('srv-close').addEventListener('click',closeModal);
+  document.getElementById('srv-close').addEventListener('click', closeModal);
  
-  document.getElementById('srv-confirm').addEventListener('click', async ()=>{
+  document.getElementById('srv-confirm').addEventListener('click', async () => {
     const necesitaMant = document.getElementById('srv-mant').checked;
-    const notaMant = document.getElementById('srv-mant-nota')?.value||'';
-    const consumos = Object.entries(cantidades).filter(([id,qty])=>qty>0).map(([id,qty])=>({producto_id:parseInt(id),cantidad:qty}));
+    const notaMant = document.getElementById('srv-mant-nota')?.value || '';
+    const consumos = Object.entries(cantidades)
+      .filter(([id,qty]) => qty > 0)
+      .map(([id,qty]) => ({ producto_id: parseInt(id), cantidad: qty }));
  
-    // Determinar nuevo status
-    let nuevoStatus = 'limpia';
-    if (esDespuesCheckout) nuevoStatus = 'lista';
-    if (necesitaMant) nuevoStatus = 'mantenimiento';
- 
-    const r = await apiFetch('POST','/servicios',{
-      habitacion_id: hab.id,
-      tipo_servicio: esDespuesCheckout?'post_checkout':'diario',
-      tipo_cama: tipoCama,
-      necesita_mantenimiento: necesitaMant,
-      nota_mantenimiento: notaMant,
-      consumos: consumos,
-      nuevo_status: nuevoStatus,
+    const r = await apiFetch('POST', '/servicios', {
+      habitacion_id:         hab.id,
+      tipo_servicio:         accion.servicio,
+      tipo_cama:             tipoCama,
+      necesita_mantenimiento:necesitaMant,
+      nota_mantenimiento:    notaMant,
+      consumos:              consumos,
+      nuevo_status:          accion.nuevoStatus,
     });
  
     if (r?.ok) {
-      let msg = esDespuesCheckout?'Limpieza registrada':'Servicio registrado';
-      if (r.total_consumos>0) msg += ' · Consumos: '+fmt(r.total_consumos);
+      let msg = '✅ Servicio registrado';
+      if (r.total_consumos > 0) msg += ` · Frigobar: ${fmt(r.total_consumos)}`;
       if (necesitaMant) msg += ' · ⚠️ Mantenimiento pendiente';
       toast(msg);
-      closeModal(); await refreshHabs();
-    } else {
-      toast(r?.error||'Error al registrar',false);
-    }
-  });
-}
- 
-async function refreshHabs() {
-  habitaciones = await apiFetch('GET','/habitaciones') || [];
-  const map=document.getElementById('room-map');
-  if (map) renderMap(map, habitaciones);
-  // Actualizar stats
-  if (currentPage==='dashboard') renderDashboard();
-}
- 
-// ══════════════════════════════════════
-// DASHBOARD
-// ══════════════════════════════════════
-async function renderDashboard() {
-  const isMucama=currentUser?.rol==='mucama';
-  if (isMucama) {
-    habitaciones = await apiFetch('GET','/habitaciones') || [];
-    const limp=habitaciones.filter(h=>h.status==='limpieza').length;
-    const mant=habitaciones.filter(h=>h.status==='mantenimiento').length;
-    const lib=habitaciones.filter(h=>h.status==='libre').length;
-    document.getElementById('content').innerHTML=`
-      <div class="mucama-header">
-        <div class="mh-icon">🧹</div>
-        <div><h2>Panel de Mucama</h2><p>Gestioná la limpieza de habitaciones</p></div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        <div class="mstat" style="background:#fef3c7;color:#d97706">🧹 ${limp} para limpiar</div>
-        <div class="mstat" style="background:#f3f4f6;color:#4b5563">🔧 ${mant} en mantenimiento</div>
-        <div class="mstat" style="background:#dcfce7;color:#16a34a">✅ ${lib} disponibles</div>
-      </div>
-      ${mapSection()}`;
-    afterMapInsert();
-    return;
-  }
- 
-  const [dash,habs]=await Promise.all([apiFetch('GET','/dashboard'),apiFetch('GET','/habitaciones')]);
-  habitaciones=habs||[];
-  const occ=habitaciones.filter(h=>h.status==='ocupada').length;
-  const lib=habitaciones.filter(h=>h.status==='libre').length;
-  const limp=habitaciones.filter(h=>h.status==='limpieza').length;
-  const pct=Math.round(occ/(habitaciones.length||1)*100);
-  document.getElementById('content').innerHTML=`
-    <div class="stat-cards">
-      <div class="sc occ">
-        <div class="lbl">Turno actual</div><div class="ttl">OCUPACIÓN</div>
-        <div class="occ-big">${pct}%</div>
-        <div class="occ-pills">
-          <div class="op">${occ}<span>Ocup.</span></div>
-          <div class="op">${lib}<span>Libres</span></div>
-          <div class="op">${limp}<span>Limp.</span></div>
-        </div>
-        ${(dash?.alertas_stock||0)>0?`<div class="alert-badge">⚠️ ${dash.alertas_stock} stock</div>`:''}
-      </div>
-      <div class="sc hosp"><div class="lbl">Turno actual</div><div class="ttl">HOSPEDAJE</div><div class="val">${fmt(dash?.hospedaje)}</div></div>
-      <div class="sc tienda"><div class="lbl">Turno actual</div><div class="ttl">TIENDA</div><div class="val">${fmt(dash?.tienda)}</div></div>
-      <div class="sc gastos"><div class="lbl">Turno actual</div><div class="ttl">GASTOS</div><div class="val">${fmt(dash?.egresos)}</div></div>
-      <div class="sc balance"><div class="lbl">Turno actual</div><div class="ttl">BALANCE</div><div class="val">${fmt(dash?.balance)}</div></div>
-    </div>
-    ${mapSection(true)}`;
-  afterMapInsert(true);
-}
- 
-function mapSection(showLog=false) {
-  return `<div class="section-card">
-    <div class="sc-head">
-      <h2>Mapa de Habitaciones</h2>
-      <div class="filters-row">
-        <button class="filter-pill ala-filter ${currentAla==='todas'?'active':''}" data-ala="todas">Todas</button>
-        <button class="filter-pill ala-filter ${currentAla==='Este'?'active':''}" data-ala="Este">Ala Este</button>
-        <button class="filter-pill ala-filter ${currentAla==='Oeste'?'active':''}" data-ala="Oeste">Ala Oeste</button>
-        <div class="zoom-bar">
-          <button class="zoom-btn" id="zoom-in">＋</button>
-          <span class="zlabel">${zoomLabel()}</span>
-          <button class="zoom-btn" id="zoom-out">－</button>
-        </div>
-        ${showLog?'<button class="btn-secondary" id="btn-log">📋 Historial</button>':''}
-      </div>
-    </div>
-    <div id="room-map"></div>
-  </div>`;
-}
- 
-function afterMapInsert(showLog=false) {
-  bindAlaFilters();
-  bindZoom();
-  if (showLog) document.getElementById('btn-log')?.addEventListener('click', loadLog);
-  renderMap(document.getElementById('room-map'), habitaciones);
-}
- 
-// ══════════════════════════════════════
-// HABITACIONES PAGE
-// ══════════════════════════════════════
-async function renderHabitaciones() {
-  habitaciones = await apiFetch('GET','/habitaciones') || [];
-  document.getElementById('content').innerHTML = mapSection();
-  afterMapInsert();
-}
- 
-// ══════════════════════════════════════
-// HAB MODAL — CORREGIDO
-// ══════════════════════════════════════
-function showHabModal(hab) {
-  const isMucama=currentUser?.rol==='mucama';
-  const isAdmin=currentUser?.rol==='admin';
-  const colors={libre:'#16a34a',ocupada:'#dc2626',reservada:'#b45309',limpieza:'#d97706',mantenimiento:'#4b5563'};
-  const bgs={libre:'#dcfce7',ocupada:'#fee2e2',reservada:'#fef9c3',limpieza:'#fef3c7',mantenimiento:'#f3f4f6'};
-  const labels={libre:'✅ Libre',ocupada:'🔴 Ocupada',reservada:'📋 Reservada',limpieza:'🧹 Limpieza',mantenimiento:'🔧 Mantenimiento'};
- 
-  // Transiciones por rol
-  const allT={
-    libre:        [{s:'check-in',label:'✅ Check-in',color:'#059669'},{s:'reservada',label:'📋 Reservar',color:'#7c3aed'},{s:'mantenimiento',label:'🔧 Mantenimiento',color:'#6b7280'}],
-    ocupada:      [{s:'checkout',label:'🚪 Check-out',color:'#dc2626'}],
-    reservada:    [{s:'check-in',label:'✅ Check-in',color:'#059669'},{s:'libre',label:'✕ Cancelar',color:'#6b7280'}],
-    limpieza:     [{s:'libre',label:'✅ Disponible',color:'#16a34a'},{s:'mantenimiento',label:'🔧 Mantenimiento',color:'#6b7280'}],
-    mantenimiento:[{s:'libre',label:'✅ Listo',color:'#16a34a'}],
-  };
-  const mucamaT={
-    limpieza:[{s:'libre',label:'✅ Lista / Disponible',color:'#16a34a'}],
-    mantenimiento:[{s:'libre',label:'✅ Listo',color:'#16a34a'}],
-  };
-  const transitions = isMucama ? (mucamaT[hab.status]||[]) : (allT[hab.status]||[]);
- 
-  // Construir botones de acción con IDs únicos
-  const actHTML = transitions.map((t,i)=>
-    `<button class="act-btn" id="hab-act-${i}" style="background:${t.color}">${t.label}</button>`
-  ).join('');
- 
-  const adminHTML = isAdmin ? `
-    <details style="margin-top:14px;border:1px solid #e0e6ef;border-radius:10px;padding:10px 12px">
-      <summary style="cursor:pointer;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">⚙️ Editar habitación (Admin)</summary>
-      <div style="padding-top:12px;display:flex;flex-direction:column;gap:10px">
-        <div class="form-col"><label>Nombre personalizado</label>
-          <input type="text" id="he-nombre" value="${hab.nombre||''}" placeholder="Suite Jardín, Hab. Principal...">
-        </div>
-        <div class="form-row">
-          <div class="form-col"><label>Tipo</label>
-            <select id="he-tipo">
-              <option value="simple" ${hab.tipo==='simple'?'selected':''}>Simple</option>
-              <option value="doble"  ${hab.tipo==='doble'?'selected':''}>Doble</option>
-              <option value="suite"  ${hab.tipo==='suite'?'selected':''}>Suite</option>
-            </select>
-          </div>
-          <div class="form-col"><label>Capacidad (pers.)</label>
-            <input type="number" id="he-cap" value="${hab.capacidad||2}" min="1" max="10">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-col"><label>Precio noche ($)</label>
-            <input type="number" id="he-pnoche" value="${hab.precio_noche||50000}">
-          </div>
-          <div class="form-col"><label>Precio hora ($)</label>
-            <input type="number" id="he-phora" value="${hab.precio_hora||15000}">
-          </div>
-        </div>
-        <button class="btn-primary" id="btn-save-hab" style="width:100%">💾 Guardar cambios</button>
-      </div>
-    </details>` : '';
- 
-  openModal(`
-    <div class="modal-hd">
-      <h3>Hab. ${hab.numero}${hab.nombre?' · '+hab.nombre:''} — Ala ${hab.ala}</h3>
-      <button class="modal-close" id="hab-close">✕</button>
-    </div>
-    <div class="status-info" style="background:${bgs[hab.status]||'#f3f4f6'}">
-      <span style="font-weight:800;color:${colors[hab.status]||'#374151'};font-size:14px">${labels[hab.status]||hab.status}</span>
-      <span style="color:#64748b;font-size:12px">· ${TIPOS[hab.tipo]||hab.tipo} · ${hab.capacidad} pers. · ${fmt(hab.precio_noche)}/noche</span>
-    </div>
-    ${hab.nota&&hab.status!=='libre'?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:''}
-    ${!isMucama?`<div class="form-col" style="margin-bottom:12px">
-      <label>Nota / Observación</label>
-      <input type="text" id="hab-nota" value="${hab.nota||''}" placeholder="Huésped, patente, solicitud...">
-    </div>`:''}
-    ${transitions.length>0?`<div class="stitle">Cambiar estado</div><div class="act-grid">${actHTML}</div>`:
-      `<div style="background:#f8fafc;border-radius:8px;padding:10px 12px;font-size:12px;color:#64748b;font-style:italic">Sin acciones disponibles para este estado.</div>`}
-    ${!isMucama?`<button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>`:''}
-    ${adminHTML}
-  `);
- 
-  // === BIND EVENTS (DESPUÉS de openModal) ===
- 
-  document.getElementById('hab-close').addEventListener('click', closeModal);
- 
-  // Acciones de estado
-  transitions.forEach((t,i)=>{
-    document.getElementById(`hab-act-${i}`).addEventListener('click', async ()=>{
-      if (t.s==='check-in')  { closeModal(); showCheckinModal(hab.id); return; }
-      if (t.s==='reservada') { closeModal(); showReservaModal(hab.id); return; }
-      if (t.s==='checkout') {
-        if (!confirm('¿Confirmar check-out? La habitación pasará a limpieza.')) return;
-        const r=await apiFetch('POST',`/checkout/${hab.id}`);
-        if (r?.ok) toast('Check-out realizado');
-        else toast(r?.error||'Error',false);
-      } else {
-        const nota=document.getElementById('hab-nota')?.value||hab.nota||'';
-        const r=await apiFetch('PUT',`/habitaciones/${hab.id}/status`,{status:t.s,nota});
-        if (r?.ok) toast('Estado: '+labels[t.s]);
-        else toast(r?.error||'Error',false);
-      }
       closeModal();
       await refreshHabs();
-    });
-  });
- 
-  // Guardar nota
-  document.getElementById('hab-save-nota')?.addEventListener('click', async ()=>{
-    const nota=document.getElementById('hab-nota').value;
-    const r=await apiFetch('PUT',`/habitaciones/${hab.id}/status`,{status:hab.status,nota});
-    if (r?.ok) toast('Nota guardada');
-    else toast('Error',false);
-    closeModal();
-    await refreshHabs();
-  });
- 
-  // Guardar cambios habitación (admin)
-  document.getElementById('btn-save-hab')?.addEventListener('click', async ()=>{
-    const r=await apiFetch('PUT',`/habitaciones/${hab.id}`,{
-      nombre:  document.getElementById('he-nombre').value,
-      tipo:    document.getElementById('he-tipo').value,
-      capacidad: parseInt(document.getElementById('he-cap').value)||2,
-      precio_noche: parseFloat(document.getElementById('he-pnoche').value)||0,
-      precio_hora:  parseFloat(document.getElementById('he-phora').value)||0,
-    });
-    if (r?.ok) { toast('Habitación actualizada'); closeModal(); await refreshHabs(); }
-    else toast(r?.error||'Error al guardar',false);
+    } else {
+      toast(r?.error || 'Error al registrar', false);
+    }
   });
 }
  
