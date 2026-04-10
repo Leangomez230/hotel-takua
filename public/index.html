@@ -9,7 +9,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--room-cols:5}
 body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px;overflow-x:hidden}
-
+ 
 /* LOGIN */
 #login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e3a5f 60%,#0f172a);padding:24px}
 .login-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:40px 36px;width:100%;max-width:380px}
@@ -24,7 +24,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .lf input::placeholder{color:#64748b}
 .login-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:12px;padding:14px;color:#fff;font-size:15px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:8px}
 .login-err{color:#f87171;font-size:12px;text-align:center;margin-top:8px;display:none}
-
+ 
 /* LAYOUT */
 #app{display:none;min-height:100vh}
 .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
@@ -48,7 +48,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .tb-btn.caja{background:#f0fdf9;border-color:#a7f3e4;color:#059669}
 .user-av{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#0094ff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;flex-shrink:0}
 .content{padding:20px 22px;flex:1}
-
+ 
 /* STAT CARDS */
 .stat-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
 .sc{border-radius:16px;padding:16px 14px;color:#fff;position:relative;overflow:hidden;min-height:100px}
@@ -66,7 +66,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .op{background:rgba(255,255,255,.13);border-radius:6px;padding:2px 6px;font-size:10px;font-weight:700;text-align:center}
 .op span{display:block;font-size:8px;opacity:.7}
 .alert-badge{position:absolute;top:8px;right:8px;background:#ef4444;color:#fff;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:800}
-
+ 
 /* SECTION */
 .section-card{background:#fff;border-radius:18px;padding:20px;margin-bottom:20px}
 .sc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
@@ -77,12 +77,12 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .filter-pill:not(.active){background:#f0f4f8;color:#64748b}
 .btn-primary{background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:10px;padding:8px 16px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif}
 .btn-secondary{background:#f0f4f8;border:1.5px solid #e0e6ef;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;color:#374151;cursor:pointer;font-family:'Nunito',sans-serif}
-
+ 
 /* ZOOM */
 .zoom-bar{display:flex;align-items:center;gap:6px;background:#f0f4f8;border-radius:20px;padding:4px 10px;border:1px solid #e0e6ef}
 .zoom-bar span{font-size:11px;font-weight:700;color:#64748b;min-width:36px;text-align:center}
 .zoom-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e0e6ef;background:#fff;cursor:pointer;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;color:#374151}
-
+ 
 /* ROOM GRID */
 .ala-label{font-size:11px;font-weight:700;color:#64748b;letter-spacing:2px;text-transform:uppercase;padding:8px 0;border-bottom:1px solid #f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .ala-tag{background:#1a2035;color:#fff;font-size:10px;border-radius:6px;padding:2px 8px}
@@ -94,6 +94,8 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rcard.reservada{background:#fefce8;border-color:#fde68a}
 .rcard.limpieza{background:#fffbeb;border-color:#fde68a}
 .rcard.mantenimiento{background:#f3f4f6;border-color:#d1d5db}
+.rcard.lista{background:#ecfeff;border-color:#a5f3fc}
+.rcard.limpia{background:#f0fdf4;border-color:#bbf7d0}
 .rcard.selected{outline:3px solid var(--accent);outline-offset:2px}
 .rcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
 .room-icon{font-size:18px}
@@ -103,6 +105,8 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .sb-reservada{background:#fef9c3;color:#b45309}
 .sb-limpieza{background:#fef3c7;color:#d97706}
 .sb-mantenimiento{background:#f3f4f6;color:#4b5563}
+.sb-lista{background:#cffafe;color:#0891b2}
+.sb-limpia{background:#dcfce7;color:#16a34a}
 .rnum{font-size:22px;font-weight:900;color:#1a2035;line-height:1}
 .rname{font-size:10px;font-weight:700;color:#64748b;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rtipo{font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
@@ -113,7 +117,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rclean{display:flex;flex-direction:column;align-items:center;justify-content:center;height:44px;gap:2px}
 .rclean-icon{font-size:24px;opacity:.4}
 .rclean-label{font-size:10px;font-weight:700;color:#d97706}
-
+ 
 /* MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
@@ -138,7 +142,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .total-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
 .total-row.big{font-size:15px;font-weight:800;color:#059669;margin-top:6px;padding-top:6px;border-top:1px solid #a7f3e4}
 .info-box{background:#f0fdf9;border:1px solid #a7f3e4;border-radius:10px;padding:10px 14px;font-size:12px;color:#059669;font-weight:600;margin-bottom:12px}
-
+ 
 /* TABLES */
 .data-table{width:100%;border-collapse:collapse}
 .data-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;padding:8px 12px;text-align:left;border-bottom:1px solid #f1f5f9}
@@ -147,7 +151,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .pill{display:inline-block;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700}
 .pg{background:#dcfce7;color:#16a34a}.pr{background:#fee2e2;color:#dc2626}
 .pb{background:#dbeafe;color:#2563eb}.py{background:#fef9c3;color:#b45309}.pgr{background:#f3f4f6;color:#4b5563}
-
+ 
 /* CAJA */
 .caja-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
 .caja-box{border-radius:12px;padding:14px;text-align:center}
@@ -157,24 +161,24 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .cb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:4px}
 .cb-val{font-size:18px;font-weight:900}
 .caja-box.ing .cb-val{color:#059669}.caja-box.eg .cb-val{color:#dc2626}.caja-box.bal .cb-val{color:#2563eb}
-
+ 
 /* TIENDA */
 .cart-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9}
 .cart-item:last-child{border:none}
 .qty-ctrl{display:flex;align-items:center;gap:8px}
 .qty-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e0e6ef;background:#f8fafc;cursor:pointer;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
-
+ 
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2035;color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
-
+ 
 /* MUCAMA */
 .mucama-header{background:linear-gradient(135deg,#166534,#15803d);color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px}
 .mucama-header .mh-icon{font-size:32px}
 .mucama-header h2{font-size:18px;font-weight:800}
 .mucama-header p{font-size:12px;opacity:.8;margin-top:2px}
 .mstat{border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
-
+ 
 /* RESPONSIVE */
 @media(max-width:1100px){.stat-cards{grid-template-columns:repeat(3,1fr)};:root{--room-cols:4}}
 @media(max-width:900px){
@@ -200,7 +204,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 </style>
 </head>
 <body>
-
+ 
 <!-- LOGIN -->
 <div id="login-page">
   <div class="login-box">
@@ -215,7 +219,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
     <div class="login-err" id="login-err">Email o contraseña incorrectos</div>
   </div>
 </div>
-
+ 
 <!-- APP -->
 <div id="app">
   <div class="sb-overlay" id="sb-overlay"></div>
@@ -247,13 +251,13 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
     <div class="content" id="content"></div>
   </div>
 </div>
-
+ 
 <!-- MODAL -->
 <div class="overlay" id="modal-overlay">
   <div class="modal" id="modal-box"></div>
 </div>
 <div class="toast" id="toast"></div>
-
+ 
 <script>
 // ── STATE ──
 let token = localStorage.getItem('takua_token');
@@ -266,7 +270,7 @@ let roomCols = 0;
 const API = '/api';
 const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-
+ 
 // ── HELPERS ──
 async function apiFetch(method, path, body) {
   const opts = {method, headers: {'Content-Type':'application/json', 'Authorization':`Bearer ${token}`}};
@@ -289,7 +293,7 @@ function toast(msg, ok=true) {
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 2800);
 }
-
+ 
 // ── MODAL ──
 // Usamos un solo modal y vinculamos eventos DESPUÉS de inyectar HTML
 function openModal(html) {
@@ -303,7 +307,7 @@ function closeModal() {
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
-
+ 
 // ── ZOOM ──
 const ZOOM_LEVELS = [2,3,4,5,6,7];
 function initZoom() {
@@ -319,7 +323,7 @@ function doZoom(delta) {
   document.querySelectorAll('.zlabel').forEach(el=>el.textContent=roomCols+' col.');
 }
 function zoomLabel() { return roomCols?roomCols+' col.':'Auto'; }
-
+ 
 // ── SIDEBAR ──
 document.getElementById('hamburger').addEventListener('click',()=>{
   document.getElementById('sidebar').classList.toggle('open');
@@ -333,7 +337,7 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('open');
 }
-
+ 
 // Nav wiring
 ['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].forEach(p=>{
   document.getElementById('nav-'+p)?.addEventListener('click',()=>{
@@ -341,17 +345,17 @@ function closeSidebar() {
   });
 });
 document.getElementById('tb-caja')?.addEventListener('click',()=>{ setActiveNav('nav-caja'); goTo('caja'); });
-
+ 
 function setActiveNav(id) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(id)?.classList.add('active');
 }
-
+ 
 // ── AUTH ──
 document.getElementById('btn-login').addEventListener('click', doLogin);
 document.getElementById('l-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 document.getElementById('btn-logout').addEventListener('click', doLogout);
-
+ 
 async function doLogin() {
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value;
@@ -391,7 +395,7 @@ function startApp() {
   setActiveNav('nav-dashboard');
   goTo('dashboard');
 }
-
+ 
 // ── NAVIGATION ──
 function goTo(page) {
   currentPage=page;
@@ -402,33 +406,43 @@ function goTo(page) {
     caja:renderCaja, finanzas:renderFinanzas, config:renderConfig};
   if (pages[page]) pages[page]();
 }
-
+ 
 // ── ROOM HELPERS ──
 const SCFG = {
-  libre:        {label:'Libre',        badge:'sb-libre',        icon:'🟢'},
-  ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴'},
-  reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡'},
-  limpieza:     {label:'Limpieza',     badge:'sb-limpieza',     icon:'🧹'},
-  mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧'},
+  libre:        {label:'Libre',        badge:'sb-libre',        icon:'🟢', color:'#16a34a', bg:'#dcfce7'},
+  lista:        {label:'Lista',        badge:'sb-lista',        icon:'✨', color:'#0891b2', bg:'#cffafe'},
+  ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴', color:'#dc2626', bg:'#fee2e2'},
+  limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7'},
+  reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡', color:'#b45309', bg:'#fef9c3'},
+  limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
+  mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
 };
-const TIPOS={simple:'Simple',doble:'Doble',suite:'Suite'};
-
+const TIPOS={twin:'🛏 Twin', queen:'👑 Queen', simple:'🛏 Twin', doble:'🛏 Twin', suite:'👑 Queen'};
+ 
 function buildCard(h) {
-  const s=SCFG[h.status]||{label:h.status,badge:'',icon:'⚪'};
+  const s=SCFG[h.status]||{label:h.status,badge:'sb-libre',icon:'⚪',color:'#94a3b8',bg:'#f8fafc'};
+  const tipoLabel=TIPOS[h.tipo]||h.tipo;
   let body='';
-  if (h.status==='libre') body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label">Disponible</div></div>`;
-  else if (h.status==='limpieza') body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">En Limpieza</div></div>`;
-  else if (h.status==='mantenimiento') body=`<div class="rclean"><div class="rclean-icon">🔧</div><div class="rclean-label">Mantenimiento</div></div>`;
-  else if (h.nota) body=`<div class="rguest">👤 ${h.nota}</div>`;
+  if (h.status==='libre'||h.status==='limpia') {
+    body=`<div class="ravail"><div class="ravail-circle">${h.status==='limpia'?'🌿':'✅'}</div><div class="ravail-label" style="color:${s.color}">${h.status==='limpia'?'Limpia':'Disponible'}</div></div>`;
+  } else if (h.status==='lista') {
+    body=`<div class="ravail"><div class="ravail-circle">✨</div><div class="ravail-label" style="color:#0891b2">Lista</div></div>`;
+  } else if (h.status==='limpieza') {
+    body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
+  } else if (h.status==='mantenimiento') {
+    body=`<div class="rclean"><div class="rclean-icon">🔧</div><div class="rclean-label" style="color:#4b5563">Mantenimiento</div></div>`;
+  } else if (h.nota) {
+    body=`<div class="rguest">👤 ${h.nota}</div>`;
+  }
   return `<div class="rcard ${h.status}" data-hid="${h.id}">
     <div class="rcard-top"><span class="room-icon">${s.icon}</span><span class="sbadge ${s.badge}">${s.label}</span></div>
     <div class="rnum">${h.numero}</div>
     ${h.nombre?`<div class="rname">${h.nombre}</div>`:''}
-    <div class="rtipo">${TIPOS[h.tipo]||h.tipo}</div>
+    <div class="rtipo">${tipoLabel}</div>
     ${body}
   </div>`;
 }
-
+ 
 function renderMap(container, habs) {
   const alas = currentAla==='todas'?['Este','Oeste']:[currentAla];
   container.innerHTML = alas.map(a=>{
@@ -445,7 +459,7 @@ function renderMap(container, habs) {
     });
   });
 }
-
+ 
 function bindZoom() {
   document.getElementById('zoom-in')?.addEventListener('click',()=>doZoom(-1));
   document.getElementById('zoom-out')?.addEventListener('click',()=>doZoom(1));
@@ -461,7 +475,7 @@ function bindAlaFilters() {
     });
   });
 }
-
+ 
 async function refreshHabs() {
   habitaciones = await apiFetch('GET','/habitaciones') || [];
   const map=document.getElementById('room-map');
@@ -469,7 +483,7 @@ async function refreshHabs() {
   // Actualizar stats
   if (currentPage==='dashboard') renderDashboard();
 }
-
+ 
 // ══════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════
@@ -477,24 +491,26 @@ async function renderDashboard() {
   const isMucama=currentUser?.rol==='mucama';
   if (isMucama) {
     habitaciones = await apiFetch('GET','/habitaciones') || [];
-    const limp=habitaciones.filter(h=>h.status==='limpieza').length;
-    const mant=habitaciones.filter(h=>h.status==='mantenimiento').length;
-    const lib=habitaciones.filter(h=>h.status==='libre').length;
+    const limp  = habitaciones.filter(h=>h.status==='limpieza').length;
+    const mant  = habitaciones.filter(h=>h.status==='mantenimiento').length;
+    const occ   = habitaciones.filter(h=>h.status==='ocupada').length;
+    const res   = habitaciones.filter(h=>h.status==='reservada').length;
     document.getElementById('content').innerHTML=`
       <div class="mucama-header">
         <div class="mh-icon">🧹</div>
-        <div><h2>Panel de Mucama</h2><p>Gestioná la limpieza de habitaciones</p></div>
+        <div><h2>Bienvenida, ${currentUser?.nombre||'Mucama'}</h2><p>Gestión de habitaciones</p></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        <div class="mstat" style="background:#fef3c7;color:#d97706">🧹 ${limp} para limpiar</div>
-        <div class="mstat" style="background:#f3f4f6;color:#4b5563">🔧 ${mant} en mantenimiento</div>
-        <div class="mstat" style="background:#dcfce7;color:#16a34a">✅ ${lib} disponibles</div>
+        <div class="mstat" style="background:#fef3c7;color:#d97706">🧹 ${limp} a limpiar</div>
+        <div class="mstat" style="background:#fee2e2;color:#dc2626">🔴 ${occ} ocupadas</div>
+        <div class="mstat" style="background:#fef9c3;color:#b45309">📋 ${res} reservadas</div>
+        <div class="mstat" style="background:#f3f4f6;color:#4b5563">🔧 ${mant} mantenimiento</div>
       </div>
       ${mapSection()}`;
     afterMapInsert();
     return;
   }
-
+ 
   const [dash,habs]=await Promise.all([apiFetch('GET','/dashboard'),apiFetch('GET','/habitaciones')]);
   habitaciones=habs||[];
   const occ=habitaciones.filter(h=>h.status==='ocupada').length;
@@ -521,7 +537,7 @@ async function renderDashboard() {
     ${mapSection(true)}`;
   afterMapInsert(true);
 }
-
+ 
 function mapSection(showLog=false) {
   return `<div class="section-card">
     <div class="sc-head">
@@ -541,14 +557,14 @@ function mapSection(showLog=false) {
     <div id="room-map"></div>
   </div>`;
 }
-
+ 
 function afterMapInsert(showLog=false) {
   bindAlaFilters();
   bindZoom();
   if (showLog) document.getElementById('btn-log')?.addEventListener('click', loadLog);
   renderMap(document.getElementById('room-map'), habitaciones);
 }
-
+ 
 // ══════════════════════════════════════
 // HABITACIONES PAGE
 // ══════════════════════════════════════
@@ -557,7 +573,420 @@ async function renderHabitaciones() {
   document.getElementById('content').innerHTML = mapSection();
   afterMapInsert();
 }
-
+ 
+// ══════════════════════════════════════
+// HAB MODAL — NUEVA LÓGICA
+// ══════════════════════════════════════
+function showHabModal(hab) {
+  const rol = currentUser?.rol;
+  const isMucama = rol === 'mucama';
+  const isAdmin = rol === 'admin';
+  const isRecep = rol === 'recepcionista';
+  const canEdit = isAdmin || isRecep;
+ 
+  const s = SCFG[hab.status] || {label:hab.status, color:'#374151', bg:'#f8fafc'};
+  const tipoLabel = TIPOS[hab.tipo] || hab.tipo;
+ 
+  // ── TRANSICIONES MUCAMA ──
+  // La mucama abre un modal especial de "servicio"
+  const mucamaPuedeServicio = ['ocupada','limpia','limpieza','reservada','lista','mantenimiento'].includes(hab.status);
+ 
+  // ── TRANSICIONES RECEPCION/ADMIN ──
+  const allT = {
+    libre:        [{s:'check-in',  label:'✅ Check-in',         color:'#059669'},
+                   {s:'reservada', label:'📋 Reservar',         color:'#7c3aed'},
+                   {s:'mantenimiento',label:'🔧 Mantenimiento', color:'#6b7280'}],
+    lista:        [{s:'check-in',  label:'✅ Check-in',         color:'#059669'},
+                   {s:'reservada', label:'📋 Reservar',         color:'#7c3aed'},
+                   {s:'mantenimiento',label:'🔧 Mantenimiento', color:'#6b7280'}],
+    limpia:       [{s:'libre',     label:'✅ Marcar Libre',     color:'#16a34a'},
+                   {s:'mantenimiento',label:'🔧 Mantenimiento', color:'#6b7280'}],
+    ocupada:      [{s:'checkout',  label:'🚪 Check-out',        color:'#dc2626'}],
+    reservada:    [{s:'check-in',  label:'✅ Check-in',         color:'#059669'},
+                   {s:'libre',     label:'✕ Cancelar reserva', color:'#6b7280'}],
+    limpieza:     [{s:'libre',     label:'✅ Marcar Libre',     color:'#16a34a'},
+                   {s:'mantenimiento',label:'🔧 Mantenimiento', color:'#6b7280'}],
+    mantenimiento:[{s:'libre',     label:'✅ Disponible',       color:'#16a34a'}],
+  };
+ 
+  const transitions = canEdit ? (allT[hab.status]||[]) : [];
+  const actHTML = transitions.map((t,i)=>
+    `<button class="act-btn" id="hab-act-${i}" style="background:${t.color}">${t.label}</button>`
+  ).join('');
+ 
+  const adminHTML = isAdmin ? `
+    <details style="margin-top:14px;border:1px solid #e0e6ef;border-radius:10px;padding:10px 12px">
+      <summary style="cursor:pointer;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">⚙️ Editar habitación (Admin)</summary>
+      <div style="padding-top:12px;display:flex;flex-direction:column;gap:10px">
+        <div class="form-col"><label>Nombre personalizado</label>
+          <input type="text" id="he-nombre" value="${hab.nombre||''}" placeholder="Ej: Hab. Jardín...">
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Tipo de cama</label>
+            <select id="he-tipo">
+              <option value="twin"  ${hab.tipo==='twin'||hab.tipo==='simple'||hab.tipo==='doble'?'selected':''}>🛏 Twin</option>
+              <option value="queen" ${hab.tipo==='queen'||hab.tipo==='suite'?'selected':''}>👑 Queen</option>
+            </select>
+          </div>
+          <div class="form-col"><label>Capacidad (pers.)</label>
+            <input type="number" id="he-cap" value="${hab.capacidad||2}" min="1" max="10">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Precio noche ($)</label><input type="number" id="he-pnoche" value="${hab.precio_noche||50000}"></div>
+          <div class="form-col"><label>Precio hora ($)</label><input type="number" id="he-phora" value="${hab.precio_hora||15000}"></div>
+        </div>
+        <button class="btn-primary" id="btn-save-hab" style="width:100%">💾 Guardar cambios</button>
+      </div>
+    </details>` : '';
+ 
+  // Selector tipo cama para mucama/recep (inline, siempre visible)
+  const tipoCamaHTML = `
+    <div class="stitle">Tipo de cama preparada</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="tipo-btn ${hab.tipo==='twin'||hab.tipo==='simple'||hab.tipo==='doble'?'active-twin':''}" id="tbtn-twin" style="flex:1;padding:10px;border:2px solid ${hab.tipo==='twin'||hab.tipo==='simple'||hab.tipo==='doble'?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${hab.tipo==='twin'||hab.tipo==='simple'||hab.tipo==='doble'?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
+      <button class="tipo-btn ${hab.tipo==='queen'||hab.tipo==='suite'?'active-queen':''}" id="tbtn-queen" style="flex:1;padding:10px;border:2px solid ${hab.tipo==='queen'||hab.tipo==='suite'?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${hab.tipo==='queen'||hab.tipo==='suite'?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">👑 Queen</button>
+    </div>`;
+ 
+  openModal(`
+    <div class="modal-hd">
+      <h3>Hab. ${hab.numero}${hab.nombre?' · '+hab.nombre:''} — Ala ${hab.ala}</h3>
+      <button class="modal-close" id="hab-close">✕</button>
+    </div>
+    <div class="status-info" style="background:${s.bg||'#f8fafc'}">
+      <span style="font-weight:800;color:${s.color||'#374151'};font-size:14px">${s.icon||''} ${s.label||hab.status}</span>
+      <span style="color:#64748b;font-size:12px">· ${tipoLabel} · ${hab.capacidad} pers. · ${fmt(hab.precio_noche)}/noche</span>
+    </div>
+    ${hab.nota&&hab.status!=='libre'?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:''}
+ 
+    ${isMucama && mucamaPuedeServicio ? `
+      ${tipoCamaHTML}
+      <button class="confirm-btn" id="btn-servicio" style="background:linear-gradient(135deg,#166534,#16a34a);margin-bottom:8px">
+        ${['limpieza','mantenimiento'].includes(hab.status)?'🧹 Registrar limpieza':'🧹 Registrar servicio diario'}
+      </button>
+    ` : ''}
+ 
+    ${canEdit ? `
+      <div class="form-col" style="margin-bottom:12px">
+        <label>Nota / Observación</label>
+        <input type="text" id="hab-nota" value="${hab.nota||''}" placeholder="Huésped, patente, solicitud...">
+      </div>
+      ${tipoCamaHTML}
+    ` : ''}
+ 
+    ${transitions.length>0 ? `<div class="stitle">Cambiar estado</div><div class="act-grid">${actHTML}</div>` : ''}
+    ${canEdit ? `<button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>` : ''}
+    ${adminHTML}
+  `);
+ 
+  // ── BIND EVENTS ──
+  document.getElementById('hab-close').addEventListener('click', closeModal);
+ 
+  // Selector tipo cama (toggle visual)
+  let tipoCamaSeleccionada = (hab.tipo==='queen'||hab.tipo==='suite') ? 'queen' : 'twin';
+  const btnTwin  = document.getElementById('tbtn-twin');
+  const btnQueen = document.getElementById('tbtn-queen');
+  function selectTipo(tipo) {
+    tipoCamaSeleccionada = tipo;
+    if (btnTwin) {
+      btnTwin.style.borderColor  = tipo==='twin'?'#00c9b1':'#e0e6ef';
+      btnTwin.style.background   = tipo==='twin'?'#f0fdf9':'#f8fafc';
+    }
+    if (btnQueen) {
+      btnQueen.style.borderColor = tipo==='queen'?'#7c3aed':'#e0e6ef';
+      btnQueen.style.background  = tipo==='queen'?'#faf5ff':'#f8fafc';
+    }
+  }
+  btnTwin?.addEventListener('click', ()=>selectTipo('twin'));
+  btnQueen?.addEventListener('click', ()=>selectTipo('queen'));
+ 
+  // Botón servicio mucama
+  document.getElementById('btn-servicio')?.addEventListener('click', ()=>{
+    closeModal();
+    showServicioModal(hab, tipoCamaSeleccionada);
+  });
+ 
+  // Acciones recep/admin
+  transitions.forEach((t,i)=>{
+    document.getElementById(`hab-act-${i}`)?.addEventListener('click', async ()=>{
+      if (t.s==='check-in')  { closeModal(); showCheckinModal(hab.id); return; }
+      if (t.s==='reservada') { closeModal(); showReservaModal(hab.id); return; }
+      if (t.s==='checkout') {
+        if (!confirm('¿Confirmar check-out? La habitación pasará a limpieza.')) return;
+        const r=await apiFetch('POST',`/checkout/${hab.id}`);
+        if (r?.ok) toast('Check-out realizado. Pasó a limpieza.');
+        else toast(r?.error||'Error',false);
+      } else {
+        const nota=document.getElementById('hab-nota')?.value||hab.nota||'';
+        const r=await apiFetch('PUT',`/habitaciones/${hab.id}/status`,{status:t.s,nota});
+        if (r?.ok) toast('Estado actualizado: '+t.label);
+        else toast(r?.error||'Error',false);
+      }
+      // Actualizar tipo de cama si cambió
+      if (tipoCamaSeleccionada !== (hab.tipo==='queen'||hab.tipo==='suite'?'queen':'twin')) {
+        await apiFetch('PUT',`/habitaciones/${hab.id}`,{nombre:hab.nombre||'',tipo:tipoCamaSeleccionada,capacidad:hab.capacidad,precio_noche:hab.precio_noche,precio_hora:hab.precio_hora});
+      }
+      closeModal();
+      await refreshHabs();
+    });
+  });
+ 
+  // Guardar nota
+  document.getElementById('hab-save-nota')?.addEventListener('click', async ()=>{
+    const nota=document.getElementById('hab-nota').value;
+    // Guardar tipo de cama si cambió
+    if (tipoCamaSeleccionada !== (hab.tipo==='queen'||hab.tipo==='suite'?'queen':'twin')) {
+      await apiFetch('PUT',`/habitaciones/${hab.id}`,{nombre:hab.nombre||'',tipo:tipoCamaSeleccionada,capacidad:hab.capacidad,precio_noche:hab.precio_noche,precio_hora:hab.precio_hora});
+    }
+    const r=await apiFetch('PUT',`/habitaciones/${hab.id}/status`,{status:hab.status,nota});
+    if (r?.ok) toast('Guardado');
+    else toast('Error',false);
+    closeModal(); await refreshHabs();
+  });
+ 
+  // Admin guardar cambios habitación
+  document.getElementById('btn-save-hab')?.addEventListener('click', async ()=>{
+    const r=await apiFetch('PUT',`/habitaciones/${hab.id}`,{
+      nombre:document.getElementById('he-nombre').value,
+      tipo:document.getElementById('he-tipo').value,
+      capacidad:parseInt(document.getElementById('he-cap').value)||2,
+      precio_noche:parseFloat(document.getElementById('he-pnoche').value)||0,
+      precio_hora:parseFloat(document.getElementById('he-phora').value)||0,
+    });
+    if (r?.ok) { toast('Habitación actualizada'); closeModal(); await refreshHabs(); }
+    else toast(r?.error||'Error',false);
+  });
+}
+ 
+// ══════════════════════════════════════
+// SERVICIO DE HABITACION (MUCAMA)
+// ══════════════════════════════════════
+async function showServicioModal(hab, tipoCamaInicial) {
+  const productos = await apiFetch('GET','/productos') || [];
+  const tipoServicio = ['limpieza','mantenimiento'].includes(hab.status) ? 'post_checkout' : 'diario';
+  const esDespuesCheckout = tipoServicio === 'post_checkout';
+ 
+  const prodRows = productos.map(p=>`
+    <div class="prod-srv" data-pid="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio}"
+      style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+      <div>
+        <div style="font-size:13px;font-weight:600">${p.nombre}</div>
+        <div style="font-size:11px;color:#94a3b8">${fmt(p.precio)} · Stock: ${p.stock}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="qty-btn srv-menos" data-id="${p.id}">−</button>
+        <span class="srv-qty" data-id="${p.id}" style="font-weight:700;min-width:16px;text-align:center">0</span>
+        <button class="qty-btn srv-mas" data-id="${p.id}">+</button>
+      </div>
+    </div>`).join('');
+ 
+  openModal(`
+    <div class="modal-hd">
+      <h3>${esDespuesCheckout?'🧹 Limpieza post-checkout':'🧹 Servicio diario'} — Hab. ${hab.numero}</h3>
+      <button class="modal-close" id="srv-close">✕</button>
+    </div>
+ 
+    <div class="stitle">Tipo de cama preparada</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="srv-twin"  style="flex:1;padding:10px;border:2px solid ${tipoCamaInicial==='twin'?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${tipoCamaInicial==='twin'?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
+      <button id="srv-queen" style="flex:1;padding:10px;border:2px solid ${tipoCamaInicial==='queen'?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${tipoCamaInicial==='queen'?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">👑 Queen</button>
+    </div>
+ 
+    <div class="stitle">Consumos del frigobar</div>
+    <div style="max-height:200px;overflow-y:auto;margin-bottom:12px">${prodRows}</div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:8px 0;border-top:1px solid #e0e6ef;margin-bottom:14px">
+      <span>Total consumos:</span><span id="srv-total" style="color:var(--accent)">$ 0</span>
+    </div>
+ 
+    <div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:12px;padding:12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="srv-mant" style="width:18px;height:18px;cursor:pointer">
+        <label for="srv-mant" style="font-size:13px;font-weight:700;color:#dc2626;cursor:pointer">🔧 Necesita mantenimiento</label>
+      </div>
+      <div id="srv-mant-nota-wrap" style="display:none">
+        <textarea id="srv-mant-nota" rows="2" placeholder="Describí el problema (ej: grifo con pérdida, AC sin funcionar...)"
+          style="width:100%;border:1.5px solid #fca5a5;border-radius:8px;padding:8px;font-size:13px;font-family:'Nunito',sans-serif;resize:none"></textarea>
+      </div>
+    </div>
+ 
+    <button class="confirm-btn" id="srv-confirm" style="background:linear-gradient(135deg,#166534,#16a34a)">
+      ✅ ${esDespuesCheckout?'Confirmar limpieza':'Confirmar servicio diario'}
+    </button>
+  `);
+ 
+  // Tipo cama
+  let tipoCama = tipoCamaInicial || 'twin';
+  const btnT = document.getElementById('srv-twin');
+  const btnQ = document.getElementById('srv-queen');
+  function selTipo(t) {
+    tipoCama=t;
+    btnT.style.borderColor = t==='twin'?'#00c9b1':'#e0e6ef'; btnT.style.background = t==='twin'?'#f0fdf9':'#f8fafc';
+    btnQ.style.borderColor = t==='queen'?'#7c3aed':'#e0e6ef'; btnQ.style.background = t==='queen'?'#faf5ff':'#f8fafc';
+  }
+  btnT.addEventListener('click',()=>selTipo('twin'));
+  btnQ.addEventListener('click',()=>selTipo('queen'));
+ 
+  // Cantidades frigobar
+  const cantidades = {};
+  function updateTotal() {
+    let tot=0;
+    document.querySelectorAll('.prod-srv').forEach(el=>{
+      const id=parseInt(el.dataset.pid), precio=parseFloat(el.dataset.precio);
+      const qty=cantidades[id]||0;
+      tot+=qty*precio;
+    });
+    document.getElementById('srv-total').textContent=fmt(tot);
+  }
+  document.querySelectorAll('.srv-mas').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=parseInt(btn.dataset.id);
+      cantidades[id]=(cantidades[id]||0)+1;
+      document.querySelector(`.srv-qty[data-id="${id}"]`).textContent=cantidades[id];
+      updateTotal();
+    });
+  });
+  document.querySelectorAll('.srv-menos').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=parseInt(btn.dataset.id);
+      if ((cantidades[id]||0)>0) { cantidades[id]--; document.querySelector(`.srv-qty[data-id="${id}"]`).textContent=cantidades[id]; updateTotal(); }
+    });
+  });
+ 
+  // Mantenimiento toggle
+  document.getElementById('srv-mant').addEventListener('change',function(){
+    document.getElementById('srv-mant-nota-wrap').style.display=this.checked?'block':'none';
+  });
+ 
+  document.getElementById('srv-close').addEventListener('click',closeModal);
+ 
+  document.getElementById('srv-confirm').addEventListener('click', async ()=>{
+    const necesitaMant = document.getElementById('srv-mant').checked;
+    const notaMant = document.getElementById('srv-mant-nota')?.value||'';
+    const consumos = Object.entries(cantidades).filter(([id,qty])=>qty>0).map(([id,qty])=>({producto_id:parseInt(id),cantidad:qty}));
+ 
+    // Determinar nuevo status
+    let nuevoStatus = 'limpia';
+    if (esDespuesCheckout) nuevoStatus = 'lista';
+    if (necesitaMant) nuevoStatus = 'mantenimiento';
+ 
+    const r = await apiFetch('POST','/servicios',{
+      habitacion_id: hab.id,
+      tipo_servicio: esDespuesCheckout?'post_checkout':'diario',
+      tipo_cama: tipoCama,
+      necesita_mantenimiento: necesitaMant,
+      nota_mantenimiento: notaMant,
+      consumos: consumos,
+      nuevo_status: nuevoStatus,
+    });
+ 
+    if (r?.ok) {
+      let msg = esDespuesCheckout?'Limpieza registrada':'Servicio registrado';
+      if (r.total_consumos>0) msg += ' · Consumos: '+fmt(r.total_consumos);
+      if (necesitaMant) msg += ' · ⚠️ Mantenimiento pendiente';
+      toast(msg);
+      closeModal(); await refreshHabs();
+    } else {
+      toast(r?.error||'Error al registrar',false);
+    }
+  });
+}
+ 
+async function refreshHabs() {
+  habitaciones = await apiFetch('GET','/habitaciones') || [];
+  const map=document.getElementById('room-map');
+  if (map) renderMap(map, habitaciones);
+  // Actualizar stats
+  if (currentPage==='dashboard') renderDashboard();
+}
+ 
+// ══════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════
+async function renderDashboard() {
+  const isMucama=currentUser?.rol==='mucama';
+  if (isMucama) {
+    habitaciones = await apiFetch('GET','/habitaciones') || [];
+    const limp=habitaciones.filter(h=>h.status==='limpieza').length;
+    const mant=habitaciones.filter(h=>h.status==='mantenimiento').length;
+    const lib=habitaciones.filter(h=>h.status==='libre').length;
+    document.getElementById('content').innerHTML=`
+      <div class="mucama-header">
+        <div class="mh-icon">🧹</div>
+        <div><h2>Panel de Mucama</h2><p>Gestioná la limpieza de habitaciones</p></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <div class="mstat" style="background:#fef3c7;color:#d97706">🧹 ${limp} para limpiar</div>
+        <div class="mstat" style="background:#f3f4f6;color:#4b5563">🔧 ${mant} en mantenimiento</div>
+        <div class="mstat" style="background:#dcfce7;color:#16a34a">✅ ${lib} disponibles</div>
+      </div>
+      ${mapSection()}`;
+    afterMapInsert();
+    return;
+  }
+ 
+  const [dash,habs]=await Promise.all([apiFetch('GET','/dashboard'),apiFetch('GET','/habitaciones')]);
+  habitaciones=habs||[];
+  const occ=habitaciones.filter(h=>h.status==='ocupada').length;
+  const lib=habitaciones.filter(h=>h.status==='libre').length;
+  const limp=habitaciones.filter(h=>h.status==='limpieza').length;
+  const pct=Math.round(occ/(habitaciones.length||1)*100);
+  document.getElementById('content').innerHTML=`
+    <div class="stat-cards">
+      <div class="sc occ">
+        <div class="lbl">Turno actual</div><div class="ttl">OCUPACIÓN</div>
+        <div class="occ-big">${pct}%</div>
+        <div class="occ-pills">
+          <div class="op">${occ}<span>Ocup.</span></div>
+          <div class="op">${lib}<span>Libres</span></div>
+          <div class="op">${limp}<span>Limp.</span></div>
+        </div>
+        ${(dash?.alertas_stock||0)>0?`<div class="alert-badge">⚠️ ${dash.alertas_stock} stock</div>`:''}
+      </div>
+      <div class="sc hosp"><div class="lbl">Turno actual</div><div class="ttl">HOSPEDAJE</div><div class="val">${fmt(dash?.hospedaje)}</div></div>
+      <div class="sc tienda"><div class="lbl">Turno actual</div><div class="ttl">TIENDA</div><div class="val">${fmt(dash?.tienda)}</div></div>
+      <div class="sc gastos"><div class="lbl">Turno actual</div><div class="ttl">GASTOS</div><div class="val">${fmt(dash?.egresos)}</div></div>
+      <div class="sc balance"><div class="lbl">Turno actual</div><div class="ttl">BALANCE</div><div class="val">${fmt(dash?.balance)}</div></div>
+    </div>
+    ${mapSection(true)}`;
+  afterMapInsert(true);
+}
+ 
+function mapSection(showLog=false) {
+  return `<div class="section-card">
+    <div class="sc-head">
+      <h2>Mapa de Habitaciones</h2>
+      <div class="filters-row">
+        <button class="filter-pill ala-filter ${currentAla==='todas'?'active':''}" data-ala="todas">Todas</button>
+        <button class="filter-pill ala-filter ${currentAla==='Este'?'active':''}" data-ala="Este">Ala Este</button>
+        <button class="filter-pill ala-filter ${currentAla==='Oeste'?'active':''}" data-ala="Oeste">Ala Oeste</button>
+        <div class="zoom-bar">
+          <button class="zoom-btn" id="zoom-in">＋</button>
+          <span class="zlabel">${zoomLabel()}</span>
+          <button class="zoom-btn" id="zoom-out">－</button>
+        </div>
+        ${showLog?'<button class="btn-secondary" id="btn-log">📋 Historial</button>':''}
+      </div>
+    </div>
+    <div id="room-map"></div>
+  </div>`;
+}
+ 
+function afterMapInsert(showLog=false) {
+  bindAlaFilters();
+  bindZoom();
+  if (showLog) document.getElementById('btn-log')?.addEventListener('click', loadLog);
+  renderMap(document.getElementById('room-map'), habitaciones);
+}
+ 
+// ══════════════════════════════════════
+// HABITACIONES PAGE
+// ══════════════════════════════════════
+async function renderHabitaciones() {
+  habitaciones = await apiFetch('GET','/habitaciones') || [];
+  document.getElementById('content').innerHTML = mapSection();
+  afterMapInsert();
+}
+ 
 // ══════════════════════════════════════
 // HAB MODAL — CORREGIDO
 // ══════════════════════════════════════
@@ -567,7 +996,7 @@ function showHabModal(hab) {
   const colors={libre:'#16a34a',ocupada:'#dc2626',reservada:'#b45309',limpieza:'#d97706',mantenimiento:'#4b5563'};
   const bgs={libre:'#dcfce7',ocupada:'#fee2e2',reservada:'#fef9c3',limpieza:'#fef3c7',mantenimiento:'#f3f4f6'};
   const labels={libre:'✅ Libre',ocupada:'🔴 Ocupada',reservada:'📋 Reservada',limpieza:'🧹 Limpieza',mantenimiento:'🔧 Mantenimiento'};
-
+ 
   // Transiciones por rol
   const allT={
     libre:        [{s:'check-in',label:'✅ Check-in',color:'#059669'},{s:'reservada',label:'📋 Reservar',color:'#7c3aed'},{s:'mantenimiento',label:'🔧 Mantenimiento',color:'#6b7280'}],
@@ -581,12 +1010,12 @@ function showHabModal(hab) {
     mantenimiento:[{s:'libre',label:'✅ Listo',color:'#16a34a'}],
   };
   const transitions = isMucama ? (mucamaT[hab.status]||[]) : (allT[hab.status]||[]);
-
+ 
   // Construir botones de acción con IDs únicos
   const actHTML = transitions.map((t,i)=>
     `<button class="act-btn" id="hab-act-${i}" style="background:${t.color}">${t.label}</button>`
   ).join('');
-
+ 
   const adminHTML = isAdmin ? `
     <details style="margin-top:14px;border:1px solid #e0e6ef;border-radius:10px;padding:10px 12px">
       <summary style="cursor:pointer;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">⚙️ Editar habitación (Admin)</summary>
@@ -617,7 +1046,7 @@ function showHabModal(hab) {
         <button class="btn-primary" id="btn-save-hab" style="width:100%">💾 Guardar cambios</button>
       </div>
     </details>` : '';
-
+ 
   openModal(`
     <div class="modal-hd">
       <h3>Hab. ${hab.numero}${hab.nombre?' · '+hab.nombre:''} — Ala ${hab.ala}</h3>
@@ -637,11 +1066,11 @@ function showHabModal(hab) {
     ${!isMucama?`<button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>`:''}
     ${adminHTML}
   `);
-
+ 
   // === BIND EVENTS (DESPUÉS de openModal) ===
-
+ 
   document.getElementById('hab-close').addEventListener('click', closeModal);
-
+ 
   // Acciones de estado
   transitions.forEach((t,i)=>{
     document.getElementById(`hab-act-${i}`).addEventListener('click', async ()=>{
@@ -662,7 +1091,7 @@ function showHabModal(hab) {
       await refreshHabs();
     });
   });
-
+ 
   // Guardar nota
   document.getElementById('hab-save-nota')?.addEventListener('click', async ()=>{
     const nota=document.getElementById('hab-nota').value;
@@ -672,7 +1101,7 @@ function showHabModal(hab) {
     closeModal();
     await refreshHabs();
   });
-
+ 
   // Guardar cambios habitación (admin)
   document.getElementById('btn-save-hab')?.addEventListener('click', async ()=>{
     const r=await apiFetch('PUT',`/habitaciones/${hab.id}`,{
@@ -686,7 +1115,7 @@ function showHabModal(hab) {
     else toast(r?.error||'Error al guardar',false);
   });
 }
-
+ 
 // ══════════════════════════════════════
 // CHECK-IN
 // ══════════════════════════════════════
@@ -695,7 +1124,7 @@ function showCheckinModal(habId) {
   const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
   const iso=d=>d.toISOString().slice(0,16);
   const pn=hab?.precio_noche||50000;
-
+ 
   openModal(`
     <div class="modal-hd"><h3>Check-in — Hab. ${hab?.numero} Ala ${hab?.ala}</h3><button class="modal-close" id="ci-close">✕</button></div>
     <div class="form-row">
@@ -727,7 +1156,7 @@ function showCheckinModal(habId) {
     </div>
     <button class="confirm-btn" id="ci-confirm">✅ Confirmar Check-in</button>
   `);
-
+ 
   const recalc=()=>{
     const inn=document.getElementById('ci-in')?.value;
     const out=document.getElementById('ci-out')?.value;
@@ -739,7 +1168,7 @@ function showCheckinModal(habId) {
     document.getElementById('ci-tot').textContent=fmt(n*tar);
   };
   ['ci-in','ci-out','ci-tarifa'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalc));
-
+ 
   document.getElementById('ci-doc').addEventListener('input', async ()=>{
     const doc=document.getElementById('ci-doc').value;
     if (doc.length<6) return;
@@ -751,9 +1180,9 @@ function showCheckinModal(habId) {
       gi.style.display='block'; gi.textContent=`✅ Huésped encontrado — ${h.visitas} visitas previas`;
     }
   });
-
+ 
   document.getElementById('ci-close').addEventListener('click',closeModal);
-
+ 
   document.getElementById('ci-confirm').addEventListener('click', async ()=>{
     const nombre=document.getElementById('ci-nombre').value.trim();
     if (!nombre) { toast('Ingresá el nombre del huésped',false); return; }
@@ -774,7 +1203,7 @@ function showCheckinModal(habId) {
     else toast(r?.error||'Error en check-in',false);
   });
 }
-
+ 
 // ══════════════════════════════════════
 // RESERVA
 // ══════════════════════════════════════
@@ -783,7 +1212,7 @@ function showReservaModal(habId) {
   const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
   const iso=d=>d.toISOString().slice(0,16);
   const pn=hab?.precio_noche||50000;
-
+ 
   openModal(`
     <div class="modal-hd"><h3>Reserva — Hab. ${hab?.numero} Ala ${hab?.ala}</h3><button class="modal-close" id="res-close">✕</button></div>
     <div class="form-row">
@@ -807,7 +1236,7 @@ function showReservaModal(habId) {
     </div>
     <button class="confirm-btn" id="res-confirm" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">📋 Confirmar Reserva</button>
   `);
-
+ 
   const recalc=()=>{
     const inn=document.getElementById('res-in')?.value;
     const out=document.getElementById('res-out')?.value;
@@ -837,7 +1266,7 @@ function showReservaModal(habId) {
     else toast(r?.error||'Error',false);
   });
 }
-
+ 
 // ══════════════════════════════════════
 // RESERVAS PAGE
 // ══════════════════════════════════════
@@ -860,7 +1289,7 @@ async function renderReservas() {
     </div>`;
   document.getElementById('btn-nueva-res').addEventListener('click',()=>{ setActiveNav('nav-habitaciones'); goTo('habitaciones'); });
 }
-
+ 
 // ══════════════════════════════════════
 // HUÉSPEDES
 // ══════════════════════════════════════
@@ -887,7 +1316,7 @@ async function renderHuespedes() {
     document.querySelector('#h-tbl tbody').innerHTML=buildRows(res)||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">Sin resultados</td></tr>';
   });
 }
-
+ 
 // ══════════════════════════════════════
 // TIENDA
 // ══════════════════════════════════════
@@ -956,7 +1385,7 @@ async function cobrar() {
   if(r?.ok){toast(`Venta: ${fmt(r.total)}`);cart=[];renderCart();}
   else toast(r?.error||'Error',false);
 }
-
+ 
 // ══════════════════════════════════════
 // INVENTARIO
 // ══════════════════════════════════════
@@ -1035,7 +1464,7 @@ function showNuevoProd() {
     else toast('Error',false);
   });
 }
-
+ 
 // ══════════════════════════════════════
 // CAJA
 // ══════════════════════════════════════
@@ -1115,7 +1544,7 @@ function showMov(tipo) {
     if(r?.ok){toast('Registrado');closeModal();renderCaja();}else toast('Error',false);
   });
 }
-
+ 
 // ══════════════════════════════════════
 // FINANZAS
 // ══════════════════════════════════════
@@ -1159,7 +1588,7 @@ async function loadFin(desde,hasta) {
     loadFin(document.getElementById('fin-d').value,document.getElementById('fin-h').value);
   });
 }
-
+ 
 // ══════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════
@@ -1219,7 +1648,7 @@ async function renderConfig() {
     });
   });
 }
-
+ 
 // ══════════════════════════════════════
 // HISTORIAL
 // ══════════════════════════════════════
@@ -1237,7 +1666,7 @@ async function loadLog() {
   `);
   document.getElementById('log-c').addEventListener('click',closeModal);
 }
-
+ 
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
@@ -1245,3 +1674,4 @@ if (token && currentUser) startApp();
 </script>
 </body>
 </html>
+ 
