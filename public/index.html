@@ -424,13 +424,12 @@ function buildCard(h) {
   const tipoLabel=TIPOS[h.tipo]||h.tipo;
  
   // Badge(s) arriba a la derecha
-  // Si es "lista" y la nota indica que venía de reserva, mostramos doble badge
-  // Para simplicidad: "lista" siempre muestra RESERVADA + LISTA apilados en amarillo
   let badgeHTML;
   if (h.status === 'lista') {
+    // Igual que reservada: mismo fondo amarillo, apilados, sin emojis
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
       <span class="sbadge sb-reservada">RESERVADA</span>
-      <span class="sbadge sb-lista">LISTA ✨</span>
+      <span class="sbadge sb-reservada">LISTA</span>
     </div>`;
   } else {
     badgeHTML = `<span class="sbadge ${s.badge}">${s.label.toUpperCase()}</span>`;
@@ -442,7 +441,8 @@ function buildCard(h) {
   } else if (h.status==='limpia') {
     body=`<div class="ravail"><div class="ravail-circle">🌿</div><div class="ravail-label" style="color:#16a34a">Limpia</div></div>`;
   } else if (h.status==='lista') {
-    body=`<div class="ravail"><div class="ravail-circle">✨</div><div class="ravail-label" style="color:#b45309">Lista para check-in</div></div>`;
+    // Mismo look que reservada: ícono 🟡 + datos del huésped si hay nota
+    body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
   } else if (h.status==='limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
   } else if (h.status==='mantenimiento') {
@@ -451,8 +451,11 @@ function buildCard(h) {
     body=`<div class="rguest">👤 ${h.nota}</div>`;
   }
  
+  // El ícono de "lista" es el mismo que "reservada" (círculo amarillo 🟡)
+  const icon = h.status === 'lista' ? '🟡' : s.icon;
+ 
   return `<div class="rcard ${h.status}" data-hid="${h.id}">
-    <div class="rcard-top"><span class="room-icon">${s.icon}</span>${badgeHTML}</div>
+    <div class="rcard-top"><span class="room-icon">${icon}</span>${badgeHTML}</div>
     <div class="rnum">${h.numero}</div>
     ${h.nombre?`<div class="rname">${h.nombre}</div>`:''}
     <div class="rtipo">${tipoLabel}</div>
@@ -1506,3 +1509,4 @@ if (token && currentUser) startApp();
 </script>
 </body>
 </html>
+ 
