@@ -94,7 +94,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rcard.reservada{background:#fefce8;border-color:#fde68a}
 .rcard.limpieza{background:#fffbeb;border-color:#fde68a}
 .rcard.mantenimiento{background:#f3f4f6;border-color:#d1d5db}
-.rcard.lista{background:#ecfeff;border-color:#a5f3fc}
+.rcard.lista{background:#fefce8;border-color:#fde68a}
 .rcard.limpia{background:#f0fdf4;border-color:#bbf7d0}
 .rcard.selected{outline:3px solid var(--accent);outline-offset:2px}
 .rcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
@@ -105,7 +105,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .sb-reservada{background:#fef9c3;color:#b45309}
 .sb-limpieza{background:#fef3c7;color:#d97706}
 .sb-mantenimiento{background:#f3f4f6;color:#4b5563}
-.sb-lista{background:#cffafe;color:#0891b2}
+.sb-lista{background:#fef9c3;color:#b45309}
 .sb-limpia{background:#dcfce7;color:#16a34a}
 .rnum{font-size:22px;font-weight:900;color:#1a2035;line-height:1}
 .rname{font-size:10px;font-weight:700;color:#64748b;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -410,23 +410,39 @@ function goTo(page) {
 // ── ROOM HELPERS ──
 const SCFG = {
   libre:        {label:'Libre',        badge:'sb-libre',        icon:'🟢', color:'#16a34a', bg:'#dcfce7'},
-  lista:        {label:'Lista',        badge:'sb-lista',        icon:'🟡', color:'#b45309', bg:'#fef9c3'},
+  lista:        {label:'Lista',        badge:'sb-lista',        icon:'✨', color:'#b45309', bg:'#fef9c3'},
   ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴', color:'#dc2626', bg:'#fee2e2'},
   limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7'},
   reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡', color:'#b45309', bg:'#fef9c3'},
   limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
   mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
 };
-const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
+const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
  
 function buildCard(h) {
-  const s=SCFG[h.status]||{label:h.status,badge:'sb-libre',icon:'⚪',color:'#94a3b8',bg:'#f8fafc'};
+  const s=SCFG[h.status]||{label:h.status,badge:'sb-reservada',icon:'⚪',color:'#b45309',bg:'#fef9c3'};
   const tipoLabel=TIPOS[h.tipo]||h.tipo;
+ 
+  // Badge(s) arriba a la derecha
+  // Si es "lista" y la nota indica que venía de reserva, mostramos doble badge
+  // Para simplicidad: "lista" siempre muestra RESERVADA + LISTA apilados en amarillo
+  let badgeHTML;
+  if (h.status === 'lista') {
+    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <span class="sbadge sb-reservada">RESERVADA</span>
+      <span class="sbadge sb-lista">LISTA ✨</span>
+    </div>`;
+  } else {
+    badgeHTML = `<span class="sbadge ${s.badge}">${s.label.toUpperCase()}</span>`;
+  }
+ 
   let body='';
-  if (h.status==='libre'||h.status==='limpia') {
-    body=`<div class="ravail"><div class="ravail-circle">${h.status==='limpia'?'🌿':'✅'}</div><div class="ravail-label" style="color:${s.color}">${h.status==='limpia'?'Limpia':'Disponible'}</div></div>`;
+  if (h.status==='libre') {
+    body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
+  } else if (h.status==='limpia') {
+    body=`<div class="ravail"><div class="ravail-circle">🌿</div><div class="ravail-label" style="color:#16a34a">Limpia</div></div>`;
   } else if (h.status==='lista') {
-    body=`<div class="ravail"><div class="ravail-circle">✨</div><div class="ravail-label" style="color:#0891b2">Reserva Lista</div></div>`;
+    body=`<div class="ravail"><div class="ravail-circle">✨</div><div class="ravail-label" style="color:#b45309">Lista para check-in</div></div>`;
   } else if (h.status==='limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
   } else if (h.status==='mantenimiento') {
@@ -434,8 +450,9 @@ function buildCard(h) {
   } else if (h.nota) {
     body=`<div class="rguest">👤 ${h.nota}</div>`;
   }
+ 
   return `<div class="rcard ${h.status}" data-hid="${h.id}">
-    <div class="rcard-top"><span class="room-icon">${s.icon}</span><span class="sbadge ${s.badge}">${s.label}</span></div>
+    <div class="rcard-top"><span class="room-icon">${s.icon}</span>${badgeHTML}</div>
     <div class="rnum">${h.numero}</div>
     ${h.nombre?`<div class="rname">${h.nombre}</div>`:''}
     <div class="rtipo">${tipoLabel}</div>
@@ -1489,4 +1506,3 @@ if (token && currentUser) startApp();
 </script>
 </body>
 </html>
- 
