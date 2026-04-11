@@ -95,7 +95,9 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rcard.limpieza{background:#fffbeb;border-color:#fde68a}
 .rcard.mantenimiento{background:#f3f4f6;border-color:#d1d5db}
 .rcard.lista{background:#fefce8;border-color:#fde68a}
-.rcard.limpia{background:#f0fdf4;border-color:#bbf7d0}
+.rcard.en_limpieza{background:#fefce8;border-color:#fde68a}
+.rcard.limpia{background:#fff5f5;border-color:#fca5a5}
+.rcard.limpia-occ{background:#fff5f5;border-color:#fca5a5}
 .rcard.selected{outline:3px solid var(--accent);outline-offset:2px}
 .rcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
 .room-icon{font-size:18px}
@@ -105,6 +107,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .sb-reservada{background:#fef9c3;color:#b45309}
 .sb-limpieza{background:#fef3c7;color:#d97706}
 .sb-mantenimiento{background:#f3f4f6;color:#4b5563}
+.sb-en-limpieza{background:#fef3c7;color:#d97706}
 .sb-lista{background:#fef9c3;color:#b45309}
 .sb-limpia{background:#dcfce7;color:#16a34a}
 .rnum{font-size:22px;font-weight:900;color:#1a2035;line-height:1}
@@ -412,6 +415,7 @@ const SCFG = {
   libre:        {label:'Libre',        badge:'sb-libre',        icon:'🟢', color:'#16a34a', bg:'#dcfce7'},
   lista:        {label:'Lista',        badge:'sb-lista',        icon:'✨', color:'#b45309', bg:'#fef9c3'},
   ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴', color:'#dc2626', bg:'#fee2e2'},
+  en_limpieza:  {label:'En Limpieza',  badge:'sb-en-limpieza',  icon:'🟡', color:'#d97706', bg:'#fef3c7'},
   limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7'},
   reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡', color:'#b45309', bg:'#fef9c3'},
   limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
@@ -423,25 +427,51 @@ function buildCard(h) {
   const s=SCFG[h.status]||{label:h.status,badge:'sb-reservada',icon:'⚪',color:'#b45309',bg:'#fef9c3'};
   const tipoLabel=TIPOS[h.tipo]||h.tipo;
  
-  // Badge(s) arriba a la derecha
+  // ── Badge(s) arriba a la derecha ──
   let badgeHTML;
   if (h.status === 'lista') {
-    // Igual que reservada: mismo fondo amarillo, apilados, sin emojis
+    // Reservada + Lista: ambos en amarillo
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
       <span class="sbadge sb-reservada">RESERVADA</span>
       <span class="sbadge sb-reservada">LISTA</span>
+    </div>`;
+  } else if (h.status === 'en_limpieza') {
+    // En limpieza: OCUPADA en rojo arriba + EN LIMPIEZA en amarillo abajo
+    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <span class="sbadge sb-ocupada">OCUPADA</span>
+      <span class="sbadge sb-limpieza">EN LIMPIEZA</span>
+    </div>`;
+  } else if (h.status === 'limpia') {
+    // Limpia: OCUPADA en rojo arriba + LIMPIA en verde abajo
+    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <span class="sbadge sb-ocupada">OCUPADA</span>
+      <span class="sbadge sb-limpia">LIMPIA</span>
     </div>`;
   } else {
     badgeHTML = `<span class="sbadge ${s.badge}">${s.label.toUpperCase()}</span>`;
   }
  
+  // ── Ícono principal ──
+  let icon = s.icon;
+  if (h.status === 'lista')       icon = '🟡';
+  if (h.status === 'en_limpieza') icon = '🟡';
+  if (h.status === 'limpia')      icon = '🔴';  // sigue siendo ocupada
+ 
+  // ── Fondo de la tarjeta ──
+  // en_limpieza → amarillo, limpia → rojo (sigue siendo hab. ocupada)
+  let cardBg = '';
+  if (h.status === 'limpia') cardBg = ' limpia-occ';
+ 
+  // ── Cuerpo de la tarjeta ──
   let body='';
   if (h.status==='libre') {
     body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
+  } else if (h.status==='en_limpieza') {
+    body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div></div>`;
   } else if (h.status==='limpia') {
-    body=`<div class="ravail"><div class="ravail-circle">🌿</div><div class="ravail-label" style="color:#16a34a">Limpia</div></div>`;
+    // Igual que ocupada: muestra nombre del huésped
+    body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
   } else if (h.status==='lista') {
-    // Mismo look que reservada: ícono 🟡 + datos del huésped si hay nota
     body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
   } else if (h.status==='limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
@@ -451,10 +481,7 @@ function buildCard(h) {
     body=`<div class="rguest">👤 ${h.nota}</div>`;
   }
  
-  // El ícono de "lista" es el mismo que "reservada" (círculo amarillo 🟡)
-  const icon = h.status === 'lista' ? '🟡' : s.icon;
- 
-  return `<div class="rcard ${h.status}" data-hid="${h.id}">
+  return `<div class="rcard ${h.status}${cardBg}" data-hid="${h.id}">
     <div class="rcard-top"><span class="room-icon">${icon}</span>${badgeHTML}</div>
     <div class="rnum">${h.numero}</div>
     ${h.nombre?`<div class="rname">${h.nombre}</div>`:''}
@@ -625,32 +652,41 @@ function showHabModal(hab) {
  
   // Mucama: abre modal de servicio específico según estado
   const mucamaAcciones = {
-    reservada:    { label:'✨ Preparar habitación (pre check-in)', color:'#0891b2', servicio:'pre_checkin',   nuevoStatus:'lista'   },
-    limpieza:     { label:'🧹 Registrar limpieza post-checkout',   color:'#d97706', servicio:'post_checkout', nuevoStatus:'lista'   },
-    ocupada:      { label:'🧹 Registrar servicio diario',          color:'#166534', servicio:'diario',        nuevoStatus:'limpia'  },
-    limpia:       { label:'🧹 Nuevo servicio diario',              color:'#166534', servicio:'diario',        nuevoStatus:'limpia'  },
-    mantenimiento:{ label:'✅ Marcar como lista',                  color:'#0891b2', servicio:'mantenimiento', nuevoStatus:'lista'   },
+    // Habitación reservada → mucama la prepara → queda Lista
+    reservada:    { label:'✨ Preparar habitación',         color:'#0891b2', servicio:'pre_checkin',   nuevoStatus:'lista',       soloIniciar:false },
+    // Habitación ocupada → mucama inicia servicio → pasa a En Limpieza (sin formulario aún)
+    ocupada:      { label:'🧹 Iniciar servicio diario',    color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
+    // En limpieza → mucama terminó → abre formulario frigobar → vuelve a Ocupada+Limpia
+    en_limpieza:  { label:'✅ Finalizar servicio',         color:'#166534', servicio:'diario',         nuevoStatus:'limpia',      soloIniciar:false },
+    // Limpia (hab. ocupada ya limpiada) → puede hacer otro servicio
+    limpia:       { label:'🧹 Nuevo servicio diario',      color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
+    // Limpieza post-checkout → mucama limpia → queda Lista
+    limpieza:     { label:'🧹 Limpieza post-checkout',     color:'#d97706', servicio:'post_checkout',  nuevoStatus:'lista',       soloIniciar:false },
+    // Mantenimiento → mucama lo resolvió → queda Lista
+    mantenimiento:{ label:'✅ Marcar como lista',           color:'#0891b2', servicio:'mantenimiento',  nuevoStatus:'lista',       soloIniciar:false },
   };
  
   // Recep/Admin: transiciones directas de estado
   const recepTransitions = {
-    libre:        [{s:'check-in',   label:'✅ Check-in',           color:'#059669'},
-                   {s:'reservada',  label:'📋 Reservar',           color:'#7c3aed'},
-                   {s:'mantenimiento',label:'🔧 Mantenimiento',    color:'#6b7280'}],
-    lista:        [{s:'check-in',   label:'✅ Check-in',           color:'#059669'},
-                   {s:'reservada',  label:'📋 Reservar',           color:'#7c3aed'},
-                   {s:'libre',      label:'🟢 Marcar Libre',       color:'#16a34a'},
-                   {s:'mantenimiento',label:'🔧 Mantenimiento',    color:'#6b7280'}],
-    reservada:    [{s:'check-in',   label:'✅ Check-in',           color:'#059669'},
-                   {s:'libre',      label:'✕ Cancelar reserva',   color:'#6b7280'}],
-    ocupada:      [{s:'checkout',   label:'🚪 Check-out',          color:'#dc2626'}],
-    limpieza:     [{s:'lista',      label:'✨ Marcar Lista',        color:'#0891b2'},
-                   {s:'libre',      label:'🟢 Marcar Libre',       color:'#16a34a'},
-                   {s:'mantenimiento',label:'🔧 Mantenimiento',    color:'#6b7280'}],
-    limpia:       [{s:'libre',      label:'🟢 Marcar Libre',       color:'#16a34a'},
-                   {s:'mantenimiento',label:'🔧 Mantenimiento',    color:'#6b7280'}],
-    mantenimiento:[{s:'lista',      label:'✨ Marcar Lista',        color:'#0891b2'},
-                   {s:'libre',      label:'🟢 Marcar Libre',       color:'#16a34a'}],
+    libre:        [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
+                   {s:'reservada',     label:'📋 Reservar',           color:'#7c3aed'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    lista:        [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
+                   {s:'reservada',     label:'📋 Reservar',           color:'#7c3aed'},
+                   {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    reservada:    [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
+                   {s:'libre',         label:'✕ Cancelar reserva',   color:'#6b7280'}],
+    ocupada:      [{s:'checkout',      label:'🚪 Check-out',          color:'#dc2626'}],
+    en_limpieza:  [{s:'ocupada',       label:'🔴 Volver a Ocupada',   color:'#dc2626'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    limpia:       [{s:'ocupada',       label:'🔴 Volver a Ocupada',   color:'#dc2626'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    limpieza:     [{s:'lista',         label:'✨ Marcar Lista',        color:'#0891b2'},
+                   {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    mantenimiento:[{s:'lista',         label:'✨ Marcar Lista',        color:'#0891b2'},
+                   {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'}],
   };
  
   const mucamaAccion  = mucamaAcciones[hab.status] || null;
@@ -740,9 +776,21 @@ function showHabModal(hab) {
   btnQueen?.addEventListener('click', () => selectTipo('queen'));
  
   // Botón servicio mucama
-  document.getElementById('btn-servicio')?.addEventListener('click', () => {
-    closeModal();
-    showServicioModal(hab, mucamaAccion, tipoCamaSeleccionada);
+  document.getElementById('btn-servicio')?.addEventListener('click', async () => {
+    if (mucamaAccion.soloIniciar) {
+      // Solo cambiar estado a "en_limpieza" sin formulario
+      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status: mucamaAccion.nuevoStatus, nota: hab.nota || '' });
+      if (r?.ok) {
+        toast('Servicio iniciado — habitación en limpieza');
+        closeModal();
+        await refreshHabs();
+      } else {
+        toast(r?.error || 'Error', false);
+      }
+    } else {
+      closeModal();
+      showServicioModal(hab, mucamaAccion, tipoCamaSeleccionada);
+    }
   });
  
   // Acciones recep/admin
@@ -806,10 +854,11 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
  
   // Descripción según tipo
   const titulos = {
-    pre_checkin:   '✨ Preparar hab. para check-in',
-    post_checkout: '🧹 Limpieza post-checkout',
-    diario:        '🧹 Servicio diario',
-    mantenimiento: '✅ Finalizar mantenimiento',
+    pre_checkin:    '✨ Preparar hab. para check-in',
+    post_checkout:  '🧹 Limpieza post-checkout',
+    iniciar_diario: '🧹 Iniciar servicio diario',
+    diario:         '✅ Finalizar servicio diario',
+    mantenimiento:  '✅ Finalizar mantenimiento',
   };
  
   const prodRows = productos.map(p => `
@@ -834,9 +883,9 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
     </div>
  
     <div style="background:${accion.color}18;border:1px solid ${accion.color}40;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:${accion.color};font-weight:700">
-      ${hab.status==='reservada'?'La habitación está reservada. Al terminar quedará <strong>Lista</strong> para recibir al huésped.':
-        hab.status==='limpieza'?'Limpieza post-checkout. Al terminar quedará <strong>Lista</strong> para nueva reserva/venta.':
-        hab.status==='ocupada'||hab.status==='limpia'?'Servicio diario. Al terminar quedará <strong>Limpia</strong> (hab. sigue ocupada).':
+      ${hab.status==='reservada'   ? 'La habitación está reservada. Al terminar quedará <strong>Lista</strong> para recibir al huésped.' :
+        hab.status==='limpieza'    ? 'Limpieza post-checkout. Al terminar quedará <strong>Lista</strong> para nueva reserva/venta.' :
+        hab.status==='en_limpieza' ? 'Registrá consumos del frigobar. Al confirmar la habitación vuelve a <strong>Ocupada</strong> con marca <strong>Limpia</strong>.' :
         'Al terminar, indicá el nuevo estado de la habitación.'}
     </div>
  
@@ -1509,4 +1558,3 @@ if (token && currentUser) startApp();
 </script>
 </body>
 </html>
- 
