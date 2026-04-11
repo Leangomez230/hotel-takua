@@ -149,7 +149,20 @@ app.post('/api/servicios', auth, async (req, res) => {
     // Determinar nuevo status
     let statusFinal = nuevo_status || 'limpia';
     if (necesita_mantenimiento) statusFinal = 'mantenimiento';
-    const notaFinal = necesita_mantenimiento ? nota_mantenimiento : '';
+ 
+    // Nota según estado:
+    // - mantenimiento: nota del problema
+    // - limpia (servicio diario): conservar nombre del huésped
+    // - lista/libre: limpiar nota
+    let notaFinal;
+    if (necesita_mantenimiento) {
+      notaFinal = nota_mantenimiento;
+    } else if (statusFinal === 'limpia') {
+      // Hab sigue ocupada, conservar nota (nombre del huésped)
+      notaFinal = hab.nota || '';
+    } else {
+      notaFinal = '';
+    }
     await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', [statusFinal, notaFinal, habitacion_id]);
  
     await logAction(req.user.id, req.user.nombre, 'SERVICIO_HAB', `Hab ${hab.numero} - ${tipo_servicio}${necesita_mantenimiento?' [MANT]':''}`);
