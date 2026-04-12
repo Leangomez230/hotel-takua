@@ -159,7 +159,26 @@ async function initDB() {
     );
   `);
  
-  // Seed habitaciones
+  // Migración: agregar columna password_puerta si no existe
+try {
+  await query("ALTER TABLE habitaciones ADD COLUMN IF NOT EXISTS password_puerta TEXT DEFAULT '0000'");
+  console.log('✅ Columna password_puerta lista');
+} catch(e) { console.log('password_puerta ya existe'); }
+ 
+// Migración: tabla solicitudes_huesped
+await query(`
+  CREATE TABLE IF NOT EXISTS solicitudes_huesped (
+    id SERIAL PRIMARY KEY,
+    habitacion_id TEXT NOT NULL,
+    tipo TEXT NOT NULL DEFAULT 'servicio',
+    detalle TEXT DEFAULT '',
+    consumos TEXT DEFAULT '[]',
+    estado TEXT DEFAULT 'pendiente',
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+ 
+// Seed habitaciones
   const countH = await getOne('SELECT COUNT(*) as c FROM habitaciones');
   if (parseInt(countH.c) === 0) {
     const tipos  = ['twin','twin','twin','queen','queen','queen','queen','twin','twin','twin','queen','queen','queen','twin'];
@@ -216,4 +235,3 @@ async function initDB() {
 }
  
 module.exports = { query, getOne, getAll, run, initDB };
- 
