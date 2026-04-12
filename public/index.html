@@ -16,6 +16,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
  
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--room-cols:5}
@@ -124,6 +125,8 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rnum{font-size:22px;font-weight:900;color:#1a2035;line-height:1}
 .rname{font-size:10px;font-weight:700;color:#64748b;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rtipo{font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.qr-btn{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.06);border:none;border-radius:6px;padding:3px 6px;font-size:9px;font-weight:700;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:'Nunito',sans-serif}
+.qr-btn:hover{background:rgba(0,0,0,.12);color:#1a2035}
 .rguest{font-size:10px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ravail{display:flex;flex-direction:column;align-items:center;justify-content:center;height:44px;gap:3px}
 .ravail-circle{width:32px;height:32px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:16px}
@@ -498,6 +501,10 @@ function buildCard(h) {
     ${h.nombre?`<div class="rname">${h.nombre}</div>`:''}
     <div class="rtipo">${tipoLabel}</div>
     ${body}
+    <button class="qr-btn" data-hid="${h.id}" data-num="${h.numero}" title="Ver QR huésped">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 13h7v7H3v-7zm2 2v3h3v-3H5zm11-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm-4-4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-8h2v2h-2v-2z"/></svg>
+      QR
+    </button>
   </div>`;
 }
  
@@ -511,9 +518,19 @@ function renderMap(container, habs) {
   }).join('');
   // Bind clicks — esto es clave: después de insertar el HTML
   container.querySelectorAll('.rcard[data-hid]').forEach(card=>{
-    card.addEventListener('click',()=>{
+    card.addEventListener('click', e=>{
+      // Si tocaron el botón QR, no abrir modal de hab
+      if (e.target.closest('.qr-btn')) return;
       const hab=habitaciones.find(h=>h.id===card.dataset.hid);
       if (hab) showHabModal(hab);
+    });
+  });
+  // QR buttons
+  container.querySelectorAll('.qr-btn[data-hid]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const hab = habitaciones.find(h=>h.id===btn.dataset.hid);
+      if (hab) showQRModal(hab);
     });
   });
 }
@@ -592,7 +609,13 @@ async function renderDashboard() {
       <div class="sc gastos"><div class="lbl">Turno actual</div><div class="ttl">GASTOS</div><div class="val">${fmt(dash?.egresos)}</div></div>
       <div class="sc balance"><div class="lbl">Turno actual</div><div class="ttl">BALANCE</div><div class="val">${fmt(dash?.balance)}</div></div>
     </div>
-    ${mapSection(true)}`;
+    ${mapSection(true)}
+    <div class="section-card" id="sols-pendientes" style="display:none">
+      <div class="sc-head">
+        <h2>🔔 Solicitudes huéspedes <span id="sols-count" style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;margin-left:6px">0</span></h2>
+      </div>
+      <div id="sols-rows"></div>
+    </div>`;
   afterMapInsert(true);
 }
  
@@ -621,6 +644,36 @@ function afterMapInsert(showLog=false) {
   bindZoom();
   if (showLog) document.getElementById('btn-log')?.addEventListener('click', loadLog);
   renderMap(document.getElementById('room-map'), habitaciones);
+  // Solicitudes pendientes (solo admin/recep)
+  if (!isMucama) loadSolicitudes();
+}
+ 
+async function loadSolicitudes() {
+  const sols = await apiFetch('GET', '/solicitudes') || [];
+  const pendientes = sols.filter(s => s.estado === 'pendiente');
+  const el = document.getElementById('sols-pendientes');
+  if (!el) return;
+  if (!pendientes.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  document.getElementById('sols-count').textContent = pendientes.length;
+  document.getElementById('sols-rows').innerHTML = pendientes.map(s => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">
+      <div style="font-size:22px">${s.tipo==='servicio'?'🧹':'🍫'}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">Hab. ${s.numero} — Ala ${s.ala} · ${s.tipo==='servicio'?'Limpieza':'Frigobar'}</div>
+        ${s.detalle?`<div style="font-size:12px;color:#64748b">${s.detalle}</div>`:''}
+        ${s.consumos&&s.consumos!=='[]'?`<div style="font-size:11px;color:#94a3b8">${JSON.parse(s.consumos).map(c=>c.nombre+' x'+c.cantidad).join(', ')}</div>`:''}
+        <div style="font-size:10px;color:#94a3b8;margin-top:2px">${new Date(s.created_at).toLocaleString('es',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}</div>
+      </div>
+      <button class="btn-primary" data-sol-id="${s.id}" style="font-size:11px;padding:6px 10px;white-space:nowrap">✅ Atendida</button>
+    </div>`).join('');
+  document.querySelectorAll('[data-sol-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await apiFetch('PUT', `/solicitudes/${btn.dataset.solId}`, { estado: 'atendida' });
+      toast('Solicitud marcada como atendida');
+      loadSolicitudes();
+    });
+  });
 }
  
 // ══════════════════════════════════════
@@ -712,7 +765,7 @@ function showHabModal(hab) {
     <div class="stitle">Tipo de cama</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button id="tbtn-twin"  style="flex:1;padding:10px;border:2px solid ${esTwin ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
-      <button id="tbtn-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">👑 Queen</button>
+      <button id="tbtn-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
     </div>`;
  
   const adminHTML = isAdmin ? `
@@ -903,7 +956,7 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
     <div class="stitle">Tipo de cama preparada</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button id="srv-twin"  style="flex:1;padding:10px;border:2px solid ${esTwin ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
-      <button id="srv-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">👑 Queen</button>
+      <button id="srv-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
     </div>
  
     ${esDiario || accion.servicio==='post_checkout' ? `
@@ -1545,6 +1598,74 @@ async function renderConfig() {
 }
  
 // ══════════════════════════════════════
+// QR MODAL
+// ══════════════════════════════════════
+function showQRModal(hab) {
+  const isAdmin = currentUser?.rol === 'admin';
+  const url = `${window.location.origin}/huesped.html?hab=${hab.numero}`;
+ 
+  openModal(`
+    <div class="modal-hd">
+      <h3>📱 QR Huésped — Hab. ${hab.numero}</h3>
+      <button class="modal-close" id="qr-close">✕</button>
+    </div>
+    <div style="text-align:center;padding:10px 0 16px">
+      <div id="qr-canvas" style="display:inline-block;padding:12px;background:#fff;border-radius:12px;border:2px solid #e0e6ef"></div>
+      <div style="margin-top:12px;font-size:13px;color:#64748b">Escaneá este QR para acceder al panel de servicios</div>
+      <div style="margin-top:6px;font-size:11px;color:#94a3b8;word-break:break-all">${url}</div>
+    </div>
+    ${isAdmin ? `
+    <div style="border-top:1px solid #f1f5f9;padding-top:14px;margin-top:4px">
+      <div class="stitle">Contraseña de la puerta</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="qr-pwd" placeholder="Ej: 1234" maxlength="8" inputmode="numeric"
+          style="flex:1;border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 12px;font-size:16px;font-family:'Nunito',sans-serif;letter-spacing:4px;font-weight:700">
+        <button class="btn-primary" id="qr-save-pwd" style="white-space:nowrap">💾 Guardar</button>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px">Esta contraseña la usa el huésped para acceder al panel QR</div>
+    </div>` : ''}
+    <button class="confirm-btn" id="qr-copy" style="margin-top:14px;background:linear-gradient(135deg,#1a2035,#2d3a5a)">
+      📋 Copiar enlace
+    </button>
+  `);
+ 
+  document.getElementById('qr-close').addEventListener('click', closeModal);
+ 
+  // Generar QR
+  setTimeout(() => {
+    const canvas = document.getElementById('qr-canvas');
+    if (canvas && window.QRCode) {
+      new QRCode(canvas, { text: url, width: 200, height: 200, colorDark: '#1a2035', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+    }
+  }, 100);
+ 
+  // Copiar enlace
+  document.getElementById('qr-copy').addEventListener('click', () => {
+    navigator.clipboard.writeText(url).then(() => toast('Enlace copiado')).catch(() => {
+      prompt('Copiá este enlace:', url);
+    });
+  });
+ 
+  // Guardar contraseña (solo admin)
+  if (isAdmin) {
+    // Cargar contraseña actual
+    apiFetch('GET', `/habitaciones/${hab.id}/password`).then(r => {
+      if (r?.password) {
+        const input = document.getElementById('qr-pwd');
+        if (input) input.value = r.password;
+      }
+    });
+    document.getElementById('qr-save-pwd')?.addEventListener('click', async () => {
+      const pwd = document.getElementById('qr-pwd').value.trim();
+      if (!pwd) { toast('Ingresá una contraseña', false); return; }
+      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/password`, { password: pwd });
+      if (r?.ok) toast('Contraseña guardada');
+      else toast(r?.error||'Error', false);
+    });
+  }
+}
+ 
+// ══════════════════════════════════════
 // HISTORIAL
 // ══════════════════════════════════════
 async function loadLog() {
@@ -1620,3 +1741,4 @@ function installPWA() {
  
 </body>
 </html>
+ 
