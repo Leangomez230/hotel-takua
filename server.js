@@ -462,6 +462,133 @@ app.get('/api/debug/habitaciones', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
  
+// ── HUÉSPED QR ──
+ 
+// Login huésped (número hab + contraseña puerta)
+app.post('/api/huesped/login', async (req, res) => {
+  try {
+    const { habitacion_id, password } = req.body;
+    if (!habitacion_id || !password) return res.status(400).json({ error: 'Datos incompletos' });
+    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
+    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada' });
+    if (hab.password_puerta !== password) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    if (hab.status !== 'ocupada' && hab.status !== 'en_limpieza' && hab.status !== 'limpia')
+      return res.status(403).json({ error: 'No hay huésped activo en esta habitación' });
+    // Buscar reserva activa
+    const reserva = await db.getOne(
+      "SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1",
+      [habitacion_id]
+    );
+    const token = jwt.sign({ hab_id: habitacion_id, rol: 'huesped' }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, habitacion: { id: hab.id, numero: hab.numero, tipo: hab.tipo, nombre: hab.nombre, ala: hab.ala }, reserva: reserva || null });
+  } catch(e) { console.error('Huesped login:', e); res.status(500).json({ error: e.message }); }
+});
+ 
+// Middleware huésped
+function authHuesped(req, res, next) {
+  const token = (req.headers.authorization || '').split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Sin autorización' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.rol !== 'huesped') return res.status(403).json({ error: 'Solo huéspedes' });
+    req.huesped = decoded;
+    next();
+  } catch(e) { res.status(401).json({ error: 'Token inválido' }); }
+}
+ 
+// Info del huésped (hab + reserva + productos)
+app.get('/api/huesped/info', authHuesped, async (req, res) => {
+  try {
+    const hab = await db.getOne('SELECT id,numero,tipo,nombre,ala,status FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
+    const reserva = await db.getOne(
+      "SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1",
+      [req.huesped.hab_id]
+    );
+    const productos = await db.getAll("SELECT id,nombre,categoria,precio,stock FROM productos WHERE activo=1 AND stock>0 ORDER BY categoria,nombre");
+    const solicitudes = await db.getAll(
+      "SELECT * FROM solicitudes_huesped WHERE habitacion_id=$1 ORDER BY created_at DESC LIMIT 5",
+      [req.huesped.hab_id]
+    );
+    res.json({ habitacion: hab, reserva, productos, solicitudes });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+ 
+// Solicitar servicio / frigobar
+app.post('/api/huesped/solicitud', authHuesped, async (req, res) => {
+  try {
+    const { tipo, detalle, consumos } = req.body;
+    // Calcular total si hay consumos
+    let consumosCompletos = [];
+    let total = 0;
+    if (consumos && consumos.length > 0) {
+      for (const c of consumos) {
+        if (c.cantidad <= 0) continue;
+        const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [c.producto_id]);
+        if (prod) {
+          const subtotal = prod.precio * c.cantidad;
+          total += subtotal;
+          consumosCompletos.push({ id: prod.id, nombre: prod.nombre, cantidad: c.cantidad, precio: prod.precio, subtotal });
+          // Descontar stock
+          await db.query('UPDATE productos SET stock=stock-$1 WHERE id=$2 AND stock>=$1', [c.cantidad, prod.id]);
+        }
+      }
+      // Registrar en caja si hay caja abierta
+      if (total > 0) {
+        const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
+        if (caja) {
+          const hab = await db.getOne('SELECT numero FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
+          await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+            [caja.id,'ingreso','frigobar',`Frigobar hab.${hab.numero} (huésped)`,total,'Cuenta huésped',req.huesped.hab_id]);
+        }
+      }
+    }
+    await db.query(
+      'INSERT INTO solicitudes_huesped (habitacion_id,tipo,detalle,consumos,estado) VALUES ($1,$2,$3,$4,$5)',
+      [req.huesped.hab_id, tipo||'servicio', detalle||'', JSON.stringify(consumosCompletos), 'pendiente']
+    );
+    res.json({ ok: true, total });
+  } catch(e) { console.error('Solicitud huesped:', e); res.status(500).json({ error: e.message }); }
+});
+ 
+// Admin: obtener contraseña puerta de una habitación
+app.get('/api/habitaciones/:id/password', auth, adminOnly, async (req, res) => {
+  try {
+    const hab = await db.getOne('SELECT password_puerta FROM habitaciones WHERE id=$1', [req.params.id]);
+    if (!hab) return res.status(404).json({ error: 'No encontrada' });
+    res.json({ password: hab.password_puerta });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+ 
+// Admin: actualizar contraseña puerta
+app.put('/api/habitaciones/:id/password', auth, adminOnly, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Falta la contraseña' });
+    await db.query('UPDATE habitaciones SET password_puerta=$1 WHERE id=$2', [password, req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'CAMBIO_PASSWORD_HAB', `Hab ${req.params.id}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+ 
+// Solicitudes pendientes para recepción
+app.get('/api/solicitudes', auth, async (req, res) => {
+  try {
+    const sols = await db.getAll(`
+      SELECT s.*, h.numero, h.ala FROM solicitudes_huesped s
+      LEFT JOIN habitaciones h ON s.habitacion_id = h.id
+      ORDER BY s.created_at DESC LIMIT 50
+    `);
+    res.json(sols);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+ 
+app.put('/api/solicitudes/:id', auth, async (req, res) => {
+  try {
+    await db.query('UPDATE solicitudes_huesped SET estado=$1 WHERE id=$2', [req.body.estado, req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+ 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
  
 // ── ARRANQUE ──
