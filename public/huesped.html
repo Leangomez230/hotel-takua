@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Hotel Takuá — Servicios</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height:100vh}
+
+/* LOGIN */
+#login-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e3a5f 60%,#0f172a);padding:24px}
+.hotel-logo{text-align:center;margin-bottom:32px}
+.logo-sq{width:64px;height:64px;background:#00c9b1;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;color:#fff;margin-bottom:12px}
+.hotel-logo h1{color:#fff;font-size:26px;font-weight:900}
+.hotel-logo p{color:#94a3b8;font-size:13px;margin-top:4px}
+.login-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:28px;width:100%;max-width:360px}
+.login-card h2{color:#fff;font-size:18px;font-weight:800;margin-bottom:6px}
+.login-card p{color:#94a3b8;font-size:13px;margin-bottom:20px}
+.field{margin-bottom:14px}
+.field label{display:block;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.field input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;color:#fff;font-size:16px;font-family:'Nunito',sans-serif}
+.field input:focus{outline:none;border-color:#00c9b1}
+.field input::placeholder{color:#475569}
+.login-btn{width:100%;background:linear-gradient(135deg,#00c9b1,#0094ff);border:none;border-radius:12px;padding:14px;color:#fff;font-size:16px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:4px}
+.login-err{color:#f87171;font-size:12px;text-align:center;margin-top:10px;display:none}
+
+/* APP */
+#app-page{display:none;min-height:100vh}
+
+/* HEADER */
+.guest-header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:20px}
+.guest-header .hab-num{font-size:36px;font-weight:900;line-height:1}
+.guest-header .hab-info{font-size:14px;color:#94a3b8;margin-top:4px}
+.guest-header .guest-name{font-size:16px;font-weight:700;color:#00c9b1;margin-top:6px}
+
+/* RESERVA CARD */
+.section{padding:16px}
+.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.card-title{font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px}
+.info-row:last-child{border:none}
+.info-row .lbl{color:#64748b}
+.info-row .val{font-weight:700;color:#1a2035}
+
+/* BOTONES PRINCIPALES */
+.main-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.main-btn{border:none;border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;font-family:'Nunito',sans-serif;text-align:left;transition:transform .12s}
+.main-btn:active{transform:scale(.97)}
+.main-btn .btn-icon{font-size:28px;width:48px;height:48px;background:rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.main-btn .btn-text{flex:1}
+.main-btn .btn-label{font-size:16px;font-weight:800;color:#fff;display:block}
+.main-btn .btn-sub{font-size:12px;color:rgba(255,255,255,.75);display:block;margin-top:2px}
+.btn-servicio{background:linear-gradient(135deg,#166534,#16a34a)}
+.btn-frigobar{background:linear-gradient(135deg,#1d4ed8,#3b82f6)}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;padding:22px 20px;max-height:88vh;overflow-y:auto;animation:up .22s ease}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-hd h3{font-size:18px;font-weight:800}
+.modal-close{background:#f1f5f9;border:none;border-radius:8px;padding:6px 14px;font-size:18px;cursor:pointer}
+.stitle{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin:14px 0 8px}
+.form-col{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.form-col label{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px}
+.form-col textarea{border:1.5px solid #e0e6ef;border-radius:10px;padding:10px 12px;font-size:14px;font-family:'Nunito',sans-serif;color:#1a2035;resize:none}
+.form-col textarea:focus{outline:none;border-color:#00c9b1}
+
+/* FRIGOBAR */
+.prod-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.prod-item:last-child{border:none}
+.prod-name{font-size:14px;font-weight:600}
+.prod-price{font-size:12px;color:#94a3b8;margin-top:2px}
+.qty-ctrl{display:flex;align-items:center;gap:10px}
+.qty-btn{width:32px;height:32px;border-radius:10px;border:1.5px solid #e0e6ef;background:#f8fafc;cursor:pointer;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#1a2035}
+.qty-num{font-weight:800;font-size:16px;min-width:20px;text-align:center}
+.total-bar{display:flex;justify-content:space-between;font-size:16px;font-weight:800;padding:12px 0;border-top:1.5px solid #e0e6ef;margin:8px 0}
+.total-bar span:last-child{color:#00c9b1}
+
+/* CONFIRM BTN */
+.confirm-btn{width:100%;background:linear-gradient(135deg,#00c9b1,#0094ff);border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:4px}
+.confirm-btn:active{opacity:.85}
+
+/* SOLICITUDES */
+.sol-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.sol-item:last-child{border:none}
+.sol-badge{font-size:10px;font-weight:700;border-radius:6px;padding:3px 8px;white-space:nowrap}
+.sol-pend{background:#fef9c3;color:#b45309}
+.sol-done{background:#dcfce7;color:#16a34a}
+.logout-btn{background:#f1f5f9;border:1.5px solid #e0e6ef;color:#64748b;border-radius:12px;padding:12px;width:100%;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:4px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2035;color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="hotel-logo">
+    <div class="logo-sq">T</div>
+    <h1>Hotel Takuá</h1>
+    <p>Servicios para huéspedes</p>
+  </div>
+  <div class="login-card">
+    <h2>Acceder a tu habitación</h2>
+    <p>Ingresá el número de habitación y la contraseña de la puerta</p>
+    <div class="field">
+      <label>Número de habitación</label>
+      <input type="text" id="l-hab" placeholder="101" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>Contraseña de la puerta</label>
+      <input type="password" id="l-pass" placeholder="••••" inputmode="numeric">
+    </div>
+    <button class="login-btn" id="btn-login">Ingresar</button>
+    <div class="login-err" id="login-err">Habitación o contraseña incorrecta</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-page">
+  <div class="guest-header">
+    <div class="hab-num" id="g-num">101</div>
+    <div class="hab-info" id="g-info">Ala Este · 🛏🛏 Twin</div>
+    <div class="guest-name" id="g-name">Bienvenido</div>
+  </div>
+
+  <div class="section">
+    <!-- Reserva info -->
+    <div class="card" id="reserva-card" style="display:none">
+      <div class="card-title">Tu estadía</div>
+      <div class="info-row"><span class="lbl">Entrada</span><span class="val" id="g-entrada">—</span></div>
+      <div class="info-row"><span class="lbl">Salida</span><span class="val" id="g-salida">—</span></div>
+      <div class="info-row"><span class="lbl">Noches</span><span class="val" id="g-noches">—</span></div>
+    </div>
+
+    <!-- Botones principales -->
+    <div class="main-btns">
+      <button class="main-btn btn-servicio" id="btn-servicio">
+        <div class="btn-icon">🧹</div>
+        <div class="btn-text">
+          <span class="btn-label">Solicitar limpieza</span>
+          <span class="btn-sub">Pedí que limpien tu habitación</span>
+        </div>
+      </button>
+      <button class="main-btn btn-frigobar" id="btn-frigobar">
+        <div class="btn-icon">🍫</div>
+        <div class="btn-text">
+          <span class="btn-label">Frigobar</span>
+          <span class="btn-sub">Pedí productos a tu habitación</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Solicitudes recientes -->
+    <div class="card" id="sols-card" style="display:none">
+      <div class="card-title">Mis solicitudes</div>
+      <div id="sols-list"></div>
+    </div>
+
+    <button class="logout-btn" id="btn-logout">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- MODAL SERVICIO -->
+<div class="overlay" id="modal-srv">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>🧹 Solicitar limpieza</h3>
+      <button class="modal-close" id="srv-close">✕</button>
+    </div>
+    <div class="form-col">
+      <label>¿Alguna indicación especial? (opcional)</label>
+      <textarea id="srv-nota" rows="3" placeholder="Ej: Por favor cambiar toallas, necesito almohadas extra..."></textarea>
+    </div>
+    <button class="confirm-btn" id="srv-confirm">✅ Solicitar limpieza</button>
+  </div>
+</div>
+
+<!-- MODAL FRIGOBAR -->
+<div class="overlay" id="modal-frig">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>🍫 Frigobar</h3>
+      <button class="modal-close" id="frig-close">✕</button>
+    </div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:14px">Los productos se cargan a tu cuenta y se cobran al hacer check-out.</p>
+    <div id="frig-productos"></div>
+    <div class="total-bar"><span>Total:</span><span id="frig-total">$ 0</span></div>
+    <button class="confirm-btn" id="frig-confirm">✅ Confirmar pedido</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api/huesped';
+let gToken = sessionStorage.getItem('g_token');
+let gData = null;
+let frigCants = {};
+
+function fmt(n) { return '$ ' + Math.round(n||0).toLocaleString('es-AR'); }
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('es', {day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = (ok?'✅ ':'❌ ') + msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+async function apiFetch(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json','Authorization':`Bearer ${gToken}`} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api/huesped' + path, opts);
+  return r.json();
+}
+
+// Detectar habitación desde URL (?hab=101)
+const urlHab = new URLSearchParams(window.location.search).get('hab') || '';
+if (urlHab) document.getElementById('l-hab').value = urlHab;
+
+// ── LOGIN ──
+document.getElementById('btn-login').addEventListener('click', doLogin);
+document.getElementById('l-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+async function doLogin() {
+  const numero = document.getElementById('l-hab').value.trim();
+  const password = document.getElementById('l-pass').value.trim();
+  document.getElementById('login-err').style.display = 'none';
+  if (!numero || !password) return;
+
+  // Mapear número a ID (E101, O201, etc.)
+  const habId = numero.startsWith('2') ? 'O'+numero : 'E'+numero;
+
+  const r = await fetch('/api/huesped/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ habitacion_id: habId, password })
+  }).then(r=>r.json()).catch(()=>null);
+
+  if (r?.token) {
+    gToken = r.token;
+    sessionStorage.setItem('g_token', gToken);
+    startApp(r);
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-err').textContent = r?.error || 'Habitación o contraseña incorrecta';
+  }
+}
+
+function startApp(loginData) {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app-page').style.display = 'block';
+  renderInfo(loginData);
+  loadInfo();
+}
+
+function renderInfo(data) {
+  const hab = data.habitacion || data;
+  const tipos = {twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
+  document.getElementById('g-num').textContent = 'Habitación ' + hab.numero;
+  document.getElementById('g-info').textContent = `Ala ${hab.ala} · ${tipos[hab.tipo]||hab.tipo}`;
+  if (data.reserva) {
+    document.getElementById('g-name').textContent = '👤 ' + data.reserva.nombre_huesped;
+    document.getElementById('g-entrada').textContent = fmtDate(data.reserva.entrada);
+    document.getElementById('g-salida').textContent = fmtDate(data.reserva.salida);
+    document.getElementById('g-noches').textContent = data.reserva.noches + ' noche' + (data.reserva.noches>1?'s':'');
+    document.getElementById('reserva-card').style.display = 'block';
+  }
+}
+
+async function loadInfo() {
+  const r = await apiFetch('GET', '/info');
+  if (!r || r.error) return;
+  gData = r;
+  // Solicitudes recientes
+  if (r.solicitudes && r.solicitudes.length > 0) {
+    const card = document.getElementById('sols-card');
+    card.style.display = 'block';
+    document.getElementById('sols-list').innerHTML = r.solicitudes.map(s => `
+      <div class="sol-item">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${s.tipo==='servicio'?'🧹 Limpieza':'🍫 Frigobar'}</div>
+          <div style="font-size:11px;color:#94a3b8">${new Date(s.created_at).toLocaleString('es',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}</div>
+        </div>
+        <span class="sol-badge ${s.estado==='pendiente'?'sol-pend':'sol-done'}">${s.estado==='pendiente'?'Pendiente':'Atendida'}</span>
+      </div>`).join('');
+  }
+}
+
+// ── SOLICITAR SERVICIO ──
+document.getElementById('btn-servicio').addEventListener('click', () => {
+  document.getElementById('srv-nota').value = '';
+  document.getElementById('modal-srv').classList.add('open');
+});
+document.getElementById('srv-close').addEventListener('click', () => document.getElementById('modal-srv').classList.remove('open'));
+document.getElementById('modal-srv').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
+
+document.getElementById('srv-confirm').addEventListener('click', async () => {
+  const nota = document.getElementById('srv-nota').value;
+  const r = await apiFetch('POST', '/solicitud', { tipo:'servicio', detalle:nota, consumos:[] });
+  if (r?.ok) {
+    toast('¡Solicitud enviada! El equipo de limpieza irá pronto.');
+    document.getElementById('modal-srv').classList.remove('open');
+    loadInfo();
+  } else toast(r?.error||'Error al enviar', false);
+});
+
+// ── FRIGOBAR ──
+document.getElementById('btn-frigobar').addEventListener('click', () => {
+  frigCants = {};
+  const prods = gData?.productos || [];
+  const cats = [...new Set(prods.map(p=>p.categoria))];
+  document.getElementById('frig-productos').innerHTML = cats.map(cat => `
+    <div class="stitle">${cat}</div>
+    ${prods.filter(p=>p.categoria===cat).map(p=>`
+      <div class="prod-item">
+        <div>
+          <div class="prod-name">${p.nombre}</div>
+          <div class="prod-price">${fmt(p.precio)} · Stock: ${p.stock}</div>
+        </div>
+        <div class="qty-ctrl">
+          <button class="qty-btn" data-id="${p.id}" data-d="-1">−</button>
+          <span class="qty-num" data-id="${p.id}">0</span>
+          <button class="qty-btn" data-id="${p.id}" data-d="1">+</button>
+        </div>
+      </div>`).join('')}
+  `).join('');
+
+  document.querySelectorAll('.qty-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.id);
+      const d = parseInt(btn.dataset.d);
+      const prod = prods.find(p=>p.id===id||parseInt(p.id)===id);
+      frigCants[id] = Math.max(0, (frigCants[id]||0) + d);
+      if (prod && frigCants[id] > prod.stock) frigCants[id] = prod.stock;
+      document.querySelector(`.qty-num[data-id="${id}"]`).textContent = frigCants[id];
+      // Total
+      let tot = 0;
+      prods.forEach(p => { tot += (frigCants[p.id]||0) * p.precio; });
+      document.getElementById('frig-total').textContent = fmt(tot);
+    });
+  });
+
+  document.getElementById('frig-total').textContent = '$ 0';
+  document.getElementById('modal-frig').classList.add('open');
+});
+document.getElementById('frig-close').addEventListener('click', () => document.getElementById('modal-frig').classList.remove('open'));
+document.getElementById('modal-frig').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
+
+document.getElementById('frig-confirm').addEventListener('click', async () => {
+  const consumos = Object.entries(frigCants).filter(([id,qty])=>qty>0).map(([id,qty])=>({producto_id:parseInt(id),cantidad:qty}));
+  if (!consumos.length) { toast('Seleccioná al menos un producto', false); return; }
+  const r = await apiFetch('POST', '/solicitud', { tipo:'frigobar', detalle:'', consumos });
+  if (r?.ok) {
+    toast(r.total>0 ? `Pedido registrado · ${fmt(r.total)}` : 'Pedido registrado');
+    document.getElementById('modal-frig').classList.remove('open');
+    loadInfo();
+  } else toast(r?.error||'Error', false);
+});
+
+// ── LOGOUT ──
+document.getElementById('btn-logout').addEventListener('click', () => {
+  sessionStorage.removeItem('g_token');
+  gToken = null;
+  document.getElementById('app-page').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+});
+
+// Auto-login si hay token guardado
+if (gToken) {
+  apiFetch('GET', '/info').then(r => {
+    if (r && !r.error) { gData = r; startApp({ habitacion: r.habitacion, reserva: r.reserva }); }
+    else { sessionStorage.removeItem('g_token'); gToken = null; }
+  });
+}
+</script>
+</body>
+</html>
