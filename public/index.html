@@ -457,8 +457,6 @@ function startApp() {
   document.getElementById('hamburger').style.display='flex';
   setActiveNav('nav-dashboard');
   goTo('dashboard');
-  // Pedir permiso de notificaciones del sistema
-  requestNotifPermission();
   // Iniciar polling de solicitudes (inmediato + cada 30s)
   loadSolicitudesAll();
   startSolPolling();
@@ -706,31 +704,10 @@ function afterMapInsert(showLog=false) {
   if (!isMucama) loadSolicitudes();
 }
  
-async function loadSolicitudes() {
-  const sols = await apiFetch('GET', '/solicitudes') || [];
-  const pendientes = sols.filter(s => s.estado === 'pendiente');
+function loadSolicitudes(pendientes) {
   const el = document.getElementById('sols-pendientes');
   if (!el) return;
- 
-  // Marcar habitaciones con alerta en el mapa
-  const habsConSolicitud = new Set(pendientes.map(s => s.habitacion_id));
-  document.querySelectorAll('.rcard[data-hid]').forEach(card => {
-    const hid = card.dataset.hid;
-    if (habsConSolicitud.has(hid)) {
-      card.classList.add('tiene-solicitud');
-      if (!card.querySelector('.sol-badge-card')) {
-        const badge = document.createElement('div');
-        badge.className = 'sol-badge-card';
-        badge.textContent = '🔔';
-        card.insertBefore(badge, card.firstChild);
-      }
-    } else {
-      card.classList.remove('tiene-solicitud');
-      card.querySelector('.sol-badge-card')?.remove();
-    }
-  });
- 
-  if (!pendientes.length) { el.style.display = 'none'; return; }
+  if (!pendientes || !pendientes.length) { el.style.display = 'none'; return; }
   el.style.display = 'block';
   document.getElementById('sols-count').textContent = pendientes.length;
   document.getElementById('sols-rows').innerHTML = pendientes.map(s => `
@@ -1777,27 +1754,44 @@ let lastSolCount = -1;
 let notifPermission = Notification?.permission || 'default';
  
 // Pedir permiso de notificaciones del sistema
+// En Android DEBE ser llamado desde un gesto del usuario (click)
 async function requestNotifPermission() {
   if (!('Notification' in window)) return;
-  if (Notification.permission === 'granted') { notifPermission = 'granted'; return; }
+  notifPermission = Notification.permission;
+  if (Notification.permission === 'granted') return;
   if (Notification.permission !== 'denied') {
-    const perm = await Notification.requestPermission();
-    notifPermission = perm;
+    try {
+      const perm = await Notification.requestPermission();
+      notifPermission = perm;
+      if (perm === 'granted') {
+        // Test notification via SW
+        sendSystemNotif('Hotel Takuá', '🔔 Notificaciones activadas', 'takua-test');
+      }
+    } catch(e) { console.log('Notif permission error:', e); }
   }
 }
  
-function sendSystemNotif(titulo, cuerpo, icono) {
+function sendSystemNotif(titulo, cuerpo, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const n = new Notification(titulo, {
-    body: cuerpo,
-    icon: icono || '/icon-192.png',
-    badge: '/icon-192.png',
-    tag: 'takua-solicitud',
-    renotify: true,
-    vibrate: [200, 100, 200],
-  });
-  n.onclick = () => { window.focus(); n.close(); };
-  setTimeout(() => n.close(), 8000);
+  // Android requiere Service Worker para mostrar notificaciones
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(titulo, {
+        body: cuerpo,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        vibrate: [200, 100, 200],
+        tag: tag || 'takua-sol',
+        renotify: true,
+      });
+    }).catch(() => {
+      // Fallback para escritorio
+      new Notification(titulo, { body: cuerpo, icon: '/icon-192.png' });
+    });
+  } else {
+    // Fallback escritorio sin SW
+    try { new Notification(titulo, { body: cuerpo, icon: '/icon-192.png' }); } catch(e) {}
+  }
 }
  
 function updateSoundBtn() {
@@ -1830,8 +1824,8 @@ document.getElementById('btn-sound')?.addEventListener('click', () => {
   updateSoundBtn();
   if (soundEnabled) {
     playNotifSound();
-    // Si no tiene permiso de notificaciones, pedirlo
-    if (notifPermission !== 'granted') requestNotifPermission();
+    // Pedir permiso de notificaciones (Android requiere gesto del usuario)
+    requestNotifPermission();
   }
   toast(soundEnabled ? '🔔 Sonido y notificaciones activados' : '🔕 Sonido silenciado');
 });
@@ -1840,26 +1834,47 @@ document.getElementById('btn-sound')?.addEventListener('click', () => {
 async function loadSolicitudesAll() {
   const sols = await apiFetch('GET', '/solicitudes') || [];
   const pendientes = sols.filter(s => s.estado === 'pendiente');
+  const isMucama = currentUser?.rol === 'mucama';
+ 
+  // Sonido + notificación del sistema cuando hay nuevas
   if (lastSolCount >= 0 && pendientes.length > lastSolCount) {
-    const nuevas = pendientes.slice(0, pendientes.length - lastSolCount);
     playNotifSound();
-    // Notificación del sistema (funciona aunque la app esté en segundo plano)
-    const nueva = nuevas[0];
+    const nueva = pendientes[pendientes.length - 1];
     if (nueva) {
-      const tipo = nueva.tipo === 'servicio' ? '🧹 Solicitud de limpieza' : '🍫 Pedido de frigobar';
-      sendSystemNotif(
-        `Hotel Takuá — Hab. ${nueva.numero}`,
-        `${tipo}${nueva.detalle ? ': '+nueva.detalle : ''}`,
-        '/icon-192.png'
-      );
+      const tipo = nueva.tipo === 'servicio' ? '🧹 Limpieza solicitada' : '🍫 Pedido de frigobar';
+      sendSystemNotif(`Hotel Takuá — Hab. ${nueva.numero} Ala ${nueva.ala}`, tipo+(nueva.detalle?': '+nueva.detalle:''), 'takua-sol');
     }
   }
   lastSolCount = pendientes.length;
-  if (currentUser?.rol === 'mucama') {
+ 
+  // Aplicar alerta visual en tarjetas del mapa (todos los roles)
+  applyMapAlerts(pendientes);
+ 
+  // Panel de solicitudes según rol
+  if (isMucama) {
     renderMucamaSolicitudes(pendientes);
   } else {
-    loadSolicitudes();
+    loadSolicitudes(pendientes);
   }
+}
+ 
+function applyMapAlerts(pendientes) {
+  const habsConSol = new Set(pendientes.map(s => s.habitacion_id));
+  document.querySelectorAll('.rcard[data-hid]').forEach(card => {
+    const hid = card.dataset.hid;
+    if (habsConSol.has(hid)) {
+      card.classList.add('tiene-solicitud');
+      if (!card.querySelector('.sol-badge-card')) {
+        const badge = document.createElement('div');
+        badge.className = 'sol-badge-card';
+        badge.textContent = '🔔';
+        card.insertBefore(badge, card.firstChild);
+      }
+    } else {
+      card.classList.remove('tiene-solicitud');
+      card.querySelector('.sol-badge-card')?.remove();
+    }
+  });
 }
  
 function renderMucamaSolicitudes(pendientes) {
@@ -1872,13 +1887,15 @@ function renderMucamaSolicitudes(pendientes) {
       🔔 Solicitudes pendientes
       <span style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:12px">${pendientes.length}</span>
     </h2></div>
-    ${pendientes.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">
-      <div style="font-size:24px">${s.tipo==='servicio'?'🧹':'🍫'}</div>
-      <div>
+    ${pendientes.map(s=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #f1f5f9">
+      <div style="font-size:26px">${s.tipo==='servicio'?'🧹':'🍫'}</div>
+      <div style="flex:1">
         <div style="font-size:13px;font-weight:800">Hab. ${s.numero} — Ala ${s.ala}</div>
         <div style="font-size:12px;color:#64748b">${s.tipo==='servicio'?'Limpieza solicitada':'Pedido de frigobar'}</div>
         ${s.detalle?`<div style="font-size:11px;font-style:italic;color:#374151">"${s.detalle}"</div>`:''}
       </div>
+      <span style="background:#fef9c3;color:#b45309;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700">Pendiente</span>
     </div>`).join('')}
   </div>`;
 }
@@ -1942,4 +1959,3 @@ function installPWA() {
  
 </body>
 </html>
- 
