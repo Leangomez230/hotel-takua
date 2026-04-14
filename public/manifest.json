@@ -4,7 +4,6 @@
   "description": "Sistema de gestión de habitaciones Hotel Takuá",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#00c9b1",
   "lang": "es",
