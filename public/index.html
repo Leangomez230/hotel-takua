@@ -432,6 +432,12 @@ async function doLogin() {
     token=data.token; currentUser=data.user;
     localStorage.setItem('takua_token',token);
     localStorage.setItem('takua_user',JSON.stringify(currentUser));
+    // Guardar token en cache del SW para notificaciones en background
+    if ('serviceWorker' in navigator && 'caches' in window) {
+      caches.open('takua-auth').then(cache =>
+        cache.put('token', new Response(token))
+      );
+    }
     startApp();
   } else {
     document.getElementById('login-err').style.display='block';
@@ -461,6 +467,8 @@ function startApp() {
   loadSolicitudesAll();
   startSolPolling();
   updateSoundBtn();
+  // Registrar Periodic Sync para notificaciones con app cerrada (Android Chrome)
+  registerPeriodicSync();
 }
  
 // ── NAVIGATION ──
@@ -1773,8 +1781,19 @@ async function requestNotifPermission() {
  
 function sendSystemNotif(titulo, cuerpo, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  // Android requiere Service Worker para mostrar notificaciones
-  if ('serviceWorker' in navigator) {
+ 
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    // MÉTODO CORRECTO PARA ANDROID:
+    // Enviamos mensaje al SW — el SW usa event.waitUntil() que mantiene
+    // el proceso vivo el tiempo necesario para mostrar la notificación en la barra
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SHOW_NOTIF',
+      title: titulo,
+      body: cuerpo,
+      tag: tag || 'takua-sol'
+    });
+  } else {
+    // Fallback: intentar directo con el SW registrado
     navigator.serviceWorker.ready.then(reg => {
       reg.showNotification(titulo, {
         body: cuerpo,
@@ -1785,12 +1804,9 @@ function sendSystemNotif(titulo, cuerpo, tag) {
         renotify: true,
       });
     }).catch(() => {
-      // Fallback para escritorio
-      new Notification(titulo, { body: cuerpo, icon: '/icon-192.png' });
+      // Último fallback: desktop sin SW activo
+      try { new Notification(titulo, { body: cuerpo, icon: '/icon-192.png' }); } catch(e) {}
     });
-  } else {
-    // Fallback escritorio sin SW
-    try { new Notification(titulo, { body: cuerpo, icon: '/icon-192.png' }); } catch(e) {}
   }
 }
  
@@ -1829,6 +1845,21 @@ document.getElementById('btn-sound')?.addEventListener('click', () => {
   }
   toast(soundEnabled ? '🔔 Sonido y notificaciones activados' : '🔕 Sonido silenciado');
 });
+ 
+async function registerPeriodicSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    // Background Sync: se ejecuta cuando hay conexión aunque la app esté cerrada
+    if ('periodicSync' in reg) {
+      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+      if (status.state === 'granted') {
+        await reg.periodicSync.register('check-solicitudes-periodic', { minInterval: 60 * 1000 }); // cada 1 min
+        console.log('Periodic sync registrado');
+      }
+    }
+  } catch(e) { console.log('Periodic sync no disponible:', e.message); }
+}
  
 // Solicitudes con sonido y mucama
 async function loadSolicitudesAll() {
@@ -1959,3 +1990,4 @@ function installPWA() {
  
 </body>
 </html>
+ 
