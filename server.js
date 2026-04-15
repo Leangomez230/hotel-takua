@@ -628,4 +628,3 @@ db.initDB().then(() => {
   console.error('Error iniciando DB:', e);
   process.exit(1);
 });
- 
