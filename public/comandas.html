@@ -459,6 +459,12 @@ function doLogout() {
 async function initMain() {
   if (!TOKEN || !ME) { showScreen('screen-login'); return; }
 
+  // Roles que no pertenecen al restaurante → redirigir a habitaciones
+  if (['recepcionista','mucama'].includes(ME.rol)) {
+    window.location.href = '/index.html';
+    return;
+  }
+
   // header
   document.getElementById('header-role-badge').textContent = ME.rol.charAt(0).toUpperCase()+ME.rol.slice(1);
   document.getElementById('header-user-name').textContent  = ME.nombre || ME.email || '';
