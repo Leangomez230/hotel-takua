@@ -887,7 +887,129 @@ app.get('/api/restaurante/usuarios', auth, adminOnly, async (req, res) => {
     ));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-
+// ── LOGIN UNIFICADO (portal) ─────────────────────────────────────────
+app.post('/api/portal/login', async (req, res) => {
+  try {
+    const { usuario, clave } = req.body;
+    if (!usuario || !clave)
+      return res.status(400).json({ error: 'Completá usuario y contraseña' });
+ 
+    // Buscar por: campo usuario, email, o nombre (en ese orden de prioridad)
+    const user = await db.getOne(
+      `SELECT * FROM usuarios
+       WHERE activo = 1
+         AND (
+           usuario = $1
+           OR email = $1
+           OR LOWER(nombre) = LOWER($1)
+         )
+       LIMIT 1`,
+      [usuario.trim()]
+    );
+ 
+    if (!user || !bcrypt.compareSync(clave, user.password))
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+ 
+    const token = jwt.sign(
+      { id: user.id, nombre: user.nombre, rol: user.rol, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '12h' }
+    );
+ 
+    await logAction(user.id, user.nombre, 'LOGIN_PORTAL', `rol: ${user.rol}`);
+ 
+    res.json({
+      token,
+      user: {
+        id:     user.id,
+        nombre: user.nombre,
+        usuario: user.usuario || user.email,
+        rol:    user.rol,
+        email:  user.email,
+      }
+    });
+  } catch(e) {
+    console.error('Portal login error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+ 
+// ── GET perfil del usuario autenticado ──────────────────────────────
+app.get('/api/portal/me', auth, async (req, res) => {
+  try {
+    const user = await db.getOne(
+      'SELECT id, nombre, usuario, email, rol FROM usuarios WHERE id = $1',
+      [req.user.id]
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json(user);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+ 
+// ── GESTIÓN DE USUARIOS (solo admin) ────────────────────────────────
+ 
+// Listar todos
+app.get('/api/portal/usuarios', auth, adminOnly, async (req, res) => {
+  try {
+    const users = await db.getAll(
+      'SELECT id, nombre, usuario, email, rol, activo FROM usuarios ORDER BY rol, nombre'
+    );
+    res.json(users);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+ 
+// Crear usuario
+app.post('/api/portal/usuarios', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, usuario, email, password, rol } = req.body;
+    if (!nombre || !password || !rol)
+      return res.status(400).json({ error: 'Faltan campos obligatorios (nombre, password, rol)' });
+ 
+    // usuario o email como identificador único
+    const identificador = usuario?.trim() || email?.trim();
+    if (!identificador)
+      return res.status(400).json({ error: 'Se requiere usuario o email' });
+ 
+    // Verificar duplicado
+    const existe = await db.getOne(
+      'SELECT id FROM usuarios WHERE usuario = $1 OR email = $1',
+      [identificador]
+    );
+    if (existe) return res.status(400).json({ error: 'Ese usuario o email ya existe' });
+ 
+    const hash = bcrypt.hashSync(password, 10);
+    const r = await db.query(
+      `INSERT INTO usuarios (nombre, usuario, email, password, rol, activo)
+       VALUES ($1, $2, $3, $4, $5, 1) RETURNING id, nombre, usuario, email, rol`,
+      [nombre.trim(), usuario?.trim() || null, email?.trim() || null, hash, rol]
+    );
+    await logAction(req.user.id, req.user.nombre, 'CREAR_USUARIO', `${nombre} (${rol})`);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+ 
+// Editar usuario
+app.put('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, usuario, email, password, rol, activo } = req.body;
+    const uid = req.params.id;
+ 
+    let query, params;
+    if (password) {
+      const hash = bcrypt.hashSync(password, 10);
+      query = `UPDATE usuarios SET nombre=$1, usuario=$2, email=$3, password=$4, rol=$5, activo=$6 WHERE id=$7`;
+      params = [nombre, usuario||null, email||null, hash, rol, activo ?? 1, uid];
+    } else {
+      query = `UPDATE usuarios SET nombre=$1, usuario=$2, email=$3, rol=$4, activo=$5 WHERE id=$6`;
+      params = [nombre, usuario||null, email||null, rol, activo ?? 1, uid];
+    }
+    await db.query(query, params);
+    await logAction(req.user.id, req.user.nombre, 'EDITAR_USUARIO', `id:${uid}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 // ════════════════════════════════════════════════════════════════════
 // ── CATCH-ALL & ARRANQUE ─────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
