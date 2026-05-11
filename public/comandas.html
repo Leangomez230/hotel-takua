@@ -3,1486 +3,1561 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Hotel Takua — Restaurante</title>
+<title>Hotel Takuá — Restaurante</title>
 <style>
-  :root {
-    --bg:       #0f172a;
-    --surface:  #1e293b;
-    --surface2: #273348;
-    --border:   #334155;
-    --text:     #f1f5f9;
-    --muted:    #94a3b8;
-    --accent:   #38bdf8;
-    --green:    #4ade80;
-    --yellow:   #fbbf24;
-    --red:      #f87171;
-    --orange:   #fb923c;
-    --purple:   #a78bfa;
-    --radius:   12px;
-    --shadow:   0 4px 24px rgba(0,0,0,.4);
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-  button{cursor:pointer;border:none;font-family:inherit;font-size:14px;transition:all .15s}
-  input,select,textarea{font-family:inherit;font-size:14px;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:8px;padding:10px 14px;width:100%;outline:none;transition:border-color .15s}
-  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
-  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+button{cursor:pointer;border:none;font-family:inherit;font-size:14px;transition:all .15s}
+input,select,textarea{font-family:inherit;font-size:14px;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;outline:none;transition:border-color .2s;background:#fff;color:#1e293b}
+input:focus,select:focus,textarea:focus{border-color:#3b82f6}
 
-  /* ── PANTALLAS ── */
-  .screen{display:none;min-height:100vh}
-  .screen.active{display:flex;flex-direction:column}
+/* PANTALLAS */
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
 
-  /* ── LOGIN ── */
-  #screen-login{align-items:center;justify-content:center;background:radial-gradient(ellipse at 60% 30%,#1e3a5f 0%,#0f172a 70%)}
-  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:360px;box-shadow:var(--shadow)}
-  .login-logo{text-align:center;margin-bottom:32px}
-  .login-logo .hotel{font-size:13px;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
-  .login-logo .title{font-size:26px;font-weight:700;color:var(--text)}
-  .login-logo .sub{font-size:13px;color:var(--accent);margin-top:2px}
-  .form-group{margin-bottom:16px}
-  .btn-primary{width:100%;padding:13px;border-radius:10px;background:var(--accent);color:#0f172a;font-weight:700;font-size:15px;margin-top:8px;letter-spacing:.02em}
-  .btn-primary:hover{filter:brightness(1.1)}
-  .error-msg{background:#450a0a;border:1px solid var(--red);color:var(--red);border-radius:8px;padding:10px 14px;font-size:13px;margin-top:12px;display:none}
+/* LOGIN */
+#screen-login{align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e3a5f 60%,#0f172a);padding:20px}
+.login-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:36px 32px;width:100%;max-width:360px}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo .icon{font-size:48px;margin-bottom:10px}
+.login-logo h1{color:#fff;font-size:22px;font-weight:800}
+.login-logo p{color:#94a3b8;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+.lf{margin-bottom:14px}
+.lf label{display:block;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.lf input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:11px 14px;color:#fff;font-size:14px;width:100%}
+.lf input:focus{outline:none;border-color:#3b82f6}
+.lf input::placeholder{color:#64748b}
+.login-btn{width:100%;background:#3b82f6;border:none;border-radius:12px;padding:14px;color:#fff;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;margin-top:4px}
+.login-btn:hover{background:#2563eb}
+.login-err{color:#f87171;font-size:12px;text-align:center;margin-top:8px;display:none}
 
-  /* ── HEADER ── */
-  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-  .header-left{display:flex;align-items:center;gap:10px}
-  .header-logo{font-weight:700;font-size:15px;color:var(--text)}
-  .header-role{font-size:12px;color:var(--accent);background:#0c4a6e33;border:1px solid #38bdf833;padding:3px 10px;border-radius:20px;font-weight:600}
-  .header-right{display:flex;align-items:center;gap:8px}
-  .btn-ghost{background:transparent;color:var(--muted);padding:7px 14px;border-radius:8px;border:1px solid var(--border)}
-  .btn-ghost:hover{color:var(--text);border-color:var(--muted)}
+/* HEADER */
+.header{background:#1e293b;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:10px}
+.header-logo{font-weight:700;font-size:17px;line-height:1.2}
+.header-sub{font-size:11px;color:#64748b;margin-top:1px}
+.header-right{display:flex;gap:8px}
+.btn-salon{background:#0f766e;border:none;color:#99f6e4;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}
+.btn-salon:hover{background:#0d9488}
+.btn-salir{background:#334155;border:none;color:#94a3b8;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}
+.btn-salir:hover{color:#fff}
 
-  /* ── TABS ── */
-  .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);padding:0 20px;gap:4px}
-  .tab{padding:12px 18px;font-size:13px;font-weight:600;color:var(--muted);background:transparent;border-bottom:2px solid transparent;border-radius:0;transition:all .15s}
-  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-  .tab-content{display:none;flex:1;overflow:auto}
-  .tab-content.active{display:flex;flex-direction:column}
+/* CONTENT */
+.content{padding:clamp(12px,3vw,20px);max-width:760px;margin:0 auto;flex:1}
 
-  /* ── MESAS GRID ── */
-  .mesas-toolbar{display:flex;align-items:center;gap:8px;padding:16px 20px;flex-wrap:wrap}
-  .mesas-legend{display:flex;gap:12px;margin-left:auto;flex-wrap:wrap}
-  .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
-  .legend-dot{width:10px;height:10px;border-radius:50%}
-  .mesas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;padding:0 20px 20px}
-  .mesa-card{background:var(--surface2);border:2px solid var(--border);border-radius:var(--radius);padding:16px 12px;text-align:center;transition:all .2s;position:relative}
-  .mesa-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
-  .mesa-card.libre{border-color:#4ade8044}
-  .mesa-card.ocupada{border-color:#fb923c88;background:#431407aa}
-  .mesa-card.cuenta{border-color:#a78bfa88;background:#2d1d6eaa}
-  .mesa-card.reservada{border-color:#38bdf888;background:#0c3d5aaa}
-  .mesa-card.selected{box-shadow:0 0 0 3px var(--accent)}
-  .mesa-num{font-size:18px;font-weight:700;margin-bottom:4px}
-  .mesa-alias{font-size:11px;color:var(--muted);margin-bottom:6px;min-height:14px}
-  .mesa-status{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-block}
-  .mesa-status.libre{color:var(--green);background:#14532d44}
-  .mesa-status.ocupada{color:var(--orange);background:#43140744}
-  .mesa-status.cuenta{color:var(--purple);background:#2d1d6e44}
-  .mesa-status.reservada{color:var(--accent);background:#0c3d5a44}
-  .mesa-mozo{font-size:10px;color:var(--muted);margin-top:4px}
-  .mesa-total{font-size:13px;font-weight:700;color:var(--orange);margin-top:2px}
+/* PILLS ESTADO */
+.pills-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.pill-estado{display:flex;align-items:center;gap:5px;border-radius:20px;padding:5px 13px;font-size:13px;font-weight:600;border:1.5px solid}
 
-  /* ── MODAL ── */
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
-  .modal-overlay.active{display:flex}
-  .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow)}
-  .modal-header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-  .modal-title{font-size:17px;font-weight:700}
-  .btn-close{background:var(--surface2);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:16px;border:1px solid var(--border)}
-  .modal-body{padding:0 20px 20px}
+/* TARJETAS MÉTRICAS */
+.metricas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.metrica-card{border-radius:14px;padding:14px 16px;border:1.5px solid}
+.metrica-icon{font-size:22px;margin-bottom:4px}
+.metrica-val{font-size:clamp(18px,3vw,22px);font-weight:800;line-height:1.1}
+.metrica-label{font-size:12px;color:#64748b;margin-top:2px;font-weight:500}
 
-  /* ── COMANDA DETALLE ── */
-  .comanda-info{background:var(--surface2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px}
-  .comanda-info-row{display:flex;justify-content:space-between;margin-bottom:4px;color:var(--muted)}
-  .comanda-info-row span:last-child{color:var(--text);font-weight:600}
-  .items-list{margin-bottom:14px}
-  .item-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
-  .item-row:last-child{border-bottom:none}
-  .item-name{flex:1;font-size:13px}
-  .item-qty{display:flex;align-items:center;gap:6px}
-  .btn-qty{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;width:26px;height:26px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
-  .btn-qty:hover{background:var(--border)}
-  .item-precio{font-size:12px;color:var(--muted);width:60px;text-align:right}
-  .comanda-total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding:12px 0;border-top:1px solid var(--border);margin-top:8px}
+/* MAPA SALÓN */
+.mapa-wrap{background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:20px}
+.mapa-inner{overflow-x:auto;padding:16px 16px 8px}
+.mapa-canvas{position:relative;min-width:600px}
+.barra-ref{border-radius:10px;background:#f1f5f9;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;height:44px;margin-top:8px}
+.barra-ref span{font-weight:700;font-size:13px;color:#94a3b8;letter-spacing:3px}
+.s-mesa{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:2.5px solid;transition:box-shadow .15s,transform .1s;user-select:none;touch-action:none}
+.s-mesa:active{transform:scale(.95)}
+.s-mesa.libre  {background:#dcfce7;border-color:#16a34a}
+.s-mesa.ocupada{background:#fee2e2;border-color:#dc2626}
+.s-mesa.cuenta {background:#ffedd5;border-color:#ea580c}
+.s-mesa.reservada{background:#ede9fe;border-color:#7c3aed}
+.s-mesa.redonda{border-radius:50%}
+.s-mesa:not(.redonda){border-radius:10px}
+.s-mesa.dragging{opacity:.7;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:50;transform:scale(1.05)}
+.s-mesa.sel-unir{box-shadow:0 0 0 3px #f59e0b!important;border-color:#f59e0b!important}
+.s-mesa-num{font-size:12px;font-weight:800;line-height:1}
+.s-mesa-sub{font-size:9px;opacity:.6;margin-top:1px}
+.s-mesa-total{font-size:10px;font-weight:700;margin-top:2px}
 
-  /* ── MENÚ ── */
-  .menu-cats{display:flex;gap:6px;padding:16px 20px 0;flex-wrap:wrap}
-  .cat-btn{background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600}
-  .cat-btn.active{background:var(--accent);color:#0f172a;border-color:var(--accent)}
-  .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;padding:12px 20px 20px}
-  .menu-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:all .15s;text-align:left}
-  .menu-item:hover{border-color:var(--accent);background:var(--surface)}
-  .menu-item-name{font-size:13px;font-weight:600;margin-bottom:4px}
-  .menu-item-cat{font-size:11px;color:var(--muted);margin-bottom:6px}
-  .menu-item-precio{font-size:14px;font-weight:700;color:var(--accent)}
+/* CARD BASE */
+.card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:16px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-weight:700;font-size:16px}
 
-  /* ── CAJERO ── */
-  .cajero-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px;flex:1}
-  @media(max-width:600px){.cajero-grid{grid-template-columns:1fr}}
-  .cuenta-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
-  .cuenta-card-header{display:flex;justify-content:space-between;margin-bottom:10px}
-  .cuenta-mesa-num{font-size:16px;font-weight:700}
-  .cuenta-mozo{font-size:12px;color:var(--muted)}
-  .cuenta-items-preview{font-size:12px;color:var(--muted);margin-bottom:10px}
-  .cuenta-total-big{font-size:20px;font-weight:700;color:var(--accent);margin-bottom:12px}
+/* DESPLEGABLE */
+.desplegable{background:#fff;border-radius:16px;border:1px solid #e2e8f0;margin-bottom:16px;overflow:hidden}
+.desp-btn{width:100%;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;background:none;border:none;cursor:pointer;text-align:left}
+.desp-left{display:flex;align-items:center;gap:10px}
+.desp-icon{font-size:20px}
+.desp-title{font-weight:700;font-size:15px;color:#1e293b}
+.desp-sub{font-size:12px;color:#64748b}
+.desp-arrow{width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:14px;color:#475569;transition:transform .25s;flex-shrink:0}
+.desp-arrow.open{transform:rotate(180deg)}
+.desp-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.desp-body.open{max-height:1200px}
+.desp-content{padding:0 16px 20px}
 
-  /* ── TURNO CAJA ── */
-  .turno-banner{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:gap}
-  .turno-info{font-size:13px;color:var(--muted)}
-  .turno-info strong{color:var(--green)}
+/* CAJA */
+.caja-turno-info{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.dot-green{width:10px;height:10px;border-radius:50%;background:#22c55e;flex-shrink:0}
+.resumen-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.resumen-item{border-radius:12px;padding:12px 14px;border:1px solid}
 
-  /* ── ADMIN ── */
-  .admin-sections{display:flex;flex-direction:column;gap:0}
-  .admin-section{border-bottom:1px solid var(--border)}
-  .admin-section-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;user-select:none}
-  .admin-section-title{font-weight:700;font-size:14px}
-  .admin-section-body{padding:0 20px 20px;display:none}
-  .admin-section-body.open{display:block}
-  .admin-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
-  .admin-table th{text-align:left;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
-  .admin-table td{padding:10px 10px;border-bottom:1px solid var(--border)}
-  .admin-table tr:last-child td{border-bottom:none}
-  .inline-form{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:12px}
-  @media(max-width:500px){.inline-form{grid-template-columns:1fr}}
-  .btn-sm{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700}
-  .btn-success{background:#166534;color:var(--green)}
-  .btn-success:hover{background:#14532d}
-  .btn-danger{background:#450a0a;color:var(--red)}
-  .btn-danger:hover{background:#7f1d1d}
-  .btn-warning{background:#451a03;color:var(--yellow)}
-  .btn-warning:hover{background:#78350f}
-  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-  .badge-green{background:#14532d44;color:var(--green)}
-  .badge-red{background:#450a0a44;color:var(--red)}
-  .badge-yellow{background:#451a0344;color:var(--yellow)}
-  .badge-blue{background:#0c3d5a44;color:var(--accent)}
-  .badge-purple{background:#2d1d6e44;color:var(--purple)}
+/* TABLA COMANDAS */
+.cmd-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #f1f5f9;border-radius:10px;margin-bottom:6px}
 
-  /* ── TOAST ── */
-  #toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 20px;font-size:13px;font-weight:600;box-shadow:var(--shadow);z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:300px}
-  #toast.show{transform:translateY(0);opacity:1}
-  #toast.ok{border-left:4px solid var(--green);color:var(--green)}
-  #toast.err{border-left:4px solid var(--red);color:var(--red)}
-  #toast.info{border-left:4px solid var(--accent);color:var(--accent)}
+/* MESAS CAJA - tarjetas de cuenta pendiente */
+.cuenta-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px}
+.cuenta-card{background:#fff;border:1.5px solid #c4b5fd;border-radius:14px;padding:16px;cursor:pointer;transition:box-shadow .15s}
+.cuenta-card:hover{box-shadow:0 4px 16px rgba(124,58,237,.15)}
 
-  /* ── SPINNER ── */
-  .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .loading-overlay{position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:300;display:none;align-items:center;justify-content:center}
-  .loading-overlay.active{display:flex}
-  .empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
-  .empty-state .icon{font-size:40px;margin-bottom:12px}
-  .empty-state p{font-size:14px}
+/* MODAL BOTTOM SHEET */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:680px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -8px 40px rgba(0,0,0,.2);animation:slideUp .22s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{display:flex;justify-content:center;padding:10px 0 4px}
+.modal-handle div{width:40px;height:4px;border-radius:2px;background:#e2e8f0}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px}
+.modal-title{font-weight:700;font-size:17px}
+.modal-body{flex:1;overflow-y:auto;padding:0 20px 24px}
+.btn-close-modal{background:#f1f5f9;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;color:#64748b;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
-  /* ── VISTA CLIENTE ── */
-  #screen-cliente{background:var(--bg);align-items:center;justify-content:center;padding:20px}
-  .cliente-box{width:100%;max-width:420px}
-  .cliente-header{text-align:center;margin-bottom:24px}
-  .cliente-mesa{font-size:32px;font-weight:700;color:var(--accent)}
-  .cliente-title{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
-  .cliente-items{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
-  .cliente-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
-  .cliente-item:last-child{border-bottom:none}
-  .cliente-item-name{font-size:14px}
-  .cliente-item-right{text-align:right}
-  .cliente-item-qty{font-size:12px;color:var(--muted)}
-  .cliente-item-sub{font-size:13px;font-weight:600}
-  .cliente-total-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;justify-content:space-between;align-items:center}
-  .cliente-total-label{font-size:14px;color:var(--muted)}
-  .cliente-total-amount{font-size:24px;font-weight:700;color:var(--accent)}
-  .cliente-estado{text-align:center;margin-top:16px;padding:10px;border-radius:10px;font-size:13px;font-weight:600}
-  .cliente-estado.cuenta{background:#2d1d6e44;color:var(--purple);border:1px solid var(--purple)}
-  .cliente-estado.abierta{background:#14532d44;color:var(--green);border:1px solid var(--green)}
+/* ITEMS COMANDA */
+.item-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.item-row:last-child{border:none}
+.item-name{flex:1;font-size:14px;font-weight:500}
+.item-qty-ctrl{display:flex;align-items:center;gap:8px}
+.qty-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.qty-btn:hover{background:#e2e8f0}
+.item-precio{font-size:13px;font-weight:600;color:#475569;min-width:70px;text-align:right}
+.comanda-total-row{display:flex;justify-content:space-between;font-size:16px;font-weight:800;padding:12px 0;border-top:2px solid #f1f5f9;margin-top:4px}
 
-  /* ── RESPONSIVE ── */
-  @media(max-width:480px){
-    .mesas-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:0 12px 12px}
-    .modal{max-height:95vh}
-    .login-box{padding:28px 20px}
-  }
+/* MENÚ GRID */
+.cats-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.cat-pill{padding:6px 14px;border-radius:20px;border:none;font-size:12px;font-weight:600;background:#f1f5f9;color:#64748b;cursor:pointer}
+.cat-pill.active{background:#3b82f6;color:#fff}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:260px;overflow-y:auto}
+.menu-item-btn{padding:12px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;text-align:left;transition:all .15s}
+.menu-item-btn:hover{border-color:#3b82f6;background:#eff6ff}
+.menu-item-nombre{font-size:13px;font-weight:600;margin-bottom:2px}
+.menu-item-precio{font-size:13px;font-weight:700;color:#3b82f6}
 
-  /* ── MAPA SALÓN ── */
-  .salon-wrap{position:relative;overflow:auto;background:#1a2535;border-radius:12px;margin:12px 16px;border:1px solid var(--border)}
-  .salon-canvas{position:relative;min-width:900px;min-height:480px;background:
-    repeating-linear-gradient(0deg,transparent,transparent 39px,#ffffff08 39px,#ffffff08 40px),
-    repeating-linear-gradient(90deg,transparent,transparent 39px,#ffffff08 39px,#ffffff08 40px)}
-  .salon-barra{position:absolute;bottom:0;left:0;right:0;height:36px;background:#0f172a;border-top:2px solid #334155;
-    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#475569;letter-spacing:.15em}
-  .s-mesa{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    cursor:pointer;user-select:none;transition:box-shadow .15s,transform .1s;border:2px solid transparent;border-radius:10px}
-  .s-mesa:active{transform:scale(.96)}
-  .s-mesa.libre   {background:#14532d;border-color:#4ade80;color:#4ade80}
-  .s-mesa.ocupada {background:#431407;border-color:#fb923c;color:#fb923c}
-  .s-mesa.cuenta  {background:#2d1d6e;border-color:#a78bfa;color:#a78bfa}
-  .s-mesa.reservada{background:#0c3d5a;border-color:#38bdf8;color:#38bdf8}
-  .s-mesa.redonda {border-radius:50%}
-  .s-mesa.dragging{opacity:.7;box-shadow:0 8px 32px #000a;z-index:50;cursor:grabbing}
-  .s-mesa.sel-unir{box-shadow:0 0 0 3px #fbbf24;border-color:#fbbf24!important}
-  .s-mesa-num{font-size:14px;font-weight:800;line-height:1}
-  .s-mesa-total{font-size:10px;opacity:.85;margin-top:2px}
-  .s-mesa-mozo{font-size:9px;opacity:.7;margin-top:1px;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .salon-toolbar{display:flex;align-items:center;gap:6px;padding:10px 16px;flex-wrap:wrap;background:var(--surface);border-bottom:1px solid var(--border)}
-  .salon-legend{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}
-  .salon-sep{width:1px;height:24px;background:var(--border)}
+/* ADMIN MENÚ */
+.prod-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#f8fafc;border:1px solid #f1f5f9;margin-bottom:6px}
+.prod-nombre{flex:1;font-weight:600;font-size:14px}
+.prod-precio{font-size:13px;font-weight:700;color:#475569;margin-right:4px}
+.btn-sm{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600}
+
+/* USUARIOS */
+.user-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border:1px solid #f1f5f9;border-radius:12px;margin-bottom:6px}
+.user-av{width:36px;height:36px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.user-info{flex:1}
+.user-nombre{font-weight:700;font-size:14px}
+.user-sub{font-size:12px;color:#64748b}
+
+/* ADMIN MENÚ FORM */
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+@media(max-width:400px){.form-grid-2{grid-template-columns:1fr}}
+
+/* BTN PRIMARIO */
+.btn-primary{width:100%;padding:14px;border-radius:12px;border:none;background:#3b82f6;color:#fff;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit}
+.btn-primary:hover{background:#2563eb}
+.btn-primary:disabled{background:#cbd5e1;cursor:not-allowed}
+.btn-green{background:#22c55e;color:#fff;border-radius:12px;border:none;padding:12px 20px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit}
+.btn-green:hover{background:#16a34a}
+.btn-red{background:#ef4444;color:#fff;border-radius:10px;border:none;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-ghost-light{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;font-family:inherit}
+.btn-ghost-light:hover{background:#f1f5f9}
+.btn-purple{background:#8b5cf6;color:#fff;border-radius:12px;border:none;padding:13px;font-weight:700;font-size:15px;cursor:pointer;width:100%;font-family:inherit}
+.btn-purple:hover{background:#7c3aed}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(241,245,249,.7);z-index:300;display:none;align-items:center;justify-content:center}
+.loading-overlay.active{display:flex}
+.spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:#94a3b8}
+.empty .ei{font-size:36px;margin-bottom:10px}
+
+/* VISTA CLIENTE */
+#screen-cliente{background:#f1f5f9;align-items:center;justify-content:center;padding:20px}
+.cliente-box{width:100%;max-width:400px}
+.cliente-card{background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:14px}
+.cliente-header-card{padding:20px;border-bottom:1px solid #f1f5f9;text-align:center}
+.cliente-mesa-num{font-size:36px;font-weight:800;color:#3b82f6}
+.cliente-label{font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em}
+.cliente-item{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #f8fafc}
+.cliente-item:last-child{border:none}
+.cliente-total{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:#f8fafc;border-top:2px solid #e2e8f0}
+.cliente-estado{text-align:center;padding:12px;border-radius:12px;font-size:13px;font-weight:600;border:1.5px solid}
+
+/* NOTA INPUT */
+.nota-row{display:flex;gap:8px;margin-bottom:14px}
+.nota-row input{flex:1;padding:9px 12px;border-radius:9px;font-size:13px}
+
+/* ABRIR TURNO FORM */
+.turno-form{display:flex;gap:10px;align-items:stretch}
+.turno-form input{flex:1;font-size:15px;padding:12px 14px}
+
+/* INFO COMANDA BAND */
+.cmd-band{margin:0 0 10px;padding:8px 14px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;display:flex;gap:16px;font-size:12px;color:#64748b;flex-wrap:wrap}
+
+/* MÉTRICAS POR MÉTODO */
+.metodo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:16px}
+.metodo-card{background:#f8fafc;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0}
+
+/* HISTORIAL */
+.hist-table{width:100%;border-collapse:collapse;font-size:13px}
+.hist-table th{text-align:left;color:#94a3b8;padding:8px 10px;border-bottom:1px solid #f1f5f9;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.hist-table td{padding:10px 10px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.hist-table tr:last-child td{border:none}
+
+@media(max-width:500px){
+  .metricas-grid{grid-template-columns:1fr 1fr}
+  .resumen-grid{grid-template-columns:1fr 1fr}
+  .form-grid-2{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
-<!-- LOADING -->
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
 
-<!-- TOAST -->
-<div id="toast"></div>
-
-<!-- ══════════════════ SCREEN: LOGIN ══════════════════ -->
+<!-- ══ LOGIN ══ -->
 <div class="screen active" id="screen-login">
   <div class="login-box">
     <div class="login-logo">
-      <div class="hotel">🏨 Hotel Takua</div>
-      <div class="title">Restaurante</div>
-      <div class="sub">Sistema de Comandas</div>
+      <div class="icon">🏨</div>
+      <h1>Hotel Takuá</h1>
+      <p>Sistema de Comandas</p>
     </div>
-    <div class="form-group">
-      <label>Usuario</label>
-      <input type="text" id="login-usuario" placeholder="Tu usuario" autocomplete="username"/>
-    </div>
-    <div class="form-group">
-      <label>Contraseña</label>
-      <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password"/>
-    </div>
-    <button class="btn-primary" onclick="doLogin()">Ingresar</button>
-    <div class="error-msg" id="login-error"></div>
+    <div class="lf"><label>Usuario</label><input type="text" id="l-user" placeholder="Tu usuario" autocomplete="username"/></div>
+    <div class="lf"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/></div>
+    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
+    <div class="login-err" id="login-err"></div>
   </div>
 </div>
 
-<!-- ══════════════════ SCREEN: MAIN ══════════════════ -->
+<!-- ══ MAIN ══ -->
 <div class="screen" id="screen-main">
   <div class="header">
     <div class="header-left">
-      <span style="font-size:20px">🏨</span>
-      <span class="header-logo">Hotel Takua</span>
-      <span class="header-role" id="header-role-badge">—</span>
+      <span style="font-size:22px">🏨</span>
+      <div>
+        <div class="header-logo">Hotel — Comandas</div>
+        <div class="header-sub" id="header-sub">—</div>
+      </div>
     </div>
     <div class="header-right">
-      <span id="header-user-name" style="font-size:12px;color:var(--muted)"></span>
-      <button class="btn-ghost" onclick="doLogout()">Salir</button>
+      <button class="btn-salon" id="btn-salon-header" style="display:none" onclick="showScreen('screen-salon')">🪑 Salón</button>
+      <button class="btn-salir" onclick="doLogout()">Salir 🔓</button>
     </div>
   </div>
-  <div class="tabs" id="main-tabs"></div>
-  <div id="main-tab-contents" style="flex:1;display:flex;flex-direction:column;overflow:hidden"></div>
+  <div class="content" id="main-content"></div>
 </div>
 
-<!-- ══════════════════ SCREEN: CLIENTE ══════════════════ -->
+<!-- ══ SALON EDITOR (Admin) ══ -->
+<div class="screen" id="screen-salon">
+  <div class="header">
+    <div class="header-left">
+      <span style="font-size:22px">🪑</span>
+      <div>
+        <div class="header-logo">Editor de Salón</div>
+        <div class="header-sub">Arrastrá mesas · Doble clic para editar</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn-salon" id="btn-agregar-mesa" onclick="abrirModalNuevaMesa()">+ Mesa</button>
+      <button class="btn-salon" id="btn-unir-mesas" onclick="toggleModoUnir()" style="background:#854d0e;color:#fef08a">🔗 Unir</button>
+      <button class="btn-salir" onclick="showScreen('screen-main');renderMain()">← Volver</button>
+    </div>
+  </div>
+  <div style="padding:12px 16px;overflow:auto;flex:1;background:#f1f5f9">
+    <div style="background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden">
+      <div style="overflow-x:auto;padding:20px 20px 12px">
+        <div id="salon-editor-canvas" style="position:relative;min-width:900px;min-height:500px;
+          background-image:repeating-linear-gradient(0deg,transparent,transparent 39px,#f1f5f9 39px,#f1f5f9 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,#f1f5f9 39px,#f1f5f9 40px)">
+        </div>
+        <div class="barra-ref"><span>BARRA</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CLIENTE ══ -->
 <div class="screen" id="screen-cliente">
   <div class="cliente-box">
-    <div class="cliente-header">
-      <div class="cliente-title">Tu pedido — Mesa</div>
-      <div class="cliente-mesa" id="cliente-mesa-num">—</div>
+    <div class="cliente-card">
+      <div class="cliente-header-card">
+        <div class="cliente-label">Tu pedido — Mesa</div>
+        <div class="cliente-mesa-num" id="cli-mesa">—</div>
+      </div>
+      <div id="cli-items"></div>
+      <div class="cliente-total">
+        <span style="font-size:14px;color:#64748b">Total</span>
+        <span style="font-size:22px;font-weight:800;color:#3b82f6" id="cli-total">$0</span>
+      </div>
     </div>
-    <div class="cliente-items" id="cliente-items-list"></div>
-    <div class="cliente-total-row">
-      <span class="cliente-total-label">Total</span>
-      <span class="cliente-total-amount" id="cliente-total">$0</span>
-    </div>
-    <div class="cliente-estado" id="cliente-estado-badge"></div>
-    <div style="text-align:center;margin-top:20px">
-      <button class="btn-ghost" onclick="closeClienteView()">← Volver</button>
+    <div class="cliente-estado" id="cli-estado"></div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn-ghost-light" onclick="showScreen('screen-main');renderMain()">← Volver</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ MODALES ══════════════════ -->
+<!-- ══ MODALES ══ -->
 
 <!-- Modal Abrir Comanda -->
-<div class="modal-overlay" id="modal-abrir">
-  <div class="modal">
+<div class="overlay" id="m-abrir">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-handle"><div></div></div>
     <div class="modal-header">
-      <span class="modal-title" id="modal-abrir-title">Nueva comanda</span>
-      <button class="btn-close" onclick="closeModal('modal-abrir')">✕</button>
+      <span class="modal-title" id="m-abrir-title">Nueva comanda</span>
+      <button class="btn-close-modal" onclick="closeModal('m-abrir')">×</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label>Comensales</label>
-        <input type="number" id="abrir-comensales" min="1" value="2"/>
-      </div>
-      <div class="form-group">
-        <label>Observaciones</label>
-        <textarea id="abrir-obs" rows="2" placeholder="Sin tacc, alergia, etc."></textarea>
-      </div>
+      <div style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">👥 Comensales</label>
+        <input type="number" id="ab-coms" min="1" value="2"/></div>
+      <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">📝 Observaciones</label>
+        <textarea id="ab-obs" rows="2" placeholder="Sin tacc, alergias..."></textarea></div>
       <button class="btn-primary" onclick="confirmarAbrirComanda()">Abrir comanda</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Comanda (ver + agregar ítems) -->
-<div class="modal-overlay" id="modal-comanda">
+<!-- Modal Comanda (mozo) -->
+<div class="overlay" id="m-comanda">
   <div class="modal">
+    <div class="modal-handle"><div></div></div>
     <div class="modal-header">
-      <span class="modal-title" id="modal-comanda-title">Comanda</span>
-      <button class="btn-close" onclick="closeModal('modal-comanda')">✕</button>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="mc-mesa-icon"></div>
+        <div><div class="modal-title" id="mc-title">Comanda</div><div id="mc-sub" style="font-size:12px;color:#64748b"></div></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button id="mc-btn-cambio" style="display:none;padding:6px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;font-weight:600;color:#475569" onclick="abrirModalCambioMesa()">↔️ Cambiar mesa</button>
+        <button id="mc-btn-imprimir" style="display:none;padding:6px 12px;border-radius:8px;border:none;background:#1e293b;color:#fff;font-size:12px;font-weight:600" onclick="imprimirComanda()">🖨️ Imprimir</button>
+        <button class="btn-close-modal" onclick="closeModal('m-comanda')">×</button>
+      </div>
     </div>
-    <div class="modal-body" id="modal-comanda-body"></div>
+    <div class="modal-body" id="mc-body"></div>
   </div>
 </div>
 
 <!-- Modal Cobrar -->
-<div class="modal-overlay" id="modal-cobrar">
-  <div class="modal">
+<div class="overlay" id="m-cobrar">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-handle"><div></div></div>
     <div class="modal-header">
-      <span class="modal-title" id="modal-cobrar-title">Cobrar comanda</span>
-      <button class="btn-close" onclick="closeModal('modal-cobrar')">✕</button>
+      <span class="modal-title" id="m-cobrar-title">Cobrar</span>
+      <button class="btn-close-modal" onclick="closeModal('m-cobrar')">×</button>
     </div>
-    <div class="modal-body" id="modal-cobrar-body"></div>
+    <div class="modal-body" id="m-cobrar-body"></div>
   </div>
 </div>
 
-<!-- Modal Mesa Admin -->
-<div class="modal-overlay" id="modal-mesa-admin">
-  <div class="modal">
+<!-- Modal Cambio de Mesa -->
+<div class="overlay" id="m-cambio">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-handle"><div></div></div>
     <div class="modal-header">
-      <span class="modal-title">Editar Mesa</span>
-      <button class="btn-close" onclick="closeModal('modal-mesa-admin')">✕</button>
-    </div>
-    <div class="modal-body" id="modal-mesa-admin-body"></div>
-  </div>
-</div>
-
-<!-- Modal Agregar producto al menú -->
-<div class="modal-overlay" id="modal-menu-item">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" id="modal-menu-item-title">Producto</span>
-      <button class="btn-close" onclick="closeModal('modal-menu-item')">✕</button>
+      <span class="modal-title">↔️ Cambiar mesa</span>
+      <button class="btn-close-modal" onclick="closeModal('m-cambio')">×</button>
     </div>
     <div class="modal-body">
-      <div class="form-group"><label>Nombre</label><input type="text" id="mi-nombre"/></div>
-      <div class="form-group"><label>Categoría</label><input type="text" id="mi-cat" placeholder="Bebidas, Platos, Postres..."/></div>
-      <div class="form-group"><label>Precio</label><input type="number" id="mi-precio" min="0" step="0.01"/></div>
-      <button class="btn-primary" onclick="guardarMenuItem()">Guardar</button>
+      <div style="font-size:13px;color:#64748b;margin-bottom:12px">Seleccioná la mesa destino (solo mesas libres)</div>
+      <div id="m-cambio-mesas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px;margin-bottom:16px"></div>
+      <button class="btn-primary" id="m-cambio-btn" onclick="confirmarCambioMesa()" disabled>Confirmar cambio</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Crear Usuario -->
-<div class="modal-overlay" id="modal-usuario">
-  <div class="modal">
+<!-- Modal Mesa Admin (editor salón) -->
+<div class="overlay" id="m-mesa-ed">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-handle"><div></div></div>
     <div class="modal-header">
-      <span class="modal-title">Nuevo Usuario</span>
-      <button class="btn-close" onclick="closeModal('modal-usuario')">✕</button>
+      <span class="modal-title" id="m-mesa-ed-title">Mesa</span>
+      <button class="btn-close-modal" onclick="closeModal('m-mesa-ed')">×</button>
     </div>
-    <div class="modal-body">
-      <div class="form-group"><label>Nombre completo</label><input type="text" id="u-nombre"/></div>
-      <div class="form-group"><label>Usuario (email o apodo)</label><input type="text" id="u-email"/></div>
-      <div class="form-group"><label>Contraseña</label><input type="password" id="u-clave"/></div>
-      <div class="form-group">
-        <label>Rol</label>
-        <select id="u-rol">
-          <option value="mozo">Mozo</option>
-          <option value="cajero">Cajero</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-      <button class="btn-primary" onclick="crearUsuario()">Crear usuario</button>
+    <div class="modal-body" id="m-mesa-ed-body"></div>
+  </div>
+</div>
+
+<!-- Modal Ticket Impresión -->
+<div class="overlay" id="m-ticket">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-handle"><div></div></div>
+    <div class="modal-header">
+      <span class="modal-title">🖨️ Vista previa</span>
+      <button class="btn-close-modal" onclick="closeModal('m-ticket')">×</button>
+    </div>
+    <div class="modal-body" id="m-ticket-body" style="font-family:'Courier New',monospace;font-size:13px;background:#fffef0;border-radius:8px;padding:16px;margin-bottom:14px"></div>
+    <div style="padding:0 20px 24px;display:flex;gap:10px">
+      <button class="btn-ghost-light" style="flex:1" onclick="closeModal('m-ticket')">Cerrar</button>
+      <button style="flex:1;padding:11px;border-radius:10px;border:none;background:#1e293b;color:#fff;font-weight:700;cursor:pointer" onclick="doPrint()">🖨️ Imprimir</button>
     </div>
   </div>
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════
+// ════════════════════════════════════
 // CONFIG & STATE
-// ════════════════════════════════════════════════════════
-const API = ''; // mismo origen
-let TOKEN = localStorage.getItem('takua_rest_token') || '';
-let ME    = JSON.parse(localStorage.getItem('takua_rest_user') || 'null');
-let STATE = {
-  mesas:     [],
-  comandas:  [],
-  menu:      [],
-  turno:     null,
-  usuarios:  [],
-  selMesaId: null,
-  selCmdId:  null,
-  menuItemEditId: null,
+// ════════════════════════════════════
+const API = '';
+const MESA_STATUS = {
+  libre:    {label:'Libre',    color:'#16a34a',bg:'#dcfce7',border:'#16a34a'},
+  ocupada:  {label:'Ocupada',  color:'#dc2626',bg:'#fee2e2',border:'#dc2626'},
+  cuenta:   {label:'Cuenta',   color:'#ea580c',bg:'#ffedd5',border:'#ea580c'},
+  reservada:{label:'Reservada',color:'#7c3aed',bg:'#ede9fe',border:'#7c3aed'},
 };
+const ROL_LABELS = {mozo:'🍽️ Mozo', cajero:'💰 Cajero', admin:'⚙️ Admin'};
+const METODOS = ['Efectivo','Débito','Crédito','Transferencia','QR'];
+const METODO_ICONS = {Efectivo:'💵',Débito:'💳',Crédito:'💳',Transferencia:'🏦',QR:'📱'};
+const SZ = {redonda:{w:70,h:70}, cuadrada:{w:70,h:70}, rectangular:{w:150,h:70}};
 
-// ════════════════════════════════════════════════════════
-// UTILIDADES
-// ════════════════════════════════════════════════════════
-const fmt = n => '$' + (Number(n)||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const nowTime = () => new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+let TOKEN = localStorage.getItem('takua_rest_token')||'';
+let ME    = JSON.parse(localStorage.getItem('takua_rest_user')||'null');
+let S = { mesas:[], comandas:[], menu:[], turno:null, usuarios:[],
+          selMesaId:null, selCmdId:null, destCambioId:null,
+          menuEditId:null, modoUnir:false, unirSel:[], ticketData:null };
+
+// ════════════════════════════════════
+// UTILS
+// ════════════════════════════════════
+const fmt = n => '$'+Number(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const nowFull = () => new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const mesaLabel = m => m.alias||`M${m.numero||m.id}`;
+const mesaDims  = t => SZ[t]||SZ.cuadrada;
 
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-let _toastTimer;
-function toast(msg, type='ok') {
+let _toastT;
+function toast(msg,type='ok') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show ' + type;
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  t.textContent = (type==='ok'?'✅ ':type==='err'?'❌ ':'ℹ️ ')+msg;
+  t.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(()=>t.classList.remove('show'),3000);
+}
+function loading(on){ document.getElementById('loading').classList.toggle('active',on); }
+
+async function api(method,path,body){
+  const opts={method,headers:{'Content-Type':'application/json','Authorization':`Bearer ${TOKEN}`}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch(API+path,opts);
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error||`Error ${r.status}`);
+  return d;
 }
 
-function loading(on) {
-  document.getElementById('loading').classList.toggle('active', on);
-}
-
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
-async function api(method, path, body) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(API + path, opts);
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || `Error ${r.status}`);
-  return data;
-}
-
-// ════════════════════════════════════════════════════════
+// ════════════════════════════════════
 // AUTH
-// ════════════════════════════════════════════════════════
-async function doLogin() {
-  const usuario = document.getElementById('login-usuario').value.trim();
-  const clave   = document.getElementById('login-clave').value;
-  const errEl   = document.getElementById('login-error');
-  errEl.style.display = 'none';
-  if (!usuario || !clave) { errEl.textContent='Completá todos los campos'; errEl.style.display='block'; return; }
+// ════════════════════════════════════
+async function doLogin(){
+  const usuario=document.getElementById('l-user').value.trim();
+  const clave  =document.getElementById('l-pass').value;
+  const errEl  =document.getElementById('login-err');
+  errEl.style.display='none';
+  if(!usuario||!clave){errEl.textContent='Completá usuario y contraseña';errEl.style.display='block';return;}
   loading(true);
-  try {
-    const data = await api('POST', '/api/restaurante/login', { usuario, clave });
-    TOKEN = data.token;
-    ME    = data.user;
-    localStorage.setItem('takua_rest_token', TOKEN);
-    localStorage.setItem('takua_rest_user', JSON.stringify(ME));
-    await initMain();
-  } catch(e) {
-    errEl.textContent = e.message;
-    errEl.style.display = 'block';
-  } finally { loading(false); }
+  try{
+    const d=await api('POST','/api/restaurante/login',{usuario,clave});
+    TOKEN=d.token; ME=d.user;
+    localStorage.setItem('takua_rest_token',TOKEN);
+    localStorage.setItem('takua_rest_user',JSON.stringify(ME));
+    await initApp();
+  }catch(e){errEl.textContent=e.message;errEl.style.display='block';}
+  finally{loading(false);}
 }
+document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('l-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('l-pass').focus();});
 
-document.getElementById('login-clave').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-
-function doLogout() {
-  TOKEN = ''; ME = null;
+function doLogout(){
+  TOKEN='';ME=null;
   localStorage.removeItem('takua_rest_token');
   localStorage.removeItem('takua_rest_user');
   showScreen('screen-login');
 }
 
-// ════════════════════════════════════════════════════════
+// ════════════════════════════════════
 // INIT
-// ════════════════════════════════════════════════════════
-async function initMain() {
-  if (!TOKEN || !ME) { showScreen('screen-login'); return; }
+// ════════════════════════════════════
+async function initApp(){
+  if(!TOKEN||!ME){showScreen('screen-login');return;}
+  if(['recepcionista','mucama'].includes(ME.rol)){window.location.href='/index.html';return;}
 
-  // Roles que no pertenecen al restaurante → redirigir a habitaciones
-  if (['recepcionista','mucama'].includes(ME.rol)) {
-    window.location.href = '/index.html';
-    return;
+  const sub = document.getElementById('header-sub');
+  sub.textContent = `${ROL_LABELS[ME.rol]||ME.rol} · ${ME.nombre||ME.email||''}`;
+
+  // Botón Salón solo para admin/cajero
+  if(['admin','cajero'].includes(ME.rol)){
+    document.getElementById('btn-salon-header').style.display='';
   }
-
-  // header
-  document.getElementById('header-role-badge').textContent = ME.rol.charAt(0).toUpperCase()+ME.rol.slice(1);
-  document.getElementById('header-user-name').textContent  = ME.nombre || ME.email || '';
-
-  // build tabs según rol
-  const tabsCfg = {
-    mozo:   [{ id:'mesas',   label:'🗺️ Mesas' }, { id:'mis-comandas', label:'📋 Mis comandas' }],
-    cajero: [{ id:'caja',    label:'💰 Caja'   }, { id:'mesas-cajero', label:'🗺️ Mesas'       }],
-    admin:  [{ id:'admin-menu', label:'⚙️ Admin' }, { id:'admin-mesas', label:'🗺️ Mesas'      }, { id:'admin-hist', label:'📊 Historial' }],
-  };
-  const tabs = tabsCfg[ME.rol] || tabsCfg.mozo;
-
-  const tabsEl   = document.getElementById('main-tabs');
-  const contsEl  = document.getElementById('main-tab-contents');
-  tabsEl.innerHTML  = '';
-  contsEl.innerHTML = '';
-
-  tabs.forEach((t, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'tab' + (i===0?' active':'');
-    btn.textContent = t.label;
-    btn.onclick = () => switchTab(t.id);
-    tabsEl.appendChild(btn);
-
-    const div = document.createElement('div');
-    div.className = 'tab-content' + (i===0?' active':'');
-    div.id = 'tab-' + t.id;
-    contsEl.appendChild(div);
-  });
 
   showScreen('screen-main');
   await loadAll();
-  renderCurrentTab();
+  renderMain();
+
+  // Poll cada 30s
+  setInterval(async()=>{
+    if(document.getElementById('screen-main').classList.contains('active')){
+      await loadAll(); renderMain();
+    }
+  },30000);
 }
 
-function switchTab(id) {
-  document.querySelectorAll('.tab').forEach((b,i) => {
-    const tabId = b.closest('.tabs').parentElement.querySelector(`#tab-${id}`) ? id : null;
-    b.classList.toggle('active', b.onclick.toString().includes(`'${id}'`));
-  });
-  // simpler:
-  document.querySelectorAll('.tab').forEach(b => {
-    b.classList.toggle('active', b.onclick.toString().includes(`switchTab('${id}')`));
-  });
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-'+id));
-  renderTab(id);
-}
-
-function renderCurrentTab() {
-  const active = document.querySelector('.tab-content.active');
-  if (active) renderTab(active.id.replace('tab-',''));
-}
-
-// ════════════════════════════════════════════════════════
-// DATA LOADING
-// ════════════════════════════════════════════════════════
-async function loadAll() {
+async function loadAll(){
   loading(true);
-  try {
-    const [mesas, menu] = await Promise.all([
-      api('GET', '/api/restaurante/mesas'),
-      api('GET', '/api/restaurante/menu'),
+  try{
+    const [mesas,menu]=await Promise.all([
+      api('GET','/api/restaurante/mesas'),
+      api('GET','/api/restaurante/menu'),
     ]);
-    STATE.mesas = mesas;
-    STATE.menu  = menu;
-
-    if (ME.rol === 'cajero' || ME.rol === 'admin') {
-      const [turno, cmdAbiertas] = await Promise.all([
-        api('GET', '/api/restaurante/turno/activo').catch(()=>null),
-        api('GET', '/api/restaurante/comandas?estado=abierta').catch(()=>[]),
-      ]);
-      STATE.turno    = turno;
-      STATE.comandas = cmdAbiertas;
+    S.mesas=mesas; S.menu=menu;
+    if(ME.rol==='mozo'){
+      S.comandas=await api('GET','/api/restaurante/comandas').catch(()=>[]);
     } else {
-      const mis = await api('GET', '/api/restaurante/comandas?mozo_id=' + ME.id).catch(()=>[]);
-      STATE.comandas = mis;
+      const [turno,cmds]=await Promise.all([
+        api('GET','/api/restaurante/turno/activo').catch(()=>null),
+        api('GET','/api/restaurante/comandas').catch(()=>[]),
+      ]);
+      S.turno=turno; S.comandas=cmds;
     }
-    if (ME.rol === 'admin') {
-      STATE.usuarios = await api('GET', '/api/restaurante/usuarios').catch(()=>[]);
+    if(ME.rol==='admin'){
+      S.usuarios=await api('GET','/api/portal/usuarios').catch(()=>[]);
     }
-  } catch(e) {
-    toast('Error cargando datos: ' + e.message, 'err');
-  } finally { loading(false); }
+  }catch(e){toast('Error cargando datos','err');}
+  finally{loading(false);}
 }
 
-// poll cada 30s
-setInterval(async () => {
-  if (document.getElementById('screen-main').classList.contains('active')) {
-    await loadAll();
-    renderCurrentTab();
-  }
-}, 30000);
-
-// ════════════════════════════════════════════════════════
-// RENDER TABS
-// ════════════════════════════════════════════════════════
-function renderTab(id) {
-  const el = document.getElementById('tab-'+id);
-  if (!el) return;
-  if (id==='mesas')        renderMozaMesas(el);
-  if (id==='mis-comandas') renderMisComandas(el);
-  if (id==='caja')         renderCaja(el);
-  if (id==='mesas-cajero') renderMozaMesas(el);
-  if (id==='admin-menu')   renderAdminMenu(el);
-  if (id==='admin-mesas')  renderAdminMesas(el);
-  if (id==='admin-hist')   renderAdminHist(el);
+// ════════════════════════════════════
+// RENDER MAIN
+// ════════════════════════════════════
+function renderMain(){
+  const el=document.getElementById('main-content');
+  if(ME.rol==='mozo')   renderMozo(el);
+  if(ME.rol==='cajero') renderCajero(el);
+  if(ME.rol==='admin')  renderAdmin(el);
 }
 
-// ── MAPA SALÓN (mozo/cajero — solo lectura) ──────────
-function renderMozaMesas(el) {
-  const libres   = STATE.mesas.filter(m=>m.status==='libre').length;
-  const ocupadas = STATE.mesas.filter(m=>m.status==='ocupada').length;
-  const cuenta   = STATE.mesas.filter(m=>m.status==='cuenta').length;
-  const reserv   = STATE.mesas.filter(m=>m.status==='reservada').length;
-  el.innerHTML = `
-    <div class="salon-toolbar">
-      <span style="font-size:13px;font-weight:700">🗺️ Salón</span>
-      <div class="salon-sep"></div>
-      <button class="btn-ghost btn-sm" onclick="refreshData()">↻</button>
-      <div class="salon-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Libre (${libres})</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div>Ocupada (${ocupadas})</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Cuenta (${cuenta})</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div>Reservada (${reserv})</div>
-      </div>
-    </div>
-    <div class="salon-wrap"><div class="salon-canvas" id="salon-canvas-ro">
-      ${renderMesasSVG(false)}
-      <div class="salon-barra">— BARRA —</div>
-    </div></div>`;
-}
-
-function mesaDims(tipo) {
-  if (tipo==='redonda')     return {w:70,h:70};
-  if (tipo==='cuadrada')    return {w:70,h:70};
-  if (tipo==='rectangular') return {w:150,h:70};
-  return {w:70,h:70};
-}
-
-function renderMesasSVG(editable) {
-  if (!STATE.mesas.length) return `<div class="empty-state" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div class="icon">🪑</div><p>Sin mesas — agregá desde el admin</p></div>`;
-  return STATE.mesas.map(m => {
-    const cmd  = STATE.comandas.find(c => c.mesa_id===m.id && c.estado!=='cerrada');
-    const {w,h}= mesaDims(m.tipo);
-    const x    = m.x || 50;
-    const y    = m.y || 50;
-    const drag = editable ? `onmousedown="startDrag(event,${m.id})" ontouchstart="startDragTouch(event,${m.id})"` : '';
-    const click= editable ? `ondblclick="editarMesaSalon(${m.id})"` : `onclick="clickMesa(${m.id})"`;
-    const extra= editable ? `title="Arrastrar para mover · Doble clic para editar"` : '';
-    return `<div class="s-mesa ${m.status} ${m.tipo}" id="sm-${m.id}"
-      style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;${editable?'cursor:grab':''}"
-      ${drag} ${click} ${extra}>
-      <div class="s-mesa-num">M${m.numero||m.id}</div>
-      ${m.alias ? `<div class="s-mesa-mozo">${m.alias}</div>` : ''}
-      ${cmd ? `<div class="s-mesa-total">${fmt(cmd.total)}</div><div class="s-mesa-mozo">🍽️${cmd.mozo_nombre||''}</div>` : ''}
+// ── MAPA (solo lectura) ───────────────────────────────
+function renderMapa(editable=false){
+  if(!S.mesas.length) return `<div class="empty"><div class="ei">🪑</div><p>Sin mesas configuradas</p></div>`;
+  const maxX=Math.max(...S.mesas.map(m=>(m.x||50)+(mesaDims(m.tipo).w)))+30;
+  const maxY=Math.max(...S.mesas.map(m=>(m.y||50)+(mesaDims(m.tipo).h)))+70;
+  const mesasHTML=S.mesas.map(m=>{
+    const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
+    const {w,h}=mesaDims(m.tipo);
+    const x=m.x||50; const y=m.y||50;
+    const cmd=S.comandas.find(c=>c.mesa_id===m.id&&c.estado!=='cerrada');
+    const br=m.tipo==='redonda'?'50%':'10px';
+    const ev=editable
+      ? `onmousedown="startDrag(event,${m.id})" ontouchstart="startDragTouch(event,${m.id})" ondblclick="editarMesaSalon(${m.id})"`
+      : `onclick="clickMesa(${m.id})"`;
+    return `<div id="sm-${m.id}" class="s-mesa ${m.status}" ${ev}
+      style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${br};
+      background:${st.bg};border-color:${st.border};${editable?'cursor:grab':''}">
+      <div class="s-mesa-num" style="color:${st.color}">${mesaLabel(m)}</div>
+      ${m.tipo==='rectangular'&&!m.alias?`<div class="s-mesa-sub" style="color:${st.color}">2 mesas</div>`:''}
+      ${cmd?`<div class="s-mesa-total" style="color:${st.color}">${fmt(cmd.total)}</div>`:''}
     </div>`;
   }).join('');
+  return `<div style="position:relative;width:${maxX}px;height:${maxY}px;min-width:320px">${mesasHTML}
+    <div class="barra-ref" style="position:absolute;bottom:0;left:0;right:0"><span>BARRA</span></div></div>`;
 }
 
-// ── DRAG & DROP (admin) ───────────────────────────────
-let _drag = null;
-function startDrag(e, mesaId) {
-  if (e.button !== 0) return;
-  e.preventDefault();
-  const el = document.getElementById('sm-'+mesaId);
-  const canvas = el.parentElement.getBoundingClientRect();
-  const startX = e.clientX - el.offsetLeft;
-  const startY = e.clientY - el.offsetTop;
-  el.classList.add('dragging');
-  _drag = { mesaId, el, startX, startY, canvas };
-  document.addEventListener('mousemove', onDrag);
-  document.addEventListener('mouseup', endDrag);
-}
-function startDragTouch(e, mesaId) {
-  const t = e.touches[0];
-  const el = document.getElementById('sm-'+mesaId);
-  const startX = t.clientX - el.offsetLeft;
-  const startY = t.clientY - el.offsetTop;
-  el.classList.add('dragging');
-  _drag = { mesaId, el, startX, startY };
-  document.addEventListener('touchmove', onDragTouch, {passive:false});
-  document.addEventListener('touchend', endDragTouch);
-}
-function onDrag(e) {
-  if (!_drag) return;
-  const canvas = _drag.el.parentElement;
-  const cr = canvas.getBoundingClientRect();
-  let nx = e.clientX - cr.left - _drag.startX + _drag.el.offsetLeft;
-  let ny = e.clientY - cr.top  - _drag.startY + _drag.el.offsetTop;
-  nx = Math.max(0, Math.min(nx, canvas.offsetWidth  - _drag.el.offsetWidth));
-  ny = Math.max(0, Math.min(ny, canvas.offsetHeight - _drag.el.offsetHeight - 36));
-  _drag.el.style.left = nx + 'px';
-  _drag.el.style.top  = ny + 'px';
-}
-function onDragTouch(e) {
-  e.preventDefault();
-  if (!_drag) return;
-  const t = e.touches[0];
-  const canvas = _drag.el.parentElement;
-  const cr = canvas.getBoundingClientRect();
-  let nx = t.clientX - cr.left - _drag.startX + _drag.el.offsetLeft;
-  let ny = t.clientY - cr.top  - _drag.startY + _drag.el.offsetTop;
-  nx = Math.max(0, Math.min(nx, canvas.offsetWidth  - _drag.el.offsetWidth));
-  ny = Math.max(0, Math.min(ny, canvas.offsetHeight - _drag.el.offsetHeight - 36));
-  _drag.el.style.left = nx + 'px';
-  _drag.el.style.top  = ny + 'px';
-}
-async function endDrag(e) {
-  if (!_drag) return;
-  const el = _drag.el;
-  el.classList.remove('dragging');
-  const nx = parseFloat(el.style.left);
-  const ny = parseFloat(el.style.top);
-  const mesaId = _drag.mesaId;
-  _drag = null;
-  document.removeEventListener('mousemove', onDrag);
-  document.removeEventListener('mouseup', endDrag);
-  // Snap to grid de 10px
-  const sx = Math.round(nx/10)*10;
-  const sy = Math.round(ny/10)*10;
-  el.style.left = sx+'px'; el.style.top = sy+'px';
-  // Guardar en BD
-  try {
-    await api('PUT', `/api/restaurante/mesas/${mesaId}`, {x:sx, y:sy});
-    STATE.mesas = STATE.mesas.map(m => m.id===mesaId ? {...m,x:sx,y:sy} : m);
-  } catch(e) { toast('Error guardando posición','err'); }
-}
-async function endDragTouch(e) {
-  if (!_drag) return;
-  const el = _drag.el;
-  el.classList.remove('dragging');
-  const nx = Math.round(parseFloat(el.style.left)/10)*10;
-  const ny = Math.round(parseFloat(el.style.top)/10)*10;
-  const mesaId = _drag.mesaId;
-  _drag = null;
-  document.removeEventListener('touchmove', onDragTouch);
-  document.removeEventListener('touchend', endDragTouch);
-  el.style.left = nx+'px'; el.style.top = ny+'px';
-  try {
-    await api('PUT', `/api/restaurante/mesas/${mesaId}`, {x:nx, y:ny});
-    STATE.mesas = STATE.mesas.map(m => m.id===mesaId ? {...m,x:nx,y:ny} : m);
-  } catch(e) { toast('Error guardando posición','err'); }
+function renderPills(){
+  const counts={};
+  Object.keys(MESA_STATUS).forEach(k=>counts[k]=0);
+  S.mesas.forEach(m=>counts[m.status]=(counts[m.status]||0)+1);
+  return Object.entries(MESA_STATUS).map(([k,v])=>
+    `<div class="pill-estado" style="background:${v.bg};border-color:${v.border};color:${v.color}">
+      <div style="width:8px;height:8px;border-radius:50%;background:${v.color}"></div>
+      ${v.label} (${counts[k]||0})
+    </div>`
+  ).join('');
 }
 
-// ── VISTA MOZO: MIS COMANDAS ─────────────────────────
-function renderMisComandas(el) {
-  const mias = STATE.comandas.filter(c => c.mozo_id === ME.id && c.estado !== 'cerrada');
-  let html = `<div style="padding:16px 20px;display:flex;gap:8px;align-items:center">
-    <strong style="font-size:14px">Mis comandas abiertas</strong>
-    <button class="btn-ghost btn-sm" onclick="refreshData()">↻</button>
+// ── VISTA MOZO ───────────────────────────────────────
+function renderMozo(el){
+  el.innerHTML=`
+    <p style="font-size:13px;color:#64748b;margin-bottom:12px">Tocá una mesa libre para abrir comanda · Tocá una ocupada para ver el pedido</p>
+    <div class="pills-row">${renderPills()}</div>
+    <div class="mapa-wrap">
+      <div class="mapa-inner"><div>${renderMapa(false)}</div>
+      <div class="barra-ref"><span>BARRA</span></div></div>
+    </div>`;
+}
+
+// ── VISTA CAJERO ─────────────────────────────────────
+function renderCajero(el){
+  const turno=S.turno;
+  const cerradas=turno?((turno.cerradas||[])):[];
+  const abiertas=S.comandas.filter(c=>c.estado==='abierta');
+  const enCuenta=S.comandas.filter(c=>c.estado==='cuenta');
+  const totalNeto=cerradas.reduce((s,c)=>s+(Number(c.total_final)||0),0);
+  const totalDesc=cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)),0);
+  const porMetodo=METODOS.reduce((acc,m)=>{acc[m]=cerradas.filter(c=>c.metodo_pago===m).reduce((s,c)=>s+(Number(c.total_final)||0),0);return acc;},{});
+
+  // Tarjetas métricas
+  let html=`<div class="metricas-grid">
+    ${[{icon:'💰',label:'Total del turno',val:fmt(totalNeto),bg:'#f0fdf4',border:'#86efac',color:'#15803d'},
+       {icon:'🧾',label:'Comandas cobradas',val:cerradas.length,bg:'#eff6ff',border:'#93c5fd',color:'#1d4ed8'},
+       {icon:'👥',label:'Comensales',val:cerradas.reduce((s,c)=>s+(c.comensales||0),0),bg:'#fff7ed',border:'#fdba74',color:'#c2410c'},
+       {icon:'🏷️',label:'Descuentos',val:fmt(totalDesc),bg:'#fdf4ff',border:'#e879f9',color:'#86198f'},
+    ].map(c=>`<div class="metrica-card" style="background:${c.bg};border-color:${c.border}">
+      <div class="metrica-icon">${c.icon}</div>
+      <div class="metrica-val" style="color:${c.color}">${c.val}</div>
+      <div class="metrica-label">${c.label}</div>
+    </div>`).join('')}
   </div>`;
-  if (!mias.length) {
-    html += `<div class="empty-state"><div class="icon">📋</div><p>No tenés comandas abiertas</p></div>`;
+
+  // Panel caja
+  if(!turno){
+    html+=`<div class="card">
+      <div class="card-title" style="margin-bottom:4px">💰 Caja cerrada</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:16px">Ingresá el fondo inicial para abrir el turno</div>
+      <div class="turno-form">
+        <input type="number" id="fondo-inp" placeholder="Fondo inicial ($)" min="0"/>
+        <button class="btn-green" onclick="abrirTurno()">Abrir turno</button>
+      </div></div>`;
+  } else if(!turno.abierto){
+    html+=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div><div class="card-title">📊 Resumen del turno</div><div style="font-size:12px;color:#64748b">${turno.abierto_at?new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div></div>
+        <button class="btn-ghost-light" onclick="nuevoTurno()">+ Nuevo turno</button>
+      </div>
+      ${renderResumenCaja(turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas)}</div>`;
   } else {
-    html += `<div style="padding:0 20px;display:flex;flex-direction:column;gap:10px">`;
-    mias.forEach(c => {
-      const mesa = STATE.mesas.find(m => m.id === c.mesa_id);
-      html += `
-        <div class="cuenta-card" onclick="verComanda(${c.id})" style="cursor:pointer">
-          <div class="cuenta-card-header">
-            <span class="cuenta-mesa-num">Mesa ${mesa?.numero || c.mesa_id}</span>
-            <span class="badge badge-${c.estado==='cuenta'?'purple':c.estado==='abierta'?'green':'blue'}">${c.estado}</span>
-          </div>
-          <div class="cuenta-items-preview">${(c.items||[]).map(i=>`${i.nombre} x${i.cantidad}`).join(', ') || 'Sin ítems'}</div>
-          <div class="cuenta-total-big">${fmt(c.total)}</div>
-          <div style="font-size:12px;color:var(--muted)">⏰ ${c.abierta_at ? new Date(c.abierta_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '—'}</div>
-        </div>`;
-    });
-    html += '</div>';
+    html+=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div class="caja-turno-info"><div class="dot-green"></div><span style="font-weight:700;font-size:17px">Caja abierta</span></div>
+          <div style="font-size:12px;color:#64748b">Fondo: ${fmt(turno.fondo_inicial||0)}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost-light" onclick="toggleResumen()">Ver detalle</button>
+          <button class="btn-red" onclick="cerrarTurno()">Cerrar turno</button>
+        </div>
+      </div>
+      <div class="resumen-grid">
+        ${[{v:fmt(totalNeto),l:'Total cobrado',bg:'#f0fdf4',c:'#15803d',b:'#86efac'},
+           {v:cerradas.length,l:'Comandas',bg:'#eff6ff',c:'#1d4ed8',b:'#93c5fd'},
+           {v:fmt(totalDesc),l:'Descuentos',bg:'#fdf4ff',c:'#86198f',b:'#e879f9'}
+          ].map(x=>`<div class="resumen-item" style="background:${x.bg};border-color:${x.b}">
+            <div style="font-size:20px;font-weight:800;color:${x.c}">${x.v}</div>
+            <div style="font-size:12px;color:#64748b">${x.l}</div>
+          </div>`).join('')}
+      </div>
+      <div id="resumen-detail" style="display:none">
+        ${renderResumenCaja(turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas)}
+      </div></div>`;
   }
-  el.innerHTML = html;
+
+  // Mesas en cuenta
+  if(enCuenta.length){
+    html+=`<div class="card"><div class="card-title" style="margin-bottom:12px">🔔 Mesas pidieron la cuenta (${enCuenta.length})</div>
+    <div class="cuenta-cards">
+      ${enCuenta.map(c=>{
+        const mesa=S.mesas.find(m=>m.id===c.mesa_id);
+        return `<div class="cuenta-card" onclick="abrirModalCobrar(${c.id})">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-weight:700;font-size:15px">${mesa?mesaLabel(mesa):`Mesa ${c.mesa_id}`}</span>
+            <span style="font-size:11px;background:#ede9fe;color:#7c3aed;border-radius:20px;padding:2px 8px;font-weight:600">cuenta</span>
+          </div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:8px">Mozo: ${c.mozo_nombre||'—'}</div>
+          <div style="font-size:20px;font-weight:800;color:#7c3aed">${fmt(c.total)}</div>
+          <button class="btn-primary" style="margin-top:10px;padding:10px" onclick="event.stopPropagation();abrirModalCobrar(${c.id})">Cobrar</button>
+        </div>`;
+      }).join('')}
+    </div></div>`;
+  }
+
+  // Mapa
+  html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="card-title">🗺️ Salón</div>
+    <button class="btn-ghost-light btn-sm" onclick="loadAll().then(renderMain)">↻</button>
+  </div>
+  <div class="pills-row">${renderPills()}</div>
+  <div style="overflow-x:auto">${renderMapa(false)}</div>
+  <div class="barra-ref" style="margin-top:8px"><span>BARRA</span></div></div>`;
+
+  el.innerHTML=html;
 }
 
-// ── CLICK MESA ───────────────────────────────────────
-function clickMesa(mesaId) {
-  const mesa = STATE.mesas.find(m => m.id === mesaId);
-  if (!mesa) return;
-  STATE.selMesaId = mesaId;
-  const cmd = STATE.comandas.find(c => c.mesa_id === mesaId && c.estado !== 'cerrada');
+function renderResumenCaja(fondo,totalNeto,totalDesc,porMetodo,cerradas){
+  const totalBruto=totalNeto+totalDesc;
+  const activos=METODOS.filter(m=>porMetodo[m]>0);
+  return `
+    ${activos.length?`<div style="margin-bottom:14px">
+      <div style="font-weight:600;font-size:14px;color:#475569;margin-bottom:8px">Por método de pago</div>
+      <div class="metodo-grid">
+        ${activos.map(m=>`<div class="metodo-card"><div style="font-size:18px">${METODO_ICONS[m]}</div><div style="font-weight:700;font-size:15px">${fmt(porMetodo[m])}</div><div style="font-size:12px;color:#64748b">${m}</div></div>`).join('')}
+      </div></div>`:''}
+    <div style="background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid #e2e8f0">
+      ${[['Fondo inicial',fmt(fondo),'#475569'],['Total bruto',fmt(totalBruto),'#1e293b'],['Descuentos','- '+fmt(totalDesc),'#f97316'],['Total neto',fmt(totalNeto),'#22c55e'],['Total en caja',fmt(Number(fondo)+totalNeto),'#3b82f6']].map(([l,v,c])=>`
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9">
+          <span style="font-size:14px;color:#64748b">${l}</span><span style="font-size:14px;font-weight:700;color:${c}">${v}</span>
+        </div>`).join('')}
+    </div>
+    ${cerradas.length?`<div>
+      <div style="font-weight:600;font-size:14px;color:#475569;margin-bottom:8px">Comandas cobradas</div>
+      <div style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+        ${cerradas.map(c=>{const m=S.mesas.find(ms=>ms.id===c.mesa_id);return `
+          <div class="cmd-row">
+            <div><span style="font-weight:600;font-size:14px">${m?mesaLabel(m):`Mesa ${c.mesa_id}`}</span>
+              ${c.mozo_nombre?`<span style="font-size:11px;color:#64748b;margin-left:6px">👤${c.mozo_nombre}</span>`:''}
+              ${c.cajero_nombre?`<span style="font-size:11px;color:#64748b;margin-left:6px">💰${c.cajero_nombre}</span>`:''}
+            </div>
+            <div style="text-align:right"><div style="font-weight:700;color:#22c55e">${fmt(c.total_final||0)}</div>
+              <div style="font-size:11px;color:#64748b">${METODO_ICONS[c.metodo_pago]||''} ${c.metodo_pago||'—'}</div>
+            </div>
+          </div>`}).join('')}
+      </div></div>`:''}`;
+}
 
-  if (ME.rol === 'cajero' || ME.rol === 'admin') {
-    if (cmd && (cmd.estado === 'cuenta' || cmd.estado === 'abierta')) {
-      abrirModalCobrar(cmd);
-    } else if (!cmd && mesa.status === 'libre') {
-      toast('Mesa libre', 'info');
+function toggleResumen(){
+  const el=document.getElementById('resumen-detail');
+  if(!el) return;
+  el.style.display=el.style.display==='none'?'':'none';
+}
+
+// ── VISTA ADMIN ──────────────────────────────────────
+function renderAdmin(el){
+  const activas=S.comandas.filter(c=>c.estado!=='cerrada').length;
+  const cats=[...new Set(S.menu.map(m=>m.categoria))];
+  el.innerHTML=`
+    <div class="metricas-grid">
+      ${[{icon:'💰',label:'Total del turno',val:fmt(0),bg:'#f0fdf4',border:'#86efac',color:'#15803d'},
+         {icon:'🧾',label:'Comandas cobradas',val:0,bg:'#eff6ff',border:'#93c5fd',color:'#1d4ed8'},
+         {icon:'👥',label:'Comensales',val:0,bg:'#fff7ed',border:'#fdba74',color:'#c2410c'},
+         {icon:'🏷️',label:'Descuentos',val:fmt(0),bg:'#fdf4ff',border:'#e879f9',color:'#86198f'},
+      ].map(c=>`<div class="metrica-card" style="background:${c.bg};border-color:${c.border}">
+        <div class="metrica-icon">${c.icon}</div>
+        <div class="metrica-val" style="color:${c.color}">${c.val}</div>
+        <div class="metrica-label">${c.label}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Mapa -->
+    <div class="desplegable" id="desp-mapa">
+      <button class="desp-btn" onclick="toggleDesp('mapa')">
+        <div class="desp-left"><span class="desp-icon">🗺️</span>
+          <div><div class="desp-title">Mapa del salón</div><div class="desp-sub">${activas} activas</div></div>
+        </div>
+        <div class="desp-arrow" id="arr-mapa">▼</div>
+      </button>
+      <div class="desp-body" id="body-mapa">
+        <div class="desp-content">
+          <div class="pills-row">${renderPills()}</div>
+          <div style="overflow-x:auto">${renderMapa(false)}</div>
+          <div class="barra-ref" style="margin-top:8px"><span>BARRA</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usuarios -->
+    <div class="desplegable" id="desp-users">
+      <button class="desp-btn" onclick="toggleDesp('users')">
+        <div class="desp-left"><span class="desp-icon">👤</span>
+          <div><div class="desp-title">Usuarios</div><div class="desp-sub">${S.usuarios.length} registrados</div></div>
+        </div>
+        <div class="desp-arrow" id="arr-users">▼</div>
+      </button>
+      <div class="desp-body" id="body-users">
+        <div class="desp-content">
+          <div style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px;margin-bottom:14px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:12px">➕ Nuevo usuario</div>
+            <div style="margin-bottom:10px"><label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:4px">Nombre completo</label>
+              <input id="nu-nombre" placeholder="Ej: Juan García"/></div>
+            <div class="form-grid-2" style="margin-bottom:10px">
+              <div><label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:4px">Usuario</label>
+                <input id="nu-usuario" placeholder="Ej: mozo2"/></div>
+              <div><label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:4px">Contraseña</label>
+                <input id="nu-clave" type="password" placeholder="••••••••"/></div>
+            </div>
+            <div style="margin-bottom:12px"><label style="font-size:12px;color:#64748b;font-weight:600;display:block;margin-bottom:6px">Rol</label>
+              <div style="display:flex;gap:8px">
+                ${['mozo','cajero','admin'].map(r=>`<button onclick="selectRolNuevo('${r}')" id="rolbtn-${r}"
+                  style="flex:1;padding:9px;border-radius:9px;border:none;font-weight:600;font-size:13px;cursor:pointer;
+                  background:${r==='mozo'?'#1e293b':'#f1f5f9'};color:${r==='mozo'?'#fff':'#475569'}">${ROL_LABELS[r]}</button>`).join('')}
+              </div>
+            </div>
+            <div id="nu-err" style="display:none;background:#fee2e2;border-radius:8px;padding:8px 12px;font-size:12px;color:#dc2626;font-weight:600;margin-bottom:10px"></div>
+            <button class="btn-primary" onclick="crearUsuarioAdmin()">Crear usuario</button>
+          </div>
+          <div id="lista-usuarios">
+            ${S.usuarios.map(u=>`
+              <div class="user-row">
+                <div class="user-av">${u.rol==='admin'?'⚙️':u.rol==='cajero'?'💰':'🍽️'}</div>
+                <div class="user-info">
+                  <div class="user-nombre">${u.nombre||u.usuario}</div>
+                  <div class="user-sub">@${u.usuario||'—'} · ${ROL_LABELS[u.rol]||u.rol}</div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Menú -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">➕ Nuevo producto</div>
+      <div class="form-grid-2">
+        <input id="mp-nombre" placeholder="Nombre"/>
+        <input id="mp-precio" placeholder="Precio" type="number"/>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <select id="mp-cat" style="flex:1">
+          <option value="">-- Categoría --</option>
+          ${cats.map(c=>`<option>${c}</option>`).join('')}
+        </select>
+        <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+        <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+      </div>
+      <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
+    </div>
+
+    ${cats.map(cat=>{
+      const prods=S.menu.filter(m=>m.categoria===cat);
+      return `<div class="card" style="margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:10px">${cat}</div>
+        ${prods.map(p=>`<div class="prod-row">
+          <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
+          <span class="prod-precio">${fmt(p.precio)}</span>
+          <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
+          <button class="btn-sm" style="background:${p.disponible?'#fee2e2':'#dcfce7'};color:${p.disponible?'#dc2626':'#16a34a'}"
+            onclick="toggleProducto(${p.id},${p.disponible})">${p.disponible?'❌':'✅'}</button>
+        </div>`).join('')}
+      </div>`;
+    }).join('')}
+
+    <!-- Historial -->
+    <div class="desplegable" id="desp-hist">
+      <button class="desp-btn" onclick="toggleDesp('hist');loadHist()">
+        <div class="desp-left"><span class="desp-icon">📊</span>
+          <div><div class="desp-title">Historial de comandas</div><div class="desp-sub">Últimas cerradas</div></div>
+        </div>
+        <div class="desp-arrow" id="arr-hist">▼</div>
+      </button>
+      <div class="desp-body" id="body-hist"><div class="desp-content" id="hist-content"></div></div>
+    </div>`;
+
+  // Inicializar rol seleccionado
+  S._rolNuevo='mozo';
+}
+
+let _histLoaded=false;
+async function loadHist(){
+  if(_histLoaded) return;
+  _histLoaded=true;
+  const el=document.getElementById('hist-content');
+  el.innerHTML='<div class="empty"><div class="spinner" style="margin:auto"></div></div>';
+  try{
+    const hist=await api('GET','/api/restaurante/comandas?estado=cerrada');
+    if(!hist.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>Sin comandas cerradas</p></div>';return;}
+    el.innerHTML=`<div style="overflow-x:auto"><table class="hist-table">
+      <thead><tr><th>#</th><th>Mesa</th><th>Mozo</th><th>Cajero</th><th>Total</th><th>Pago</th></tr></thead>
+      <tbody>${hist.slice(0,50).map(c=>{const m=S.mesas.find(x=>x.id===c.mesa_id);return `<tr>
+        <td>#${c.id}</td><td>${m?mesaLabel(m):`Mesa ${c.mesa_id}`}</td>
+        <td>${c.mozo_nombre||'—'}</td><td>${c.cajero_nombre||'—'}</td>
+        <td style="font-weight:700;color:#22c55e">${fmt(c.total_final||0)}</td>
+        <td>${METODO_ICONS[c.metodo_pago]||''} ${c.metodo_pago||'—'}</td>
+      </tr>`;}).join('')}</tbody></table></div>`;
+  }catch(e){el.innerHTML=`<div class="empty"><p>${e.message}</p></div>`;}
+}
+
+function toggleDesp(id){
+  const body=document.getElementById('body-'+id);
+  const arr=document.getElementById('arr-'+id);
+  body.classList.toggle('open');
+  arr.classList.toggle('open');
+}
+
+function selectRolNuevo(rol){
+  S._rolNuevo=rol;
+  ['mozo','cajero','admin'].forEach(r=>{
+    const b=document.getElementById('rolbtn-'+r);
+    if(b){b.style.background=r===rol?'#1e293b':'#f1f5f9';b.style.color=r===rol?'#fff':'#475569';}
+  });
+}
+
+async function crearUsuarioAdmin(){
+  const nombre=document.getElementById('nu-nombre').value.trim();
+  const usuario=document.getElementById('nu-usuario').value.trim();
+  const clave=document.getElementById('nu-clave').value;
+  const rol=S._rolNuevo||'mozo';
+  const errEl=document.getElementById('nu-err');
+  errEl.style.display='none';
+  if(!nombre||!usuario||!clave){errEl.textContent='Completá nombre, usuario y contraseña';errEl.style.display='block';return;}
+  loading(true);
+  try{
+    await api('POST','/api/portal/usuarios',{nombre,usuario,password:clave,rol});
+    toast('Usuario creado ✓','ok');
+    document.getElementById('nu-nombre').value='';
+    document.getElementById('nu-usuario').value='';
+    document.getElementById('nu-clave').value='';
+    S.usuarios=await api('GET','/api/portal/usuarios').catch(()=>S.usuarios);
+    renderMain();
+  }catch(e){errEl.textContent=e.message;errEl.style.display='block';}
+  finally{loading(false);}
+}
+
+// ── MENÚ ADMIN ───────────────────────────────────────
+let _editProdId=null;
+function editarProducto(id){
+  const p=S.menu.find(m=>m.id===id); if(!p) return;
+  _editProdId=id;
+  document.getElementById('mp-nombre').value=p.nombre;
+  document.getElementById('mp-precio').value=p.precio;
+  document.getElementById('mp-cat').value=p.categoria;
+  document.getElementById('mp-btn').textContent='Guardar cambios';
+}
+function agregarCategoria(){
+  const v=document.getElementById('mp-cat-nueva').value.trim(); if(!v) return;
+  const sel=document.getElementById('mp-cat');
+  const opt=document.createElement('option');
+  opt.value=opt.textContent=v; sel.appendChild(opt); sel.value=v;
+  document.getElementById('mp-cat-nueva').value='';
+}
+async function guardarProducto(){
+  const nombre=document.getElementById('mp-nombre').value.trim();
+  const precio=parseFloat(document.getElementById('mp-precio').value);
+  const categoria=document.getElementById('mp-cat').value||document.getElementById('mp-cat-nueva').value.trim();
+  if(!nombre||!precio||!categoria){toast('Completá todos los campos','err');return;}
+  loading(true);
+  try{
+    if(_editProdId){
+      await api('PUT',`/api/restaurante/menu/${_editProdId}`,{nombre,precio,categoria});
+      toast('Producto actualizado ✓','ok'); _editProdId=null;
+      document.getElementById('mp-btn').textContent='Agregar';
+    } else {
+      await api('POST','/api/restaurante/menu',{nombre,precio,categoria});
+      toast('Producto agregado ✓','ok');
     }
+    document.getElementById('mp-nombre').value='';
+    document.getElementById('mp-precio').value='';
+    await loadAll(); renderMain();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+async function toggleProducto(id,actual){
+  loading(true);
+  try{
+    await api('PUT',`/api/restaurante/menu/${id}`,{disponible:actual?0:1});
+    toast(actual?'Producto desactivado':'Producto activado','ok');
+    await loadAll(); renderMain();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+
+// ════════════════════════════════════
+// CLICK MESA
+// ════════════════════════════════════
+function clickMesa(mesaId){
+  const mesa=S.mesas.find(m=>m.id===mesaId); if(!mesa) return;
+  S.selMesaId=mesaId;
+  const cmd=S.comandas.find(c=>c.mesa_id===mesaId&&c.estado!=='cerrada');
+  if(ME.rol==='cajero'||ME.rol==='admin'){
+    if(cmd&&(cmd.estado==='cuenta'||cmd.estado==='abierta')) abrirModalCobrar(cmd.id);
     return;
   }
-
-  // MOZO
-  if (mesa.status === 'libre' || mesa.status === 'reservada') {
-    document.getElementById('modal-abrir-title').textContent = `Nueva comanda — Mesa ${mesa.numero || mesaId}`;
-    openModal('modal-abrir');
-  } else if (cmd) {
+  // Mozo
+  if(mesa.status==='libre'||mesa.status==='reservada'){
+    document.getElementById('m-abrir-title').textContent=`Nueva comanda — ${mesaLabel(mesa)}`;
+    openModal('m-abrir');
+  } else if(cmd){
     verComanda(cmd.id);
   }
 }
 
-// ── ABRIR COMANDA ────────────────────────────────────
-async function confirmarAbrirComanda() {
-  const comensales = document.getElementById('abrir-comensales').value;
-  const obs        = document.getElementById('abrir-obs').value;
+// ════════════════════════════════════
+// COMANDA
+// ════════════════════════════════════
+async function confirmarAbrirComanda(){
+  const coms=document.getElementById('ab-coms').value;
+  const obs =document.getElementById('ab-obs').value;
   loading(true);
-  try {
-    const cmd = await api('POST', '/api/restaurante/comandas', {
-      mesa_id: STATE.selMesaId, comensales: Number(comensales), observaciones: obs
-    });
-    closeModal('modal-abrir');
-    toast('Comanda abierta ✓', 'ok');
-    await loadAll();
-    renderCurrentTab();
-    // abrir la comanda recién creada
-    STATE.selCmdId = cmd.id;
-    await verComanda(cmd.id);
-  } catch(e) { toast(e.message, 'err'); }
-  finally { loading(false); }
+  try{
+    const cmd=await api('POST','/api/restaurante/comandas',{mesa_id:S.selMesaId,comensales:Number(coms),observaciones:obs});
+    closeModal('m-abrir');
+    toast('Comanda abierta ✓','ok');
+    await loadAll(); renderMain();
+    verComanda(cmd.id);
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
 
-// ── VER COMANDA ──────────────────────────────────────
-async function verComanda(cmdId) {
-  STATE.selCmdId = cmdId;
+async function verComanda(cmdId){
+  S.selCmdId=cmdId;
   loading(true);
-  try {
-    const cmd = await api('GET', `/api/restaurante/comandas/${cmdId}`);
-    const mesa = STATE.mesas.find(m => m.id === cmd.mesa_id);
-    document.getElementById('modal-comanda-title').textContent = `Mesa ${mesa?.numero || cmd.mesa_id} — Comanda #${cmd.id}`;
+  try{
+    const cmd=await api('GET',`/api/restaurante/comandas/${cmdId}`);
+    const mesa=S.mesas.find(m=>m.id===cmd.mesa_id);
+    const st=MESA_STATUS[mesa?.status]||MESA_STATUS.libre;
+    const canEdit=ME.rol==='mozo'||ME.rol==='admin';
+    const canCuenta=ME.rol==='mozo'&&cmd.estado==='abierta';
 
-    const canEdit = ME.rol === 'mozo' || ME.rol === 'admin';
-    const canPedirCuenta = ME.rol === 'mozo' && cmd.estado === 'abierta';
+    // Icono mesa en header
+    const dims=mesaDims(mesa?.tipo||'cuadrada');
+    document.getElementById('mc-mesa-icon').innerHTML=`<div style="width:36px;height:36px;border-radius:${mesa?.tipo==='redonda'?'50%':'8px'};
+      background:${st.bg};border:2px solid ${st.border};display:flex;align-items:center;justify-content:center">
+      <span style="font-weight:700;font-size:11px;color:${st.color}">${mesa?mesaLabel(mesa):''}</span></div>`;
+    document.getElementById('mc-title').textContent=mesa?mesaLabel(mesa):`Comanda #${cmd.id}`;
+    document.getElementById('mc-sub').textContent=`${st.label} · ${mesa?.tipo||''}`;
 
-    let itemsHtml = '';
-    if (!cmd.items || !cmd.items.length) {
-      itemsHtml = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:16px">Sin ítems aún</p>';
-    } else {
-      cmd.items.forEach(it => {
-        itemsHtml += `
-          <div class="item-row">
-            <span class="item-name">${it.nombre}</span>
-            <div class="item-qty">
-              ${canEdit ? `<button class="btn-qty" onclick="quitarItem(${cmdId},${it.id})">−</button>` : ''}
-              <span>${it.cantidad}</span>
-              ${canEdit ? `<button class="btn-qty" onclick="agregarItemExistente(${cmdId},${it.producto_id})">+</button>` : ''}
-            </div>
-            <span class="item-precio">${fmt(it.precio_unitario * it.cantidad)}</span>
-          </div>`;
-      });
-    }
+    // Botones header
+    const btnCambio=document.getElementById('mc-btn-cambio');
+    const btnImpr  =document.getElementById('mc-btn-imprimir');
+    btnCambio.style.display=canEdit&&cmd.estado==='abierta'?'':'none';
+    btnImpr.style.display  =(ME.rol==='cajero'||ME.rol==='admin')&&cmd.estado!=='cerrada'?'':'none';
+    S.ticketData={mesa,cmd};
 
-    let menuHtml = '';
-    if (canEdit && cmd.estado === 'abierta') {
-      const cats = ['Todas', ...new Set(STATE.menu.filter(m=>m.disponible).map(m=>m.categoria))];
-      menuHtml = `
-        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
-          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Agregar ítem</div>
-          <div class="menu-cats" id="mc-cats" style="padding:0;margin-bottom:8px">
-            ${cats.map((c,i) => `<button class="cat-btn${i===0?' active':''}" onclick="filtrarMenuModal('${c}',this)">${c}</button>`).join('')}
+    // Items
+    const items=cmd.items||[];
+    const itemsHTML=!items.length
+      ?'<p style="text-align:center;color:#94a3b8;padding:16px;font-size:13px">Sin ítems aún</p>'
+      :items.map(it=>`<div class="item-row">
+          <span class="item-name">${it.nombre}${it.nota?`<br><span style="font-size:11px;color:#94a3b8">📝 ${it.nota}</span>`:''}</span>
+          <div class="item-qty-ctrl">
+            ${canEdit&&cmd.estado==='abierta'?`<button class="qty-btn" onclick="quitarItem(${cmdId},${it.id})">−</button>`:''}
+            <span style="font-weight:700;min-width:20px;text-align:center">${it.cantidad}</span>
+            ${canEdit&&cmd.estado==='abierta'?`<button class="qty-btn" onclick="agregarItemExistente(${cmdId},${it.producto_id})">+</button>`:''}
           </div>
-          <div class="menu-grid" id="mc-grid" style="padding:0">
-            ${STATE.menu.filter(m=>m.disponible).map(m=>`
-              <div class="menu-item" onclick="agregarItem(${cmdId},${m.id})">
-                <div class="menu-item-name">${m.nombre}</div>
-                <div class="menu-item-cat">${m.categoria}</div>
-                <div class="menu-item-precio">${fmt(m.precio)}</div>
-              </div>`).join('')}
-          </div>
-        </div>`;
+          <span class="item-precio">${fmt(it.precio_unitario*it.cantidad)}</span>
+        </div>`).join('');
+
+    // Menú para agregar
+    let menuHTML='';
+    if(canEdit&&cmd.estado==='abierta'){
+      const cats=['Todas',...new Set(S.menu.filter(m=>m.disponible).map(m=>m.categoria))];
+      menuHTML=`<div style="margin-top:16px;border-top:2px solid #f1f5f9;padding-top:14px">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Agregar ítem</div>
+        <div class="nota-row"><input id="nota-item" placeholder="Nota para el próximo ítem (opcional)"/></div>
+        <div class="cats-row" id="mc-cats">
+          ${cats.map((c,i)=>`<button class="cat-pill${i===0?' active':''}" onclick="filtrarCatsMC('${c}',this)">${c}</button>`).join('')}
+        </div>
+        <div class="menu-grid" id="mc-menu-grid">
+          ${S.menu.filter(m=>m.disponible).map(m=>`
+            <div class="menu-item-btn" onclick="agregarItemConNota(${cmdId},${m.id})">
+              <div class="menu-item-nombre">${m.nombre}</div>
+              <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${m.categoria}</div>
+              <div class="menu-item-precio">${fmt(m.precio)}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
     }
 
-    let botonesHtml = '';
-    if (canPedirCuenta) {
-      botonesHtml += `<button class="btn-primary" style="background:#7c3aed;margin-top:12px" onclick="pedirCuenta(${cmdId})">Pedir la cuenta</button>`;
-    }
-    if ((ME.rol === 'mozo' || ME.rol === 'admin') && cmd.estado !== 'cerrada') {
-      botonesHtml += `<button class="btn-ghost" style="margin-top:8px;width:100%" onclick="verCliente(${cmdId})">👁️ Vista cliente</button>`;
-    }
+    // Botones acción
+    let accionHTML='';
+    if(canCuenta) accionHTML+=`<button class="btn-purple" style="margin-top:12px" onclick="pedirCuenta(${cmdId})">Pedir la cuenta</button>`;
+    if(canEdit&&cmd.estado!=='cerrada') accionHTML+=`<button class="btn-ghost-light" style="width:100%;margin-top:8px" onclick="verCliente(${cmdId})">👁️ Vista cliente</button>`;
 
-    document.getElementById('modal-comanda-body').innerHTML = `
-      <div class="comanda-info">
-        <div class="comanda-info-row"><span>Mesa</span><span>${mesa?.numero || cmd.mesa_id} ${mesa?.alias ? '('+mesa.alias+')' : ''}</span></div>
-        <div class="comanda-info-row"><span>Mozo</span><span>${cmd.mozo_nombre || '—'}</span></div>
-        <div class="comanda-info-row"><span>Comensales</span><span>${cmd.comensales || '—'}</span></div>
-        ${cmd.observaciones ? `<div class="comanda-info-row"><span>Obs.</span><span>${cmd.observaciones}</span></div>` : ''}
-        <div class="comanda-info-row"><span>Estado</span><span class="badge badge-${cmd.estado==='abierta'?'green':cmd.estado==='cuenta'?'purple':'blue'}">${cmd.estado}</span></div>
+    document.getElementById('mc-body').innerHTML=`
+      <div class="cmd-band">
+        ${cmd.comensales?`<span>👥 ${cmd.comensales} comensales</span>`:''}
+        ${cmd.mozo_nombre?`<span>👤 ${cmd.mozo_nombre}</span>`:''}
+        ${cmd.observaciones?`<span>📝 ${cmd.observaciones}</span>`:''}
+        <span style="margin-left:auto;font-size:11px;background:${st.bg};color:${st.color};border-radius:20px;padding:2px 8px;font-weight:600">${cmd.estado}</span>
       </div>
-      <div class="items-list">${itemsHtml}</div>
-      <div class="comanda-total"><span>Total</span><span>${fmt(cmd.total)}</span></div>
-      ${botonesHtml}
-      ${menuHtml}`;
+      <div>${itemsHTML}</div>
+      <div class="comanda-total-row"><span>Total</span><span>${fmt(cmd.total)}</span></div>
+      ${accionHTML}${menuHTML}`;
 
-    openModal('modal-comanda');
-  } catch(e) { toast(e.message, 'err'); }
-  finally { loading(false); }
+    openModal('m-comanda');
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
 
-function filtrarMenuModal(cat, btn) {
-  document.querySelectorAll('#mc-cats .cat-btn').forEach(b=>b.classList.remove('active'));
+function filtrarCatsMC(cat,btn){
+  document.querySelectorAll('#mc-cats .cat-pill').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelectorAll('#mc-grid .menu-item').forEach(el => {
-    const c = el.querySelector('.menu-item-cat').textContent;
-    el.style.display = (cat==='Todas' || c===cat) ? '' : 'none';
+  document.querySelectorAll('#mc-menu-grid .menu-item-btn').forEach(el=>{
+    const c=el.querySelector('div:nth-child(2)').textContent;
+    el.style.display=(cat==='Todas'||c===cat)?'':'none';
   });
 }
 
-async function agregarItem(cmdId, prodId) {
+async function agregarItemConNota(cmdId,prodId){
+  const nota=document.getElementById('nota-item')?.value||'';
   loading(true);
-  try {
-    await api('POST', `/api/restaurante/comandas/${cmdId}/items`, { producto_id: prodId, cantidad: 1 });
-    toast('Ítem agregado ✓', 'ok');
-    await loadAll();
-    await verComanda(cmdId);
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
+  try{
+    await api('POST',`/api/restaurante/comandas/${cmdId}/items`,{producto_id:prodId,cantidad:1,nota});
+    toast('Ítem agregado ✓','ok');
+    await loadAll(); verComanda(cmdId);
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
+async function agregarItemExistente(cmdId,prodId){ await agregarItemConNota(cmdId,prodId); }
 
-async function agregarItemExistente(cmdId, prodId) {
-  await agregarItem(cmdId, prodId);
-}
-
-async function quitarItem(cmdId, itemId) {
+async function quitarItem(cmdId,itemId){
   loading(true);
-  try {
-    await api('DELETE', `/api/restaurante/comandas/${cmdId}/items/${itemId}`);
-    toast('Ítem quitado', 'ok');
-    await loadAll();
-    await verComanda(cmdId);
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
+  try{
+    await api('DELETE',`/api/restaurante/comandas/${cmdId}/items/${itemId}`);
+    toast('Ítem quitado','ok');
+    await loadAll(); verComanda(cmdId);
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
 
-async function pedirCuenta(cmdId) {
+async function pedirCuenta(cmdId){
   loading(true);
-  try {
-    await api('PUT', `/api/restaurante/comandas/${cmdId}/pedir-cuenta`);
-    toast('Cuenta solicitada ✓', 'ok');
-    closeModal('modal-comanda');
-    await loadAll();
-    renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
+  try{
+    await api('PUT',`/api/restaurante/comandas/${cmdId}/pedir-cuenta`);
+    toast('Cuenta solicitada ✓','ok');
+    closeModal('m-comanda');
+    await loadAll(); renderMain();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
 
-// ── CAJERO: CAJA ─────────────────────────────────────
-function renderCaja(el) {
-  const turno = STATE.turno;
-  if (!turno) {
-    el.innerHTML = `
-      <div style="padding:32px 20px;max-width:400px;margin:auto">
-        <div class="empty-state" style="margin-bottom:24px"><div class="icon">💰</div><p>No hay turno abierto</p></div>
-        <div class="form-group"><label>Fondo inicial</label><input type="number" id="fondo-inicial" value="0" min="0" step="100"/></div>
-        <button class="btn-primary" onclick="abrirTurno()">Abrir turno de caja</button>
-      </div>`;
-    return;
-  }
+// ════════════════════════════════════
+// CAMBIO DE MESA
+// ════════════════════════════════════
+function abrirModalCambioMesa(){
+  const libres=S.mesas.filter(m=>m.status==='libre');
+  S.destCambioId=null;
+  const el=document.getElementById('m-cambio-mesas');
+  el.innerHTML=!libres.length
+    ?'<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:24px">No hay mesas libres</div>'
+    :libres.map(m=>`<button onclick="selDestCambio(${m.id},this)"
+      style="height:64px;border-radius:${m.tipo==='redonda'?'50%':'10px'};border:2.5px solid #16a34a;
+      background:#dcfce7;cursor:pointer;font-weight:800;font-size:13px;color:#15803d">${mesaLabel(m)}</button>`).join('');
+  document.getElementById('m-cambio-btn').disabled=true;
+  closeModal('m-comanda');
+  openModal('m-cambio');
+}
+function selDestCambio(id,btn){
+  S.destCambioId=id;
+  document.querySelectorAll('#m-cambio-mesas button').forEach(b=>{b.style.background='#dcfce7';b.style.borderColor='#16a34a';b.style.color='#15803d';});
+  btn.style.background='#3b82f6'; btn.style.borderColor='#3b82f6'; btn.style.color='#fff';
+  document.getElementById('m-cambio-btn').disabled=false;
+}
+async function confirmarCambioMesa(){
+  if(!S.destCambioId||!S.selCmdId) return;
+  loading(true);
+  try{
+    await api('PUT',`/api/restaurante/comandas/${S.selCmdId}/cambiar-mesa`,{nueva_mesa_id:S.destCambioId});
+    toast('Mesa cambiada ✓','ok');
+    closeModal('m-cambio');
+    await loadAll(); renderMain();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
 
-  // Comandas en cuenta
-  const enCuenta = STATE.comandas.filter(c => c.estado === 'cuenta');
-  const abiertas  = STATE.comandas.filter(c => c.estado === 'abierta');
-
-  let html = `
-    <div class="turno-banner">
-      <div>
-        <div style="font-weight:700;margin-bottom:2px">Turno abierto</div>
-        <div class="turno-info">Cajero: <strong>${turno.cajero_nombre || '—'}</strong> · Desde: ${new Date(turno.abierto_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</div>
-      </div>
-      <button class="btn-ghost btn-sm" onclick="cerrarTurno()" style="color:var(--red)">Cerrar turno</button>
+// ════════════════════════════════════
+// COBRAR
+// ════════════════════════════════════
+function abrirModalCobrar(cmdId){
+  const cmd=S.comandas.find(c=>c.id===cmdId); if(!cmd) return;
+  S.selCmdId=cmdId;
+  const mesa=S.mesas.find(m=>m.id===cmd.mesa_id);
+  document.getElementById('m-cobrar-title').textContent=`Cobrar — ${mesa?mesaLabel(mesa):`Mesa ${cmd.mesa_id}`}`;
+  const items=cmd.items||[];
+  document.getElementById('m-cobrar-body').innerHTML=`
+    <div style="margin-bottom:12px">
+      ${items.map(i=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:13px">
+        <span>${i.nombre} x${i.cantidad}</span><span style="font-weight:600">${fmt(i.precio_unitario*i.cantidad)}</span>
+      </div>`).join('')}
     </div>
-    <div style="padding:0 20px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Mesas que pidieron la cuenta (${enCuenta.length})</div>
-    </div>`;
-
-  if (!enCuenta.length) {
-    html += `<div class="empty-state"><div class="icon">✅</div><p>Sin cuentas pendientes</p></div>`;
-  } else {
-    html += `<div class="cajero-grid">`;
-    enCuenta.forEach(c => {
-      const mesa = STATE.mesas.find(m => m.id === c.mesa_id);
-      html += `
-        <div class="cuenta-card" onclick="abrirModalCobrar(STATE.comandas.find(x=>x.id===${c.id}))" style="cursor:pointer;border-color:#a78bfa44">
-          <div class="cuenta-card-header">
-            <span class="cuenta-mesa-num">Mesa ${mesa?.numero||c.mesa_id}</span>
-            <span class="badge badge-purple">cuenta</span>
-          </div>
-          <div class="cuenta-mozo">Mozo: ${c.mozo_nombre||'—'}</div>
-          <div class="cuenta-items-preview">${(c.items||[]).slice(0,3).map(i=>`${i.nombre} x${i.cantidad}`).join(', ')||'—'}</div>
-          <div class="cuenta-total-big">${fmt(c.total)}</div>
-          <button class="btn-primary btn-sm" style="margin-top:8px" onclick="event.stopPropagation();abrirModalCobrar(STATE.comandas.find(x=>x.id===${c.id}))">Cobrar</button>
-        </div>`;
-    });
-    html += '</div>';
-  }
-
-  // Resumen ventas turno
-  const totalVentas = (turno.cerradas||[]).reduce((s,c)=>s+(Number(c.total_final)||0), 0);
-  html += `
-    <div style="padding:16px 20px;margin-top:8px;border-top:1px solid var(--border)">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Resumen del turno</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
-        <div style="background:var(--surface2);border-radius:10px;padding:14px">
-          <div style="font-size:11px;color:var(--muted)">Comandas cerradas</div>
-          <div style="font-size:22px;font-weight:700;color:var(--green)">${(turno.cerradas||[]).length}</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:14px">
-          <div style="font-size:11px;color:var(--muted)">Total vendido</div>
-          <div style="font-size:18px;font-weight:700;color:var(--accent)">${fmt(totalVentas)}</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:14px">
-          <div style="font-size:11px;color:var(--muted)">Mesas abiertas</div>
-          <div style="font-size:22px;font-weight:700;color:var(--yellow)">${abiertas.length}</div>
-        </div>
-      </div>
-    </div>`;
-
-  el.innerHTML = html;
-}
-
-async function abrirTurno() {
-  const fondo = document.getElementById('fondo-inicial').value;
-  loading(true);
-  try {
-    await api('POST', '/api/restaurante/turno/abrir', { fondo_inicial: Number(fondo) });
-    toast('Turno abierto ✓', 'ok');
-    await loadAll();
-    renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
-}
-
-async function cerrarTurno() {
-  if (!confirm('¿Cerrar el turno de caja?')) return;
-  loading(true);
-  try {
-    await api('POST', '/api/restaurante/turno/cerrar');
-    toast('Turno cerrado', 'ok');
-    await loadAll();
-    renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
-}
-
-// ── MODAL COBRAR ─────────────────────────────────────
-function abrirModalCobrar(cmd) {
-  if (!cmd) return;
-  STATE.selCmdId = cmd.id;
-  const mesa = STATE.mesas.find(m => m.id === cmd.mesa_id);
-  document.getElementById('modal-cobrar-title').textContent = `Cobrar — Mesa ${mesa?.numero||cmd.mesa_id}`;
-
-  const itemsHtml = (cmd.items||[]).map(i =>
-    `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
-      <span>${i.nombre} x${i.cantidad}</span><span>${fmt(i.precio_unitario*i.cantidad)}</span>
-    </div>`
-  ).join('');
-
-  document.getElementById('modal-cobrar-body').innerHTML = `
-    <div style="margin-bottom:12px">${itemsHtml}</div>
-    <div style="font-size:16px;font-weight:700;display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);margin-bottom:14px">
-      <span>Total</span><span id="cobrar-total-display">${fmt(cmd.total)}</span>
+    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;padding:10px 0;border-top:2px solid #f1f5f9;margin-bottom:14px">
+      <span>Total</span><span>${fmt(cmd.total)}</span>
     </div>
-    <div class="form-group">
-      <label>Descuento (%)</label>
-      <input type="number" id="cobrar-desc" value="0" min="0" max="100" oninput="actualizarTotalCobrar(${cmd.total})"/>
+    <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Descuento (%)</label>
+      <input type="number" id="cob-desc" value="0" min="0" max="100" oninput="updCobrarTotal(${cmd.total})"/></div>
+    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px;color:#22c55e">
+      <span>Total final</span><span id="cob-final">${fmt(cmd.total)}</span>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin-bottom:14px;color:var(--accent)">
-      <span>Total final</span><span id="cobrar-total-final">${fmt(cmd.total)}</span>
-    </div>
-    <div class="form-group">
-      <label>Método de pago</label>
-      <select id="cobrar-metodo">
-        <option>Efectivo</option>
-        <option>Tarjeta débito</option>
-        <option>Tarjeta crédito</option>
-        <option>Transferencia</option>
-        <option>QR / MP</option>
-      </select>
-    </div>
-    <button class="btn-primary" onclick="confirmarCobro(${cmd.id}, ${cmd.total})">✓ Cobrar y cerrar</button>`;
-
-  openModal('modal-cobrar');
-}
-
-function actualizarTotalCobrar(total) {
-  const desc  = Number(document.getElementById('cobrar-desc').value)||0;
-  const final = total * (1 - desc/100);
-  document.getElementById('cobrar-total-final').textContent = fmt(final);
-}
-
-async function confirmarCobro(cmdId, totalOriginal) {
-  const desc   = Number(document.getElementById('cobrar-desc').value)||0;
-  const metodo = document.getElementById('cobrar-metodo').value;
-  loading(true);
-  try {
-    await api('POST', `/api/restaurante/comandas/${cmdId}/cerrar`, {
-      metodo_pago: metodo, descuento: desc
-    });
-    toast('Cobrado y cerrado ✓', 'ok');
-    closeModal('modal-cobrar');
-    await loadAll();
-    renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
-}
-
-// ── ADMIN: MENÚ ──────────────────────────────────────
-function renderAdminMenu(el) {
-  let html = `
-    <div class="admin-sections">
-      <div class="admin-section">
-        <div class="admin-section-header" onclick="toggleSection('s-menu')">
-          <span class="admin-section-title">🍽️ Menú (${STATE.menu.length} productos)</span>
-          <span>▾</span>
-        </div>
-        <div class="admin-section-body" id="s-menu">
-          <button class="btn-success btn-sm" onclick="abrirNuevoMenuItem()">+ Nuevo producto</button>
-          <table class="admin-table">
-            <thead><tr><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Estado</th><th></th></tr></thead>
-            <tbody>
-              ${STATE.menu.map(m=>`
-                <tr>
-                  <td>${m.nombre}</td>
-                  <td>${m.categoria}</td>
-                  <td>${fmt(m.precio)}</td>
-                  <td><span class="badge badge-${m.disponible?'green':'red'}">${m.disponible?'activo':'inactivo'}</span></td>
-                  <td style="display:flex;gap:4px">
-                    <button class="btn-warning btn-sm" onclick="editarMenuItem(${m.id})">✏️</button>
-                    <button class="btn-${m.disponible?'danger':'success'} btn-sm" onclick="toggleMenuItem(${m.id},${m.disponible})">${m.disponible?'❌':'✅'}</button>
-                  </td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="admin-section">
-        <div class="admin-section-header" onclick="toggleSection('s-usuarios')">
-          <span class="admin-section-title">👤 Usuarios (${STATE.usuarios.length})</span>
-          <span>▾</span>
-        </div>
-        <div class="admin-section-body" id="s-usuarios">
-          <button class="btn-success btn-sm" onclick="openModal('modal-usuario')">+ Nuevo usuario</button>
-          <table class="admin-table">
-            <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th></tr></thead>
-            <tbody>
-              ${STATE.usuarios.map(u=>`
-                <tr>
-                  <td>${u.nombre||'—'}</td>
-                  <td>${u.email||'—'}</td>
-                  <td><span class="badge badge-blue">${u.rol}</span></td>
-                  <td><span class="badge badge-${u.activo?'green':'red'}">${u.activo?'activo':'inactivo'}</span></td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>`;
-  el.innerHTML = html;
-}
-
-// ── ADMIN: MESAS ─────────────────────────────────────
-// ── ADMIN: MAPA EDITABLE ─────────────────────────────
-let _unirSel = [];
-
-function renderAdminMesas(el) {
-  el.innerHTML = `
-    <div class="salon-toolbar">
-      <button class="btn-success btn-sm" onclick="abrirModalNuevaMesa()">+ Mesa</button>
-      <div class="salon-sep"></div>
-      <button class="btn-ghost btn-sm" id="btn-unir" onclick="toggleModoUnir()" title="Seleccioná 2 cuadradas para unirlas">🔗 Unir</button>
-      <button class="btn-ghost btn-sm" onclick="refreshData();renderCurrentTab()">↻</button>
-      <div class="salon-legend" style="margin-left:auto">
-        <span style="font-size:11px;color:var(--muted)">Arrastrá para mover · Doble clic para editar</span>
+    <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:8px">Método de pago</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">
+        ${METODOS.map((m,i)=>`<button id="mpbtn-${i}" onclick="selMetodo(${i})"
+          style="padding:10px;border-radius:10px;border:1.5px solid ${i===0?'#3b82f6':'#e2e8f0'};
+          background:${i===0?'#eff6ff':'#fff'};font-size:12px;font-weight:600;
+          color:${i===0?'#3b82f6':'#475569'};cursor:pointer">
+          ${METODO_ICONS[m]} ${m}</button>`).join('')}
       </div>
     </div>
-    <div class="salon-wrap">
-      <div class="salon-canvas" id="salon-canvas-ed" style="min-height:520px">
-        ${renderMesasSVG(true)}
-        <div class="salon-barra">— BARRA —</div>
-      </div>
-    </div>`;
+    <button class="btn-green" style="width:100%;padding:14px" onclick="confirmarCobro(${cmdId},${cmd.total})">✓ Cobrar y cerrar</button>`;
+  S._metodoIdx=0;
+  openModal('m-cobrar');
 }
-
-function toggleModoUnir() {
-  _unirSel = [];
-  const btn = document.getElementById('btn-unir');
-  STATE._modoUnir = !STATE._modoUnir;
-  if (STATE._modoUnir) {
-    btn.style.background = 'var(--accent)';
-    btn.style.color = '#0f172a';
-    toast('Seleccioná 2 mesas cuadradas para unir', 'info');
-    // Agregar listener de selección
-    document.querySelectorAll('.s-mesa').forEach(el => {
-      el.onclick = null;
-      el.ondblclick = null;
-      el.onclick = (e) => seleccionarParaUnir(parseInt(el.id.replace('sm-','')));
-    });
-  } else {
-    btn.style.background = '';
-    btn.style.color = '';
-    _unirSel = [];
-    renderCurrentTab();
-  }
+function updCobrarTotal(total){
+  const d=Number(document.getElementById('cob-desc').value)||0;
+  document.getElementById('cob-final').textContent=fmt(total*(1-d/100));
 }
-
-function seleccionarParaUnir(mesaId) {
-  const m = STATE.mesas.find(x=>x.id===mesaId);
-  if (!m) return;
-  if (m.tipo !== 'cuadrada') { toast('Solo podés unir mesas cuadradas','err'); return; }
-  const el = document.getElementById('sm-'+mesaId);
-  if (_unirSel.includes(mesaId)) {
-    _unirSel = _unirSel.filter(id=>id!==mesaId);
-    el.classList.remove('sel-unir');
-  } else {
-    if (_unirSel.length >= 2) { toast('Ya tenés 2 seleccionadas','err'); return; }
-    _unirSel.push(mesaId);
-    el.classList.add('sel-unir');
-  }
-  if (_unirSel.length === 2) {
-    setTimeout(() => confirmarUnion(), 200);
-  }
+function selMetodo(idx){
+  S._metodoIdx=idx;
+  METODOS.forEach((_,i)=>{
+    const b=document.getElementById(`mpbtn-${i}`);
+    if(!b) return;
+    b.style.borderColor=i===idx?'#3b82f6':'#e2e8f0';
+    b.style.background=i===idx?'#eff6ff':'#fff';
+    b.style.color=i===idx?'#3b82f6':'#475569';
+  });
 }
-
-async function confirmarUnion() {
-  const [idA, idB] = _unirSel;
-  const mA = STATE.mesas.find(m=>m.id===idA);
-  const mB = STATE.mesas.find(m=>m.id===idB);
-  const num = prompt(`Número para la mesa unida (M${mA.numero||mA.id} + M${mB.numero||mB.id}):`);
-  if (!num) { _unirSel=[]; renderCurrentTab(); return; }
+async function confirmarCobro(cmdId,totalOrig){
+  const desc=Number(document.getElementById('cob-desc').value)||0;
+  const metodo=METODOS[S._metodoIdx||0];
   loading(true);
-  try {
-    // Crear rectangular nueva en posición del par
-    const x = Math.min(mA.x||50, mB.x||50);
-    const y = Math.min(mA.y||50, mB.y||50);
-    await api('POST', '/api/restaurante/mesas', { numero:Number(num), tipo:'rectangular', alias:'', x, y });
-    // Eliminar las dos cuadradas
-    await api('DELETE', `/api/restaurante/mesas/${idA}`);
-    await api('DELETE', `/api/restaurante/mesas/${idB}`);
-    toast('Mesas unidas ✓', 'ok');
-    _unirSel = [];
-    STATE._modoUnir = false;
-    await loadAll(); renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
+  try{
+    await api('POST',`/api/restaurante/comandas/${cmdId}/cerrar`,{metodo_pago:metodo,descuento:desc});
+    toast('Cobrado ✓','ok');
+    closeModal('m-cobrar');
+    await loadAll(); renderMain();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
 
-function abrirModalNuevaMesa() {
-  STATE.selMesaId = null;
-  document.getElementById('modal-mesa-admin-body').innerHTML = `
-    <div class="form-group"><label>Número</label><input type="number" id="ma-num" placeholder="Ej: 1"/></div>
-    <div class="form-group"><label>Alias (opcional)</label><input type="text" id="ma-alias" placeholder="Ej: Ventana"/></div>
-    <div class="form-group">
-      <label>Tipo</label>
-      <select id="ma-tipo">
-        <option value="cuadrada">Cuadrada (individual)</option>
-        <option value="rectangular">Rectangular (par unido)</option>
-        <option value="redonda">Redonda</option>
-      </select>
-    </div>
-    <button class="btn-primary" onclick="guardarMesaSalon(null)">Agregar al salón</button>`;
-  openModal('modal-mesa-admin');
-}
-
-function editarMesaSalon(mesaId) {
-  if (STATE._modoUnir) return;
-  const m = STATE.mesas.find(x=>x.id===mesaId);
-  if (!m) return;
-  STATE.selMesaId = mesaId;
-  document.getElementById('modal-mesa-admin-body').innerHTML = `
-    <div class="form-group"><label>Número</label><input type="number" id="ma-num" value="${m.numero||''}"/></div>
-    <div class="form-group"><label>Alias</label><input type="text" id="ma-alias" value="${m.alias||''}"/></div>
-    <div class="form-group">
-      <label>Tipo</label>
-      <select id="ma-tipo">
-        <option value="cuadrada" ${m.tipo==='cuadrada'?'selected':''}>Cuadrada</option>
-        <option value="rectangular" ${m.tipo==='rectangular'?'selected':''}>Rectangular</option>
-        <option value="redonda" ${m.tipo==='redonda'?'selected':''}>Redonda</option>
-      </select>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn-primary" style="flex:1" onclick="guardarMesaSalon(${mesaId})">Guardar</button>
-      ${m.tipo==='rectangular'?`<button class="btn-warning btn-sm" onclick="separarMesa(${mesaId})" style="flex:1">✂️ Separar</button>`:''}
-      <button class="btn-danger btn-sm" onclick="eliminarMesa(${mesaId})" style="flex:1">Eliminar</button>
-    </div>`;
-  openModal('modal-mesa-admin');
-}
-
-async function guardarMesaSalon(mesaId) {
-  const num   = document.getElementById('ma-num').value;
-  const alias = document.getElementById('ma-alias').value;
-  const tipo  = document.getElementById('ma-tipo').value;
-  if (!num) { toast('Ingresá un número de mesa','err'); return; }
+// ════════════════════════════════════
+// TURNO CAJA
+// ════════════════════════════════════
+async function abrirTurno(){
+  const fondo=document.getElementById('fondo-inp').value;
   loading(true);
-  try {
-    if (mesaId) {
-      await api('PUT', `/api/restaurante/mesas/${mesaId}`, { numero:Number(num), alias, tipo });
-      toast('Mesa actualizada ✓','ok');
-    } else {
-      // Nueva mesa: posición inicial centrada
-      await api('POST', '/api/restaurante/mesas', { numero:Number(num), tipo, alias, x:100, y:100 });
-      toast('Mesa agregada ✓','ok');
-    }
-    closeModal('modal-mesa-admin');
-    await loadAll(); renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
+  try{
+    await api('POST','/api/restaurante/turno/abrir',{fondo_inicial:Number(fondo)||0});
+    toast('Turno abierto ✓','ok');
+    await loadAll(); renderMain();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
-
-async function separarMesa(mesaId) {
-  const m = STATE.mesas.find(x=>x.id===mesaId);
-  if (!m) return;
-  const n1 = prompt('Número para la primera mesa cuadrada:');
-  if (!n1) return;
-  const n2 = prompt('Número para la segunda mesa cuadrada:');
-  if (!n2) return;
+async function cerrarTurno(){
+  if(!confirm('¿Cerrar el turno de caja?')) return;
   loading(true);
-  try {
-    const x = m.x||50; const y = m.y||50;
-    await api('POST', '/api/restaurante/mesas', { numero:Number(n1), tipo:'cuadrada', alias:'', x, y });
-    await api('POST', '/api/restaurante/mesas', { numero:Number(n2), tipo:'cuadrada', alias:'', x:x+80, y });
-    await api('DELETE', `/api/restaurante/mesas/${mesaId}`);
-    toast('Mesa separada ✓','ok');
-    closeModal('modal-mesa-admin');
-    await loadAll(); renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
+  try{
+    await api('POST','/api/restaurante/turno/cerrar');
+    toast('Turno cerrado','ok');
+    await loadAll(); renderMain();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+async function nuevoTurno(){
+  await api('POST','/api/restaurante/turno/nuevo').catch(()=>{});
+  await loadAll(); renderMain();
 }
 
-async function eliminarMesa(mesaId) {
-  if (!confirm('¿Eliminar esta mesa?')) return;
+// ════════════════════════════════════
+// VISTA CLIENTE
+// ════════════════════════════════════
+async function verCliente(cmdId){
+  closeModal('m-comanda');
   loading(true);
-  try {
-    await api('DELETE', `/api/restaurante/mesas/${mesaId}`);
-    toast('Mesa eliminada','ok');
-    closeModal('modal-mesa-admin');
-    await loadAll(); renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
-}
-
-// ── ADMIN: HISTORIAL ─────────────────────────────────
-async function renderAdminHist(el) {
-  el.innerHTML = '<div style="padding:20px"><div class="spinner"></div></div>';
-  try {
-    const hist = await api('GET', '/api/restaurante/comandas?estado=cerrada');
-    let html = `<div style="padding:16px 20px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Comandas cerradas</div>
-      <table class="admin-table">
-        <thead><tr><th>#</th><th>Mesa</th><th>Mozo</th><th>Cajero</th><th>Total</th><th>Pago</th><th>Hora</th></tr></thead>
-        <tbody>`;
-    if (!hist.length) {
-      html += `<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin comandas cerradas</td></tr>`;
-    } else {
-      hist.slice(0,50).forEach(c => {
-        const mesa = STATE.mesas.find(m=>m.id===c.mesa_id);
-        html += `<tr>
-          <td>#${c.id}</td>
-          <td>${mesa?.numero||c.mesa_id}</td>
-          <td>${c.mozo_nombre||'—'}</td>
-          <td>${c.cajero_nombre||'—'}</td>
-          <td>${fmt(c.total_final||c.total)}</td>
-          <td>${c.metodo_pago||'—'}</td>
-          <td>${c.cerrada_at ? new Date(c.cerrada_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
-        </tr>`;
-      });
-    }
-    html += '</tbody></table></div>';
-    el.innerHTML = html;
-  } catch(e) { el.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>${e.message}</p></div>`; }
-}
-
-// ── MENÚ ITEMS ───────────────────────────────────────
-function abrirNuevoMenuItem() {
-  STATE.menuItemEditId = null;
-  document.getElementById('modal-menu-item-title').textContent = 'Nuevo producto';
-  document.getElementById('mi-nombre').value = '';
-  document.getElementById('mi-cat').value = '';
-  document.getElementById('mi-precio').value = '';
-  openModal('modal-menu-item');
-}
-
-function editarMenuItem(id) {
-  const m = STATE.menu.find(x=>x.id===id);
-  if (!m) return;
-  STATE.menuItemEditId = id;
-  document.getElementById('modal-menu-item-title').textContent = 'Editar producto';
-  document.getElementById('mi-nombre').value = m.nombre;
-  document.getElementById('mi-cat').value = m.categoria;
-  document.getElementById('mi-precio').value = m.precio;
-  openModal('modal-menu-item');
-}
-
-async function guardarMenuItem() {
-  const nombre   = document.getElementById('mi-nombre').value.trim();
-  const categoria= document.getElementById('mi-cat').value.trim();
-  const precio   = parseFloat(document.getElementById('mi-precio').value);
-  if (!nombre || !precio) { toast('Completá todos los campos','err'); return; }
-  loading(true);
-  try {
-    if (STATE.menuItemEditId) {
-      await api('PUT', `/api/restaurante/menu/${STATE.menuItemEditId}`, { nombre, categoria, precio });
-      toast('Producto actualizado ✓','ok');
-    } else {
-      await api('POST', '/api/restaurante/menu', { nombre, categoria, precio });
-      toast('Producto creado ✓','ok');
-    }
-    closeModal('modal-menu-item');
-    await loadAll(); renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
-}
-
-async function toggleMenuItem(id, actual) {
-  loading(true);
-  try {
-    await api('PUT', `/api/restaurante/menu/${id}`, { disponible: actual ? 0 : 1 });
-    toast(actual ? 'Producto desactivado' : 'Producto activado', 'ok');
-    await loadAll(); renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
-}
-
-// ── USUARIOS ─────────────────────────────────────────
-async function crearUsuario() {
-  const nombre = document.getElementById('u-nombre').value.trim();
-  const email  = document.getElementById('u-email').value.trim();
-  const clave  = document.getElementById('u-clave').value;
-  const rol    = document.getElementById('u-rol').value;
-  if (!nombre || !email || !clave) { toast('Completá todos los campos','err'); return; }
-  loading(true);
-  try {
-    await api('POST', '/api/restaurante/usuarios', { nombre, email, password: clave, rol });
-    toast('Usuario creado ✓','ok');
-    closeModal('modal-usuario');
-    STATE.usuarios = await api('GET', '/api/restaurante/usuarios');
-    renderCurrentTab();
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
-}
-
-// ── VISTA CLIENTE ─────────────────────────────────────
-async function verCliente(cmdId) {
-  closeModal('modal-comanda');
-  loading(true);
-  try {
-    const cmd  = await api('GET', `/api/restaurante/comandas/${cmdId}`);
-    const mesa = STATE.mesas.find(m=>m.id===cmd.mesa_id);
-    document.getElementById('cliente-mesa-num').textContent = mesa?.numero || cmd.mesa_id;
-
-    const items = cmd.items || [];
-    if (!items.length) {
-      document.getElementById('cliente-items-list').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Sin ítems</div>';
-    } else {
-      document.getElementById('cliente-items-list').innerHTML = items.map(i=>`
-        <div class="cliente-item">
-          <span class="cliente-item-name">${i.nombre}</span>
-          <div class="cliente-item-right">
-            <div class="cliente-item-qty">x${i.cantidad}</div>
-            <div class="cliente-item-sub">${fmt(i.precio_unitario*i.cantidad)}</div>
-          </div>
+  try{
+    const cmd=await api('GET',`/api/restaurante/comandas/${cmdId}`);
+    const mesa=S.mesas.find(m=>m.id===cmd.mesa_id);
+    document.getElementById('cli-mesa').textContent=mesa?mesaLabel(mesa):cmd.mesa_id;
+    const items=cmd.items||[];
+    document.getElementById('cli-items').innerHTML=!items.length
+      ?'<div class="empty"><p>Sin ítems</p></div>'
+      :items.map(i=>`<div class="cliente-item">
+          <span style="font-size:14px">${i.nombre}${i.nota?`<br><span style="font-size:11px;color:#94a3b8">${i.nota}</span>`:''}</span>
+          <div style="text-align:right"><div style="font-size:12px;color:#94a3b8">x${i.cantidad}</div>
+            <div style="font-weight:700">${fmt(i.precio_unitario*i.cantidad)}</div></div>
         </div>`).join('');
-    }
-    document.getElementById('cliente-total').textContent = fmt(cmd.total);
-
-    const estadoEl = document.getElementById('cliente-estado-badge');
-    if (cmd.estado === 'cuenta') {
-      estadoEl.className = 'cliente-estado cuenta';
-      estadoEl.textContent = '💜 Cuenta solicitada — el cajero se acerca';
+    document.getElementById('cli-total').textContent=fmt(cmd.total);
+    const estEl=document.getElementById('cli-estado');
+    if(cmd.estado==='cuenta'){
+      estEl.style.cssText='background:#ede9fe;color:#7c3aed;border-color:#7c3aed';
+      estEl.textContent='💜 Cuenta solicitada — el cajero se acerca';
     } else {
-      estadoEl.className = 'cliente-estado abierta';
-      estadoEl.textContent = '✅ Pedido en curso';
+      estEl.style.cssText='background:#dcfce7;color:#16a34a;border-color:#16a34a';
+      estEl.textContent='✅ Pedido en curso';
     }
-
     showScreen('screen-cliente');
-  } catch(e) { toast(e.message,'err'); }
-  finally { loading(false); }
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
 
-function closeClienteView() {
-  showScreen('screen-main');
+// ════════════════════════════════════
+// IMPRESIÓN
+// ════════════════════════════════════
+function imprimirComanda(){
+  const {mesa,cmd}=S.ticketData||{};
+  if(!cmd) return;
+  const items=cmd.items||[];
+  document.getElementById('m-ticket-body').innerHTML=`
+    <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:4px">🏨 Hotel Takuá — Comanda</div>
+    <div style="text-align:center;font-size:11px;color:#555;margin-bottom:8px">${nowFull()}</div>
+    <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
+    <div style="display:flex;justify-content:space-between"><b>${mesa?mesaLabel(mesa):'Mesa'}</b><span>👥 ${cmd.comensales||'—'} com.</span></div>
+    ${cmd.mozo_nombre?`<div style="font-size:11px;color:#555">👤 ${cmd.mozo_nombre}</div>`:''}
+    ${cmd.observaciones?`<div style="font-size:11px;font-style:italic">📝 ${cmd.observaciones}</div>`:''}
+    <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
+    ${items.map(it=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #eee">
+      <span>${it.cantidad}x ${it.nombre}${it.nota?`<br><small>📝 ${it.nota}</small>`:''}</span>
+      <span>${fmt(it.precio_unitario*it.cantidad)}</span></div>`).join('')}
+    <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
+    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px"><span>TOTAL</span><span>${fmt(cmd.total)}</span></div>`;
+  closeModal('m-comanda');
+  openModal('m-ticket');
+}
+function doPrint(){
+  const body=document.getElementById('m-ticket-body').innerHTML;
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:320px;height:600px;border:none';
+  document.body.appendChild(iframe);
+  const doc=iframe.contentDocument||iframe.contentWindow.document;
+  doc.open();
+  doc.write(`<style>body{font-family:'Courier New',monospace;font-size:13px;width:280px;margin:0 auto;padding:8px}</style>${body}`);
+  doc.close();
+  setTimeout(()=>{iframe.contentWindow.focus();iframe.contentWindow.print();setTimeout(()=>document.body.removeChild(iframe),1000);},300);
 }
 
-// ── HELPERS ──────────────────────────────────────────
-function toggleSection(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.toggle('open');
+// ════════════════════════════════════
+// DRAG & DROP (editor salón)
+// ════════════════════════════════════
+let _drag=null;
+function renderEditorSalon(){
+  const canvas=document.getElementById('salon-editor-canvas');
+  if(!canvas) return;
+  canvas.innerHTML=S.mesas.map(m=>{
+    const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
+    const {w,h}=mesaDims(m.tipo);
+    const x=m.x||80; const y=m.y||80;
+    const br=m.tipo==='redonda'?'50%':'10px';
+    return `<div id="sm-${m.id}" class="s-mesa ${m.status}"
+      onmousedown="startDrag(event,${m.id})" ontouchstart="startDragTouch(event,${m.id})"
+      ondblclick="editarMesaSalon(${m.id})"
+      style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${br};
+      background:${st.bg};border-color:${st.border};cursor:grab">
+      <div class="s-mesa-num" style="color:${st.color}">${mesaLabel(m)}</div>
+      ${m.tipo==='rectangular'&&!m.alias?`<div class="s-mesa-sub" style="color:${st.color}">2 mesas</div>`:''}
+    </div>`;
+  }).join('');
 }
 
-async function refreshData() {
-  await loadAll();
-  renderCurrentTab();
-  toast('Actualizado ✓','ok');
+document.getElementById('btn-salon-header').addEventListener('click',()=>{
+  showScreen('screen-salon');
+  renderEditorSalon();
+});
+// Override onclick
+document.getElementById('btn-salon-header').onclick=()=>{showScreen('screen-salon');renderEditorSalon();};
+
+function startDrag(e,mesaId){
+  if(e.button!==0) return;
+  e.preventDefault();
+  const el=document.getElementById('sm-'+mesaId);
+  const canvas=el.parentElement;
+  const cr=canvas.getBoundingClientRect();
+  _drag={mesaId,el,offX:e.clientX-el.offsetLeft,offY:e.clientY-el.offsetTop,cr,canvas};
+  el.classList.add('dragging');
+  document.addEventListener('mousemove',onDrag);
+  document.addEventListener('mouseup',endDrag);
+}
+function startDragTouch(e,mesaId){
+  e.preventDefault();
+  const t=e.touches[0];
+  const el=document.getElementById('sm-'+mesaId);
+  const canvas=el.parentElement;
+  const cr=canvas.getBoundingClientRect();
+  _drag={mesaId,el,offX:t.clientX-el.offsetLeft,offY:t.clientY-el.offsetTop,cr,canvas};
+  el.classList.add('dragging');
+  document.addEventListener('touchmove',onDragT,{passive:false});
+  document.addEventListener('touchend',endDragT);
+}
+function onDrag(e){
+  if(!_drag) return;
+  const cr=_drag.canvas.getBoundingClientRect();
+  let nx=e.clientX-cr.left-_drag.offX;
+  let ny=e.clientY-cr.top -_drag.offY;
+  nx=Math.max(0,Math.min(nx,_drag.canvas.offsetWidth -_drag.el.offsetWidth));
+  ny=Math.max(0,Math.min(ny,_drag.canvas.offsetHeight-_drag.el.offsetHeight));
+  _drag.el.style.left=nx+'px'; _drag.el.style.top=ny+'px';
+}
+function onDragT(e){
+  e.preventDefault(); if(!_drag) return;
+  const t=e.touches[0];
+  const cr=_drag.canvas.getBoundingClientRect();
+  let nx=t.clientX-cr.left-_drag.offX;
+  let ny=t.clientY-cr.top -_drag.offY;
+  nx=Math.max(0,Math.min(nx,_drag.canvas.offsetWidth -_drag.el.offsetWidth));
+  ny=Math.max(0,Math.min(ny,_drag.canvas.offsetHeight-_drag.el.offsetHeight));
+  _drag.el.style.left=nx+'px'; _drag.el.style.top=ny+'px';
+}
+async function endDrag(){
+  if(!_drag) return;
+  _drag.el.classList.remove('dragging');
+  const nx=Math.round(parseFloat(_drag.el.style.left)/10)*10;
+  const ny=Math.round(parseFloat(_drag.el.style.top)/10)*10;
+  _drag.el.style.left=nx+'px'; _drag.el.style.top=ny+'px';
+  const mesaId=_drag.mesaId; _drag=null;
+  document.removeEventListener('mousemove',onDrag);
+  document.removeEventListener('mouseup',endDrag);
+  try{
+    await api('PUT',`/api/restaurante/mesas/${mesaId}`,{x:nx,y:ny});
+    S.mesas=S.mesas.map(m=>m.id===mesaId?{...m,x:nx,y:ny}:m);
+  }catch(e){toast('Error guardando posición','err');}
+}
+async function endDragT(){
+  if(!_drag) return;
+  _drag.el.classList.remove('dragging');
+  const nx=Math.round(parseFloat(_drag.el.style.left)/10)*10;
+  const ny=Math.round(parseFloat(_drag.el.style.top)/10)*10;
+  _drag.el.style.left=nx+'px'; _drag.el.style.top=ny+'px';
+  const mesaId=_drag.mesaId; _drag=null;
+  document.removeEventListener('touchmove',onDragT);
+  document.removeEventListener('touchend',endDragT);
+  try{
+    await api('PUT',`/api/restaurante/mesas/${mesaId}`,{x:nx,y:ny});
+    S.mesas=S.mesas.map(m=>m.id===mesaId?{...m,x:nx,y:ny}:m);
+  }catch(e){toast('Error guardando posición','err');}
 }
 
-// ── BOOT ─────────────────────────────────────────────
-(async () => {
-  if (TOKEN && ME) {
-    try { await initMain(); }
-    catch(e) { doLogout(); }
+// ── EDITOR: MODAL MESA ───────────────────────────────
+function abrirModalNuevaMesa(){
+  S.selMesaId=null; S.modoUnir=false;
+  document.getElementById('m-mesa-ed-title').textContent='Nueva mesa';
+  document.getElementById('m-mesa-ed-body').innerHTML=`
+    <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Número</label>
+      <input type="number" id="me-num" placeholder="Ej: 1"/></div>
+    <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Alias (opcional)</label>
+      <input type="text" id="me-alias" placeholder="Ej: Ventana"/></div>
+    <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Tipo</label>
+      <div style="display:flex;gap:8px">
+        ${[['cuadrada','⬛ Cuadrada'],['rectangular','▬ Rectangular'],['redonda','⭕ Redonda']].map(([v,l],i)=>
+          `<button onclick="selTipoMesa('${v}',this)" id="tipobtn-${v}"
+            style="flex:1;padding:10px;border-radius:10px;border:1.5px solid ${i===0?'#3b82f6':'#e2e8f0'};
+            background:${i===0?'#eff6ff':'#fff'};font-size:12px;font-weight:600;color:${i===0?'#3b82f6':'#475569'};cursor:pointer">${l}</button>`).join('')}
+      </div>
+    </div>
+    <button class="btn-primary" onclick="guardarMesaEditor(null)">Agregar al salón</button>`;
+  S._tipoNueva='cuadrada';
+  openModal('m-mesa-ed');
+}
+function selTipoMesa(tipo,btn){
+  S._tipoNueva=tipo;
+  ['cuadrada','rectangular','redonda'].forEach(t=>{
+    const b=document.getElementById('tipobtn-'+t);
+    if(!b) return;
+    b.style.borderColor=t===tipo?'#3b82f6':'#e2e8f0';
+    b.style.background=t===tipo?'#eff6ff':'#fff';
+    b.style.color=t===tipo?'#3b82f6':'#475569';
+  });
+}
+function editarMesaSalon(mesaId){
+  if(S.modoUnir){seleccionarParaUnir(mesaId);return;}
+  const m=S.mesas.find(x=>x.id===mesaId); if(!m) return;
+  S.selMesaId=mesaId;
+  document.getElementById('m-mesa-ed-title').textContent=`Editar ${mesaLabel(m)}`;
+  document.getElementById('m-mesa-ed-body').innerHTML=`
+    <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Número</label>
+      <input type="number" id="me-num" value="${m.numero||''}"/></div>
+    <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Alias</label>
+      <input type="text" id="me-alias" value="${m.alias||''}"/></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn-primary" style="flex:1" onclick="guardarMesaEditor(${mesaId})">Guardar</button>
+      ${m.tipo==='rectangular'?`<button onclick="separarMesa(${mesaId})" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #fbbf24;background:#fffbeb;color:#92400e;font-weight:700;cursor:pointer">✂️ Separar</button>`:''}
+      <button onclick="eliminarMesa(${mesaId})" style="padding:12px 16px;border-radius:12px;border:none;background:#fee2e2;color:#dc2626;font-weight:700;cursor:pointer">🗑️</button>
+    </div>`;
+  openModal('m-mesa-ed');
+}
+async function guardarMesaEditor(mesaId){
+  const num=document.getElementById('me-num').value;
+  const alias=document.getElementById('me-alias')?.value||'';
+  const tipo=S._tipoNueva||'cuadrada';
+  if(!num){toast('Ingresá un número de mesa','err');return;}
+  loading(true);
+  try{
+    if(mesaId){
+      await api('PUT',`/api/restaurante/mesas/${mesaId}`,{numero:Number(num),alias});
+    } else {
+      await api('POST','/api/restaurante/mesas',{numero:Number(num),tipo,alias,x:100,y:100});
+    }
+    toast(mesaId?'Mesa actualizada ✓':'Mesa agregada ✓','ok');
+    closeModal('m-mesa-ed');
+    await loadAll(); renderEditorSalon();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+async function eliminarMesa(mesaId){
+  if(!confirm('¿Eliminar esta mesa?')) return;
+  loading(true);
+  try{
+    await api('DELETE',`/api/restaurante/mesas/${mesaId}`);
+    toast('Mesa eliminada','ok');
+    closeModal('m-mesa-ed');
+    await loadAll(); renderEditorSalon();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+async function separarMesa(mesaId){
+  const m=S.mesas.find(x=>x.id===mesaId); if(!m) return;
+  const n1=prompt('Número para la primera mesa:'); if(!n1) return;
+  const n2=prompt('Número para la segunda mesa:'); if(!n2) return;
+  loading(true);
+  try{
+    const x=m.x||80; const y=m.y||80;
+    await api('POST','/api/restaurante/mesas',{numero:Number(n1),tipo:'cuadrada',alias:'',x,y});
+    await api('POST','/api/restaurante/mesas',{numero:Number(n2),tipo:'cuadrada',alias:'',x:x+80,y});
+    await api('DELETE',`/api/restaurante/mesas/${mesaId}`);
+    toast('Mesa separada ✓','ok');
+    closeModal('m-mesa-ed');
+    await loadAll(); renderEditorSalon();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+
+// ── UNIR MESAS ────────────────────────────────────────
+let _unirSel=[];
+function toggleModoUnir(){
+  S.modoUnir=!S.modoUnir;
+  _unirSel=[];
+  const btn=document.getElementById('btn-unir-mesas');
+  if(S.modoUnir){
+    btn.style.background='#f59e0b'; btn.style.color='#1e293b';
+    toast('Doble clic en 2 mesas cuadradas para unir','info');
+  } else {
+    btn.style.background=''; btn.style.color='';
+    document.querySelectorAll('.s-mesa').forEach(el=>el.classList.remove('sel-unir'));
+  }
+}
+function seleccionarParaUnir(mesaId){
+  const m=S.mesas.find(x=>x.id===mesaId);
+  if(!m||m.tipo!=='cuadrada'){toast('Solo podés unir mesas cuadradas','err');return;}
+  const el=document.getElementById('sm-'+mesaId);
+  if(_unirSel.includes(mesaId)){
+    _unirSel=_unirSel.filter(id=>id!==mesaId); el.classList.remove('sel-unir');
+  } else {
+    if(_unirSel.length>=2){toast('Ya seleccionaste 2','err');return;}
+    _unirSel.push(mesaId); el.classList.add('sel-unir');
+    if(_unirSel.length===2) setTimeout(()=>confirmarUnion(),200);
+  }
+}
+async function confirmarUnion(){
+  const [idA,idB]=_unirSel;
+  const mA=S.mesas.find(m=>m.id===idA); const mB=S.mesas.find(m=>m.id===idB);
+  const num=prompt(`Número para la mesa unida (${mesaLabel(mA)} + ${mesaLabel(mB)}):`);
+  if(!num){_unirSel=[];document.querySelectorAll('.s-mesa').forEach(el=>el.classList.remove('sel-unir'));return;}
+  loading(true);
+  try{
+    const x=Math.min(mA.x||80,mB.x||80); const y=Math.min(mA.y||80,mB.y||80);
+    await api('POST','/api/restaurante/mesas',{numero:Number(num),tipo:'rectangular',alias:'',x,y});
+    await api('DELETE',`/api/restaurante/mesas/${idA}`);
+    await api('DELETE',`/api/restaurante/mesas/${idB}`);
+    toast('Mesas unidas ✓','ok');
+    _unirSel=[]; S.modoUnir=false;
+    const btn=document.getElementById('btn-unir-mesas');
+    if(btn){btn.style.background='';btn.style.color='';}
+    await loadAll(); renderEditorSalon();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+
+// ════════════════════════════════════
+// BOOT
+// ════════════════════════════════════
+(async()=>{
+  if(TOKEN&&ME){
+    try{ await initApp(); } catch(e){ doLogout(); }
   }
 })();
 </script>
