@@ -1614,17 +1614,20 @@ async function loadFin(desde,hasta) {
 // CONFIG
 // ══════════════════════════════════════
 async function renderConfig() {
-  const usuarios=await apiFetch('GET','/usuarios')||[];
+  const usuarios=await apiFetch('GET','/portal/usuarios')||[];
+  const rolColor = { admin:'pb', recepcionista:'pg', mucama:'py', mozo:'pgr', cajero:'pr' };
   const rows=usuarios.map(u=>`<tr>
-    <td><strong>${u.nombre}</strong></td><td>${u.email}</td>
-    <td><span class="pill ${u.rol==='admin'?'pb':'pgr'}">${u.rol}</span></td>
+    <td><strong>${u.nombre}</strong></td>
+    <td style="color:#64748b;font-size:12px">${u.usuario||'—'}</td>
+    <td style="color:#94a3b8;font-size:12px">${u.email||'—'}</td>
+    <td><span class="pill ${rolColor[u.rol]||'pgr'}">${u.rol}</span></td>
     <td><span class="pill ${u.activo?'pg':'pr'}">${u.activo?'Activo':'Inactivo'}</span></td>
   </tr>`).join('');
   document.getElementById('content').innerHTML=`
     <div class="section-card">
       <div class="sc-head"><h2>⚙️ Usuarios</h2><button class="btn-primary" id="btn-nuser">+ Nuevo usuario</button></div>
       <table class="data-table">
-        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -1641,16 +1644,27 @@ async function renderConfig() {
     openModal(`
       <div class="modal-hd"><h3>Nuevo usuario</h3><button class="modal-close" id="nu-c">✕</button></div>
       <div class="form-row">
-        <div class="form-col"><label>Nombre</label><input type="text" id="nu-nom" placeholder="María García"></div>
-        <div class="form-col"><label>Email</label><input type="email" id="nu-email" placeholder="maria@hotel.com"></div>
+        <div class="form-col"><label>Nombre completo</label><input type="text" id="nu-nom" placeholder="María García"></div>
+        <div class="form-col"><label>Usuario</label><input type="text" id="nu-usuario" placeholder="maria.garcia"></div>
       </div>
       <div class="form-row">
+        <div class="form-col"><label>Email (opcional)</label><input type="email" id="nu-email" placeholder="maria@hotel.com"></div>
         <div class="form-col"><label>Contraseña</label><input type="password" id="nu-pass" placeholder="min. 6 caracteres"></div>
+      </div>
+      <div class="form-row">
         <div class="form-col"><label>Rol</label>
           <select id="nu-rol">
-            <option value="recepcionista">Recepcionista</option>
-            <option value="mucama">Mucama</option>
-            <option value="admin">Administrador</option>
+            <optgroup label="— Habitaciones —">
+              <option value="recepcionista">Recepcionista</option>
+              <option value="mucama">Mucama / Limpieza</option>
+            </optgroup>
+            <optgroup label="— Restaurante —">
+              <option value="mozo">Mozo</option>
+              <option value="cajero">Cajero</option>
+            </optgroup>
+            <optgroup label="— Sistema —">
+              <option value="admin">Administrador</option>
+            </optgroup>
           </select>
         </div>
       </div>
@@ -1658,14 +1672,15 @@ async function renderConfig() {
     `);
     document.getElementById('nu-c').addEventListener('click',closeModal);
     document.getElementById('nu-ok').addEventListener('click',async()=>{
-      const r=await apiFetch('POST','/usuarios',{
-        nombre:document.getElementById('nu-nom').value,
-        email:document.getElementById('nu-email').value,
-        password:document.getElementById('nu-pass').value,
-        rol:document.getElementById('nu-rol').value,
-      });
+      const nombre   = document.getElementById('nu-nom').value.trim();
+      const usuario  = document.getElementById('nu-usuario').value.trim();
+      const email    = document.getElementById('nu-email').value.trim();
+      const password = document.getElementById('nu-pass').value;
+      const rol      = document.getElementById('nu-rol').value;
+      if (!nombre || !usuario || !password) { toast('Completá nombre, usuario y contraseña', false); return; }
+      const r = await apiFetch('POST', '/portal/usuarios', { nombre, usuario, email: email||null, password, rol });
       if(r?.id){toast('Usuario creado');closeModal();renderConfig();}
-      else toast(r?.error||'Error',false);
+      else toast(r?.error||'Error al crear usuario',false);
     });
   });
 }
