@@ -201,6 +201,30 @@
     .modal{max-height:95vh}
     .login-box{padding:28px 20px}
   }
+
+  /* ── MAPA SALÓN ── */
+  .salon-wrap{position:relative;overflow:auto;background:#1a2535;border-radius:12px;margin:12px 16px;border:1px solid var(--border)}
+  .salon-canvas{position:relative;min-width:900px;min-height:480px;background:
+    repeating-linear-gradient(0deg,transparent,transparent 39px,#ffffff08 39px,#ffffff08 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,#ffffff08 39px,#ffffff08 40px)}
+  .salon-barra{position:absolute;bottom:0;left:0;right:0;height:36px;background:#0f172a;border-top:2px solid #334155;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#475569;letter-spacing:.15em}
+  .s-mesa{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    cursor:pointer;user-select:none;transition:box-shadow .15s,transform .1s;border:2px solid transparent;border-radius:10px}
+  .s-mesa:active{transform:scale(.96)}
+  .s-mesa.libre   {background:#14532d;border-color:#4ade80;color:#4ade80}
+  .s-mesa.ocupada {background:#431407;border-color:#fb923c;color:#fb923c}
+  .s-mesa.cuenta  {background:#2d1d6e;border-color:#a78bfa;color:#a78bfa}
+  .s-mesa.reservada{background:#0c3d5a;border-color:#38bdf8;color:#38bdf8}
+  .s-mesa.redonda {border-radius:50%}
+  .s-mesa.dragging{opacity:.7;box-shadow:0 8px 32px #000a;z-index:50;cursor:grabbing}
+  .s-mesa.sel-unir{box-shadow:0 0 0 3px #fbbf24;border-color:#fbbf24!important}
+  .s-mesa-num{font-size:14px;font-weight:800;line-height:1}
+  .s-mesa-total{font-size:10px;opacity:.85;margin-top:2px}
+  .s-mesa-mozo{font-size:9px;opacity:.7;margin-top:1px;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .salon-toolbar{display:flex;align-items:center;gap:6px;padding:10px 16px;flex-wrap:wrap;background:var(--surface);border-bottom:1px solid var(--border)}
+  .salon-legend{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}
+  .salon-sep{width:1px;height:24px;background:var(--border)}
 </style>
 </head>
 <body>
@@ -573,33 +597,140 @@ function renderTab(id) {
   if (id==='admin-hist')   renderAdminHist(el);
 }
 
-// ── VISTA MOZO: MESAS ────────────────────────────────
+// ── MAPA SALÓN (mozo/cajero — solo lectura) ──────────
 function renderMozaMesas(el) {
-  const colores = { libre:'#4ade80', ocupada:'#fb923c', cuenta:'#a78bfa', reservada:'#38bdf8' };
-  let html = `
-    <div class="mesas-toolbar">
-      <button class="btn-ghost btn-sm" onclick="refreshData()">↻ Actualizar</button>
-      <div class="mesas-legend">
-        ${Object.entries(colores).map(([s,c])=>`<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${s}</div>`).join('')}
+  const libres   = STATE.mesas.filter(m=>m.status==='libre').length;
+  const ocupadas = STATE.mesas.filter(m=>m.status==='ocupada').length;
+  const cuenta   = STATE.mesas.filter(m=>m.status==='cuenta').length;
+  const reserv   = STATE.mesas.filter(m=>m.status==='reservada').length;
+  el.innerHTML = `
+    <div class="salon-toolbar">
+      <span style="font-size:13px;font-weight:700">🗺️ Salón</span>
+      <div class="salon-sep"></div>
+      <button class="btn-ghost btn-sm" onclick="refreshData()">↻</button>
+      <div class="salon-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Libre (${libres})</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div>Ocupada (${ocupadas})</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Cuenta (${cuenta})</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div>Reservada (${reserv})</div>
       </div>
     </div>
-    <div class="mesas-grid">`;
-  if (!STATE.mesas.length) {
-    html += `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🪑</div><p>No hay mesas configuradas</p></div>`;
-  } else {
-    STATE.mesas.forEach(m => {
-      const cmd = STATE.comandas.find(c => c.mesa_id === m.id && c.estado !== 'cerrada');
-      html += `
-        <div class="mesa-card ${m.status}" onclick="clickMesa(${m.id})">
-          <div class="mesa-num">M${m.numero || m.id}</div>
-          <div class="mesa-alias">${m.alias || ''}</div>
-          <div class="mesa-status ${m.status}">${m.status}</div>
-          ${cmd ? `<div class="mesa-mozo">🍽️ ${cmd.mozo_nombre||'—'}</div><div class="mesa-total">${fmt(cmd.total)}</div>` : ''}
-        </div>`;
-    });
-  }
-  html += '</div>';
-  el.innerHTML = html;
+    <div class="salon-wrap"><div class="salon-canvas" id="salon-canvas-ro">
+      ${renderMesasSVG(false)}
+      <div class="salon-barra">— BARRA —</div>
+    </div></div>`;
+}
+
+function mesaDims(tipo) {
+  if (tipo==='redonda')     return {w:70,h:70};
+  if (tipo==='cuadrada')    return {w:70,h:70};
+  if (tipo==='rectangular') return {w:150,h:70};
+  return {w:70,h:70};
+}
+
+function renderMesasSVG(editable) {
+  if (!STATE.mesas.length) return `<div class="empty-state" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div class="icon">🪑</div><p>Sin mesas — agregá desde el admin</p></div>`;
+  return STATE.mesas.map(m => {
+    const cmd  = STATE.comandas.find(c => c.mesa_id===m.id && c.estado!=='cerrada');
+    const {w,h}= mesaDims(m.tipo);
+    const x    = m.x || 50;
+    const y    = m.y || 50;
+    const drag = editable ? `onmousedown="startDrag(event,${m.id})" ontouchstart="startDragTouch(event,${m.id})"` : '';
+    const click= editable ? `ondblclick="editarMesaSalon(${m.id})"` : `onclick="clickMesa(${m.id})"`;
+    const extra= editable ? `title="Arrastrar para mover · Doble clic para editar"` : '';
+    return `<div class="s-mesa ${m.status} ${m.tipo}" id="sm-${m.id}"
+      style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;${editable?'cursor:grab':''}"
+      ${drag} ${click} ${extra}>
+      <div class="s-mesa-num">M${m.numero||m.id}</div>
+      ${m.alias ? `<div class="s-mesa-mozo">${m.alias}</div>` : ''}
+      ${cmd ? `<div class="s-mesa-total">${fmt(cmd.total)}</div><div class="s-mesa-mozo">🍽️${cmd.mozo_nombre||''}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── DRAG & DROP (admin) ───────────────────────────────
+let _drag = null;
+function startDrag(e, mesaId) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const el = document.getElementById('sm-'+mesaId);
+  const canvas = el.parentElement.getBoundingClientRect();
+  const startX = e.clientX - el.offsetLeft;
+  const startY = e.clientY - el.offsetTop;
+  el.classList.add('dragging');
+  _drag = { mesaId, el, startX, startY, canvas };
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', endDrag);
+}
+function startDragTouch(e, mesaId) {
+  const t = e.touches[0];
+  const el = document.getElementById('sm-'+mesaId);
+  const startX = t.clientX - el.offsetLeft;
+  const startY = t.clientY - el.offsetTop;
+  el.classList.add('dragging');
+  _drag = { mesaId, el, startX, startY };
+  document.addEventListener('touchmove', onDragTouch, {passive:false});
+  document.addEventListener('touchend', endDragTouch);
+}
+function onDrag(e) {
+  if (!_drag) return;
+  const canvas = _drag.el.parentElement;
+  const cr = canvas.getBoundingClientRect();
+  let nx = e.clientX - cr.left - _drag.startX + _drag.el.offsetLeft;
+  let ny = e.clientY - cr.top  - _drag.startY + _drag.el.offsetTop;
+  nx = Math.max(0, Math.min(nx, canvas.offsetWidth  - _drag.el.offsetWidth));
+  ny = Math.max(0, Math.min(ny, canvas.offsetHeight - _drag.el.offsetHeight - 36));
+  _drag.el.style.left = nx + 'px';
+  _drag.el.style.top  = ny + 'px';
+}
+function onDragTouch(e) {
+  e.preventDefault();
+  if (!_drag) return;
+  const t = e.touches[0];
+  const canvas = _drag.el.parentElement;
+  const cr = canvas.getBoundingClientRect();
+  let nx = t.clientX - cr.left - _drag.startX + _drag.el.offsetLeft;
+  let ny = t.clientY - cr.top  - _drag.startY + _drag.el.offsetTop;
+  nx = Math.max(0, Math.min(nx, canvas.offsetWidth  - _drag.el.offsetWidth));
+  ny = Math.max(0, Math.min(ny, canvas.offsetHeight - _drag.el.offsetHeight - 36));
+  _drag.el.style.left = nx + 'px';
+  _drag.el.style.top  = ny + 'px';
+}
+async function endDrag(e) {
+  if (!_drag) return;
+  const el = _drag.el;
+  el.classList.remove('dragging');
+  const nx = parseFloat(el.style.left);
+  const ny = parseFloat(el.style.top);
+  const mesaId = _drag.mesaId;
+  _drag = null;
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', endDrag);
+  // Snap to grid de 10px
+  const sx = Math.round(nx/10)*10;
+  const sy = Math.round(ny/10)*10;
+  el.style.left = sx+'px'; el.style.top = sy+'px';
+  // Guardar en BD
+  try {
+    await api('PUT', `/api/restaurante/mesas/${mesaId}`, {x:sx, y:sy});
+    STATE.mesas = STATE.mesas.map(m => m.id===mesaId ? {...m,x:sx,y:sy} : m);
+  } catch(e) { toast('Error guardando posición','err'); }
+}
+async function endDragTouch(e) {
+  if (!_drag) return;
+  const el = _drag.el;
+  el.classList.remove('dragging');
+  const nx = Math.round(parseFloat(el.style.left)/10)*10;
+  const ny = Math.round(parseFloat(el.style.top)/10)*10;
+  const mesaId = _drag.mesaId;
+  _drag = null;
+  document.removeEventListener('touchmove', onDragTouch);
+  document.removeEventListener('touchend', endDragTouch);
+  el.style.left = nx+'px'; el.style.top = ny+'px';
+  try {
+    await api('PUT', `/api/restaurante/mesas/${mesaId}`, {x:nx, y:ny});
+    STATE.mesas = STATE.mesas.map(m => m.id===mesaId ? {...m,x:nx,y:ny} : m);
+  } catch(e) { toast('Error guardando posición','err'); }
 }
 
 // ── VISTA MOZO: MIS COMANDAS ─────────────────────────
@@ -1014,40 +1145,110 @@ function renderAdminMenu(el) {
 }
 
 // ── ADMIN: MESAS ─────────────────────────────────────
+// ── ADMIN: MAPA EDITABLE ─────────────────────────────
+let _unirSel = [];
+
 function renderAdminMesas(el) {
-  let html = `
-    <div class="mesas-toolbar">
-      <button class="btn-success btn-sm" onclick="crearMesa()">+ Agregar mesa</button>
+  el.innerHTML = `
+    <div class="salon-toolbar">
+      <button class="btn-success btn-sm" onclick="abrirModalNuevaMesa()">+ Mesa</button>
+      <div class="salon-sep"></div>
+      <button class="btn-ghost btn-sm" id="btn-unir" onclick="toggleModoUnir()" title="Seleccioná 2 cuadradas para unirlas">🔗 Unir</button>
+      <button class="btn-ghost btn-sm" onclick="refreshData();renderCurrentTab()">↻</button>
+      <div class="salon-legend" style="margin-left:auto">
+        <span style="font-size:11px;color:var(--muted)">Arrastrá para mover · Doble clic para editar</span>
+      </div>
     </div>
-    <div class="mesas-grid">`;
-  STATE.mesas.forEach(m => {
-    html += `
-      <div class="mesa-card ${m.status}" onclick="editarMesaAdmin(${m.id})">
-        <div class="mesa-num">M${m.numero || m.id}</div>
-        <div class="mesa-alias">${m.alias||'(sin alias)'}</div>
-        <div class="mesa-status ${m.status}">${m.status}</div>
-      </div>`;
-  });
-  if (!STATE.mesas.length) {
-    html += `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🪑</div><p>Sin mesas</p></div>`;
-  }
-  html += '</div>';
-  el.innerHTML = html;
+    <div class="salon-wrap">
+      <div class="salon-canvas" id="salon-canvas-ed" style="min-height:520px">
+        ${renderMesasSVG(true)}
+        <div class="salon-barra">— BARRA —</div>
+      </div>
+    </div>`;
 }
 
-async function crearMesa() {
-  const num = prompt('Número de mesa:');
-  if (!num) return;
+function toggleModoUnir() {
+  _unirSel = [];
+  const btn = document.getElementById('btn-unir');
+  STATE._modoUnir = !STATE._modoUnir;
+  if (STATE._modoUnir) {
+    btn.style.background = 'var(--accent)';
+    btn.style.color = '#0f172a';
+    toast('Seleccioná 2 mesas cuadradas para unir', 'info');
+    // Agregar listener de selección
+    document.querySelectorAll('.s-mesa').forEach(el => {
+      el.onclick = null;
+      el.ondblclick = null;
+      el.onclick = (e) => seleccionarParaUnir(parseInt(el.id.replace('sm-','')));
+    });
+  } else {
+    btn.style.background = '';
+    btn.style.color = '';
+    _unirSel = [];
+    renderCurrentTab();
+  }
+}
+
+function seleccionarParaUnir(mesaId) {
+  const m = STATE.mesas.find(x=>x.id===mesaId);
+  if (!m) return;
+  if (m.tipo !== 'cuadrada') { toast('Solo podés unir mesas cuadradas','err'); return; }
+  const el = document.getElementById('sm-'+mesaId);
+  if (_unirSel.includes(mesaId)) {
+    _unirSel = _unirSel.filter(id=>id!==mesaId);
+    el.classList.remove('sel-unir');
+  } else {
+    if (_unirSel.length >= 2) { toast('Ya tenés 2 seleccionadas','err'); return; }
+    _unirSel.push(mesaId);
+    el.classList.add('sel-unir');
+  }
+  if (_unirSel.length === 2) {
+    setTimeout(() => confirmarUnion(), 200);
+  }
+}
+
+async function confirmarUnion() {
+  const [idA, idB] = _unirSel;
+  const mA = STATE.mesas.find(m=>m.id===idA);
+  const mB = STATE.mesas.find(m=>m.id===idB);
+  const num = prompt(`Número para la mesa unida (M${mA.numero||mA.id} + M${mB.numero||mB.id}):`);
+  if (!num) { _unirSel=[]; renderCurrentTab(); return; }
   loading(true);
   try {
-    await api('POST', '/api/restaurante/mesas', { numero: Number(num), tipo:'rectangular', alias:'' });
-    toast('Mesa creada ✓', 'ok');
+    // Crear rectangular nueva en posición del par
+    const x = Math.min(mA.x||50, mB.x||50);
+    const y = Math.min(mA.y||50, mB.y||50);
+    await api('POST', '/api/restaurante/mesas', { numero:Number(num), tipo:'rectangular', alias:'', x, y });
+    // Eliminar las dos cuadradas
+    await api('DELETE', `/api/restaurante/mesas/${idA}`);
+    await api('DELETE', `/api/restaurante/mesas/${idB}`);
+    toast('Mesas unidas ✓', 'ok');
+    _unirSel = [];
+    STATE._modoUnir = false;
     await loadAll(); renderCurrentTab();
   } catch(e) { toast(e.message,'err'); }
   finally { loading(false); }
 }
 
-function editarMesaAdmin(mesaId) {
+function abrirModalNuevaMesa() {
+  STATE.selMesaId = null;
+  document.getElementById('modal-mesa-admin-body').innerHTML = `
+    <div class="form-group"><label>Número</label><input type="number" id="ma-num" placeholder="Ej: 1"/></div>
+    <div class="form-group"><label>Alias (opcional)</label><input type="text" id="ma-alias" placeholder="Ej: Ventana"/></div>
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="ma-tipo">
+        <option value="cuadrada">Cuadrada (individual)</option>
+        <option value="rectangular">Rectangular (par unido)</option>
+        <option value="redonda">Redonda</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="guardarMesaSalon(null)">Agregar al salón</button>`;
+  openModal('modal-mesa-admin');
+}
+
+function editarMesaSalon(mesaId) {
+  if (STATE._modoUnir) return;
   const m = STATE.mesas.find(x=>x.id===mesaId);
   if (!m) return;
   STATE.selMesaId = mesaId;
@@ -1057,28 +1258,54 @@ function editarMesaAdmin(mesaId) {
     <div class="form-group">
       <label>Tipo</label>
       <select id="ma-tipo">
-        <option ${m.tipo==='rectangular'?'selected':''}>rectangular</option>
-        <option ${m.tipo==='cuadrada'?'selected':''}>cuadrada</option>
-        <option ${m.tipo==='redonda'?'selected':''}>redonda</option>
-        <option ${m.tipo==='barra'?'selected':''}>barra</option>
+        <option value="cuadrada" ${m.tipo==='cuadrada'?'selected':''}>Cuadrada</option>
+        <option value="rectangular" ${m.tipo==='rectangular'?'selected':''}>Rectangular</option>
+        <option value="redonda" ${m.tipo==='redonda'?'selected':''}>Redonda</option>
       </select>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn-primary" onclick="guardarMesaAdmin(${mesaId})">Guardar</button>
-      <button class="btn-danger btn-sm" onclick="eliminarMesa(${mesaId})" style="padding:10px 16px">Eliminar</button>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn-primary" style="flex:1" onclick="guardarMesaSalon(${mesaId})">Guardar</button>
+      ${m.tipo==='rectangular'?`<button class="btn-warning btn-sm" onclick="separarMesa(${mesaId})" style="flex:1">✂️ Separar</button>`:''}
+      <button class="btn-danger btn-sm" onclick="eliminarMesa(${mesaId})" style="flex:1">Eliminar</button>
     </div>`;
   openModal('modal-mesa-admin');
 }
 
-async function guardarMesaAdmin(mesaId) {
+async function guardarMesaSalon(mesaId) {
+  const num   = document.getElementById('ma-num').value;
+  const alias = document.getElementById('ma-alias').value;
+  const tipo  = document.getElementById('ma-tipo').value;
+  if (!num) { toast('Ingresá un número de mesa','err'); return; }
   loading(true);
   try {
-    await api('PUT', `/api/restaurante/mesas/${mesaId}`, {
-      numero: Number(document.getElementById('ma-num').value),
-      alias:  document.getElementById('ma-alias').value,
-      tipo:   document.getElementById('ma-tipo').value,
-    });
-    toast('Mesa actualizada ✓', 'ok');
+    if (mesaId) {
+      await api('PUT', `/api/restaurante/mesas/${mesaId}`, { numero:Number(num), alias, tipo });
+      toast('Mesa actualizada ✓','ok');
+    } else {
+      // Nueva mesa: posición inicial centrada
+      await api('POST', '/api/restaurante/mesas', { numero:Number(num), tipo, alias, x:100, y:100 });
+      toast('Mesa agregada ✓','ok');
+    }
+    closeModal('modal-mesa-admin');
+    await loadAll(); renderCurrentTab();
+  } catch(e) { toast(e.message,'err'); }
+  finally { loading(false); }
+}
+
+async function separarMesa(mesaId) {
+  const m = STATE.mesas.find(x=>x.id===mesaId);
+  if (!m) return;
+  const n1 = prompt('Número para la primera mesa cuadrada:');
+  if (!n1) return;
+  const n2 = prompt('Número para la segunda mesa cuadrada:');
+  if (!n2) return;
+  loading(true);
+  try {
+    const x = m.x||50; const y = m.y||50;
+    await api('POST', '/api/restaurante/mesas', { numero:Number(n1), tipo:'cuadrada', alias:'', x, y });
+    await api('POST', '/api/restaurante/mesas', { numero:Number(n2), tipo:'cuadrada', alias:'', x:x+80, y });
+    await api('DELETE', `/api/restaurante/mesas/${mesaId}`);
+    toast('Mesa separada ✓','ok');
     closeModal('modal-mesa-admin');
     await loadAll(); renderCurrentTab();
   } catch(e) { toast(e.message,'err'); }
@@ -1090,7 +1317,7 @@ async function eliminarMesa(mesaId) {
   loading(true);
   try {
     await api('DELETE', `/api/restaurante/mesas/${mesaId}`);
-    toast('Mesa eliminada', 'ok');
+    toast('Mesa eliminada','ok');
     closeModal('modal-mesa-admin');
     await loadAll(); renderCurrentTab();
   } catch(e) { toast(e.message,'err'); }
