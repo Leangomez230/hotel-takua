@@ -457,9 +457,15 @@ function startApp() {
   document.getElementById('tb-fecha').textContent=`${DIAS[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]} de ${now.getFullYear()}`;
   document.getElementById('tb-welcome').textContent=`Bienvenido, ${currentUser?.nombre||''}`;
   document.getElementById('user-av').textContent=(currentUser?.nombre||'A')[0].toUpperCase();
+  // Mozo y cajero no pertenecen a este modulo → redirigir a comandas
+  const rolActual = currentUser?.rol;
+  if (['mozo','cajero'].includes(rolActual)) {
+    window.location.href = '/comandas.html';
+    return;
+  }
   // Visibilidad sidebar segun rol
-  const isMucama = currentUser?.rol==='mucama';
-  const isAdminUser = currentUser?.rol==='admin';
+  const isMucama = rolActual==='mucama';
+  const isAdminUser = rolActual==='admin';
   document.querySelectorAll('.nav-admin').forEach(el=>el.style.display=isMucama?'none':'');
   // Configuracion solo para admin
   document.getElementById('nav-config').style.display=isAdminUser?'':'none';
