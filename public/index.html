@@ -457,9 +457,12 @@ function startApp() {
   document.getElementById('tb-fecha').textContent=`${DIAS[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]} de ${now.getFullYear()}`;
   document.getElementById('tb-welcome').textContent=`Bienvenido, ${currentUser?.nombre||''}`;
   document.getElementById('user-av').textContent=(currentUser?.nombre||'A')[0].toUpperCase();
-  // Ocultar secciones de admin para mucama
+  // Visibilidad sidebar segun rol
   const isMucama = currentUser?.rol==='mucama';
+  const isAdminUser = currentUser?.rol==='admin';
   document.querySelectorAll('.nav-admin').forEach(el=>el.style.display=isMucama?'none':'');
+  // Configuracion solo para admin
+  document.getElementById('nav-config').style.display=isAdminUser?'':'none';
   document.getElementById('hamburger').style.display='flex';
   setActiveNav('nav-dashboard');
   goTo('dashboard');
@@ -1614,7 +1617,9 @@ async function loadFin(desde,hasta) {
 // CONFIG
 // ══════════════════════════════════════
 async function renderConfig() {
-  const usuarios=await apiFetch('GET','/portal/usuarios')||[];
+  // Intenta el endpoint nuevo; si falla (aún no deployado) usa el viejo
+  let usuarios = await apiFetch('GET','/portal/usuarios');
+  if (!usuarios) usuarios = await apiFetch('GET','/usuarios') || [];
   const rolColor = { admin:'pb', recepcionista:'pg', mucama:'py', mozo:'pgr', cajero:'pr' };
   const rows=usuarios.map(u=>`<tr>
     <td><strong>${u.nombre}</strong></td>
