@@ -1210,27 +1210,87 @@ async function confirmarCambioMesa(){
 // ════════════════════════════════════
 // COBRAR
 // ════════════════════════════════════
+// Items extra fuera de menú (estado local del modal de cobrar)
+let _extraItems = [];
+
 function abrirModalCobrar(cmdId){
   const cmd=S.comandas.find(c=>c.id===cmdId); if(!cmd) return;
   S.selCmdId=cmdId;
+  _extraItems=[];
   const mesa=S.mesas.find(m=>m.id===cmd.mesa_id);
   document.getElementById('m-cobrar-title').textContent=`Cobrar — ${mesa?mesaLabel(mesa):`Mesa ${cmd.mesa_id}`}`;
+  S._cobrarBaseTotal=Number(cmd.total)||0;
+  renderModalCobrar(cmd);
+  S._metodoIdx=0;
+  openModal('m-cobrar');
+}
+
+function renderModalCobrar(cmd){
   const items=cmd.items||[];
+  const extraTotal=_extraItems.reduce((s,i)=>s+i.precio,0);
+  const baseTotal=S._cobrarBaseTotal;
+  const subtotal=baseTotal+extraTotal;
+  const desc=Number(document.getElementById('cob-desc')?.value)||0;
+  const totalFinal=subtotal*(1-desc/100);
+
   document.getElementById('m-cobrar-body').innerHTML=`
-    <div style="margin-bottom:12px">
-      ${items.map(i=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:13px">
-        <span>${i.nombre} x${i.cantidad}</span><span style="font-weight:600">${fmt(i.precio_unitario*i.cantidad)}</span>
+    <!-- Items de la comanda -->
+    <div style="margin-bottom:8px;background:#f8fafc;border-radius:10px;padding:10px 12px">
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Ítems del pedido</div>
+      ${items.map(i=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">
+        <span>${i.nombre} x${i.cantidad}</span>
+        <span style="font-weight:600">${fmt((i.precio_unitario||i.precio||0)*i.cantidad)}</span>
       </div>`).join('')}
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;padding:10px 0;border-top:2px solid #f1f5f9;margin-bottom:14px">
-      <span>Total</span><span>${fmt(cmd.total)}</span>
+
+    <!-- Ítems extra -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+        ➕ Ítems extra
+        <span style="font-size:10px;color:#94a3b8;font-weight:400;margin-left:4px">(fuera de menú)</span>
+      </div>
+      <div id="cob-extras">
+        ${_extraItems.length===0
+          ? `<div style="font-size:12px;color:#cbd5e1;text-align:center;padding:8px">Sin ítems extra</div>`
+          : _extraItems.map((it,idx)=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+              <span style="flex:1">${it.nombre}</span>
+              <span style="font-weight:600;margin-right:8px">${fmt(it.precio)}</span>
+              <button onclick="quitarExtra(${idx})" style="background:#fee2e2;border:none;border-radius:6px;color:#dc2626;font-size:12px;font-weight:700;padding:3px 8px;cursor:pointer">✕</button>
+            </div>`).join('')}
+      </div>
+      <!-- Form agregar extra -->
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input type="text" id="extra-nombre" placeholder="Descripción" style="flex:2;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px"/>
+        <input type="number" id="extra-precio" placeholder="$" min="0" style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px"/>
+        <button onclick="agregarExtra()" style="background:#3b82f6;border:none;border-radius:8px;color:#fff;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">+ Agregar</button>
+      </div>
     </div>
-    <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Descuento (%)</label>
-      <input type="number" id="cob-desc" value="0" min="0" max="100" oninput="updCobrarTotal(${cmd.total})"/></div>
-    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px;color:#22c55e">
-      <span>Total final</span><span id="cob-final">${fmt(cmd.total)}</span>
+
+    <!-- Totales -->
+    <div style="background:#f8fafc;border-radius:10px;padding:10px 14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:4px">
+        <span>Subtotal pedido</span><span>${fmt(baseTotal)}</span>
+      </div>
+      ${extraTotal>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:4px">
+        <span>Ítems extra</span><span>${fmt(extraTotal)}</span>
+      </div>`:''}
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;padding-top:6px;border-top:1px solid #e2e8f0">
+        <span>Subtotal</span><span>${fmt(subtotal)}</span>
+      </div>
     </div>
-    <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:8px">Método de pago</label>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Descuento (%)</label>
+      <input type="number" id="cob-desc" value="${desc}" min="0" max="100"
+        oninput="updCobrarTotalDinamico(${baseTotal})"/>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;margin-bottom:14px;color:#22c55e">
+      <span>Total final</span><span id="cob-final">${fmt(totalFinal)}</span>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:8px">Método de pago</label>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">
         ${METODOS.map((m,i)=>`<button id="mpbtn-${i}" onclick="selMetodo(${i})"
           style="padding:10px;border-radius:10px;border:1.5px solid ${i===0?'#3b82f6':'#e2e8f0'};
@@ -1239,14 +1299,35 @@ function abrirModalCobrar(cmdId){
           ${METODO_ICONS[m]} ${m}</button>`).join('')}
       </div>
     </div>
-    <button class="btn-green" style="width:100%;padding:14px" onclick="confirmarCobro(${cmdId},${cmd.total})">✓ Cobrar y cerrar</button>`;
-  S._metodoIdx=0;
-  openModal('m-cobrar');
+    <button class="btn-green" style="width:100%;padding:14px" onclick="confirmarCobro(${S.selCmdId},${baseTotal})">✓ Cobrar y cerrar</button>`;
 }
-function updCobrarTotal(total){
-  const d=Number(document.getElementById('cob-desc').value)||0;
-  document.getElementById('cob-final').textContent=fmt(total*(1-d/100));
+
+function agregarExtra(){
+  const nombre=document.getElementById('extra-nombre')?.value.trim();
+  const precio=parseFloat(document.getElementById('extra-precio')?.value)||0;
+  if(!nombre||!precio){toast('Completá nombre y precio','err');return;}
+  _extraItems.push({nombre,precio});
+  document.getElementById('extra-nombre').value='';
+  document.getElementById('extra-precio').value='';
+  // Re-renderizar solo la parte de extras y totales
+  const cmd=S.comandas.find(c=>c.id===S.selCmdId);
+  if(cmd) renderModalCobrar(cmd);
+  if(S._metodoIdx) selMetodo(S._metodoIdx);
 }
+
+function quitarExtra(idx){
+  _extraItems.splice(idx,1);
+  const cmd=S.comandas.find(c=>c.id===S.selCmdId);
+  if(cmd) renderModalCobrar(cmd);
+  if(S._metodoIdx) selMetodo(S._metodoIdx);
+}
+
+function updCobrarTotalDinamico(base){
+  const d=Number(document.getElementById('cob-desc')?.value)||0;
+  const extra=_extraItems.reduce((s,i)=>s+i.precio,0);
+  document.getElementById('cob-final').textContent=fmt((base+extra)*(1-d/100));
+}
+
 function selMetodo(idx){
   S._metodoIdx=idx;
   METODOS.forEach((_,i)=>{
@@ -1257,13 +1338,22 @@ function selMetodo(idx){
     b.style.color=i===idx?'#3b82f6':'#475569';
   });
 }
+
 async function confirmarCobro(cmdId,totalOrig){
-  const desc=Number(document.getElementById('cob-desc').value)||0;
+  const desc=Number(document.getElementById('cob-desc')?.value)||0;
   const metodo=METODOS[S._metodoIdx||0];
+  const extra=_extraItems.reduce((s,i)=>s+i.precio,0);
   loading(true);
   try{
+    // Si hay ítems extra, agregarlos a la comanda primero
+    for(const it of _extraItems){
+      await api('POST',`/api/restaurante/comandas/${cmdId}/items/extra`,{
+        nombre:it.nombre, precio:it.precio
+      });
+    }
     await api('POST',`/api/restaurante/comandas/${cmdId}/cerrar`,{metodo_pago:metodo,descuento:desc});
     toast('Cobrado ✓','ok');
+    _extraItems=[];
     closeModal('m-cobrar');
     await loadAll(); renderMain();
   }catch(e){toast(e.message,'err');}
