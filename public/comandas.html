@@ -1330,7 +1330,70 @@ function renderEditorSalon(){
   if(!canvas) return;
   // Asignar posiciones iniciales escalonadas a mesas en 0,0
   let autoX=20, autoY=20;
-  canvas.innerHTML=S.mesas.map((m,idx)=>{
+  // Limpiar listeners anteriores clonando el canvas
+  const newCanvas = canvas.cloneNode(false);
+  canvas.parentNode.replaceChild(newCanvas, canvas);
+  const c = newCanvas;
+
+  // Eventos en el canvas (no en las mesas individuales)
+  let _dblClickTimer = null;
+  c.addEventListener('mousedown', (e) => {
+    const mesaEl = e.target.closest('[data-mesa-id]');
+    if (!mesaEl) return;
+    const mesaId = parseInt(mesaEl.dataset.mesaId);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startLeft = parseFloat(mesaEl.style.left) || 0;
+    const startTop  = parseFloat(mesaEl.style.top)  || 0;
+    let moved = false;
+    mesaEl.classList.add('dragging');
+
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+      moved = true;
+      let nx = startLeft + dx;
+      let ny = startTop  + dy;
+      nx = Math.max(0, Math.min(nx, c.scrollWidth  - mesaEl.offsetWidth));
+      ny = Math.max(0, Math.min(ny, c.scrollHeight - mesaEl.offsetHeight));
+      mesaEl.style.left = nx + 'px';
+      mesaEl.style.top  = ny + 'px';
+    };
+    const onUp = async (ev) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      mesaEl.classList.remove('dragging');
+      if (!moved) {
+        // Es un clic — manejar doble clic manualmente
+        if (_dblClickTimer) {
+          clearTimeout(_dblClickTimer);
+          _dblClickTimer = null;
+          editarMesaSalon(mesaId);
+        } else {
+          _dblClickTimer = setTimeout(() => { _dblClickTimer = null; }, 300);
+        }
+        return;
+      }
+      const nx = Math.round(parseFloat(mesaEl.style.left) / 10) * 10;
+      const ny = Math.round(parseFloat(mesaEl.style.top)  / 10) * 10;
+      mesaEl.style.left = nx + 'px';
+      mesaEl.style.top  = ny + 'px';
+      try {
+        const m = S.mesas.find(x => x.id === mesaId);
+        await api('PUT', `/api/restaurante/mesas/${mesaId}`, {
+          x: nx, y: ny, tipo: m?.tipo || 'cuadrada',
+          alias: m?.alias || '', numero: m?.numero || null
+        });
+        S.mesas = S.mesas.map(x => x.id === mesaId ? {...x, x: nx, y: ny} : x);
+        toast('Posición guardada ✓', 'ok');
+      } catch(err) { toast('Error guardando posición', 'err'); }
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  c.innerHTML=S.mesas.map((m,idx)=>{
     const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
     const {w,h}=mesaDims(m.tipo);
     // Si está en 0,0 asignar posición automática (no se guarda hasta que el usuario la mueva)
@@ -1341,13 +1404,11 @@ function renderEditorSalon(){
       if(autoX>750){autoX=20; autoY+=h+15;}
     }
     const br=m.tipo==='redonda'?'50%':'10px';
-    return `<div id="sm-${m.id}" class="s-mesa ${m.status}"
-      onmousedown="startDrag(event,${m.id})" ontouchstart="startDragTouch(event,${m.id})"
-      ondblclick="editarMesaSalon(${m.id})"
+    return `<div id="sm-${m.id}" class="s-mesa ${m.status}" data-mesa-id="${m.id}"
       style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${br};
       background:${st.bg};border-color:${st.border};cursor:grab">
-      <div class="s-mesa-num" style="color:${st.color}">${mesaLabel(m)}</div>
-      ${m.tipo==='rectangular'&&!m.alias?`<div class="s-mesa-sub" style="color:${st.color}">2 mesas</div>`:''}
+      <div class="s-mesa-num" style="color:${st.color};pointer-events:none;user-select:none">${mesaLabel(m)}</div>
+      ${m.tipo==='rectangular'&&!m.alias?`<div class="s-mesa-sub" style="color:${st.color};pointer-events:none;user-select:none">2 mesas</div>`:''}
     </div>`;
   }).join('');
 }
