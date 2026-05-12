@@ -1393,7 +1393,8 @@ async function endDrag(){
   document.removeEventListener('mousemove',onDrag);
   document.removeEventListener('mouseup',endDrag);
   try{
-    await api('PUT',`/api/restaurante/mesas/${mesaId}`,{x:nx,y:ny});
+    const mesaData=S.mesas.find(m=>m.id===mesaId);
+    await api('PUT',`/api/restaurante/mesas/${mesaId}`,{x:nx,y:ny,tipo:mesaData?.tipo||'cuadrada',alias:mesaData?.alias||''});
     S.mesas=S.mesas.map(m=>m.id===mesaId?{...m,x:nx,y:ny}:m);
   }catch(e){toast('Error guardando posición','err');}
 }
@@ -1407,7 +1408,8 @@ async function endDragT(){
   document.removeEventListener('touchmove',onDragT);
   document.removeEventListener('touchend',endDragT);
   try{
-    await api('PUT',`/api/restaurante/mesas/${mesaId}`,{x:nx,y:ny});
+    const mesaData2=S.mesas.find(m=>m.id===mesaId);
+    await api('PUT',`/api/restaurante/mesas/${mesaId}`,{x:nx,y:ny,tipo:mesaData2?.tipo||'cuadrada',alias:mesaData2?.alias||''});
     S.mesas=S.mesas.map(m=>m.id===mesaId?{...m,x:nx,y:ny}:m);
   }catch(e){toast('Error guardando posición','err');}
 }
