@@ -49,12 +49,19 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6}
 .pills-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .pill-estado{display:flex;align-items:center;gap:5px;border-radius:20px;padding:5px 13px;font-size:13px;font-weight:600;border:1.5px solid}
 
-/* TARJETAS MÉTRICAS */
-.metricas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
-.metrica-card{border-radius:14px;padding:14px 16px;border:1.5px solid}
-.metrica-icon{font-size:22px;margin-bottom:4px}
-.metrica-val{font-size:clamp(18px,3vw,22px);font-weight:800;line-height:1.1}
-.metrica-label{font-size:12px;color:#64748b;margin-top:2px;font-weight:500}
+/* TARJETAS MÉTRICAS estilo habitaciones */
+.metricas-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:700px){.metricas-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.metricas-grid{grid-template-columns:1fr 1fr}}
+.metrica-card{border-radius:16px;padding:16px 14px;color:#fff;position:relative;overflow:hidden;min-height:90px;border:none}
+.metrica-card::after{content:'';position:absolute;right:-15px;bottom:-15px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08)}
+.metrica-card .mc-lbl{font-size:9px;font-weight:700;letter-spacing:1px;opacity:.75;text-transform:uppercase}
+.metrica-card .mc-ttl{font-size:11px;font-weight:800;opacity:.9;margin-bottom:4px}
+.metrica-card .mc-val{font-size:clamp(18px,3vw,22px);font-weight:900;line-height:1.1}
+.mc-total  {background:linear-gradient(135deg,#059669,#10b981)}
+.mc-cobradas{background:linear-gradient(135deg,#2563eb,#3b82f6)}
+.mc-comen  {background:linear-gradient(135deg,#f59e0b,#fbbf24)}
+.mc-desc   {background:linear-gradient(135deg,#ec4899,#f43f5e)}
 
 /* MAPA SALÓN */
 .mapa-wrap{background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:20px}
@@ -612,15 +619,26 @@ function renderCajero(el){
 
   // Tarjetas métricas
   let html=`<div class="metricas-grid">
-    ${[{icon:'💰',label:'Total del turno',val:fmt(totalNeto),bg:'#f0fdf4',border:'#86efac',color:'#15803d'},
-       {icon:'🧾',label:'Comandas cobradas',val:cerradas.length,bg:'#eff6ff',border:'#93c5fd',color:'#1d4ed8'},
-       {icon:'👥',label:'Comensales',val:cerradas.reduce((s,c)=>s+(c.comensales||0),0),bg:'#fff7ed',border:'#fdba74',color:'#c2410c'},
-       {icon:'🏷️',label:'Descuentos',val:fmt(totalDesc),bg:'#fdf4ff',border:'#e879f9',color:'#86198f'},
-    ].map(c=>`<div class="metrica-card" style="background:${c.bg};border-color:${c.border}">
-      <div class="metrica-icon">${c.icon}</div>
-      <div class="metrica-val" style="color:${c.color}">${c.val}</div>
-      <div class="metrica-label">${c.label}</div>
-    </div>`).join('')}
+    <div class="metrica-card mc-total">
+      <div class="mc-lbl">Turno actual</div>
+      <div class="mc-ttl">TOTAL COBRADO</div>
+      <div class="mc-val">${fmt(totalNeto)}</div>
+    </div>
+    <div class="metrica-card mc-cobradas">
+      <div class="mc-lbl">Turno actual</div>
+      <div class="mc-ttl">COMANDAS</div>
+      <div class="mc-val">${cerradas.length}</div>
+    </div>
+    <div class="metrica-card mc-comen">
+      <div class="mc-lbl">Turno actual</div>
+      <div class="mc-ttl">COMENSALES</div>
+      <div class="mc-val">${cerradas.reduce((s,c)=>s+(c.comensales||0),0)}</div>
+    </div>
+    <div class="metrica-card mc-desc">
+      <div class="mc-lbl">Turno actual</div>
+      <div class="mc-ttl">DESCUENTOS</div>
+      <div class="mc-val">${fmt(totalDesc)}</div>
+    </div>
   </div>`;
 
   // Panel caja
@@ -739,15 +757,26 @@ function renderAdmin(el){
   const cats=[...new Set(S.menu.map(m=>m.categoria))];
   el.innerHTML=`
     <div class="metricas-grid">
-      ${[{icon:'💰',label:'Total del turno',val:fmt(0),bg:'#f0fdf4',border:'#86efac',color:'#15803d'},
-         {icon:'🧾',label:'Comandas cobradas',val:0,bg:'#eff6ff',border:'#93c5fd',color:'#1d4ed8'},
-         {icon:'👥',label:'Comensales',val:0,bg:'#fff7ed',border:'#fdba74',color:'#c2410c'},
-         {icon:'🏷️',label:'Descuentos',val:fmt(0),bg:'#fdf4ff',border:'#e879f9',color:'#86198f'},
-      ].map(c=>`<div class="metrica-card" style="background:${c.bg};border-color:${c.border}">
-        <div class="metrica-icon">${c.icon}</div>
-        <div class="metrica-val" style="color:${c.color}">${c.val}</div>
-        <div class="metrica-label">${c.label}</div>
-      </div>`).join('')}
+      <div class="metrica-card mc-total">
+        <div class="mc-lbl">Turno actual</div>
+        <div class="mc-ttl">TOTAL COBRADO</div>
+        <div class="mc-val">${fmt(0)}</div>
+      </div>
+      <div class="metrica-card mc-cobradas">
+        <div class="mc-lbl">Turno actual</div>
+        <div class="mc-ttl">COMANDAS</div>
+        <div class="mc-val">0</div>
+      </div>
+      <div class="metrica-card mc-comen">
+        <div class="mc-lbl">Turno actual</div>
+        <div class="mc-ttl">COMENSALES</div>
+        <div class="mc-val">0</div>
+      </div>
+      <div class="metrica-card mc-desc">
+        <div class="mc-lbl">Turno actual</div>
+        <div class="mc-ttl">DESCUENTOS</div>
+        <div class="mc-val">${fmt(0)}</div>
+      </div>
     </div>
 
     <!-- Mapa -->
