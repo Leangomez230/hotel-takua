@@ -253,6 +253,7 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6}
     </div>
     <div class="header-right">
       <button class="btn-salon" id="btn-salon-header" style="display:none" onclick="abrirEditorSalon()">🪑 Salón</button>
+      <button class="btn-salon" id="btn-ir-habitaciones" style="display:none;background:#1e40af;color:#bfdbfe" onclick="window.location.href='/index.html'">🏨 Habitaciones</button>
       <button class="btn-salir" onclick="doLogout()">Salir 🔓</button>
     </div>
   </div>
@@ -499,6 +500,9 @@ async function initApp(){
   // Botón Salón solo para admin/cajero
   if(['admin','cajero'].includes(ME.rol)){
     document.getElementById('btn-salon-header').style.display='';
+  }
+  if(ME.rol==='admin'){
+    document.getElementById('btn-ir-habitaciones').style.display='';
   }
 
   showScreen('screen-main');
