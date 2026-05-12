@@ -295,6 +295,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
     <button class="nav-btn nav-admin" id="nav-inventario"><span class="ni">📦</span><span class="nl">Inventario</span></button>
     <button class="nav-btn nav-admin" id="nav-caja"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn nav-admin" id="nav-finanzas"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
+    <button class="nav-btn nav-admin" id="nav-restaurante" onclick="irARestaurante()" style="display:none"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
     <button class="nav-btn nav-admin bottom" id="nav-config"><span class="ni">⚙️</span><span class="nl">Configuración</span></button>
   </nav>
   <div class="main">
@@ -421,6 +422,11 @@ document.getElementById('btn-login').addEventListener('click', doLogin);
 document.getElementById('l-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 document.getElementById('btn-logout').addEventListener('click', doLogout);
  
+function irARestaurante() {
+  // Pasar a comandas.html manteniendo el token (ya está en localStorage)
+  window.location.href = '/comandas.html';
+}
+
 async function doLogin() {
   const usuario = document.getElementById('l-email').value.trim();
   const pass    = document.getElementById('l-pass').value;
@@ -474,8 +480,9 @@ function startApp() {
   const isMucama = rolActual==='mucama';
   const isAdminUser = rolActual==='admin';
   document.querySelectorAll('.nav-admin').forEach(el=>el.style.display=isMucama?'none':'');
-  // Configuracion solo para admin
+  // Configuracion y Restaurante solo para admin
   document.getElementById('nav-config').style.display=isAdminUser?'':'none';
+  document.getElementById('nav-restaurante').style.display=isAdminUser?'':'none';
   document.getElementById('hamburger').style.display='flex';
   setActiveNav('nav-dashboard');
   goTo('dashboard');
