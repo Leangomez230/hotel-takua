@@ -1365,7 +1365,12 @@ function renderEditorSalon(){
       document.removeEventListener('mouseup', onUp);
       mesaEl.classList.remove('dragging');
       if (!moved) {
-        // Es un clic — manejar doble clic manualmente
+        // Modo unir: clic simple selecciona la mesa
+        if (S.modoUnir) {
+          seleccionarParaUnir(mesaId);
+          return;
+        }
+        // Modo normal: doble clic para editar
         if (_dblClickTimer) {
           clearTimeout(_dblClickTimer);
           _dblClickTimer = null;
@@ -1647,24 +1652,35 @@ function toggleModoUnir(){
   S.modoUnir=!S.modoUnir;
   _unirSel=[];
   const btn=document.getElementById('btn-unir-mesas');
+  // Limpiar selección visual
+  document.querySelectorAll('.s-mesa').forEach(el=>{
+    el.style.boxShadow=''; el.style.borderColor='';
+  });
   if(S.modoUnir){
     btn.style.background='#f59e0b'; btn.style.color='#1e293b';
-    toast('Doble clic en 2 mesas cuadradas para unir','info');
+    btn.textContent='✕ Cancelar';
+    toast('Clic en 2 mesas para unirlas','info');
   } else {
     btn.style.background=''; btn.style.color='';
-    document.querySelectorAll('.s-mesa').forEach(el=>el.classList.remove('sel-unir'));
+    btn.textContent='🔗 Unir';
   }
 }
 function seleccionarParaUnir(mesaId){
   const m=S.mesas.find(x=>x.id===mesaId);
-  if(!m||m.tipo!=='cuadrada'){toast('Solo podés unir mesas cuadradas','err');return;}
+  if(!m){return;}
+  // Permitir unir cualquier tipo, no solo cuadradas
   const el=document.getElementById('sm-'+mesaId);
+  if(!el) return;
   if(_unirSel.includes(mesaId)){
-    _unirSel=_unirSel.filter(id=>id!==mesaId); el.classList.remove('sel-unir');
+    _unirSel=_unirSel.filter(id=>id!==mesaId);
+    el.style.boxShadow=''; el.style.borderColor='';
   } else {
-    if(_unirSel.length>=2){toast('Ya seleccionaste 2','err');return;}
-    _unirSel.push(mesaId); el.classList.add('sel-unir');
-    if(_unirSel.length===2) setTimeout(()=>confirmarUnion(),200);
+    if(_unirSel.length>=2){toast('Ya seleccionaste 2 mesas','err');return;}
+    _unirSel.push(mesaId);
+    el.style.boxShadow='0 0 0 3px #f59e0b';
+    el.style.borderColor='#f59e0b';
+    toast(`Mesa ${mesaLabel(m)} seleccionada (${_unirSel.length}/2)`,'info');
+    if(_unirSel.length===2) setTimeout(()=>confirmarUnion(),300);
   }
 }
 async function confirmarUnion(){
