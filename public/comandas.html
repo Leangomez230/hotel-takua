@@ -536,11 +536,14 @@ async function loadAll(){
     if(ME.rol==='mozo'){
       S.comandas=await api('GET','/api/restaurante/comandas').catch(()=>[]);
     } else {
-      const [turno,cmds]=await Promise.all([
+      const [turno,turnoUltimo,cmds]=await Promise.all([
         api('GET','/api/restaurante/turno/activo').catch(()=>null),
+        api('GET','/api/restaurante/turno/ultimo').catch(()=>null),
         api('GET','/api/restaurante/comandas').catch(()=>[]),
       ]);
-      S.turno=turno; S.comandas=cmds;
+      // Si hay turno activo usarlo, sino mostrar el último (cerrado)
+      S.turno=turno||turnoUltimo;
+      S.comandas=cmds;
     }
     if(ME.rol==='admin'){
       S.usuarios=await api('GET','/api/portal/usuarios').catch(()=>[]);
@@ -650,11 +653,17 @@ function renderCajero(el){
         <input type="number" id="fondo-inp" placeholder="Fondo inicial ($)" min="0"/>
         <button class="btn-green" onclick="abrirTurno()">Abrir turno</button>
       </div></div>`;
-  } else if(!turno.abierto){
+  } else if(turno.estado==='cerrado'){
     html+=`<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div><div class="card-title">📊 Resumen del turno</div><div style="font-size:12px;color:#64748b">${turno.abierto_at?new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div></div>
-        <button class="btn-ghost-light" onclick="nuevoTurno()">+ Nuevo turno</button>
+        <div>
+          <div class="card-title">📊 Resumen del turno</div>
+          <div style="font-size:12px;color:#64748b">${turno.abierto_at?new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
+          <button class="btn-ghost-light" onclick="nuevoTurno()">+ Nuevo turno</button>
+        </div>
       </div>
       ${renderResumenCaja(turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas)}</div>`;
   } else {
