@@ -591,7 +591,7 @@ app.put('/api/restaurante/mesas/:id', auth, authRestaurante, async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/restaurante/mesas', auth, adminOnly, async (req, res) => {
+app.post('/api/restaurante/mesas', auth, authRestaurante, async (req, res) => {
   try {
     const { tipo, x, y, alias, numero } = req.body;
     const r = await db.query(
@@ -602,7 +602,7 @@ app.post('/api/restaurante/mesas', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/restaurante/mesas/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/restaurante/mesas/:id', auth, authRestaurante, async (req, res) => {
   try {
     await db.query('UPDATE mesas_restaurante SET activo=0 WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
