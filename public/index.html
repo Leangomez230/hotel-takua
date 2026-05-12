@@ -325,6 +325,8 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 // ── STATE ──
 let token = localStorage.getItem('takua_token');
 let currentUser = JSON.parse(localStorage.getItem('takua_user')||'null');
+let isMucama   = currentUser?.rol === 'mucama';
+let isAdminUser = currentUser?.rol === 'admin';
 let currentPage = 'dashboard';
 let habitaciones = [];
 let cart = [];
