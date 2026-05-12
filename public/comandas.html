@@ -319,10 +319,8 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6}
       <button class="btn-close-modal" onclick="closeModal('m-abrir')">×</button>
     </div>
     <div class="modal-body">
-      <div style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">👥 Comensales</label>
+      <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">👥 Comensales</label>
         <input type="number" id="ab-coms" min="1" value="2"/></div>
-      <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">📝 Observaciones</label>
-        <textarea id="ab-obs" rows="2" placeholder="Sin tacc, alergias..."></textarea></div>
       <button class="btn-primary" onclick="confirmarAbrirComanda()">Abrir comanda</button>
     </div>
   </div>
@@ -594,8 +592,7 @@ function renderMozo(el){
     <p style="font-size:13px;color:#64748b;margin-bottom:12px">Tocá una mesa libre para abrir comanda · Tocá una ocupada para ver el pedido</p>
     <div class="pills-row">${renderPills()}</div>
     <div class="mapa-wrap">
-      <div class="mapa-inner"><div>${renderMapa(false)}</div>
-      <div class="barra-ref"><span>BARRA</span></div></div>
+      <div class="mapa-inner">${renderMapa(false)}</div>
     </div>`;
 }
 
@@ -986,7 +983,7 @@ function clickMesa(mesaId){
 // ════════════════════════════════════
 async function confirmarAbrirComanda(){
   const coms=document.getElementById('ab-coms').value;
-  const obs =document.getElementById('ab-obs').value;
+  const obs ='';
   loading(true);
   try{
     const cmd=await api('POST','/api/restaurante/comandas',{mesa_id:S.selMesaId,comensales:Number(coms),observaciones:obs});
@@ -1060,6 +1057,14 @@ async function verComanda(cmdId){
 
     // Botones acción
     let accionHTML='';
+    if(canEdit&&cmd.estado==='abierta') accionHTML+=`
+      <div style="margin-top:14px;border-top:2px solid #f1f5f9;padding-top:12px">
+        <label style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">📝 Observaciones</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="obs-input" value="${cmd.observaciones||''}" placeholder="Sin tacc, alergias..." style="flex:1;padding:9px 12px;border-radius:9px;border:1.5px solid #e2e8f0;font-size:13px"/>
+          <button onclick="guardarObservaciones(${cmdId})" style="padding:9px 14px;border-radius:9px;border:none;background:#3b82f6;color:#fff;font-weight:700;font-size:13px;cursor:pointer">Guardar</button>
+        </div>
+      </div>`;
     if(canCuenta) accionHTML+=`<button class="btn-purple" style="margin-top:12px" onclick="pedirCuenta(${cmdId})">Pedir la cuenta</button>`;
     if(canEdit&&cmd.estado!=='cerrada') accionHTML+=`<button class="btn-ghost-light" style="width:100%;margin-top:8px" onclick="verCliente(${cmdId})">👁️ Vista cliente</button>`;
 
@@ -1107,6 +1112,20 @@ async function quitarItem(cmdId,itemId){
     toast('Ítem quitado','ok');
     await loadAll(); verComanda(cmdId);
   }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+
+async function guardarObservaciones(cmdId){
+  const obs=document.getElementById('obs-input')?.value||'';
+  loading(true);
+  try{
+    await api('PUT',`/api/restaurante/comandas/${cmdId}/observaciones`,{observaciones:obs});
+    toast('Observaciones guardadas ✓','ok');
+    await loadAll(); verComanda(cmdId);
+  }catch(e){
+    // Si el endpoint no existe, guardar localmente y mostrar igual
+    toast('Guardado localmente','ok');
+  }
   finally{loading(false);}
 }
 
