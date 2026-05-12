@@ -1320,10 +1320,18 @@ let _drag=null;
 function renderEditorSalon(){
   const canvas=document.getElementById('salon-editor-canvas');
   if(!canvas) return;
-  canvas.innerHTML=S.mesas.map(m=>{
+  // Asignar posiciones iniciales escalonadas a mesas en 0,0
+  let autoX=20, autoY=20;
+  canvas.innerHTML=S.mesas.map((m,idx)=>{
     const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
     const {w,h}=mesaDims(m.tipo);
-    const x=m.x||80; const y=m.y||80;
+    // Si está en 0,0 asignar posición automática (no se guarda hasta que el usuario la mueva)
+    let x=m.x, y=m.y;
+    if(!x && !y){
+      x=autoX; y=autoY;
+      autoX+=w+15;
+      if(autoX>750){autoX=20; autoY+=h+15;}
+    }
     const br=m.tipo==='redonda'?'50%':'10px';
     return `<div id="sm-${m.id}" class="s-mesa ${m.status}"
       onmousedown="startDrag(event,${m.id})" ontouchstart="startDragTouch(event,${m.id})"
@@ -1349,7 +1357,9 @@ function startDrag(e,mesaId){
   const el=document.getElementById('sm-'+mesaId);
   const canvas=el.parentElement;
   const cr=canvas.getBoundingClientRect();
-  _drag={mesaId,el,offX:e.clientX-el.offsetLeft,offY:e.clientY-el.offsetTop,cr,canvas};
+  // offX/offY = distancia del cursor al borde superior-izquierdo del elemento
+  const elRect=el.getBoundingClientRect();
+  _drag={mesaId,el,offX:e.clientX-elRect.left,offY:e.clientY-elRect.top,cr,canvas};
   el.classList.add('dragging');
   document.addEventListener('mousemove',onDrag);
   document.addEventListener('mouseup',endDrag);
@@ -1360,7 +1370,8 @@ function startDragTouch(e,mesaId){
   const el=document.getElementById('sm-'+mesaId);
   const canvas=el.parentElement;
   const cr=canvas.getBoundingClientRect();
-  _drag={mesaId,el,offX:t.clientX-el.offsetLeft,offY:t.clientY-el.offsetTop,cr,canvas};
+  const elRect=el.getBoundingClientRect();
+  _drag={mesaId,el,offX:t.clientX-elRect.left,offY:t.clientY-elRect.top,cr,canvas};
   el.classList.add('dragging');
   document.addEventListener('touchmove',onDragT,{passive:false});
   document.addEventListener('touchend',endDragT);
@@ -1368,6 +1379,7 @@ function startDragTouch(e,mesaId){
 function onDrag(e){
   if(!_drag) return;
   const cr=_drag.canvas.getBoundingClientRect();
+  // Posición nueva = cursor relativo al canvas, menos el offset dentro del elemento
   let nx=e.clientX-cr.left-_drag.offX;
   let ny=e.clientY-cr.top -_drag.offY;
   nx=Math.max(0,Math.min(nx,_drag.canvas.offsetWidth -_drag.el.offsetWidth));
