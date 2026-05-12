@@ -1065,6 +1065,15 @@ app.post('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (r
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// PUT /observaciones
+app.put('/api/restaurante/comandas/:id/observaciones', auth, authRestaurante, async (req, res) => {
+  try {
+    const { observaciones } = req.body;
+    await db.query('UPDATE comandas SET observaciones=$1 WHERE id=$2', [observaciones||'', req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // PUT /pedir-cuenta (alias de PUT /cuenta)
 app.put('/api/restaurante/comandas/:id/pedir-cuenta', auth, authRestaurante, async (req, res) => {
   try {
