@@ -275,7 +275,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
       <h1>Hotel Takuá</h1>
       <p>Sistema de gestión</p>
     </div>
-    <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="admin@hoteltakua.com"></div>
+    <div class="lf"><label>Usuario o email</label><input type="text" id="l-email" placeholder="admin / tu@email.com" autocomplete="username"></div>
     <div class="lf"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"></div>
     <button class="login-btn" id="btn-login">Iniciar sesión</button>
     <div class="login-err" id="login-err">Email o contraseña incorrectos</div>
@@ -422,13 +422,13 @@ document.getElementById('l-pass').addEventListener('keydown',e=>{ if(e.key==='En
 document.getElementById('btn-logout').addEventListener('click', doLogout);
  
 async function doLogin() {
-  const email = document.getElementById('l-email').value.trim();
-  const pass  = document.getElementById('l-pass').value;
+  const usuario = document.getElementById('l-email').value.trim();
+  const pass    = document.getElementById('l-pass').value;
   document.getElementById('login-err').style.display='none';
-  if (!email||!pass) return;
-  const data = await fetch('/api/login',{
+  if (!usuario||!pass) return;
+  const data = await fetch('/api/portal/login',{
     method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({email, password:pass})
+    body:JSON.stringify({usuario, clave:pass})
   }).then(r=>r.json()).catch(()=>null);
   if (data?.token) {
     token=data.token; currentUser=data.user;
@@ -439,6 +439,11 @@ async function doLogin() {
       caches.open('takua-auth').then(cache =>
         cache.put('token', new Response(token))
       );
+    }
+    // Redirigir a comandas si el rol no es de habitaciones
+    if (['mozo','cajero'].includes(currentUser?.rol)) {
+      window.location.href = '/comandas.html';
+      return;
     }
     startApp();
   } else {
