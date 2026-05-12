@@ -659,17 +659,25 @@ app.delete('/api/restaurante/menu/:id', auth, adminOnly, async (req, res) => {
 // ── COMANDAS ─────────────────────────────────────────────────────────
 app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => {
   try {
-    const { estado } = req.query;
-    let q = `SELECT c.*, m.alias as mesa_alias, m.tipo as mesa_tipo
-             FROM comandas c LEFT JOIN mesas_restaurante m ON c.mesa_id=m.id`;
-    if (estado) q += ` WHERE c.estado=$1 ORDER BY c.abierta_at DESC`;
-    else q += ` WHERE c.estado IN ('abierta','cuenta') ORDER BY c.abierta_at DESC`;
-    const comandas = estado
-      ? await db.getAll(q, [estado])
-      : await db.getAll(q);
-    // Agregar items a cada comanda
+    const { estado, mozo_id } = req.query;
+    let q = `SELECT c.*, m.alias as mesa_alias, m.tipo as mesa_tipo,
+             u.nombre as mozo_nombre
+             FROM comandas c
+             LEFT JOIN mesas_restaurante m ON c.mesa_id=m.id
+             LEFT JOIN usuarios u ON c.mozo_id=u.id`;
+    const params = [];
+    const wheres = [];
+    if (estado) { wheres.push(`c.estado=$${params.length+1}`); params.push(estado); }
+    else wheres.push(`c.estado IN ('abierta','cuenta')`);
+    if (mozo_id) { wheres.push(`c.mozo_id=$${params.length+1}`); params.push(mozo_id); }
+    if (wheres.length) q += ' WHERE ' + wheres.join(' AND ');
+    q += ' ORDER BY c.abierta_at DESC';
+    const comandas = await db.getAll(q, params);
     for (const cmd of comandas) {
-      cmd.items = await db.getAll('SELECT * FROM comanda_items WHERE comanda_id=$1 ORDER BY id', [cmd.id]);
+      cmd.items = await db.getAll(
+        'SELECT *, precio as precio_unitario FROM comanda_items WHERE comanda_id=$1 ORDER BY id',
+        [cmd.id]
+      );
     }
     res.json(comandas);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -677,9 +685,16 @@ app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => 
 
 app.get('/api/restaurante/comandas/:id', auth, authRestaurante, async (req, res) => {
   try {
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    const cmd = await db.getOne(
+      `SELECT c.*, u.nombre as mozo_nombre
+       FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id
+       WHERE c.id=$1`, [req.params.id]
+    );
     if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    cmd.items = await db.getAll('SELECT * FROM comanda_items WHERE comanda_id=$1 ORDER BY id', [cmd.id]);
+    cmd.items = await db.getAll(
+      'SELECT *, precio as precio_unitario FROM comanda_items WHERE comanda_id=$1 ORDER BY id',
+      [cmd.id]
+    );
     res.json(cmd);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1031,7 +1046,47 @@ app.put('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 // ════════════════════════════════════════════════════════════════════
-// ── CATCH-ALL & ARRANQUE ─────────────────────────────────────────────
+// ── ALIASES FRONTEND ─────────────────────────────────────────────────
+// El frontend usa POST /cerrar y PUT /pedir-cuenta
+// ════════════════════════════════════════════════════════════════════
+
+// POST /cerrar (alias de PUT /cerrar)
+app.post('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (req, res) => {
+  try {
+    const { metodo_pago, descuento } = req.body;
+    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
+    if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'Ya está cerrada' });
+    const desc = Number(descuento) || 0;
+    const totalFinal = Number(cmd.total) * (1 - desc / 100);
+    await db.query(
+      `UPDATE comandas SET estado='cerrada', metodo_pago=$1, descuento=$2, total_final=$3,
+       cajero_id=$4, cajero_nombre=$5, cerrada_at=NOW() WHERE id=$6`,
+      [metodo_pago || 'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, cmd.id]
+    );
+    await db.query("UPDATE mesas_restaurante SET status='libre', updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
+    const turno = await db.getOne("SELECT id FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+    if (turno) {
+      await db.query('UPDATE turnos_restaurante SET total_cobrado=COALESCE(total_cobrado,0)+$1 WHERE id=$2', [totalFinal, turno.id]);
+    }
+    await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
+    res.json({ ok: true, total_final: totalFinal });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /pedir-cuenta (alias de PUT /cuenta)
+app.put('/api/restaurante/comandas/:id/pedir-cuenta', auth, authRestaurante, async (req, res) => {
+  try {
+    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
+    await db.query("UPDATE comandas SET estado='cuenta' WHERE id=$1", [cmd.id]);
+    await db.query("UPDATE mesas_restaurante SET status='cuenta', updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ════════════════════════════════════════════════════════════════════
+// ── CATCH-ALL & ARRANQUE ─────────────────────────────────────════════
 // ════════════════════════════════════════════════════════════════════
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
