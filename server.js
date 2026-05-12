@@ -784,11 +784,6 @@ app.put('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (re
       [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, cmd.id]
     );
     await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    // Registrar en turno activo del restaurante
-    const turno = await db.getOne("SELECT id FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (turno) {
-      await db.query('UPDATE turnos_restaurante SET total_cobrado=total_cobrado+$1 WHERE id=$2', [totalFinal, turno.id]);
-    }
     await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
     res.json({ ok: true, total_final: totalFinal });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1065,10 +1060,6 @@ app.post('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (r
       [metodo_pago || 'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, cmd.id]
     );
     await db.query("UPDATE mesas_restaurante SET status='libre', updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    const turno = await db.getOne("SELECT id FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (turno) {
-      await db.query('UPDATE turnos_restaurante SET total_cobrado=COALESCE(total_cobrado,0)+$1 WHERE id=$2', [totalFinal, turno.id]);
-    }
     await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
     res.json({ ok: true, total_final: totalFinal });
   } catch(e) { res.status(500).json({ error: e.message }); }
