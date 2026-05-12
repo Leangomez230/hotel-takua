@@ -507,9 +507,10 @@ async function initApp(){
   await loadAll();
   renderMain();
 
-  // Poll cada 30s
+  // Poll cada 30s — solo si no hay modal abierto
   setInterval(async()=>{
-    if(document.getElementById('screen-main').classList.contains('active')){
+    const hayModal = document.querySelector('.overlay.open');
+    if(document.getElementById('screen-main').classList.contains('active') && !hayModal){
       await loadAll(); renderMain();
     }
   },30000);
@@ -568,7 +569,7 @@ function renderMapa(editable=false){
       background:${st.bg};border-color:${st.border};${editable?'cursor:grab':''}">
       <div class="s-mesa-num" style="color:${st.color}">${mesaLabel(m)}</div>
       ${m.tipo==='rectangular'&&!m.alias?`<div class="s-mesa-sub" style="color:${st.color}">2 mesas</div>`:''}
-      ${cmd?`<div class="s-mesa-total" style="color:${st.color}">${fmt(cmd.total)}</div>`:''}
+      ${cmd?`<div class="s-mesa-total" style="color:${st.color}">${fmt(cmd.total||0)}</div>`:''}
     </div>`;
   }).join('');
   return `<div style="position:relative;width:${maxX}px;height:${maxY}px;min-width:320px">${mesasHTML}
@@ -1019,7 +1020,7 @@ async function verComanda(cmdId){
     const btnCambio=document.getElementById('mc-btn-cambio');
     const btnImpr  =document.getElementById('mc-btn-imprimir');
     btnCambio.style.display=canEdit&&cmd.estado==='abierta'?'':'none';
-    btnImpr.style.display  =(ME.rol==='cajero'||ME.rol==='admin')&&cmd.estado!=='cerrada'?'':'none';
+    btnImpr.style.display  = cmd.estado!=='cerrada' ? '' : 'none';
     S.ticketData={mesa,cmd};
 
     // Items
