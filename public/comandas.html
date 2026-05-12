@@ -666,6 +666,7 @@ function renderCajero(el){
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn-ghost-light" onclick="toggleResumen()">Ver detalle</button>
+          <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
           <button class="btn-red" onclick="cerrarTurno()">Cerrar turno</button>
         </div>
       </div>
@@ -1375,6 +1376,9 @@ async function abrirTurno(){
 }
 async function cerrarTurno(){
   if(!confirm('¿Cerrar el turno de caja?')) return;
+  // Ofrecer imprimir antes de cerrar
+  const querImprimir = confirm('¿Querés imprimir el arqueo antes de cerrar?');
+  if(querImprimir) imprimirArqueo();
   loading(true);
   try{
     await api('POST','/api/restaurante/turno/cerrar');
@@ -1382,6 +1386,91 @@ async function cerrarTurno(){
     await loadAll(); renderMain();
   }catch(e){toast(e.message,'err');}
   finally{loading(false);}
+}
+
+function imprimirArqueo(){
+  const turno=S.turno;
+  if(!turno) { toast('No hay turno activo','err'); return; }
+  const cerradas=turno.cerradas||[];
+  const totalNeto=cerradas.reduce((s,c)=>s+(Number(c.total_final)||0),0);
+  const totalDesc=cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)),0);
+  const totalBruto=totalNeto+totalDesc;
+  const fondo=Number(turno.fondo_inicial)||0;
+  const porMetodo=METODOS.reduce((acc,m)=>{
+    acc[m]=cerradas.filter(c=>c.metodo_pago===m).reduce((s,c)=>s+(Number(c.total_final)||0),0);
+    return acc;
+  },{});
+  const activos=METODOS.filter(m=>porMetodo[m]>0);
+
+  const linea=(char='-',n=32)=>char.repeat(n);
+
+  const html=`
+    <div style="font-family:'Courier New',monospace;font-size:12px;width:280px;margin:0 auto;padding:8px;line-height:1.5">
+      <div style="text-align:center;font-weight:700;font-size:14px">🏨 Hotel Takuá</div>
+      <div style="text-align:center;font-size:11px">Restaurante — Arqueo de Caja</div>
+      <div style="text-align:center;font-size:11px;color:#555">${nowFull()}</div>
+      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+
+      <div style="display:flex;justify-content:space-between">
+        <span>Cajero:</span><span>${turno.cajero_nombre||'—'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span>Apertura:</span>
+        <span>${turno.abierto_at?new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'-'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span>Cierre:</span><span>${nowFull()}</span>
+      </div>
+
+      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+
+      <div style="font-weight:700;margin-bottom:4px">RESUMEN</div>
+      ${[
+        ['Fondo inicial',    fmt(fondo)],
+        ['Comandas cobradas',cerradas.length+''],
+        ['Total bruto',      fmt(totalBruto)],
+        ['Descuentos',       '- '+fmt(totalDesc)],
+        ['Total neto',       fmt(totalNeto)],
+        ['Total en caja',    fmt(fondo+totalNeto)],
+      ].map(([l,v])=>`<div style="display:flex;justify-content:space-between">
+        <span>${l}</span><span style="font-weight:600">${v}</span>
+      </div>`).join('')}
+
+      ${activos.length?`
+      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="font-weight:700;margin-bottom:4px">POR MÉTODO DE PAGO</div>
+      ${activos.map(m=>`<div style="display:flex;justify-content:space-between">
+        <span>${METODO_ICONS[m]} ${m}</span><span style="font-weight:600">${fmt(porMetodo[m])}</span>
+      </div>`).join('')}`:''}
+
+      ${cerradas.length?`
+      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="font-weight:700;margin-bottom:4px">COMANDAS CERRADAS</div>
+      ${cerradas.map(c=>{
+        const m=S.mesas.find(ms=>ms.id===c.mesa_id);
+        return `<div style="display:flex;justify-content:space-between;border-bottom:1px dotted #eee;padding:2px 0">
+          <span>${m?mesaLabel(m):'Mesa '+c.mesa_id} ${c.mozo_nombre?'('+c.mozo_nombre+')':''}</span>
+          <span style="font-weight:600">${fmt(c.total_final||0)}</span>
+        </div>`;
+      }).join('')}`:''}
+
+      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="text-align:center;font-size:11px;margin-top:4px">— Fin del arqueo —</div>
+    </div>`;
+
+  // Usar el mismo mecanismo que imprimirComanda
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:320px;height:900px;border:none';
+  document.body.appendChild(iframe);
+  const doc=iframe.contentDocument||iframe.contentWindow.document;
+  doc.open();
+  doc.write(`<style>@media print{body{margin:0}}</style>${html}`);
+  doc.close();
+  setTimeout(()=>{
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(()=>document.body.removeChild(iframe),1500);
+  },400);
 }
 async function nuevoTurno(){
   await api('POST','/api/restaurante/turno/nuevo').catch(()=>{});
