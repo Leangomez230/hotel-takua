@@ -825,6 +825,19 @@ app.get('/api/restaurante/turno/activo', auth, authRestaurante, async (req, res)
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Último turno (abierto o cerrado) — para mostrar resumen aunque esté cerrado
+app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res) => {
+  try {
+    const turno = await db.getOne('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 1');
+    if (!turno) return res.json(null);
+    const cerradas = await db.getAll(
+      "SELECT c.*, u.nombre as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
+      [turno.abierto_at]
+    );
+    res.json({ ...turno, cerradas });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/restaurante/turno/abrir', auth, authRestaurante, async (req, res) => {
   try {
     const ya = await db.getOne("SELECT id FROM turnos_restaurante WHERE estado='abierto'");
