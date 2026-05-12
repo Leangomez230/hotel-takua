@@ -419,8 +419,8 @@ const METODOS = ['Efectivo','Débito','Crédito','Transferencia','QR'];
 const METODO_ICONS = {Efectivo:'💵',Débito:'💳',Crédito:'💳',Transferencia:'🏦',QR:'📱'};
 const SZ = {redonda:{w:70,h:70}, cuadrada:{w:70,h:70}, rectangular:{w:150,h:70}};
 
-let TOKEN = localStorage.getItem('takua_rest_token')||'';
-let ME    = JSON.parse(localStorage.getItem('takua_rest_user')||'null');
+let TOKEN = localStorage.getItem('takua_token')||'';
+let ME    = JSON.parse(localStorage.getItem('takua_user')||'null');
 let S = { mesas:[], comandas:[], menu:[], turno:null, usuarios:[],
           selMesaId:null, selCmdId:null, destCambioId:null,
           menuEditId:null, modoUnir:false, unirSel:[], ticketData:null };
@@ -470,10 +470,10 @@ async function doLogin(){
   if(!usuario||!clave){errEl.textContent='Completá usuario y contraseña';errEl.style.display='block';return;}
   loading(true);
   try{
-    const d=await api('POST','/api/restaurante/login',{usuario,clave});
+    const d=await api('POST','/api/portal/login',{usuario,clave});
     TOKEN=d.token; ME=d.user;
-    localStorage.setItem('takua_rest_token',TOKEN);
-    localStorage.setItem('takua_rest_user',JSON.stringify(ME));
+    localStorage.setItem('takua_token',TOKEN);
+    localStorage.setItem('takua_user',JSON.stringify(ME));
     await initApp();
   }catch(e){errEl.textContent=e.message;errEl.style.display='block';}
   finally{loading(false);}
@@ -483,8 +483,8 @@ document.getElementById('l-user').addEventListener('keydown',e=>{if(e.key==='Ent
 
 function doLogout(){
   TOKEN='';ME=null;
-  localStorage.removeItem('takua_rest_token');
-  localStorage.removeItem('takua_rest_user');
+  localStorage.removeItem('takua_token');
+  localStorage.removeItem('takua_user');
   showScreen('screen-login');
 }
 
