@@ -679,15 +679,6 @@ function renderCajero(el){
           <button class="btn-red" onclick="cerrarTurno()">Cerrar turno</button>
         </div>
       </div>
-      <div class="resumen-grid">
-        ${[{v:fmt(totalNeto),l:'Total cobrado',bg:'#f0fdf4',c:'#15803d',b:'#86efac'},
-           {v:cerradas.length,l:'Comandas',bg:'#eff6ff',c:'#1d4ed8',b:'#93c5fd'},
-           {v:fmt(totalDesc),l:'Descuentos',bg:'#fdf4ff',c:'#86198f',b:'#e879f9'}
-          ].map(x=>`<div class="resumen-item" style="background:${x.bg};border-color:${x.b}">
-            <div style="font-size:20px;font-weight:800;color:${x.c}">${x.v}</div>
-            <div style="font-size:12px;color:#64748b">${x.l}</div>
-          </div>`).join('')}
-      </div>
       <div id="resumen-detail" style="display:none">
         ${renderResumenCaja(turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas)}
       </div></div>`;
@@ -718,8 +709,7 @@ function renderCajero(el){
     <button class="btn-ghost-light btn-sm" onclick="loadAll().then(renderMain)">↻</button>
   </div>
   <div class="pills-row">${renderPills()}</div>
-  <div style="overflow-x:auto">${renderMapa(false)}</div>
-  <div class="barra-ref" style="margin-top:8px"><span>BARRA</span></div></div>`;
+  <div style="overflow-x:auto">${renderMapa(false)}</div></div>`;
 
   el.innerHTML=html;
 }
@@ -801,7 +791,6 @@ function renderAdmin(el){
         <div class="desp-content">
           <div class="pills-row">${renderPills()}</div>
           <div style="overflow-x:auto">${renderMapa(false)}</div>
-          <div class="barra-ref" style="margin-top:8px"><span>BARRA</span></div>
         </div>
       </div>
     </div>
