@@ -252,7 +252,7 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6}
       </div>
     </div>
     <div class="header-right">
-      <button class="btn-salon" id="btn-salon-header" style="display:none" onclick="showScreen('screen-salon')">🪑 Salón</button>
+      <button class="btn-salon" id="btn-salon-header" style="display:none" onclick="abrirEditorSalon()">🪑 Salón</button>
       <button class="btn-salir" onclick="doLogout()">Salir 🔓</button>
     </div>
   </div>
@@ -562,7 +562,7 @@ function renderMapa(editable=false){
     const cmd=S.comandas.find(c=>c.mesa_id===m.id&&c.estado!=='cerrada');
     const br=m.tipo==='redonda'?'50%':'10px';
     const ev=editable
-      ? `onmousedown="startDrag(event,${m.id})" ontouchstart="startDragTouch(event,${m.id})" ondblclick="editarMesaSalon(${m.id})"`
+      ? `onpointerdown="startDrag(event,${m.id})" ondblclick="editarMesaSalon(${m.id})"`
       : `onclick="clickMesa(${m.id})"`;
     return `<div id="sm-${m.id}" class="s-mesa ${m.status}" ${ev}
       style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${br};
@@ -1317,6 +1317,14 @@ function doPrint(){
 // DRAG & DROP (editor salón)
 // ════════════════════════════════════
 let _drag=null;
+function abrirEditorSalon(){
+  showScreen('screen-salon');
+  // Esperar que el canvas esté visible antes de renderizar
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{ renderEditorSalon(); });
+  });
+}
+
 function renderEditorSalon(){
   const canvas=document.getElementById('salon-editor-canvas');
   if(!canvas) return;
@@ -1334,7 +1342,7 @@ function renderEditorSalon(){
     }
     const br=m.tipo==='redonda'?'50%':'10px';
     return `<div id="sm-${m.id}" class="s-mesa ${m.status}"
-      onmousedown="startDrag(event,${m.id})" ontouchstart="startDragTouch(event,${m.id})"
+      onpointerdown="startDrag(event,${m.id})"
       ondblclick="editarMesaSalon(${m.id})"
       style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${br};
       background:${st.bg};border-color:${st.border};cursor:grab">
@@ -1344,88 +1352,78 @@ function renderEditorSalon(){
   }).join('');
 }
 
-document.getElementById('btn-salon-header').addEventListener('click',()=>{
-  showScreen('screen-salon');
-  renderEditorSalon();
-});
-// Override onclick
-document.getElementById('btn-salon-header').onclick=()=>{showScreen('screen-salon');renderEditorSalon();};
+// El botón salon usa onclick en HTML, renderEditorSalon se llama desde ahí
 
-function startDrag(e,mesaId){
-  if(e.button!==0) return;
+// Drag usando Pointer Events (más confiable que mouse/touch separados)
+function startDrag(e, mesaId) {
+  // Ignorar doble clic
+  if (e.detail > 1) return;
   e.preventDefault();
-  const el=document.getElementById('sm-'+mesaId);
-  const canvas=el.parentElement;
-  const cr=canvas.getBoundingClientRect();
-  // offX/offY = distancia del cursor al borde superior-izquierdo del elemento
-  const elRect=el.getBoundingClientRect();
-  _drag={mesaId,el,offX:e.clientX-elRect.left,offY:e.clientY-elRect.top,cr,canvas};
+  e.stopPropagation();
+  const el = document.getElementById('sm-' + mesaId);
+  if (!el) return;
+  const canvas = el.parentElement;
+  // Capturar pointer en el elemento para recibir eventos aunque salga del canvas
+  el.setPointerCapture(e.pointerId);
+  const elRect = el.getBoundingClientRect();
+  _drag = {
+    mesaId, el, canvas,
+    offX: e.clientX - elRect.left,
+    offY: e.clientY - elRect.top,
+    moved: false
+  };
   el.classList.add('dragging');
-  document.addEventListener('mousemove',onDrag);
-  document.addEventListener('mouseup',endDrag);
+  el.addEventListener('pointermove', onPointerMove);
+  el.addEventListener('pointerup',   onPointerUp);
+  el.addEventListener('pointercancel', onPointerUp);
 }
-function startDragTouch(e,mesaId){
+function onPointerMove(e) {
+  if (!_drag || _drag.el !== e.currentTarget) return;
   e.preventDefault();
-  const t=e.touches[0];
-  const el=document.getElementById('sm-'+mesaId);
-  const canvas=el.parentElement;
-  const cr=canvas.getBoundingClientRect();
-  const elRect=el.getBoundingClientRect();
-  _drag={mesaId,el,offX:t.clientX-elRect.left,offY:t.clientY-elRect.top,cr,canvas};
-  el.classList.add('dragging');
-  document.addEventListener('touchmove',onDragT,{passive:false});
-  document.addEventListener('touchend',endDragT);
+  const canvas = _drag.canvas;
+  const cr = canvas.getBoundingClientRect();
+  // Sumar scroll del contenedor
+  const scrollX = canvas.parentElement ? canvas.parentElement.scrollLeft : 0;
+  const scrollY = canvas.parentElement ? canvas.parentElement.scrollTop  : 0;
+  let nx = (e.clientX - cr.left) + scrollX - _drag.offX;
+  let ny = (e.clientY - cr.top)  + scrollY - _drag.offY;
+  nx = Math.max(0, Math.min(nx, canvas.scrollWidth  - _drag.el.offsetWidth));
+  ny = Math.max(0, Math.min(ny, canvas.scrollHeight - _drag.el.offsetHeight));
+  _drag.el.style.left = nx + 'px';
+  _drag.el.style.top  = ny + 'px';
+  _drag.moved = true;
 }
-function onDrag(e){
-  if(!_drag) return;
-  const cr=_drag.canvas.getBoundingClientRect();
-  // Posición nueva = cursor relativo al canvas, menos el offset dentro del elemento
-  let nx=e.clientX-cr.left-_drag.offX;
-  let ny=e.clientY-cr.top -_drag.offY;
-  nx=Math.max(0,Math.min(nx,_drag.canvas.offsetWidth -_drag.el.offsetWidth));
-  ny=Math.max(0,Math.min(ny,_drag.canvas.offsetHeight-_drag.el.offsetHeight));
-  _drag.el.style.left=nx+'px'; _drag.el.style.top=ny+'px';
+async function onPointerUp(e) {
+  if (!_drag || _drag.el !== e.currentTarget) return;
+  const el     = _drag.el;
+  const mesaId = _drag.mesaId;
+  const moved  = _drag.moved;
+  el.classList.remove('dragging');
+  el.removeEventListener('pointermove',   onPointerMove);
+  el.removeEventListener('pointerup',     onPointerUp);
+  el.removeEventListener('pointercancel', onPointerUp);
+  _drag = null;
+  if (!moved) return; // fue un clic, no un drag
+  const nx = Math.round(parseFloat(el.style.left) / 10) * 10;
+  const ny = Math.round(parseFloat(el.style.top)  / 10) * 10;
+  el.style.left = nx + 'px';
+  el.style.top  = ny + 'px';
+  try {
+    const m = S.mesas.find(x => x.id === mesaId);
+    await api('PUT', `/api/restaurante/mesas/${mesaId}`, {
+      x: nx, y: ny, tipo: m?.tipo || 'cuadrada', alias: m?.alias || '',
+      numero: m?.numero || null
+    });
+    S.mesas = S.mesas.map(x => x.id === mesaId ? {...x, x: nx, y: ny} : x);
+    toast('Posición guardada ✓', 'ok');
+  } catch(e) { toast('Error guardando posición', 'err'); }
 }
-function onDragT(e){
-  e.preventDefault(); if(!_drag) return;
-  const t=e.touches[0];
-  const cr=_drag.canvas.getBoundingClientRect();
-  let nx=t.clientX-cr.left-_drag.offX;
-  let ny=t.clientY-cr.top -_drag.offY;
-  nx=Math.max(0,Math.min(nx,_drag.canvas.offsetWidth -_drag.el.offsetWidth));
-  ny=Math.max(0,Math.min(ny,_drag.canvas.offsetHeight-_drag.el.offsetHeight));
-  _drag.el.style.left=nx+'px'; _drag.el.style.top=ny+'px';
-}
-async function endDrag(){
-  if(!_drag) return;
-  _drag.el.classList.remove('dragging');
-  const nx=Math.round(parseFloat(_drag.el.style.left)/10)*10;
-  const ny=Math.round(parseFloat(_drag.el.style.top)/10)*10;
-  _drag.el.style.left=nx+'px'; _drag.el.style.top=ny+'px';
-  const mesaId=_drag.mesaId; _drag=null;
-  document.removeEventListener('mousemove',onDrag);
-  document.removeEventListener('mouseup',endDrag);
-  try{
-    const mesaData=S.mesas.find(m=>m.id===mesaId);
-    await api('PUT',`/api/restaurante/mesas/${mesaId}`,{x:nx,y:ny,tipo:mesaData?.tipo||'cuadrada',alias:mesaData?.alias||''});
-    S.mesas=S.mesas.map(m=>m.id===mesaId?{...m,x:nx,y:ny}:m);
-  }catch(e){toast('Error guardando posición','err');}
-}
-async function endDragT(){
-  if(!_drag) return;
-  _drag.el.classList.remove('dragging');
-  const nx=Math.round(parseFloat(_drag.el.style.left)/10)*10;
-  const ny=Math.round(parseFloat(_drag.el.style.top)/10)*10;
-  _drag.el.style.left=nx+'px'; _drag.el.style.top=ny+'px';
-  const mesaId=_drag.mesaId; _drag=null;
-  document.removeEventListener('touchmove',onDragT);
-  document.removeEventListener('touchend',endDragT);
-  try{
-    const mesaData2=S.mesas.find(m=>m.id===mesaId);
-    await api('PUT',`/api/restaurante/mesas/${mesaId}`,{x:nx,y:ny,tipo:mesaData2?.tipo||'cuadrada',alias:mesaData2?.alias||''});
-    S.mesas=S.mesas.map(m=>m.id===mesaId?{...m,x:nx,y:ny}:m);
-  }catch(e){toast('Error guardando posición','err');}
-}
+// Mantener startDragTouch como alias para compatibilidad
+function startDragTouch(e, mesaId) { /* manejado por pointer events */ }
+function onDrag(){}
+function onDragT(){}
+async function endDrag(){}
+async function endDragT(){}
 
 // ── EDITOR: MODAL MESA ───────────────────────────────
 function abrirModalNuevaMesa(){
