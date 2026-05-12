@@ -558,27 +558,46 @@ app.put('/api/solicitudes/:id', auth, async (req, res) => {
 // ── RESTAURANTE ──────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
 
-// ── MESAS RESTAURANTE ────────────────────────────────────────────────
+// ── MESAS RESTAURANTE ─────────────────────────────────────────────
 app.get('/api/restaurante/mesas', auth, authRestaurante, async (req, res) => {
   try {
-    res.json(await db.getAll('SELECT * FROM mesas_restaurante WHERE activo=1 ORDER BY id'));
+    res.json(await db.getAll('SELECT * FROM mesas_restaurante WHERE activo=1 ORDER BY numero, id'));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/restaurante/mesas/:id', auth, adminOnly, async (req, res) => {
+app.put('/api/restaurante/mesas/:id', auth, authRestaurante, async (req, res) => {
   try {
-    const { alias, tipo, x, y } = req.body;
-    await db.query('UPDATE mesas_restaurante SET alias=$1,tipo=$2,x=$3,y=$4,updated_at=NOW() WHERE id=$5',
-      [alias||'', tipo, x, y, req.params.id]);
+    const { alias, tipo, x, y, numero, status } = req.body;
+
+    // Traer los valores actuales para no pisar con null
+    const actual = await db.getOne('SELECT * FROM mesas_restaurante WHERE id=$1', [req.params.id]);
+    if (!actual) return res.status(404).json({ error: 'Mesa no encontrada' });
+
+    await db.query(
+      `UPDATE mesas_restaurante
+       SET alias=$1, tipo=$2, x=$3, y=$4, numero=$5, status=COALESCE($6, status), updated_at=NOW()
+       WHERE id=$7`,
+      [
+        alias  !== undefined ? alias  : actual.alias,
+        tipo   !== undefined ? tipo   : actual.tipo,
+        x      !== undefined ? x      : actual.x,
+        y      !== undefined ? y      : actual.y,
+        numero !== undefined ? numero : actual.numero,
+        status !== undefined ? status : null,
+        req.params.id
+      ]
+    );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/restaurante/mesas', auth, adminOnly, async (req, res) => {
   try {
-    const { tipo, x, y, alias } = req.body;
-    const r = await db.query('INSERT INTO mesas_restaurante (tipo,x,y,alias) VALUES ($1,$2,$3,$4) RETURNING *',
-      [tipo||'cuadrada', x||100, y||100, alias||'']);
+    const { tipo, x, y, alias, numero } = req.body;
+    const r = await db.query(
+      'INSERT INTO mesas_restaurante (tipo, x, y, alias, numero, status, activo) VALUES ($1,$2,$3,$4,$5,$6,1) RETURNING *',
+      [tipo||'cuadrada', x||100, y||100, alias||'', numero||null, 'libre']
+    );
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -589,6 +608,7 @@ app.delete('/api/restaurante/mesas/:id', auth, adminOnly, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
 
 // Guardar layout completo del salón (posiciones de todas las mesas)
 app.put('/api/restaurante/salon', auth, adminOnly, async (req, res) => {
