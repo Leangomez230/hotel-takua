@@ -1065,6 +1065,25 @@ app.post('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (r
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Ítem extra (fuera de menú, lo agrega el cajero al cobrar)
+app.post('/api/restaurante/comandas/:id/items/extra', auth, authRestaurante, async (req, res) => {
+  try {
+    const { nombre, precio } = req.body;
+    if (!nombre || !precio) return res.status(400).json({ error: 'Faltan nombre y precio' });
+    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
+    // Insertar como ítem sin producto_id
+    await db.query(
+      'INSERT INTO comanda_items (comanda_id, producto_id, nombre, precio, cantidad, nota) VALUES ($1, NULL, $2, $3, 1, $4)',
+      [cmd.id, nombre.trim(), Number(precio), 'ítem extra']
+    );
+    // Recalcular total
+    const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
+    await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, cmd.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // PUT /observaciones
 app.put('/api/restaurante/comandas/:id/observaciones', auth, authRestaurante, async (req, res) => {
   try {
