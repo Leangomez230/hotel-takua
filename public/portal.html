@@ -6,13 +6,13 @@
 <title>Hotel Takua — Acceso</title>
 <style>
   :root {
-    --bg:      #0a0f1e;
-    --surface: #111827;
-    --border:  #1f2937;
-    --text:    #f9fafb;
-    --muted:   #6b7280;
-    --accent:  #14b8a6;
-    --accent2: #0891b2;
+    --bg:      #1a0a05;
+    --surface: #2a1208;
+    --border:  #4a2010;
+    --text:    #f5e6d3;
+    --muted:   #a07858;
+    --accent:  #c4956a;
+    --accent2: #8b4513;
     --red:     #ef4444;
     --radius:  16px;
   }
@@ -35,7 +35,7 @@
     position: fixed;
     top: -200px; left: -200px;
     width: 600px; height: 600px;
-    background: radial-gradient(circle, #14b8a620 0%, transparent 70%);
+    background: radial-gradient(circle, #c4956a15 0%, transparent 70%);
     pointer-events: none;
   }
   body::after {
@@ -43,7 +43,7 @@
     position: fixed;
     bottom: -200px; right: -200px;
     width: 500px; height: 500px;
-    background: radial-gradient(circle, #0891b215 0%, transparent 70%);
+    background: radial-gradient(circle, #8b451315 0%, transparent 70%);
     pointer-events: none;
   }
 
@@ -130,11 +130,11 @@
     cursor: pointer;
     transition: all .2s;
     margin-top: 4px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    background: linear-gradient(135deg, #c4956a, #8b4513);
     color: #fff;
     letter-spacing: .02em;
   }
-  .btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 8px 24px #14b8a630; }
+  .btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 8px 24px #c4956a40; }
   .btn:active { transform: translateY(0); }
   .btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
