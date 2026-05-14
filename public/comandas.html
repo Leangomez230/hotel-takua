@@ -234,19 +234,7 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6}
 <div class="toast" id="toast"></div>
 
 <!-- ══ LOGIN ══ -->
-<div class="screen active" id="screen-login">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="icon">🏨</div>
-      <h1>Hotel Takuá</h1>
-      <p>Sistema de Comandas</p>
-    </div>
-    <div class="lf"><label>Usuario</label><input type="text" id="l-user" placeholder="Tu usuario" autocomplete="username"/></div>
-    <div class="lf"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/></div>
-    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
-    <div class="login-err" id="login-err"></div>
-  </div>
-</div>
+<div class="screen" id="screen-login" style="display:none"></div>
 
 <!-- ══ MAIN ══ -->
 <div class="screen" id="screen-main">
@@ -484,21 +472,20 @@ async function doLogin(){
   }catch(e){errEl.textContent=e.message;errEl.style.display='block';}
   finally{loading(false);}
 }
-document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-document.getElementById('l-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('l-pass').focus();});
+// Login centralizado en portal.html
 
 function doLogout(){
   TOKEN='';ME=null;
   localStorage.removeItem('takua_token');
   localStorage.removeItem('takua_user');
-  showScreen('screen-login');
+  window.location.href='/portal.html';
 }
 
 // ════════════════════════════════════
 // INIT
 // ════════════════════════════════════
 async function initApp(){
-  if(!TOKEN||!ME){showScreen('screen-login');return;}
+  if(!TOKEN||!ME){window.location.href='/portal.html';return;}
   if(['recepcionista','mucama'].includes(ME.rol)){window.location.href='/index.html';return;}
 
   const sub = document.getElementById('header-sub');
@@ -1938,6 +1925,8 @@ async function confirmarUnion(){
 (async()=>{
   if(TOKEN&&ME){
     try{ await initApp(); } catch(e){ doLogout(); }
+  } else {
+    window.location.href='/portal.html';
   }
 })();
 </script>
