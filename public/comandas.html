@@ -1077,6 +1077,7 @@ async function verComanda(cmdId){
     }
 
     // Botones acción
+    const sinItems = !items.length;
     let accionHTML='';
     if(canEdit&&cmd.estado==='abierta') accionHTML+=`
       <div style="margin-top:14px;border-top:2px solid #f1f5f9;padding-top:12px">
@@ -1086,8 +1087,15 @@ async function verComanda(cmdId){
           <button onclick="guardarObservaciones(${cmdId})" style="padding:9px 14px;border-radius:9px;border:none;background:#3b82f6;color:#fff;font-weight:700;font-size:13px;cursor:pointer">Guardar</button>
         </div>
       </div>`;
-    if(canCuenta) accionHTML+=`<button class="btn-purple" style="margin-top:12px" onclick="pedirCuenta(${cmdId})">Pedir la cuenta</button>`;
+    if(canCuenta&&!sinItems) accionHTML+=`<button class="btn-purple" style="margin-top:12px" onclick="pedirCuenta(${cmdId})">Pedir la cuenta</button>`;
     if(canEdit&&cmd.estado!=='cerrada') accionHTML+=`<button class="btn-ghost-light" style="width:100%;margin-top:8px" onclick="verCliente(${cmdId})">👁️ Vista cliente</button>`;
+    // Botón cancelar: visible cuando está abierta y sin ítems
+    if(canEdit&&cmd.estado==='abierta'&&sinItems) accionHTML+=`
+      <button onclick="cancelarComanda(${cmdId})"
+        style="width:100%;margin-top:12px;padding:13px;border-radius:12px;border:1.5px solid #fca5a5;
+        background:#fff;color:#dc2626;font-weight:700;font-size:14px;cursor:pointer">
+        ✕ Cancelar y liberar mesa
+      </button>`;
 
     document.getElementById('mc-body').innerHTML=`
       <div class="cmd-band">
@@ -1132,6 +1140,18 @@ async function quitarItem(cmdId,itemId){
     await api('DELETE',`/api/restaurante/comandas/${cmdId}/items/${itemId}`);
     toast('Ítem quitado','ok');
     await loadAll(); verComanda(cmdId);
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+
+async function cancelarComanda(cmdId){
+  if(!confirm('¿Cancelar la comanda y liberar la mesa?')) return;
+  loading(true);
+  try{
+    await api('DELETE',`/api/restaurante/comandas/${cmdId}`);
+    toast('Comanda cancelada — mesa liberada ✓','ok');
+    closeModal('m-comanda');
+    await loadAll(); renderMain();
   }catch(e){toast(e.message,'err');}
   finally{loading(false);}
 }
