@@ -766,6 +766,20 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Cancelar comanda (solo si está vacía) — libera la mesa
+app.delete('/api/restaurante/comandas/:id', auth, authRestaurante, async (req, res) => {
+  try {
+    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
+    const items = await db.getOne('SELECT COUNT(*) as n FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
+    if (Number(items.n) > 0) return res.status(400).json({ error: 'No podés cancelar una comanda con ítems' });
+    await db.query('DELETE FROM comandas WHERE id=$1', [cmd.id]);
+    await db.query("UPDATE mesas_restaurante SET status='libre', updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
+    await logAction(req.user.id, req.user.nombre, 'CANCELAR_COMANDA', `Mesa ${cmd.mesa_id}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Quitar ítem (resta 1; elimina la fila si llega a 0)
 app.delete('/api/restaurante/comandas/:id/items/:itemId', auth, authRestaurante, async (req, res) => {
   try {
@@ -778,8 +792,13 @@ app.delete('/api/restaurante/comandas/:id/items/:itemId', auth, authRestaurante,
     } else {
       await db.query('DELETE FROM comanda_items WHERE id=$1', [item.id]);
     }
-    const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [req.params.id]);
-    await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, req.params.id]);
+
+    // Recalcular total (0 si no quedan ítems)
+    const tot = await db.getOne('SELECT COALESCE(SUM(precio*cantidad),0) as t FROM comanda_items WHERE comanda_id=$1', [req.params.id]);
+    await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t, req.params.id]);
+
+    // Si no quedan ítems, NO liberamos la mesa automáticamente — el mozo debe cancelar explícitamente
+    // (puede que estén por agregar más ítems)
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
