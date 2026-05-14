@@ -516,15 +516,30 @@ async function initApp(){
   await loadAll();
   renderMain();
 
-  // Poll cada 30s — no refrescar si hay modal abierto o el admin está editando
+  // Poll cada 20s — solo actualiza datos en background, sin re-renderizar
   setInterval(async()=>{
-    const hayModal    = document.querySelector('.overlay.open');
-    const hayFocoInput= document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
-    const enMain      = document.getElementById('screen-main').classList.contains('active');
-    if(enMain && !hayModal && !hayFocoInput){
-      await loadAll(); renderMain();
+    const hayModal     = document.querySelector('.overlay.open');
+    const hayFocoInput = document.activeElement &&
+                         ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+    const enMain       = document.getElementById('screen-main').classList.contains('active');
+    if(!enMain || hayModal || hayFocoInput) return;
+
+    // Guardar estado previo para comparar
+    const mesasAntes   = JSON.stringify(S.mesas.map(m=>({id:m.id,status:m.status,total:m.total})));
+    const turnoAntes   = JSON.stringify(S.turno?.id);
+    const comandasAntes= JSON.stringify(S.comandas.map(c=>({id:c.id,estado:c.estado,total:c.total})));
+
+    await loadAll();
+
+    // Solo re-renderizar si algo cambió
+    const mesasDespues   = JSON.stringify(S.mesas.map(m=>({id:m.id,status:m.status,total:m.total})));
+    const turnoDespues   = JSON.stringify(S.turno?.id);
+    const comandasDespues= JSON.stringify(S.comandas.map(c=>({id:c.id,estado:c.estado,total:c.total})));
+
+    if(mesasAntes!==mesasDespues || turnoAntes!==turnoDespues || comandasAntes!==comandasDespues){
+      renderMain();
     }
-  },30000);
+  }, 20000);
 }
 
 async function loadAll(){
