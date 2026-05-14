@@ -267,20 +267,8 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 </head>
 <body>
  
-<!-- LOGIN -->
-<div id="login-page">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="logo-sq">T</div>
-      <h1>Hotel Takuá</h1>
-      <p>Sistema de gestión</p>
-    </div>
-    <div class="lf"><label>Usuario o email</label><input type="text" id="l-email" placeholder="admin / tu@email.com" autocomplete="username"></div>
-    <div class="lf"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"></div>
-    <button class="login-btn" id="btn-login">Iniciar sesión</button>
-    <div class="login-err" id="login-err">Email o contraseña incorrectos</div>
-  </div>
-</div>
+<!-- LOGIN — manejado por portal.html -->
+<div id="login-page" style="display:none"></div>
  
 <!-- APP -->
 <div id="app">
@@ -418,8 +406,7 @@ function setActiveNav(id) {
 }
  
 // ── AUTH ──
-document.getElementById('btn-login').addEventListener('click', doLogin);
-document.getElementById('l-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+// Login manejado por portal.html
 document.getElementById('btn-logout').addEventListener('click', doLogout);
  
 function irARestaurante() {
@@ -460,7 +447,7 @@ function doLogout() {
   localStorage.removeItem('takua_token'); localStorage.removeItem('takua_user');
   token=null; currentUser=null;
   document.getElementById('app').style.display='none';
-  document.getElementById('login-page').style.display='flex';
+  window.location.href='/portal.html';
 }
 function startApp() {
   document.getElementById('login-page').style.display='none';
@@ -1975,7 +1962,7 @@ function renderMucamaSolicitudes(pendientes) {
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
-if (token && currentUser) startApp();
+if (token && currentUser) { startApp(); } else { window.location.href = "/portal.html"; }
  
 // ── SERVICE WORKER (PWA) ──
 if ('serviceWorker' in navigator) {
