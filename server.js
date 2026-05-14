@@ -727,7 +727,7 @@ app.post('/api/restaurante/comandas', auth, authRestaurante, async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Agregar ítem a comanda
+// Agregar ítem a comanda (acumula cantidad si el producto ya existe)
 app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
   try {
     const { producto_id, cantidad, nota } = req.body;
@@ -736,21 +736,48 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
     if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'La comanda está cerrada' });
     const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [producto_id]);
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const r = await db.query(
-      'INSERT INTO comanda_items (comanda_id,producto_id,nombre,precio,cantidad,nota) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [cmd.id, producto_id, prod.nombre, prod.precio, cantidad||1, nota||'']
+
+    // Si ya existe el mismo producto (y misma nota), incrementar cantidad
+    const itemExistente = await db.getOne(
+      `SELECT * FROM comanda_items
+       WHERE comanda_id=$1 AND producto_id=$2 AND COALESCE(nota,'')=COALESCE($3,'')`,
+      [cmd.id, producto_id, nota||'']
     );
+
+    let item;
+    if (itemExistente) {
+      const r = await db.query(
+        'UPDATE comanda_items SET cantidad=cantidad+$1 WHERE id=$2 RETURNING *',
+        [cantidad||1, itemExistente.id]
+      );
+      item = r.rows[0];
+    } else {
+      const r = await db.query(
+        'INSERT INTO comanda_items (comanda_id,producto_id,nombre,precio,cantidad,nota) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+        [cmd.id, producto_id, prod.nombre, prod.precio, cantidad||1, nota||'']
+      );
+      item = r.rows[0];
+    }
+
     // Recalcular total
     const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
     await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, cmd.id]);
-    res.json(r.rows[0]);
+    res.json(item);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Quitar ítem
+// Quitar ítem (resta 1; elimina la fila si llega a 0)
 app.delete('/api/restaurante/comandas/:id/items/:itemId', auth, authRestaurante, async (req, res) => {
   try {
-    await db.query('DELETE FROM comanda_items WHERE id=$1 AND comanda_id=$2', [req.params.itemId, req.params.id]);
+    const item = await db.getOne('SELECT * FROM comanda_items WHERE id=$1 AND comanda_id=$2',
+      [req.params.itemId, req.params.id]);
+    if (!item) return res.status(404).json({ error: 'Ítem no encontrado' });
+
+    if (item.cantidad > 1) {
+      await db.query('UPDATE comanda_items SET cantidad=cantidad-1 WHERE id=$1', [item.id]);
+    } else {
+      await db.query('DELETE FROM comanda_items WHERE id=$1', [item.id]);
+    }
     const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [req.params.id]);
     await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, req.params.id]);
     res.json({ ok: true });
