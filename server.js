@@ -675,7 +675,11 @@ app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => 
     const comandas = await db.getAll(q, params);
     for (const cmd of comandas) {
       cmd.items = await db.getAll(
-        'SELECT *, precio as precio_unitario FROM comanda_items WHERE comanda_id=$1 ORDER BY id',
+        `SELECT ci.*, ci.precio as precio_unitario,
+        COALESCE(m.categoria, ci.nota, '') as categoria
+        FROM comanda_items ci
+        LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
+        WHERE ci.comanda_id=$1 ORDER BY ci.id`,
         [cmd.id]
       );
     }
@@ -692,7 +696,11 @@ app.get('/api/restaurante/comandas/:id', auth, authRestaurante, async (req, res)
     );
     if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
     cmd.items = await db.getAll(
-      'SELECT *, precio as precio_unitario FROM comanda_items WHERE comanda_id=$1 ORDER BY id',
+      `SELECT ci.*, ci.precio as precio_unitario,
+        COALESCE(m.categoria, ci.nota, '') as categoria
+        FROM comanda_items ci
+        LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
+        WHERE ci.comanda_id=$1 ORDER BY ci.id`,
       [cmd.id]
     );
     res.json(cmd);
