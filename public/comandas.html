@@ -529,7 +529,7 @@ async function initApp(){
     const turnoAntes   = JSON.stringify(S.turno?.id);
     const comandasAntes= JSON.stringify(S.comandas.map(c=>({id:c.id,estado:c.estado,total:c.total})));
 
-    await loadAll();
+    await loadAll(true); // silencioso — sin spinner
 
     // Solo re-renderizar si algo cambió
     const mesasDespues   = JSON.stringify(S.mesas.map(m=>({id:m.id,status:m.status,total:m.total})));
@@ -542,8 +542,8 @@ async function initApp(){
   }, 20000);
 }
 
-async function loadAll(){
-  loading(true);
+async function loadAll(silencioso=false){
+  if(!silencioso) loading(true);
   try{
     const [mesas,menu]=await Promise.all([
       api('GET','/api/restaurante/mesas'),
