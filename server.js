@@ -1107,6 +1107,17 @@ app.put('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+// Eliminar (desactivar) usuario
+app.delete('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const uid = req.params.id;
+    if (Number(uid) === req.user.id) return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
+    await db.query('UPDATE usuarios SET activo=0 WHERE id=$1', [uid]);
+    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_USUARIO', `id:${uid}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ════════════════════════════════════════════════════════════════════
 // ── ALIASES FRONTEND ─────────────────────────────────────────────────
 // El frontend usa POST /cerrar y PUT /pedir-cuenta
