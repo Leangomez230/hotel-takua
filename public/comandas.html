@@ -772,27 +772,35 @@ function toggleResumen(){
 function renderAdmin(el){
   const activas=S.comandas.filter(c=>c.estado!=='cerrada').length;
   const cats=[...new Set(S.menu.map(m=>m.categoria))];
+
+  // Calcular métricas del turno (igual que cajero)
+  const cerradas   = S.turno?.cerradas || [];
+  const totalNeto  = cerradas.reduce((s,c)=>s+(Number(c.total_final)||0), 0);
+  const totalDesc  = cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)), 0);
+  const totalComen = cerradas.reduce((s,c)=>s+(c.comensales||0), 0);
+  const hayTurno   = S.turno ? (S.turno.estado==='abierto' ? '🟢 Turno abierto' : '⚪ Último turno') : 'Sin turno';
+
   el.innerHTML=`
     <div class="metricas-grid">
       <div class="metrica-card mc-total">
-        <div class="mc-lbl">Turno actual</div>
+        <div class="mc-lbl">${hayTurno}</div>
         <div class="mc-ttl">TOTAL COBRADO</div>
-        <div class="mc-val">${fmt(0)}</div>
+        <div class="mc-val">${fmt(totalNeto)}</div>
       </div>
       <div class="metrica-card mc-cobradas">
-        <div class="mc-lbl">Turno actual</div>
+        <div class="mc-lbl">${hayTurno}</div>
         <div class="mc-ttl">COMANDAS</div>
-        <div class="mc-val">0</div>
+        <div class="mc-val">${cerradas.length}</div>
       </div>
       <div class="metrica-card mc-comen">
-        <div class="mc-lbl">Turno actual</div>
+        <div class="mc-lbl">${hayTurno}</div>
         <div class="mc-ttl">COMENSALES</div>
-        <div class="mc-val">0</div>
+        <div class="mc-val">${totalComen}</div>
       </div>
       <div class="metrica-card mc-desc">
-        <div class="mc-lbl">Turno actual</div>
+        <div class="mc-lbl">${hayTurno}</div>
         <div class="mc-ttl">DESCUENTOS</div>
-        <div class="mc-val">${fmt(0)}</div>
+        <div class="mc-val">${fmt(totalDesc)}</div>
       </div>
     </div>
 
