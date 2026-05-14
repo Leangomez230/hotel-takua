@@ -333,7 +333,8 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         <button id="mc-btn-cambio" style="display:none;padding:6px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;font-weight:600;color:#475569" onclick="abrirModalCambioMesa()">↔️ Cambiar mesa</button>
-        <button id="mc-btn-imprimir" style="display:none;padding:6px 12px;border-radius:8px;border:none;background:#1e293b;color:#fff;font-size:12px;font-weight:600" onclick="imprimirComanda()">🖨️ Imprimir</button>
+        <button id="mc-btn-cocina" style="display:none;padding:6px 12px;border-radius:8px;border:none;background:#166534;color:#bbf7d0;font-size:12px;font-weight:600;cursor:pointer" onclick="imprimirTicket('cocina')">🍳 Cocina</button>
+        <button id="mc-btn-imprimir" style="display:none;padding:6px 12px;border-radius:8px;border:none;background:#1e293b;color:#fff;font-size:12px;font-weight:600;cursor:pointer" onclick="imprimirTicket('caja')">🖨️ Caja</button>
         <button class="btn-close-modal" onclick="closeModal('m-comanda')">×</button>
       </div>
     </div>
@@ -1036,7 +1037,8 @@ async function verComanda(cmdId){
     const btnCambio=document.getElementById('mc-btn-cambio');
     const btnImpr  =document.getElementById('mc-btn-imprimir');
     btnCambio.style.display=canEdit&&cmd.estado==='abierta'?'':'none';
-    btnImpr.style.display  = cmd.estado!=='cerrada' ? '' : 'none';
+    btnImpr.style.display   = cmd.estado!=='cerrada' ? '' : 'none';
+    document.getElementById('mc-btn-cocina').style.display = cmd.estado!=='cerrada' ? '' : 'none';
     S.ticketData={mesa,cmd};
 
     // Items
@@ -1497,26 +1499,59 @@ async function verCliente(cmdId){
 // ════════════════════════════════════
 // IMPRESIÓN
 // ════════════════════════════════════
-function imprimirComanda(){
+// Categorías que NO van a cocina
+const CATS_BEBIDAS = ['bebidas','bebida','drinks'];
+function esBebida(cat){ return CATS_BEBIDAS.includes((cat||'').toLowerCase()); }
+
+function imprimirTicket(tipo){
   const {mesa,cmd}=S.ticketData||{};
   if(!cmd) return;
-  const items=cmd.items||[];
+  const todosItems=cmd.items||[];
+
+  // Filtrar según destino
+  const items = tipo==='cocina'
+    ? todosItems.filter(it=>!esBebida(it.categoria||''))
+    : todosItems;
+
+  if(tipo==='cocina' && !items.length){
+    toast('No hay ítems de cocina en esta comanda','info');
+    return;
+  }
+
+  const esCocina = tipo==='cocina';
+  const titulo   = esCocina ? '🍳 COCINA' : '🖨️ CAJA — Comanda';
+  const showTotal= !esCocina;
+
   document.getElementById('m-ticket-body').innerHTML=`
-    <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:4px">🏨 Hotel Takuá — Comanda</div>
+    <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:4px">${titulo}</div>
+    ${esCocina?'':'<div style="text-align:center;font-size:11px;font-weight:600">TK Serrano — Restaurante</div>'}
     <div style="text-align:center;font-size:11px;color:#555;margin-bottom:8px">${nowFull()}</div>
     <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
-    <div style="display:flex;justify-content:space-between"><b>${mesa?mesaLabel(mesa):'Mesa'}</b><span>👥 ${cmd.comensales||'—'} com.</span></div>
+    <div style="display:flex;justify-content:space-between">
+      <b>${mesa?mesaLabel(mesa):'Mesa'}</b>
+      <span>👥 ${cmd.comensales||'—'} com.</span>
+    </div>
     ${cmd.mozo_nombre?`<div style="font-size:11px;color:#555">👤 ${cmd.mozo_nombre}</div>`:''}
-    ${cmd.observaciones?`<div style="font-size:11px;font-style:italic">📝 ${cmd.observaciones}</div>`:''}
+    ${cmd.observaciones?`<div style="font-size:11px;font-style:italic;margin-top:2px">📝 ${cmd.observaciones}</div>`:''}
     <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
-    ${items.map(it=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #eee">
-      <span>${it.cantidad}x ${it.nombre}${it.nota?`<br><small>📝 ${it.nota}</small>`:''}</span>
-      <span>${fmt(it.precio_unitario*it.cantidad)}</span></div>`).join('')}
+    ${items.map(it=>`
+      <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #eee">
+        <span style="flex:1"><b>${it.cantidad}x</b> ${it.nombre}${it.nota?`<br><span style="font-size:10px;color:#666">📝 ${it.nota}</span>`:''}</span>
+        ${showTotal?`<span style="font-weight:600;margin-left:8px">${fmt((it.precio_unitario||it.precio||0)*it.cantidad)}</span>`:''}
+      </div>`).join('')}
     <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
-    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px"><span>TOTAL</span><span>${fmt(cmd.total)}</span></div>`;
+    ${showTotal?`<div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px"><span>TOTAL</span><span>${fmt(cmd.total)}</span></div>`:''}
+    <div style="text-align:center;font-size:10px;color:#aaa;margin-top:6px">${esCocina?'— Ticket de cocina —':'— Gracias por su visita —'}</div>`;
+
+  document.getElementById('m-ticket').querySelector('.modal-title').textContent =
+    esCocina ? '🍳 Ticket Cocina' : '🖨️ Ticket Caja';
+
   closeModal('m-comanda');
   openModal('m-ticket');
 }
+
+// Alias para compatibilidad con arqueo
+function imprimirComanda(){ imprimirTicket('caja'); }
 function doPrint(){
   const body=document.getElementById('m-ticket-body').innerHTML;
   const iframe=document.createElement('iframe');
