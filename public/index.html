@@ -1623,23 +1623,40 @@ async function loadFin(desde,hasta) {
 // ══════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════
+const ROL_OPTS = `
+  <optgroup label="— Habitaciones —">
+    <option value="recepcionista">Recepcionista</option>
+    <option value="mucama">Mucama / Limpieza</option>
+  </optgroup>
+  <optgroup label="— Restaurante —">
+    <option value="mozo">Mozo</option>
+    <option value="cajero">Cajero</option>
+  </optgroup>
+  <optgroup label="— Sistema —">
+    <option value="admin">Administrador</option>
+  </optgroup>`;
+
 async function renderConfig() {
-  // Intenta el endpoint nuevo; si falla (aún no deployado) usa el viejo
   let usuarios = await apiFetch('GET','/portal/usuarios');
   if (!usuarios) usuarios = await apiFetch('GET','/usuarios') || [];
   const rolColor = { admin:'pb', recepcionista:'pg', mucama:'py', mozo:'pgr', cajero:'pr' };
-  const rows=usuarios.map(u=>`<tr>
+  const rows = usuarios.map(u=>`<tr>
     <td><strong>${u.nombre}</strong></td>
     <td style="color:#64748b;font-size:12px">${u.usuario||'—'}</td>
     <td style="color:#94a3b8;font-size:12px">${u.email||'—'}</td>
     <td><span class="pill ${rolColor[u.rol]||'pgr'}">${u.rol}</span></td>
     <td><span class="pill ${u.activo?'pg':'pr'}">${u.activo?'Activo':'Inactivo'}</span></td>
+    <td style="white-space:nowrap">
+      <button onclick="editarUsuario(${u.id})" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-right:4px">✏️ Editar</button>
+      <button onclick="eliminarUsuario(${u.id},'${u.nombre.replace(/'/g,"\'")}')" style="background:#fff1f2;border:1px solid #fecdd3;color:#be123c;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">🗑️</button>
+    </td>
   </tr>`).join('');
+
   document.getElementById('content').innerHTML=`
     <div class="section-card">
       <div class="sc-head"><h2>⚙️ Usuarios</h2><button class="btn-primary" id="btn-nuser">+ Nuevo usuario</button></div>
       <table class="data-table">
-        <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -1652,49 +1669,88 @@ async function renderConfig() {
         <div><span style="color:#94a3b8">Versión:</span> <strong>1.1.0</strong></div>
       </div>
     </div>`;
-  document.getElementById('btn-nuser').addEventListener('click',()=>{
-    openModal(`
-      <div class="modal-hd"><h3>Nuevo usuario</h3><button class="modal-close" id="nu-c">✕</button></div>
-      <div class="form-row">
-        <div class="form-col"><label>Nombre completo</label><input type="text" id="nu-nom" placeholder="María García"></div>
-        <div class="form-col"><label>Usuario</label><input type="text" id="nu-usuario" placeholder="maria.garcia"></div>
+
+  // Botón nuevo usuario
+  document.getElementById('btn-nuser').addEventListener('click', () => abrirModalUsuario(null));
+}
+
+function abrirModalUsuario(u) {
+  const esEdicion = !!u;
+  openModal(`
+    <div class="modal-hd">
+      <h3>${esEdicion ? '✏️ Editar usuario' : '➕ Nuevo usuario'}</h3>
+      <button class="modal-close" id="mu-c">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Nombre completo</label>
+        <input type="text" id="mu-nom" value="${u?.nombre||''}" placeholder="María García"></div>
+      <div class="form-col"><label>Usuario</label>
+        <input type="text" id="mu-usuario" value="${u?.usuario||''}" placeholder="maria.garcia"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Email (opcional)</label>
+        <input type="email" id="mu-email" value="${u?.email||''}" placeholder="maria@hotel.com"></div>
+      <div class="form-col"><label>${esEdicion ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña'}</label>
+        <input type="password" id="mu-pass" placeholder="${esEdicion ? 'Nueva contraseña...' : 'min. 6 caracteres'}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Rol</label>
+        <select id="mu-rol">${ROL_OPTS}</select>
       </div>
-      <div class="form-row">
-        <div class="form-col"><label>Email (opcional)</label><input type="email" id="nu-email" placeholder="maria@hotel.com"></div>
-        <div class="form-col"><label>Contraseña</label><input type="password" id="nu-pass" placeholder="min. 6 caracteres"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-col"><label>Rol</label>
-          <select id="nu-rol">
-            <optgroup label="— Habitaciones —">
-              <option value="recepcionista">Recepcionista</option>
-              <option value="mucama">Mucama / Limpieza</option>
-            </optgroup>
-            <optgroup label="— Restaurante —">
-              <option value="mozo">Mozo</option>
-              <option value="cajero">Cajero</option>
-            </optgroup>
-            <optgroup label="— Sistema —">
-              <option value="admin">Administrador</option>
-            </optgroup>
-          </select>
-        </div>
-      </div>
-      <button class="confirm-btn" id="nu-ok">✅ Crear usuario</button>
-    `);
-    document.getElementById('nu-c').addEventListener('click',closeModal);
-    document.getElementById('nu-ok').addEventListener('click',async()=>{
-      const nombre   = document.getElementById('nu-nom').value.trim();
-      const usuario  = document.getElementById('nu-usuario').value.trim();
-      const email    = document.getElementById('nu-email').value.trim();
-      const password = document.getElementById('nu-pass').value;
-      const rol      = document.getElementById('nu-rol').value;
-      if (!nombre || !usuario || !password) { toast('Completá nombre, usuario y contraseña', false); return; }
-      const r = await apiFetch('POST', '/portal/usuarios', { nombre, usuario, email: email||null, password, rol });
-      if(r?.id){toast('Usuario creado');closeModal();renderConfig();}
-      else toast(r?.error||'Error al crear usuario',false);
-    });
+      ${esEdicion ? `<div class="form-col"><label>Estado</label>
+        <select id="mu-activo">
+          <option value="1" ${u.activo?'selected':''}>Activo</option>
+          <option value="0" ${!u.activo?'selected':''}>Inactivo</option>
+        </select></div>` : ''}
+    </div>
+    <button class="confirm-btn" id="mu-ok">${esEdicion ? '💾 Guardar cambios' : '✅ Crear usuario'}</button>
+  `);
+
+  // Setear rol seleccionado
+  if (u?.rol) setTimeout(() => {
+    const sel = document.getElementById('mu-rol');
+    if (sel) sel.value = u.rol;
+  }, 0);
+
+  document.getElementById('mu-c').addEventListener('click', closeModal);
+  document.getElementById('mu-ok').addEventListener('click', async () => {
+    const nombre   = document.getElementById('mu-nom').value.trim();
+    const usuario  = document.getElementById('mu-usuario').value.trim();
+    const email    = document.getElementById('mu-email').value.trim();
+    const password = document.getElementById('mu-pass').value;
+    const rol      = document.getElementById('mu-rol').value;
+    const activo   = document.getElementById('mu-activo')?.value ?? '1';
+
+    if (!nombre || !usuario) { toast('Completá nombre y usuario', false); return; }
+    if (!esEdicion && !password) { toast('La contraseña es obligatoria', false); return; }
+
+    let r;
+    if (esEdicion) {
+      const body = { nombre, usuario, email: email||null, rol, activo: Number(activo) };
+      if (password) body.password = password;
+      r = await apiFetch('PUT', `/portal/usuarios/${u.id}`, body);
+      if (r?.ok) { toast('Usuario actualizado ✓'); closeModal(); renderConfig(); }
+      else toast(r?.error || 'Error al actualizar', false);
+    } else {
+      r = await apiFetch('POST', '/portal/usuarios', { nombre, usuario, email: email||null, password, rol });
+      if (r?.id) { toast('Usuario creado ✓'); closeModal(); renderConfig(); }
+      else toast(r?.error || 'Error al crear', false);
+    }
   });
+}
+
+async function editarUsuario(id) {
+  const usuarios = await apiFetch('GET', '/portal/usuarios') || [];
+  const u = usuarios.find(x => x.id === id);
+  if (!u) return;
+  abrirModalUsuario(u);
+}
+
+async function eliminarUsuario(id, nombre) {
+  if (!confirm(`¿Eliminar al usuario "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  const r = await apiFetch('DELETE', `/portal/usuarios/${id}`);
+  if (r?.ok) { toast('Usuario eliminado'); renderConfig(); }
+  else toast(r?.error || 'Error al eliminar', false);
 }
  
 // ══════════════════════════════════════
