@@ -2043,7 +2043,20 @@ async function confirmarUnion(){
 // ════════════════════════════════════
 (async()=>{
   if(TOKEN&&ME){
-    try{ await initApp(); } catch(e){ doLogout(); }
+    try{
+      await initApp();
+    } catch(e){
+      console.error('initApp error:', e);
+      // Solo redirigir a portal si es error de autenticación (401/403)
+      // No hacer logout por errores de red o API
+      if(e.message && (e.message.includes('401') || e.message.includes('403') || e.message.includes('token'))) {
+        doLogout();
+      } else {
+        // Intentar mostrar la app igual
+        showScreen('screen-main');
+        document.getElementById('header-sub').textContent = `${ME.rol} · ${ME.nombre||ME.email||''}`;
+      }
+    }
   } else {
     window.location.href='/portal.html';
   }
