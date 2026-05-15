@@ -854,7 +854,8 @@ function showHabModal(hab) {
                    {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
     reservada:    [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
                    {s:'libre',         label:'✕ Cancelar reserva',   color:'#6b7280'}],
-    ocupada:      [{s:'checkout',      label:'🚪 Check-out',          color:'#dc2626'}],
+    ocupada:      [{s:'checkout',      label:'🚪 Check-out',          color:'#dc2626'},
+                   {s:'cambiar-hab',   label:'🔄 Cambiar habitación',  color:'#7c3aed'}],
     en_limpieza:  [{s:'ocupada',       label:'🔴 Volver a Ocupada',   color:'#dc2626'},
                    {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
     limpia:       [{s:'ocupada',       label:'🔴 Volver a Ocupada',   color:'#dc2626'},
@@ -986,9 +987,10 @@ function showHabModal(hab) {
   // Acciones recep/admin
   transitions.forEach((t,i) => {
     document.getElementById(`hab-act-${i}`)?.addEventListener('click', async () => {
-      if (t.s==='check-in')  { closeModal(); showCheckinModal(hab.id); return; }
-      if (t.s==='reservada') { closeModal(); showReservaModal(hab.id); return; }
-      if (t.s==='checkout')  {
+      if (t.s==='check-in')   { closeModal(); showCheckinModal(hab.id); return; }
+      if (t.s==='reservada')  { closeModal(); showReservaModal(hab.id); return; }
+      if (t.s==='cambiar-hab'){ closeModal(); showCambiarHabModal(hab); return; }
+      if (t.s==='checkout')   {
         if (!confirm('¿Confirmar check-out? La habitación pasará a "A Limpiar".')) return;
         const r = await apiFetch('POST', `/checkout/${hab.id}`);
         if (r?.ok) toast('Check-out realizado. Habitación a limpiar.');
@@ -1190,6 +1192,123 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
   });
 }
  
+// ══════════════════════════════════════
+// CAMBIAR HABITACIÓN
+// ══════════════════════════════════════
+function showCambiarHabModal(hab) {
+  // Filtrar habitaciones libres o lista como destino
+  const libres = habitaciones.filter(h =>
+    ['libre','lista'].includes(h.status) && h.id !== hab.id
+  );
+  if (!libres.length) {
+    toast('No hay habitaciones disponibles para el traslado', false);
+    return;
+  }
+  const reserva = hab.reserva_activa;
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>🔄 Cambiar habitación — Hab. ${hab.numero} Ala ${hab.ala}</h3>
+      <button class="modal-close" id="ch-close">✕</button>
+    </div>
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px">
+      <div style="font-weight:700;color:#0369a1">👤 ${reserva?.nombre_huesped || hab.nota || 'Huésped'}</div>
+      <div style="color:#0369a1;font-size:12px;margin-top:2px">Hab. ${hab.numero} · Ala ${hab.ala}</div>
+    </div>
+    <div class="form-col" style="margin-bottom:14px">
+      <label>Habitación destino</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:6px" id="ch-grid">
+        ${libres.map(h=>`
+          <button data-hid="${h.id}" class="ch-hab-btn"
+            style="padding:12px 8px;border-radius:10px;border:2px solid #e2e8f0;
+            background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;
+            transition:all .15s;text-align:center">
+            <div style="font-size:16px;font-weight:800">${h.numero}</div>
+            <div style="font-size:10px;color:#94a3b8">${h.ala} · ${h.tipo||''}</div>
+            <div style="font-size:10px;color:#16a34a;margin-top:2px">${h.status}</div>
+          </button>`).join('')}
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:14px">
+      <label>¿Qué pasa con la Hab. ${hab.numero} al liberar?</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button id="ch-estado-libre" class="ch-estado-btn"
+          style="flex:1;padding:10px;border-radius:10px;border:2px solid #16a34a;
+          background:#dcfce7;color:#166534;font-weight:700;font-size:13px;cursor:pointer">
+          🟢 Pasa a Libre
+        </button>
+        <button id="ch-estado-mant" class="ch-estado-btn"
+          style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;
+          background:#f8fafc;color:#4b5563;font-weight:700;font-size:13px;cursor:pointer">
+          🔧 Necesita mantenimiento
+        </button>
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:16px">
+      <label>Motivo / Nota (opcional)</label>
+      <input type="text" id="ch-motivo" placeholder="Ej: Solicitud del huésped, problema de AC..."/>
+    </div>
+    <button class="confirm-btn" id="ch-confirm" disabled
+      style="background:#7c3aed;opacity:.5;cursor:not-allowed">
+      🔄 Confirmar traslado
+    </button>
+  `);
+
+  document.getElementById('ch-close').addEventListener('click', closeModal);
+
+  let habDestinoId = null;
+  document.querySelectorAll('.ch-hab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Deseleccionar todos
+      document.querySelectorAll('.ch-hab-btn').forEach(b => {
+        b.style.borderColor = '#e2e8f0';
+        b.style.background  = '#f8fafc';
+        b.style.color       = '';
+      });
+      // Seleccionar este
+      btn.style.borderColor = '#7c3aed';
+      btn.style.background  = '#faf5ff';
+      habDestinoId = parseInt(btn.dataset.hid);
+      const confirmBtn = document.getElementById('ch-confirm');
+      confirmBtn.disabled = false;
+      confirmBtn.style.opacity = '1';
+      confirmBtn.style.cursor  = 'pointer';
+    });
+  });
+
+  // Selector estado origen
+  let estadoOrigen = 'libre'; // default
+  const btnLibre = document.getElementById('ch-estado-libre');
+  const btnMant  = document.getElementById('ch-estado-mant');
+  function selEstadoOrigen(estado) {
+    estadoOrigen = estado;
+    btnLibre.style.borderColor = estado==='libre'    ? '#16a34a' : '#e2e8f0';
+    btnLibre.style.background  = estado==='libre'    ? '#dcfce7' : '#f8fafc';
+    btnLibre.style.color       = estado==='libre'    ? '#166534' : '#4b5563';
+    btnMant.style.borderColor  = estado==='mantenimiento' ? '#6b7280' : '#e2e8f0';
+    btnMant.style.background   = estado==='mantenimiento' ? '#f3f4f6' : '#f8fafc';
+    btnMant.style.color        = estado==='mantenimiento' ? '#374151' : '#4b5563';
+  }
+  btnLibre.addEventListener('click', () => selEstadoOrigen('libre'));
+  btnMant.addEventListener('click',  () => selEstadoOrigen('mantenimiento'));
+
+  document.getElementById('ch-confirm').addEventListener('click', async () => {
+    if (!habDestinoId) return;
+    const motivo = document.getElementById('ch-motivo').value.trim();
+    const r = await apiFetch('POST', `/habitaciones/${hab.id}/cambiar`, {
+      nueva_habitacion_id: habDestinoId, motivo, estado_origen: estadoOrigen
+    });
+    if (r?.ok) {
+      const destino = habitaciones.find(h => h.id === habDestinoId);
+      toast(`✅ ${r.nombre_huesped} trasladado/a a Hab. ${destino?.numero}`);
+      closeModal();
+      await refreshHabs();
+    } else {
+      toast(r?.error || 'Error al cambiar habitación', false);
+    }
+  });
+}
+
 // ══════════════════════════════════════
 // CHECK-IN
 // ══════════════════════════════════════
