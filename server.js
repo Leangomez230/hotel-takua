@@ -105,7 +105,30 @@ app.put('/api/usuarios/:id', auth, adminOnly, async (req, res) => {
 
 // ── HABITACIONES ─────────────────────────────────────────────────────
 app.get('/api/habitaciones', auth, async (req, res) => {
-  try { res.json(await db.getAll('SELECT * FROM habitaciones ORDER BY ala, numero')); }
+  try {
+    const habs = await db.getAll('SELECT * FROM habitaciones ORDER BY ala, numero');
+    // Agregar datos de la reserva activa a cada habitación
+    const reservasActivas = await db.getAll(
+      `SELECT * FROM reservas
+       WHERE estado IN ('activa','checkin','ocupada','confirmada','reservada')
+       ORDER BY created_at DESC`
+    );
+    const habsEnriquecidas = habs.map(h => {
+      const reserva = reservasActivas.find(r => r.habitacion_id == h.id);
+      return {
+        ...h,
+        reserva_activa: reserva ? {
+          nombre_huesped: reserva.nombre_huesped,
+          entrada:        reserva.entrada,
+          salida:         reserva.salida,
+          notas:          reserva.notas,
+          noches:         reserva.noches,
+          estado:         reserva.estado,
+        } : null
+      };
+    });
+    res.json(habsEnriquecidas);
+  }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
 app.put('/api/habitaciones/:id/status', auth, async (req, res) => {
