@@ -267,12 +267,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   <nav class="sidebar" id="sidebar">
     <div class="s-logo">T</div>
     <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
-    <button class="nav-btn" onclick="window.location.href='/index.html#habitaciones'"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
-    <button class="nav-btn" id="snav-salon" onclick="snav('salon')"><span class="ni">🗺️</span><span class="nl">Salón</span></button>
+    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
+    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">📅</span><span class="nl">Reservas</span></button>
+    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
+    <button class="nav-btn active" id="snav-salon" onclick="snav('salon')"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
     <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn" id="snav-menu" onclick="snav('menu')" style="display:none"><span class="ni">📖</span><span class="nl">Menú</span></button>
     <button class="nav-btn" id="snav-editor" onclick="abrirEditorSalon()" style="display:none"><span class="ni">🪑</span><span class="nl">Editor</span></button>
-    <button class="nav-btn bottom" style="color:#dc2626" onclick="doLogout()"><span class="ni">🚪</span><span class="nl">Salir</span></button>
+    <button class="nav-btn nav-admin bottom" id="nav-config" onclick="window.location.href='/index.html'" style="display:none"><span class="ni">⚙️</span><span class="nl">Config</span></button>
+    <button class="nav-btn bottom" style="color:#ef4444" onclick="doLogout()"><span class="ni">🚪</span><span class="nl">Salir</span></button>
   </nav>
   <div class="main-wrap">
     <div class="topbar">
@@ -600,8 +603,6 @@ async function loadAll(silencioso=false){
 // RENDER MAIN
 // ════════════════════════════════════
 function renderMain(){
-  const el=document.getElementById('main-content');
-  if(!el) return;
   snav(_snavActual||'salon');
 }
 
