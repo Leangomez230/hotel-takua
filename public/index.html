@@ -706,10 +706,19 @@ async function renderDashboard() {
         </div>
         ${(dash?.alertas_stock||0)>0?`<div class="alert-badge">⚠️ ${dash.alertas_stock} stock</div>`:''}
       </div>
-      <div class="sc hosp"><div class="lbl">Turno actual</div><div class="ttl">HOSPEDAJE</div><div class="val">${fmt(dash?.hospedaje)}</div></div>
-      <div class="sc tienda"><div class="lbl">Turno actual</div><div class="ttl">TIENDA</div><div class="val">${fmt(dash?.tienda)}</div></div>
-      <div class="sc gastos"><div class="lbl">Turno actual</div><div class="ttl">GASTOS</div><div class="val">${fmt(dash?.egresos)}</div></div>
-      <div class="sc balance"><div class="lbl">Turno actual</div><div class="ttl">BALANCE</div><div class="val">${fmt(dash?.balance)}</div></div>
+      <div class="sc hosp" style="cursor:pointer" onclick="toggleHuespedes(this)">
+        <div class="lbl">Turno actual</div>
+        <div class="ttl">HOSPEDAJE</div>
+        <div class="val">${fmt(dash?.hospedaje)}</div>
+        ${(dash?.reservas_activas||0)>0?`<div style="font-size:11px;opacity:.8;margin-top:4px">👥 ${dash.reservas_activas} huéspedes</div>`:''}
+        <div class="huespedes-detalle" style="display:none;margin-top:8px;text-align:left">
+          ${(dash?.huespedes_actuales||[]).map(h=>`
+            <div style="font-size:11px;padding:3px 0;border-top:1px solid rgba(255,255,255,.15)">
+              <strong>Hab.${h.numero}</strong> ${h.nombre||'—'}
+              <span style="float:right;opacity:.8">${fmt(h.precio_total)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
     </div>
     ${mapSection(true)}
     <div class="section-card" id="sols-pendientes" style="display:none">
@@ -723,6 +732,11 @@ async function renderDashboard() {
   setTimeout(() => loadSolicitudesAll(), 100);
 }
  
+function toggleHuespedes(card) {
+  const detalle = card.querySelector('.huespedes-detalle');
+  if (detalle) detalle.style.display = detalle.style.display === 'none' ? 'block' : 'none';
+}
+
 function mapSection(showLog=false) {
   return `<div class="section-card">
     <div class="sc-head">
@@ -2207,7 +2221,14 @@ function renderMucamaSolicitudes(pendientes) {
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
-if (token && currentUser) { startApp(); } else { window.location.href = "/portal.html"; }
+if (token && currentUser) {
+  startApp();
+  // Si viene con hash (desde comandas), navegar a esa sección
+  const hash = window.location.hash.replace('#','');
+  if (hash && ['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].includes(hash)) {
+    setTimeout(() => { setActiveNav('nav-'+hash); goTo(hash); }, 100);
+  }
+} else { window.location.href = "/portal.html"; }
  
 // ── SERVICE WORKER (PWA) ──
 if ('serviceWorker' in navigator) {
