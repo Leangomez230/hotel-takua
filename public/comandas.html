@@ -3,13 +3,39 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Hotel Takuá — Restaurante</title>
+<title>TK Serrano — Restaurante</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
+:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height:100vh;font-size:14px;overflow-x:hidden}
 button{cursor:pointer;border:none;font-family:inherit;font-size:14px;transition:all .15s}
-input,select,textarea{font-family:inherit;font-size:14px;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;outline:none;transition:border-color .2s;background:#fff;color:#1e293b}
-input:focus,select:focus,textarea:focus{border-color:#3b82f6}
+input,select,textarea{font-family:inherit;font-size:14px;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;outline:none;transition:border-color .2s;background:#fff;color:#1a2035}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+
+/* SIDEBAR */
+.sidebar{width:var(--sw);background:var(--sidebar);position:fixed;top:0;left:0;bottom:0;z-index:200;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:2px}
+.s-logo{width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff;margin-bottom:18px;flex-shrink:0}
+.nav-btn{width:58px;height:52px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:#64748b;border:none;background:none;font-family:'Nunito',sans-serif;transition:all .15s;flex-shrink:0}
+.nav-btn:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-btn.active{background:rgba(0,201,177,.18);color:var(--accent)}
+.nav-btn .ni{font-size:18px;line-height:1}
+.nav-btn .nl{font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.nav-btn.bottom{margin-top:auto}
+.main-wrap{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
+.tb-left{flex:1}
+.tb-left h2{font-size:16px;font-weight:800;color:#1a2035;margin:0}
+.tb-left p{font-size:12px;color:#64748b;margin:0}
+.tb-right{display:flex;align-items:center;gap:8px}
+.tb-btn{background:#f0f4f8;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;color:#1a2035;cursor:pointer;font-family:inherit}
+.tb-btn:hover{background:#e2e8f0}
+.tb-btn.salon{background:#0f766e;color:#99f6e4}
+.tb-btn.salon:hover{background:#0d9488}
+.tb-btn.salir{color:#dc2626}
+.user-av-tb{width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0}
 
 /* PANTALLAS */
 .screen{display:none;min-height:100vh}
@@ -32,15 +58,15 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6}
 .login-err{color:#f87171;font-size:12px;text-align:center;margin-top:8px;display:none}
 
 /* HEADER */
-.header{background:#1e293b;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.header-left{display:flex;align-items:center;gap:10px}
-.header-logo{font-weight:700;font-size:17px;line-height:1.2}
-.header-sub{font-size:11px;color:#64748b;margin-top:1px}
-.header-right{display:flex;gap:8px}
-.btn-salon{background:#0f766e;border:none;color:#99f6e4;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}
-.btn-salon:hover{background:#0d9488}
-.btn-salir{background:#334155;border:none;color:#94a3b8;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}
-.btn-salir:hover{color:#fff}
+
+
+
+
+
+
+
+
+
 
 /* CONTENT */
 .content{padding:clamp(12px,3vw,20px);max-width:760px;margin:0 auto;flex:1}
@@ -238,21 +264,28 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6}
 
 <!-- ══ MAIN ══ -->
 <div class="screen" id="screen-main">
-  <div class="header">
-    <div class="header-left">
-      <span style="font-size:22px">🏨</span>
-      <div>
-        <div class="header-logo">Hotel — Comandas</div>
-        <div class="header-sub" id="header-sub">—</div>
+  <nav class="sidebar">
+    <div class="s-logo">🍽️</div>
+    <button class="nav-btn active" id="snav-salon" onclick="snav('salon')"><span class="ni">🗺️</span><span class="nl">Salón</span></button>
+    <button class="nav-btn" id="snav-comandas" onclick="snav('comandas')"><span class="ni">📋</span><span class="nl">Comandas</span></button>
+    <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn" id="snav-menu" onclick="snav('menu')" style="display:none"><span class="ni">📖</span><span class="nl">Menú</span></button>
+    <button class="nav-btn" id="snav-editor" onclick="abrirEditorSalon()" style="display:none"><span class="ni">🪑</span><span class="nl">Editor</span></button>
+    <button class="nav-btn bottom" id="snav-hab" onclick="window.location.href='/index.html'" style="display:none"><span class="ni">🛏</span><span class="nl">Hotel</span></button>
+    <button class="nav-btn bottom" style="color:#dc2626" onclick="doLogout()"><span class="ni">🚪</span><span class="nl">Salir</span></button>
+  </nav>
+  <div class="main-wrap">
+    <div class="topbar">
+      <div class="tb-left">
+        <h2>TK Serrano — Restaurante</h2>
+        <p id="header-sub">—</p>
+      </div>
+      <div class="tb-right">
+        <div class="user-av-tb" id="user-av-tb">A</div>
       </div>
     </div>
-    <div class="header-right">
-      <button class="btn-salon" id="btn-salon-header" style="display:none" onclick="abrirEditorSalon()">🪑 Salón</button>
-      <button class="btn-salon" id="btn-ir-habitaciones" style="display:none;background:#1e40af;color:#bfdbfe" onclick="window.location.href='/index.html'">🏨 Habitaciones</button>
-      <button class="btn-salir" onclick="doLogout()">Salir 🔓</button>
-    </div>
+    <div style="padding:clamp(12px,3vw,20px);max-width:760px;margin:0 auto;flex:1" id="main-content"></div>
   </div>
-  <div class="content" id="main-content"></div>
 </div>
 
 <!-- ══ SALON EDITOR (Admin) ══ -->
@@ -574,9 +607,16 @@ async function loadAll(silencioso=false){
 // ════════════════════════════════════
 function renderMain(){
   const el=document.getElementById('main-content');
-  if(ME.rol==='mozo')   renderMozo(el);
-  if(ME.rol==='cajero') renderCajero(el);
-  if(ME.rol==='admin')  renderAdmin(el);
+  if(ME.rol==='mozo'){
+    renderMozo(el);
+  } else if(ME.rol==='cajero'){
+    if(_snavActual==='caja') renderCajero(el);
+    else renderMozo(el); // cajero ve el mapa por defecto
+  } else if(ME.rol==='admin'){
+    if(_snavActual==='caja') renderCajero(el);
+    else if(_snavActual==='menu') renderAdmin(el);
+    else renderAdmin(el); // admin ve el mapa + métricas por defecto
+  }
 }
 
 // ── MAPA (solo lectura) ───────────────────────────────
