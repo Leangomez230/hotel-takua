@@ -270,12 +270,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
     <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">📅</span><span class="nl">Reservas</span></button>
     <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
+    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
+    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">📦</span><span class="nl">Inventario</span></button>
+    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
     <button class="nav-btn active" id="snav-salon" onclick="snav('salon')"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
-    <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">💰</span><span class="nl">Res. Caja</span></button>
     <button class="nav-btn" id="snav-menu" onclick="snav('menu')" style="display:none"><span class="ni">📖</span><span class="nl">Menú</span></button>
     <button class="nav-btn" id="snav-editor" onclick="abrirEditorSalon()" style="display:none"><span class="ni">🪑</span><span class="nl">Editor</span></button>
-    <button class="nav-btn nav-admin bottom" id="nav-config" onclick="window.location.href='/index.html'" style="display:none"><span class="ni">⚙️</span><span class="nl">Config</span></button>
-    <button class="nav-btn bottom" style="color:#ef4444" onclick="doLogout()"><span class="ni">🚪</span><span class="nl">Salir</span></button>
+    <button class="nav-btn bottom" id="nav-config" onclick="window.location.href='/index.html'" style="display:none"><span class="ni">⚙️</span><span class="nl">Config</span></button>
   </nav>
   <div class="main-wrap">
     <div class="topbar">
@@ -285,6 +288,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       </div>
       <div class="tb-right">
         <div class="user-av-tb" id="user-av-tb">A</div>
+        <button class="tb-btn salir" onclick="doLogout()">Salir</button>
       </div>
     </div>
     <div style="padding:clamp(12px,3vw,20px);max-width:760px;margin:0 auto;flex:1" id="main-content"></div>
@@ -600,10 +604,32 @@ async function loadAll(silencioso=false){
 }
 
 // ════════════════════════════════════
+// ════════════════════════════════════
+// NAVEGACIÓN SIDEBAR
+// ════════════════════════════════════
+let _snavActual = 'salon';
+
+function snav(id) {
+  _snavActual = id;
+  document.querySelectorAll('.nav-btn[id^="snav-"]').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('snav-' + id);
+  if (btn) btn.classList.add('active');
+  const el = document.getElementById('main-content');
+  if (!el) return;
+  if (id === 'salon') {
+    if (ME.rol === 'mozo') renderMozo(el);
+    else if (ME.rol === 'cajero') renderCajero(el);
+    else renderAdmin(el);
+  }
+  if (id === 'caja') renderCajero(el);
+  if (id === 'menu') renderAdmin(el);
+}
+
+// ════════════════════════════════════
 // RENDER MAIN
 // ════════════════════════════════════
 function renderMain(){
-  snav(_snavActual||'salon');
+  snav(_snavActual || 'salon');
 }
 
 // ── MAPA (solo lectura) ───────────────────────────────
