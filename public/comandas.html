@@ -266,19 +266,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <div class="screen" id="screen-main">
   <nav class="sidebar" id="sidebar">
     <div class="s-logo">T</div>
-    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
-    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
-    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">📅</span><span class="nl">Reservas</span></button>
-    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
-    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
-    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">📦</span><span class="nl">Inventario</span></button>
-    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">💰</span><span class="nl">Caja</span></button>
-    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
+    <button class="nav-btn" onclick="irA('dashboard')"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
+    <button class="nav-btn" onclick="irA('habitaciones')"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
+    <button class="nav-btn" onclick="irA('reservas')"><span class="ni">📅</span><span class="nl">Reservas</span></button>
+    <button class="nav-btn" onclick="irA('huespedes')"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
+    <button class="nav-btn" onclick="irA('tienda')"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
+    <button class="nav-btn" onclick="irA('inventario')"><span class="ni">📦</span><span class="nl">Inventario</span></button>
+    <button class="nav-btn" onclick="irA('caja')"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn" onclick="irA('finanzas')"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
     <button class="nav-btn active" id="snav-salon" onclick="snav('salon')"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
     <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">💰</span><span class="nl">Res. Caja</span></button>
     <button class="nav-btn" id="snav-menu" onclick="snav('menu')" style="display:none"><span class="ni">📖</span><span class="nl">Menú</span></button>
     <button class="nav-btn" id="snav-editor" onclick="abrirEditorSalon()" style="display:none"><span class="ni">🪑</span><span class="nl">Editor</span></button>
-    <button class="nav-btn bottom" id="nav-config" onclick="window.location.href='/index.html'" style="display:none"><span class="ni">⚙️</span><span class="nl">Config</span></button>
+    <button class="nav-btn bottom" id="nav-config" onclick="irA('config')" style="display:none"><span class="ni">⚙️</span><span class="nl">Config</span></button>
   </nav>
   <div class="main-wrap">
     <div class="topbar">
@@ -607,6 +607,11 @@ async function loadAll(silencioso=false){
 // ════════════════════════════════════
 // NAVEGACIÓN SIDEBAR
 // ════════════════════════════════════
+// Navegar a sección de index.html pasando destino como hash
+function irA(seccion) {
+  window.location.href = '/index.html#' + seccion;
+}
+
 let _snavActual = 'salon';
 
 function snav(id) {
