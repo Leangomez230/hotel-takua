@@ -544,23 +544,53 @@ function buildCard(h) {
   let cardBg = '';
   if (h.status === 'limpia') cardBg = ' limpia-occ';
  
+  // ── Helpers de formato ──
+  const fmtFecha = s => {
+    if (!s) return '—';
+    // Intenta parsear distintos formatos
+    const d = new Date(s);
+    if (!isNaN(d)) return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})
+                     + ' ' + d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    return s; // devolver tal cual si ya es texto
+  };
+
   // ── Cuerpo de la tarjeta ──
+  const r = h.reserva_activa; // datos de la reserva activa
   let body='';
+
   if (h.status==='libre') {
     body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
+
   } else if (h.status==='en_limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div></div>`;
-  } else if (h.status==='limpia') {
-    // Igual que ocupada: muestra nombre del huésped
-    body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
-  } else if (h.status==='lista') {
-    body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
+
   } else if (h.status==='limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
+
   } else if (h.status==='mantenimiento') {
     body=`<div class="rclean"><div class="rclean-icon">🔧</div><div class="rclean-label" style="color:#4b5563">Mantenimiento</div></div>`;
-  } else if (h.nota) {
-    body=`<div class="rguest">👤 ${h.nota}</div>`;
+
+  } else {
+    // Ocupada, lista, limpia, reservada — mostrar datos de la reserva
+    const nombre   = r?.nombre_huesped || h.nota || '';
+    const entrada  = fmtFecha(r?.entrada);
+    const salida   = fmtFecha(r?.salida);
+    // Extraer patente de notas (si existe)
+    const notas    = r?.notas || '';
+    const patMatch = notas.match(/[A-Z]{2,3}[-\s]?\d{3}[-\s]?[A-Z]{0,2}\d{0,3}/i);
+    const patente  = patMatch ? patMatch[0].toUpperCase() : '';
+
+    body = `
+      ${nombre ? `<div class="rguest" style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${nombre}</div>` : ''}
+      ${r ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:4px;font-size:10px">
+        <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">ENTRADA</div>
+        <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">SALIDA</div>
+        <div style="color:#1e293b;font-weight:700;font-size:10px">${entrada}</div>
+        <div style="color:#1e293b;font-weight:700;font-size:10px">${salida}</div>
+      </div>` : ''}
+      ${patente ? `<div style="margin-top:5px;background:#f1f5f9;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:4px">🚗 ${patente}</div>` : ''}
+      ${!r && !nombre ? `<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>` : ''}
+    `;
   }
  
   const isAdminOrRecep = currentUser && ['admin','recepcionista'].includes(currentUser.rol);
