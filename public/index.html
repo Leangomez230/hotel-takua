@@ -686,16 +686,32 @@ async function renderDashboard() {
     return;
   }
  
-  const [dash,habs]=await Promise.all([apiFetch('GET','/dashboard'),apiFetch('GET','/habitaciones')]);
-  habitaciones=habs||[];
+  const [dash, habs, turnoRest] = await Promise.all([
+    apiFetch('GET','/dashboard'),
+    apiFetch('GET','/habitaciones'),
+    apiFetch('GET','/restaurante/turno/ultimo').catch(()=>null),
+  ]);
+  habitaciones = habs||[];
   const OCUPADAS=['ocupada','en_limpieza','limpia'];
-  const LIBRES=['libre','lista'];
-  const occ=habitaciones.filter(h=>OCUPADAS.includes(h.status)).length;
-  const lib=habitaciones.filter(h=>LIBRES.includes(h.status)).length;
-  const limp=habitaciones.filter(h=>h.status==='limpieza').length;
-  const pct=Math.round(occ/(habitaciones.length||1)*100);
+  const LIBRES  =['libre','lista'];
+  const occ  = habitaciones.filter(h=>OCUPADAS.includes(h.status)).length;
+  const lib  = habitaciones.filter(h=>LIBRES.includes(h.status)).length;
+  const limp = habitaciones.filter(h=>h.status==='limpieza').length;
+  const mant = habitaciones.filter(h=>h.status==='mantenimiento').length;
+  const reserv=habitaciones.filter(h=>h.status==='reservada').length;
+  const pct  = Math.round(occ/(habitaciones.length||1)*100);
+
+  // Métricas restaurante
+  const cerradas   = turnoRest?.cerradas||[];
+  const restTotal  = cerradas.reduce((s,c)=>s+(Number(c.total_final)||0),0);
+  const restCmdas  = cerradas.length;
+  const restComen  = cerradas.reduce((s,c)=>s+(c.comensales||0),0);
+  const turnoAbierto = turnoRest?.estado==='abierto';
+
   document.getElementById('content').innerHTML=`
-    <div class="stat-cards">
+    <!-- HABITACIONES -->
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🏨 Habitaciones</div>
+    <div class="stat-cards" style="margin-bottom:20px">
       <div class="sc occ">
         <div class="lbl">Turno actual</div><div class="ttl">OCUPACIÓN</div>
         <div class="occ-big">${pct}%</div>
@@ -720,15 +736,54 @@ async function renderDashboard() {
         </div>
       </div>
     </div>
-    ${mapSection(true)}
+
+    <!-- Estado rápido habitaciones -->
+    <div class="section-card" style="margin-bottom:20px">
+      <div class="sc-head" style="margin-bottom:12px"><h2 style="font-size:15px">Estado de habitaciones</h2>
+        <button class="btn-secondary" onclick="setActiveNav('nav-habitaciones');goTo('habitaciones')">Ver mapa →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
+        ${[
+          {label:'Ocupadas',   val:occ,   color:'#dc2626', bg:'#fee2e2', icon:'🔴'},
+          {label:'Libres',     val:lib,   color:'#16a34a', bg:'#dcfce7', icon:'🟢'},
+          {label:'Reservadas', val:reserv,color:'#7c3aed', bg:'#ede9fe', icon:'📅'},
+          {label:'Limpieza',   val:limp,  color:'#d97706', bg:'#fef3c7', icon:'🧹'},
+          {label:'Mantenimiento',val:mant,color:'#4b5563', bg:'#f3f4f6', icon:'🔧'},
+        ].map(x=>`<div style="background:${x.bg};border-radius:12px;padding:12px 14px;border:1px solid ${x.color}22">
+          <div style="font-size:20px;margin-bottom:4px">${x.icon}</div>
+          <div style="font-size:22px;font-weight:800;color:${x.color}">${x.val}</div>
+          <div style="font-size:12px;color:#64748b">${x.label}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- RESTAURANTE -->
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🍽️ Restaurante ${turnoAbierto?'<span style="color:#22c55e">● Turno abierto</span>':'<span style="color:#94a3b8">○ Sin turno activo</span>'}</div>
+    <div class="stat-cards" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+      <div class="sc" style="background:linear-gradient(135deg,#059669,#10b981)">
+        <div class="lbl">Restaurante</div><div class="ttl">TOTAL COBRADO</div>
+        <div class="val">${fmt(restTotal)}</div>
+      </div>
+      <div class="sc" style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+        <div class="lbl">Restaurante</div><div class="ttl">COMANDAS</div>
+        <div class="val">${restCmdas}</div>
+      </div>
+      <div class="sc" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">
+        <div class="lbl">Restaurante</div><div class="ttl">COMENSALES</div>
+        <div class="val">${restComen}</div>
+      </div>
+    </div>
+
+    <!-- SOLICITUDES PENDIENTES -->
     <div class="section-card" id="sols-pendientes" style="display:none">
       <div class="sc-head" style="flex-wrap:nowrap">
-        <h2 style="display:flex;align-items:center;gap:8px">🔔 Solicitudes de huéspedes <span id="sols-count" style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px">0</span></h2>
+        <h2 style="display:flex;align-items:center;gap:8px">🔔 Solicitudes de huéspedes
+          <span id="sols-count" style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px">0</span>
+        </h2>
       </div>
       <div id="sols-rows"></div>
     </div>`;
-  afterMapInsert(true);
-  // Cargar solicitudes inmediatamente después de que el mapa esté listo
+
   setTimeout(() => loadSolicitudesAll(), 100);
 }
  
