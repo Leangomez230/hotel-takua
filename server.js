@@ -183,11 +183,24 @@ app.post('/api/servicios', auth, async (req, res) => {
       [habitacion_id, tipo_servicio||'diario', req.user.id, req.user.nombre, tipo_cama||'', necesita_mantenimiento?1:0, nota_mantenimiento||'', JSON.stringify(consumosCompletos), total_consumos]
     );
     if (tipo_cama) await db.query('UPDATE habitaciones SET tipo=$1 WHERE id=$2', [tipo_cama, habitacion_id]);
+
     let statusFinal = nuevo_status || 'limpia';
-    if (necesita_mantenimiento) statusFinal = 'mantenimiento';
+    if (necesita_mantenimiento) {
+      statusFinal = 'mantenimiento';
+    } else if (tipo_servicio === 'mantenimiento') {
+      // Al finalizar mantenimiento: verificar si había huésped activo
+      const reservaActiva = await db.getOne(
+        `SELECT id FROM reservas WHERE habitacion_id=$1
+         AND estado IN ('activa','checkin','ocupada','confirmada')
+         ORDER BY created_at DESC LIMIT 1`,
+        [habitacion_id]
+      );
+      statusFinal = reservaActiva ? 'ocupada' : 'libre';
+    }
+
     let notaFinal;
     if (necesita_mantenimiento) notaFinal = nota_mantenimiento;
-    else if (statusFinal === 'limpia') notaFinal = hab.nota || '';
+    else if (statusFinal === 'limpia' || statusFinal === 'ocupada') notaFinal = hab.nota || '';
     else notaFinal = '';
     await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', [statusFinal, notaFinal, habitacion_id]);
     await logAction(req.user.id, req.user.nombre, 'SERVICIO_HAB', `Hab ${hab.numero} - ${tipo_servicio}${necesita_mantenimiento?' [MANT]':''}`);
