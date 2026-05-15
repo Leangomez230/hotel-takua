@@ -839,8 +839,8 @@ function showHabModal(hab) {
     limpia:       { label:'🧹 Nuevo servicio diario',      color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
     // Limpieza post-checkout → mucama limpia → queda Lista
     limpieza:     { label:'🧹 Limpieza post-checkout',     color:'#d97706', servicio:'post_checkout',  nuevoStatus:'lista',       soloIniciar:false },
-    // Mantenimiento → mucama lo resolvió → queda Lista
-    mantenimiento:{ label:'✅ Marcar como lista',           color:'#0891b2', servicio:'mantenimiento',  nuevoStatus:'lista',       soloIniciar:false },
+    // Mantenimiento → mucama lo resolvió → estado depende de si había huésped
+    mantenimiento:{ label:'✅ Finalizar mantenimiento',     color:'#0891b2', servicio:'mantenimiento',  nuevoStatus:'lista',       soloIniciar:false },
   };
  
   // Recep/Admin: transiciones directas de estado
@@ -910,6 +910,9 @@ function showHabModal(hab) {
  
     ${tipoCamaHTML}
  
+    ${isMucama ? `
+      <button class="save-btn" id="btn-save-tipo" style="margin-bottom:10px;width:100%">💾 Guardar tipo de cama</button>
+    ` : ''}
     ${isMucama && mucamaAccion ? `
       <button class="confirm-btn" id="btn-servicio" style="background:linear-gradient(135deg,${mucamaAccion.color},${mucamaAccion.color}cc);margin-bottom:8px">
         ${mucamaAccion.label}
@@ -951,7 +954,17 @@ function showHabModal(hab) {
   }
   btnTwin?.addEventListener('click',  () => selectTipo('twin'));
   btnQueen?.addEventListener('click', () => selectTipo('queen'));
- 
+
+  // Mucama: guardar tipo de cama
+  document.getElementById('btn-save-tipo')?.addEventListener('click', async () => {
+    const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
+      nombre: hab.nombre||'', tipo: tipoCamaSeleccionada,
+      capacidad: hab.capacidad, precio_noche: hab.precio_noche, precio_hora: hab.precio_hora
+    });
+    if (r?.ok) { toast('Tipo de cama guardado ✓'); closeModal(); await refreshHabs(); }
+    else toast(r?.error||'Error', false);
+  });
+
   // Botón servicio mucama
   document.getElementById('btn-servicio')?.addEventListener('click', async () => {
     if (mucamaAccion.soloIniciar) {
