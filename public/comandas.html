@@ -264,14 +264,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 <!-- ══ MAIN ══ -->
 <div class="screen" id="screen-main">
-  <nav class="sidebar">
-    <div class="s-logo">🍽️</div>
-    <button class="nav-btn active" id="snav-salon" onclick="snav('salon')"><span class="ni">🗺️</span><span class="nl">Salón</span></button>
-    <button class="nav-btn" id="snav-comandas" onclick="snav('comandas')"><span class="ni">📋</span><span class="nl">Comandas</span></button>
+  <nav class="sidebar" id="sidebar">
+    <div class="s-logo">T</div>
+    <button class="nav-btn" onclick="window.location.href='/index.html'"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
+    <button class="nav-btn" onclick="window.location.href='/index.html#habitaciones'"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
+    <button class="nav-btn" id="snav-salon" onclick="snav('salon')"><span class="ni">🗺️</span><span class="nl">Salón</span></button>
     <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn" id="snav-menu" onclick="snav('menu')" style="display:none"><span class="ni">📖</span><span class="nl">Menú</span></button>
     <button class="nav-btn" id="snav-editor" onclick="abrirEditorSalon()" style="display:none"><span class="ni">🪑</span><span class="nl">Editor</span></button>
-    <button class="nav-btn bottom" id="snav-hab" onclick="window.location.href='/index.html'" style="display:none"><span class="ni">🛏</span><span class="nl">Hotel</span></button>
     <button class="nav-btn bottom" style="color:#dc2626" onclick="doLogout()"><span class="ni">🚪</span><span class="nl">Salir</span></button>
   </nav>
   <div class="main-wrap">
@@ -537,13 +537,7 @@ async function initApp(){
   const sub = document.getElementById('header-sub');
   sub.textContent = `${ROL_LABELS[ME.rol]||ME.rol} · ${ME.nombre||ME.email||''}`;
 
-  // Botón Salón solo para admin/cajero
-  if(['admin','cajero'].includes(ME.rol)){
-    document.getElementById('btn-salon-header').style.display='';
-  }
-  if(ME.rol==='admin'){
-    document.getElementById('btn-ir-habitaciones').style.display='';
-  }
+  // Configurar sidebar según rol
 
   showScreen('screen-main');
   await loadAll();
@@ -607,16 +601,8 @@ async function loadAll(silencioso=false){
 // ════════════════════════════════════
 function renderMain(){
   const el=document.getElementById('main-content');
-  if(ME.rol==='mozo'){
-    renderMozo(el);
-  } else if(ME.rol==='cajero'){
-    if(_snavActual==='caja') renderCajero(el);
-    else renderMozo(el); // cajero ve el mapa por defecto
-  } else if(ME.rol==='admin'){
-    if(_snavActual==='caja') renderCajero(el);
-    else if(_snavActual==='menu') renderAdmin(el);
-    else renderAdmin(el); // admin ve el mapa + métricas por defecto
-  }
+  if(!el) return;
+  snav(_snavActual||'salon');
 }
 
 // ── MAPA (solo lectura) ───────────────────────────────
