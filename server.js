@@ -294,6 +294,50 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Cambiar habitación — transfiere reserva y datos del huésped a otra habitación
+app.post('/api/habitaciones/:id/cambiar', auth, adminOrRecep, async (req, res) => {
+  try {
+    const { nueva_habitacion_id, motivo, estado_origen } = req.body;
+    const habOrigen = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [req.params.id]);
+    const habDestino = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [nueva_habitacion_id]);
+    if (!habOrigen) return res.status(404).json({ error: 'Habitación origen no encontrada' });
+    if (!habDestino) return res.status(404).json({ error: 'Habitación destino no encontrada' });
+    if (!['libre','lista'].includes(habDestino.status))
+      return res.status(400).json({ error: `La habitación ${habDestino.numero} está ${habDestino.status}` });
+
+    // Obtener reserva activa de origen
+    const reserva = await db.getOne(
+      `SELECT * FROM reservas WHERE habitacion_id=$1
+       AND estado IN ('activa','checkin','ocupada','confirmada')
+       ORDER BY created_at DESC LIMIT 1`,
+      [req.params.id]
+    );
+    if (!reserva) return res.status(400).json({ error: 'No hay reserva activa en esta habitación' });
+
+    // Transferir reserva a destino
+    await db.query(
+      `UPDATE reservas SET habitacion_id=$1,
+       notas=COALESCE(notas,'')||$2
+       WHERE id=$3`,
+      [nueva_habitacion_id, motivo ? ` | Cambio hab: ${motivo}` : ' | Cambio de habitación', reserva.id]
+    );
+
+    // Habitación destino → ocupada con datos del huésped
+    await db.query("UPDATE habitaciones SET status='ocupada', nota=$1, updated_at=NOW() WHERE id=$2",
+      [habOrigen.nota || reserva.nombre_huesped, nueva_habitacion_id]);
+
+    // Habitación origen → según elección del recepcionista
+    const statusOrigen = estado_origen === 'mantenimiento' ? 'mantenimiento' : 'libre';
+    const notaOrigen   = statusOrigen === 'mantenimiento' ? (motivo || 'Cambio de habitación') : '';
+    await db.query('UPDATE habitaciones SET status=$1, nota=$2, updated_at=NOW() WHERE id=$3',
+      [statusOrigen, notaOrigen, req.params.id]);
+
+    await logAction(req.user.id, req.user.nombre, 'CAMBIO_HAB',
+      `Hab ${habOrigen.numero} → ${habDestino.numero} (${reserva.nombre_huesped}) → origen: ${statusOrigen}`);
+    res.json({ ok: true, nombre_huesped: reserva.nombre_huesped });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── RESERVAS HOTEL ───────────────────────────────────────────────────
 app.get('/api/reservas', auth, async (req, res) => {
   try {
