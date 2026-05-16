@@ -780,7 +780,10 @@ function renderCajero(el){
   // Mapa
   html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <div class="card-title">🗺️ Salón</div>
-    <button class="btn-ghost-light btn-sm" onclick="loadAll().then(renderMain)">↻</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn-ghost-light btn-sm" onclick="abrirEditorSalon()">✏️ Editar</button>
+      <button class="btn-ghost-light btn-sm" onclick="loadAll().then(renderMain)">↻</button>
+    </div>
   </div>
   <div class="pills-row">${renderPills()}</div>
   <div style="overflow-x:auto">${renderMapa(false)}</div></div>`;
@@ -863,12 +866,15 @@ function renderAdmin(el){
 
     <!-- Mapa -->
     <div class="desplegable" id="desp-mapa">
-      <button class="desp-btn" onclick="toggleDesp('mapa')">
-        <div class="desp-left"><span class="desp-icon">🗺️</span>
-          <div><div class="desp-title">Mapa del salón</div><div class="desp-sub">${activas} activas</div></div>
-        </div>
-        <div class="desp-arrow" id="arr-mapa">▼</div>
-      </button>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+        <button class="desp-btn" onclick="toggleDesp('mapa')" style="flex:1;padding:0;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+          <div class="desp-left"><span class="desp-icon">🗺️</span>
+            <div><div class="desp-title">Mapa del salón</div><div class="desp-sub">${activas} activas</div></div>
+          </div>
+          <div class="desp-arrow" id="arr-mapa">▼</div>
+        </button>
+        <button onclick="abrirEditorSalon()" style="margin-left:12px;padding:7px 14px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;font-weight:700;color:#475569;cursor:pointer;white-space:nowrap;flex-shrink:0">✏️ Editar</button>
+      </div>
       <div class="desp-body" id="body-mapa">
         <div class="desp-content">
           <div class="pills-row">${renderPills()}</div>
