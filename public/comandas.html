@@ -488,13 +488,9 @@ let S = { mesas:[], comandas:[], menu:[], turno:null, usuarios:[],
 const fmt = n => '$'+Number(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const nowFull = () => new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const mesaLabel = m => m.alias||`M${m.numero||m.id}`;
-const mesaDims = (tipo, alias) => {
-  // Mesas unidas guardan sus dimensiones en alias como "w:300,h:70"
-  if(tipo==='unida' && alias){
-    const wm = alias.match(/w:(\d+)/);
-    const hm = alias.match(/h:(\d+)/);
-    if(wm && hm) return {w:parseInt(wm[1]), h:parseInt(hm[1])};
-  }
+const mesaDims = (tipo, alias, ancho, alto) => {
+  // Si tiene dimensiones custom (mesa unida), usarlas
+  if(ancho && alto) return {w:ancho, h:alto};
   return SZ[tipo]||SZ.cuadrada;
 };
 
@@ -664,7 +660,7 @@ function renderMapa(editable=false){
   const maxY=Math.max(...S.mesas.map(m=>(m.y||50)+(mesaDims(m.tipo).h)))+70;
   const mesasHTML=S.mesas.map(m=>{
     const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
-    const {w,h}=mesaDims(m.tipo,m.alias);
+    const {w,h}=mesaDims(m.tipo,m.alias,m.ancho,m.alto);
     const x=m.x||50; const y=m.y||50;
     const cmd=S.comandas.find(c=>c.mesa_id===m.id&&c.estado!=='cerrada');
     const br=m.tipo==='redonda'?'50%':'10px';
@@ -1779,7 +1775,7 @@ function renderEditorSalon(){
 
   c.innerHTML=S.mesas.map((m,idx)=>{
     const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
-    const {w,h}=mesaDims(m.tipo,m.alias);
+    const {w,h}=mesaDims(m.tipo,m.alias,m.ancho,m.alto);
     // Si está en 0,0 asignar posición automática (no se guarda hasta que el usuario la mueva)
     let x=m.x, y=m.y;
     if(!x && !y){
@@ -1971,7 +1967,7 @@ function editarMesaSalon(mesaId){
     <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Número</label>
       <input type="number" id="me-num" value="${m.numero||''}"/></div>
     <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Alias (opcional)</label>
-      <input type="text" id="me-alias" value="${['unida'].includes(m.tipo)?'':m.alias||''}"/></div>
+      <input type="text" id="me-alias" value="${m.alias||''}"/></div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button class="btn-primary" style="flex:1" onclick="guardarMesaEditor(${mesaId})">Guardar</button>
       ${(m.tipo==='rectangular'||m.tipo==='unida')?`<button onclick="separarMesa(${mesaId})" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #fbbf24;background:#fffbeb;color:#92400e;font-weight:700;cursor:pointer">✂️ Separar</button>`:''}
@@ -1988,6 +1984,7 @@ async function guardarMesaEditor(mesaId){
   try{
     if(mesaId){
       await api('PUT',`/api/restaurante/mesas/${mesaId}`,{numero:Number(num),alias});
+      // No pisamos ancho/alto al editar — solo cambia número y alias
     } else {
       await api('POST','/api/restaurante/mesas',{numero:Number(num),tipo,alias,x:100,y:100});
     }
@@ -2010,15 +2007,36 @@ async function eliminarMesa(mesaId){
 }
 async function separarMesa(mesaId){
   const m=S.mesas.find(x=>x.id===mesaId); if(!m) return;
-  const n1=prompt('Número para la primera mesa:'); if(!n1) return;
-  const n2=prompt('Número para la segunda mesa:'); if(!n2) return;
+
+  // Determinar las partes originales
+  const tipos = m.partes ? m.partes.split(',') : ['cuadrada','cuadrada'];
+  const cant = tipos.length;
+
+  // Pedir número para cada parte
+  const numeros = [];
+  for(let i=0; i<cant; i++){
+    const n = prompt(`Número para la mesa ${i+1} de ${cant} (tipo: ${tipos[i]}):`);
+    if(!n){ toast('Separación cancelada','info'); return; }
+    numeros.push(n);
+  }
+
   loading(true);
   try{
-    const x=m.x||80; const y=m.y||80;
-    await api('POST','/api/restaurante/mesas',{numero:Number(n1),tipo:'cuadrada',alias:'',x,y});
-    await api('POST','/api/restaurante/mesas',{numero:Number(n2),tipo:'cuadrada',alias:'',x:x+80,y});
+    const {w} = mesaDims(m.tipo, m.alias, m.ancho, m.alto);
+    let offsetX = m.x||80;
+    const y = m.y||80;
+
+    for(let i=0; i<cant; i++){
+      const tipo = tipos[i];
+      const {w:wParte} = mesaDims(tipo);
+      await api('POST','/api/restaurante/mesas',{
+        numero:Number(numeros[i]), tipo, alias:'', x:offsetX, y
+      });
+      offsetX += wParte + 10;
+    }
+
     await api('DELETE',`/api/restaurante/mesas/${mesaId}`);
-    toast('Mesa separada ✓','ok');
+    toast(`Mesa separada en ${cant} partes ✓`,'ok');
     closeModal('m-mesa-ed');
     await loadAll(); renderEditorSalon();
   }catch(e){toast(e.message,'err');}
@@ -2081,21 +2099,24 @@ async function confirmarUnion(){
   const y = Math.min(...mesas.map(m=>m.y||80));
 
   // Sumar anchos y tomar la altura máxima
-  // Ordenar por posición x para sumar en orden horizontal
+  // Usar ancho/alto real de cada mesa (incluye mesas ya unidas)
   const mesasOrdenadas = [...mesas].sort((a,b)=>(a.x||0)-(b.x||0));
   const anchoTotal = mesasOrdenadas.reduce((sum, m) => {
-    const {w} = mesaDims(m.tipo);
+    const {w} = mesaDims(m.tipo, m.alias, m.ancho, m.alto);
     return sum + w;
   }, 0) + (mesas.length - 1) * 8; // 8px de separación entre mesas
-  const alturaMax = Math.max(...mesas.map(m => mesaDims(m.tipo).h));
+  const alturaMax = Math.max(...mesas.map(m => mesaDims(m.tipo, m.alias, m.ancho, m.alto).h));
 
   // Guardar dimensiones custom en el alias (w:anchoTotal)
   const alias = `w:${anchoTotal},h:${alturaMax}`;
 
   loading(true);
   try{
+    // Guardar tipos originales para poder separar después
+    const partes = mesasOrdenadas.map(m=>m.tipo).join(',');
     await api('POST','/api/restaurante/mesas',{
-      numero:Number(num), tipo:'unida', alias, x, y
+      numero:Number(num), tipo:'unida', alias:'', x, y,
+      ancho:anchoTotal, alto:alturaMax, partes
     });
     // Eliminar todas las mesas originales
     for(const id of _unirSel){
