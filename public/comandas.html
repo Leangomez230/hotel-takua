@@ -488,7 +488,15 @@ let S = { mesas:[], comandas:[], menu:[], turno:null, usuarios:[],
 const fmt = n => '$'+Number(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const nowFull = () => new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const mesaLabel = m => m.alias||`M${m.numero||m.id}`;
-const mesaDims  = t => SZ[t]||SZ.cuadrada;
+const mesaDims = (tipo, alias) => {
+  // Mesas unidas guardan sus dimensiones en alias como "w:300,h:70"
+  if(tipo==='unida' && alias){
+    const wm = alias.match(/w:(\d+)/);
+    const hm = alias.match(/h:(\d+)/);
+    if(wm && hm) return {w:parseInt(wm[1]), h:parseInt(hm[1])};
+  }
+  return SZ[tipo]||SZ.cuadrada;
+};
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -656,7 +664,7 @@ function renderMapa(editable=false){
   const maxY=Math.max(...S.mesas.map(m=>(m.y||50)+(mesaDims(m.tipo).h)))+70;
   const mesasHTML=S.mesas.map(m=>{
     const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
-    const {w,h}=mesaDims(m.tipo);
+    const {w,h}=mesaDims(m.tipo,m.alias);
     const x=m.x||50; const y=m.y||50;
     const cmd=S.comandas.find(c=>c.mesa_id===m.id&&c.estado!=='cerrada');
     const br=m.tipo==='redonda'?'50%':'10px';
@@ -1771,7 +1779,7 @@ function renderEditorSalon(){
 
   c.innerHTML=S.mesas.map((m,idx)=>{
     const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
-    const {w,h}=mesaDims(m.tipo);
+    const {w,h}=mesaDims(m.tipo,m.alias);
     // Si está en 0,0 asignar posición automática (no se guarda hasta que el usuario la mueva)
     let x=m.x, y=m.y;
     if(!x && !y){
@@ -1962,11 +1970,11 @@ function editarMesaSalon(mesaId){
   document.getElementById('m-mesa-ed-body').innerHTML=`
     <div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Número</label>
       <input type="number" id="me-num" value="${m.numero||''}"/></div>
-    <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Alias</label>
-      <input type="text" id="me-alias" value="${m.alias||''}"/></div>
+    <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Alias (opcional)</label>
+      <input type="text" id="me-alias" value="${['unida'].includes(m.tipo)?'':m.alias||''}"/></div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button class="btn-primary" style="flex:1" onclick="guardarMesaEditor(${mesaId})">Guardar</button>
-      ${m.tipo==='rectangular'?`<button onclick="separarMesa(${mesaId})" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #fbbf24;background:#fffbeb;color:#92400e;font-weight:700;cursor:pointer">✂️ Separar</button>`:''}
+      ${(m.tipo==='rectangular'||m.tipo==='unida')?`<button onclick="separarMesa(${mesaId})" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #fbbf24;background:#fffbeb;color:#92400e;font-weight:700;cursor:pointer">✂️ Separar</button>`:''}
       <button onclick="eliminarMesa(${mesaId})" style="padding:12px 16px;border-radius:12px;border:none;background:#fee2e2;color:#dc2626;font-weight:700;cursor:pointer">🗑️</button>
     </div>`;
   openModal('m-mesa-ed');
@@ -2023,55 +2031,83 @@ function toggleModoUnir(){
   S.modoUnir=!S.modoUnir;
   _unirSel=[];
   const btn=document.getElementById('btn-unir-mesas');
-  // Limpiar selección visual
   document.querySelectorAll('.s-mesa').forEach(el=>{
     el.style.boxShadow=''; el.style.borderColor='';
   });
   if(S.modoUnir){
     btn.style.background='#f59e0b'; btn.style.color='#1e293b';
-    btn.textContent='✕ Cancelar';
-    toast('Clic en 2 mesas para unirlas','info');
+    btn.textContent='✓ Confirmar unión';
+    btn.onclick=()=>{ if(_unirSel.length>=2) confirmarUnion(); else toast('Seleccioná al menos 2 mesas','err'); };
+    toast('Clic en las mesas a unir · Toca "Confirmar unión" cuando termines','info');
   } else {
     btn.style.background=''; btn.style.color='';
     btn.textContent='🔗 Unir';
+    btn.onclick=toggleModoUnir;
+    _unirSel=[];
   }
 }
+
 function seleccionarParaUnir(mesaId){
   const m=S.mesas.find(x=>x.id===mesaId);
-  if(!m){return;}
-  // Permitir unir cualquier tipo, no solo cuadradas
+  if(!m) return;
   const el=document.getElementById('sm-'+mesaId);
   if(!el) return;
   if(_unirSel.includes(mesaId)){
     _unirSel=_unirSel.filter(id=>id!==mesaId);
     el.style.boxShadow=''; el.style.borderColor='';
+    toast(`Mesa ${mesaLabel(m)} deseleccionada`,'info');
   } else {
-    if(_unirSel.length>=2){toast('Ya seleccionaste 2 mesas','err');return;}
     _unirSel.push(mesaId);
     el.style.boxShadow='0 0 0 3px #f59e0b';
     el.style.borderColor='#f59e0b';
-    toast(`Mesa ${mesaLabel(m)} seleccionada (${_unirSel.length}/2)`,'info');
-    if(_unirSel.length===2) setTimeout(()=>confirmarUnion(),300);
+    toast(`${mesaLabel(m)} seleccionada (${_unirSel.length} mesa${_unirSel.length>1?'s':''})`,'info');
   }
 }
+
 async function confirmarUnion(){
-  const [idA,idB]=_unirSel;
-  const mA=S.mesas.find(m=>m.id===idA); const mB=S.mesas.find(m=>m.id===idB);
-  const num=prompt(`Número para la mesa unida (${mesaLabel(mA)} + ${mesaLabel(mB)}):`);
-  if(!num){_unirSel=[];document.querySelectorAll('.s-mesa').forEach(el=>el.classList.remove('sel-unir'));return;}
+  if(_unirSel.length < 2){ toast('Seleccioná al menos 2 mesas','err'); return; }
+  const mesas = _unirSel.map(id => S.mesas.find(m=>m.id===id)).filter(Boolean);
+  const nombres = mesas.map(m=>mesaLabel(m)).join(' + ');
+  const num = prompt(`Número para la mesa unida (${nombres}):`);
+  if(!num){
+    _unirSel=[];
+    document.querySelectorAll('.s-mesa').forEach(el=>{ el.style.boxShadow=''; el.style.borderColor=''; });
+    return;
+  }
+
+  // Calcular dimensiones sumadas
+  // Posición: esquina superior-izquierda de todas las mesas seleccionadas
+  const x = Math.min(...mesas.map(m=>m.x||80));
+  const y = Math.min(...mesas.map(m=>m.y||80));
+
+  // Sumar anchos y tomar la altura máxima
+  // Ordenar por posición x para sumar en orden horizontal
+  const mesasOrdenadas = [...mesas].sort((a,b)=>(a.x||0)-(b.x||0));
+  const anchoTotal = mesasOrdenadas.reduce((sum, m) => {
+    const {w} = mesaDims(m.tipo);
+    return sum + w;
+  }, 0) + (mesas.length - 1) * 8; // 8px de separación entre mesas
+  const alturaMax = Math.max(...mesas.map(m => mesaDims(m.tipo).h));
+
+  // Guardar dimensiones custom en el alias (w:anchoTotal)
+  const alias = `w:${anchoTotal},h:${alturaMax}`;
+
   loading(true);
   try{
-    const x=Math.min(mA.x||80,mB.x||80); const y=Math.min(mA.y||80,mB.y||80);
-    await api('POST','/api/restaurante/mesas',{numero:Number(num),tipo:'rectangular',alias:'',x,y});
-    await api('DELETE',`/api/restaurante/mesas/${idA}`);
-    await api('DELETE',`/api/restaurante/mesas/${idB}`);
-    toast('Mesas unidas ✓','ok');
+    await api('POST','/api/restaurante/mesas',{
+      numero:Number(num), tipo:'unida', alias, x, y
+    });
+    // Eliminar todas las mesas originales
+    for(const id of _unirSel){
+      await api('DELETE',`/api/restaurante/mesas/${id}`);
+    }
+    toast(`${mesas.length} mesas unidas ✓`,'ok');
     _unirSel=[]; S.modoUnir=false;
     const btn=document.getElementById('btn-unir-mesas');
-    if(btn){btn.style.background='';btn.style.color='';}
+    if(btn){ btn.style.background=''; btn.style.color=''; btn.textContent='🔗 Unir'; btn.onclick=toggleModoUnir; }
     await loadAll(); renderEditorSalon();
-  }catch(e){toast(e.message,'err');}
-  finally{loading(false);}
+  }catch(e){ toast(e.message,'err'); }
+  finally{ loading(false); }
 }
 
 // ════════════════════════════════════
