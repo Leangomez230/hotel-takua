@@ -515,14 +515,56 @@ app.get('/api/dashboard', auth, async (req, res) => {
       movs.forEach(m => {
         const t = parseFloat(m.total||0);
         if (m.tipo==='ingreso'&&m.categoria==='hospedaje') hospedaje=t;
-        if (m.tipo==='ingreso'&&m.categoria==='tienda') tienda=t;
-        if (m.tipo==='ingreso'&&m.categoria==='frigobar') frigobar=t;
+        if (m.tipo==='ingreso'&&m.categoria==='tienda')    tienda=t;
+        if (m.tipo==='ingreso'&&m.categoria==='frigobar')  frigobar=t;
         if (m.tipo==='ingreso') ingresos+=t;
-        if (m.tipo==='egreso') egresos+=t;
+        if (m.tipo==='egreso')  egresos+=t;
       });
     }
+
+    // Ingresos proyectados desde reservas activas (aunque movimientos esté vacío)
+    const reservasActivas = await db.getAll(
+      `SELECT r.precio_total, r.noches, r.entrada, r.salida, r.nombre_huesped,
+              h.numero, h.ala
+       FROM reservas r
+       LEFT JOIN habitaciones h ON r.habitacion_id = h.id
+       WHERE r.estado IN ('activa','checkin','ocupada','confirmada')`
+    );
+    const hospedajeProyectado = reservasActivas.reduce((s,r) => s + parseFloat(r.precio_total||0), 0);
+
+    // Frigobar del turno actual (servicios registrados hoy)
+    const frigobarHoy = await db.getOne(
+      `SELECT COALESCE(SUM(total_consumos),0) as total
+       FROM servicios_habitacion
+       WHERE DATE(created_at) = CURRENT_DATE AND total_consumos > 0`
+    );
+
+    // Gastos de la tienda/servicios extras
+    const ventasTienda = await db.getOne(
+      `SELECT COALESCE(SUM(total),0) as total FROM ventas_tienda
+       WHERE DATE(created_at) = CURRENT_DATE`
+    ).catch(() => ({total:0}));
+
     const alertas = await db.getOne("SELECT COUNT(*) as c FROM productos WHERE stock<=stock_minimo AND activo=1");
-    res.json({ habitaciones: habs, ingresos, egresos, hospedaje, tienda, frigobar, balance: ingresos-egresos, alertas_stock: parseInt(alertas.c), caja_abierta: !!caja });
+
+    // Si no hay movimientos registrados, usar los proyectados/calculados
+    if (hospedaje === 0) hospedaje = hospedajeProyectado;
+    if (frigobar === 0)  frigobar  = parseFloat(frigobarHoy?.total||0);
+    if (tienda === 0)    tienda    = parseFloat(ventasTienda?.total||0);
+    ingresos = hospedaje + tienda + frigobar;
+
+    res.json({
+      habitaciones: habs,
+      ingresos, egresos, hospedaje, tienda, frigobar,
+      balance: ingresos - egresos,
+      alertas_stock: parseInt(alertas.c),
+      caja_abierta: !!caja,
+      reservas_activas: reservasActivas.length,
+      huespedes_actuales: reservasActivas.map(r => ({
+        nombre: r.nombre_huesped, numero: r.numero, ala: r.ala,
+        salida: r.salida, precio_total: r.precio_total
+      }))
+    });
   } catch(e) { console.error('Dashboard error:', e); res.status(500).json({ error: e.message }); }
 });
 
@@ -655,8 +697,9 @@ app.put('/api/restaurante/mesas/:id', auth, authRestaurante, async (req, res) =>
 
     await db.query(
       `UPDATE mesas_restaurante
-       SET alias=$1, tipo=$2, x=$3, y=$4, numero=$5, status=COALESCE($6, status), updated_at=NOW()
-       WHERE id=$7`,
+       SET alias=$1, tipo=$2, x=$3, y=$4, numero=$5, status=COALESCE($6, status),
+           ancho=COALESCE($7, ancho), alto=COALESCE($8, alto), updated_at=NOW()
+       WHERE id=$9`,
       [
         alias  !== undefined ? alias  : actual.alias,
         tipo   !== undefined ? tipo   : actual.tipo,
@@ -664,6 +707,8 @@ app.put('/api/restaurante/mesas/:id', auth, authRestaurante, async (req, res) =>
         y      !== undefined ? y      : actual.y,
         numero !== undefined ? numero : actual.numero,
         status !== undefined ? status : null,
+        req.body.ancho !== undefined ? req.body.ancho : null,
+        req.body.alto  !== undefined ? req.body.alto  : null,
         req.params.id
       ]
     );
@@ -675,8 +720,8 @@ app.post('/api/restaurante/mesas', auth, authRestaurante, async (req, res) => {
   try {
     const { tipo, x, y, alias, numero } = req.body;
     const r = await db.query(
-      'INSERT INTO mesas_restaurante (tipo, x, y, alias, numero, status, activo) VALUES ($1,$2,$3,$4,$5,$6,1) RETURNING *',
-      [tipo||'cuadrada', x||100, y||100, alias||'', numero||null, 'libre']
+      'INSERT INTO mesas_restaurante (tipo, x, y, alias, numero, status, activo, ancho, alto, partes) VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8,$9) RETURNING *',
+      [tipo||'cuadrada', x||100, y||100, alias||'', numero||null, 'libre', req.body.ancho||null, req.body.alto||null, req.body.partes||null]
     );
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
