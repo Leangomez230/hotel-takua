@@ -275,9 +275,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <button class="nav-btn" onclick="irA('caja')"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn" onclick="irA('finanzas')"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
     <button class="nav-btn active" id="snav-salon" onclick="snav('salon')"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
-    <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">💰</span><span class="nl">Res. Caja</span></button>
-    <button class="nav-btn" id="snav-menu" onclick="snav('menu')" style="display:none"><span class="ni">📖</span><span class="nl">Menú</span></button>
-    <button class="nav-btn" id="snav-editor" onclick="abrirEditorSalon()" style="display:none"><span class="ni">🪑</span><span class="nl">Editor</span></button>
     <button class="nav-btn bottom" id="nav-config" onclick="irA('config')" style="display:none"><span class="ni">⚙️</span><span class="nl">Config</span></button>
   </nav>
   <div class="main-wrap">
@@ -545,16 +542,8 @@ async function initApp(){
   sub.textContent = `${ROL_LABELS[ME.rol]||ME.rol} · ${ME.nombre||ME.email||''}`;
 
   // Configurar sidebar según rol
-  if(['admin','cajero'].includes(ME.rol)){
-    const btnCaja   = document.getElementById('snav-caja');
-    const btnEditor = document.getElementById('snav-editor');
-    if(btnCaja)   btnCaja.style.display='';
-    if(btnEditor) btnEditor.style.display='';
-  }
   if(ME.rol==='admin'){
-    const btnMenu   = document.getElementById('snav-menu');
     const btnConfig = document.getElementById('nav-config');
-    if(btnMenu)   btnMenu.style.display='';
     if(btnConfig) btnConfig.style.display='';
   }
 
@@ -638,8 +627,6 @@ function snav(id) {
     else if (ME.rol === 'cajero') renderCajero(el);
     else renderAdmin(el);
   }
-  if (id === 'caja') renderCajero(el);
-  if (id === 'menu') renderAdmin(el);
 }
 
 // ════════════════════════════════════
