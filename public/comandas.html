@@ -294,27 +294,40 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 <!-- ══ SALON EDITOR (Admin) ══ -->
 <div class="screen" id="screen-salon">
-  <div class="header">
-    <div class="header-left">
-      <span style="font-size:22px">🪑</span>
-      <div>
-        <div class="header-logo">Editor de Salón</div>
-        <div class="header-sub">Arrastrá mesas · Doble clic para editar</div>
+  <nav class="sidebar">
+    <div class="s-logo">T</div>
+    <button class="nav-btn" onclick="irA('dashboard')"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
+    <button class="nav-btn" onclick="irA('habitaciones')"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
+    <button class="nav-btn" onclick="irA('reservas')"><span class="ni">📅</span><span class="nl">Reservas</span></button>
+    <button class="nav-btn" onclick="irA('huespedes')"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
+    <button class="nav-btn" onclick="irA('tienda')"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
+    <button class="nav-btn" onclick="irA('inventario')"><span class="ni">📦</span><span class="nl">Inventario</span></button>
+    <button class="nav-btn" onclick="irA('caja')"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn" onclick="irA('finanzas')"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
+    <button class="nav-btn" onclick="showScreen('screen-main');renderMain()"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
+    <button class="nav-btn active"><span class="ni">🪑</span><span class="nl">Editor</span></button>
+  </nav>
+  <div class="main-wrap">
+    <div class="topbar">
+      <div class="tb-left">
+        <h2>Editor de Salón</h2>
+        <p>Arrastrá mesas · Doble clic para editar</p>
+      </div>
+      <div class="tb-right">
+        <button class="tb-btn" id="btn-agregar-mesa" onclick="abrirModalNuevaMesa()">+ Mesa</button>
+        <button class="tb-btn" id="btn-unir-mesas" onclick="toggleModoUnir()" style="background:#854d0e;color:#fef08a;border:none">🔗 Unir</button>
+        <button class="tb-btn" onclick="showScreen('screen-main');renderMain()">← Volver</button>
+        <button class="tb-btn salir" onclick="doLogout()">Salir</button>
       </div>
     </div>
-    <div class="header-right">
-      <button class="btn-salon" id="btn-agregar-mesa" onclick="abrirModalNuevaMesa()">+ Mesa</button>
-      <button class="btn-salon" id="btn-unir-mesas" onclick="toggleModoUnir()" style="background:#854d0e;color:#fef08a">🔗 Unir</button>
-      <button class="btn-salir" onclick="showScreen('screen-main');renderMain()">← Volver</button>
-    </div>
-  </div>
-  <div style="padding:12px 16px;overflow:auto;flex:1;background:#f1f5f9">
-    <div style="background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden">
-      <div style="overflow-x:auto;padding:20px 20px 12px">
-        <div id="salon-editor-canvas" style="position:relative;min-width:900px;min-height:500px;
-          background-image:repeating-linear-gradient(0deg,transparent,transparent 39px,#f1f5f9 39px,#f1f5f9 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,#f1f5f9 39px,#f1f5f9 40px)">
+    <div style="padding:16px;overflow:auto;flex:1">
+      <div style="background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden">
+        <div style="overflow-x:auto;padding:20px 20px 12px">
+          <div id="salon-editor-canvas" style="position:relative;min-width:900px;min-height:500px;
+            background-image:repeating-linear-gradient(0deg,transparent,transparent 39px,#f1f5f9 39px,#f1f5f9 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,#f1f5f9 39px,#f1f5f9 40px)">
+          </div>
+          <div class="barra-ref"><span>BARRA</span></div>
         </div>
-        <div class="barra-ref"><span>BARRA</span></div>
       </div>
     </div>
   </div>
