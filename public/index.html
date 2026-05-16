@@ -547,6 +547,12 @@ function buildCard(h) {
       <span class="sbadge sb-ocupada">OCUPADA</span>
       <span class="sbadge sb-limpia">LIMPIA</span>
     </div>`;
+  } else if (h.status === 'libre_limpia') {
+    // Libre limpia: LIBRE en verde arriba + LIMPIA en verde abajo
+    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <span class="sbadge sb-libre">LIBRE</span>
+      <span class="sbadge sb-limpia">LIMPIA</span>
+    </div>`;
   } else {
     badgeHTML = `<span class="sbadge ${s.badge}">${s.label.toUpperCase()}</span>`;
   }
@@ -556,11 +562,13 @@ function buildCard(h) {
   if (h.status === 'lista')       icon = '🟡';
   if (h.status === 'en_limpieza') icon = '🟡';
   if (h.status === 'limpia')      icon = '🔴';  // sigue siendo ocupada
+  if (h.status === 'libre_limpia') icon = '🟢';
  
   // ── Fondo de la tarjeta ──
   // en_limpieza → amarillo, limpia → rojo (sigue siendo hab. ocupada)
   let cardBg = '';
-  if (h.status === 'limpia') cardBg = ' limpia-occ';
+  if (h.status === 'limpia')       cardBg = ' limpia-occ';
+  if (h.status === 'libre_limpia') cardBg = ' libre'; // mismo verde
  
   // ── Helpers de formato ──
   const fmtFecha = s => {
@@ -579,11 +587,7 @@ function buildCard(h) {
   if (h.status==='libre') {
     body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
   } else if (h.status==='libre_limpia') {
-    body=`<div class="ravail">
-      <div class="ravail-circle">✅</div>
-      <div class="ravail-label" style="color:#16a34a">Disponible</div>
-      <div style="font-size:11px;color:#15803d;font-weight:700;margin-top:3px;background:#bbf7d0;padding:2px 8px;border-radius:20px">🌿 Limpia</div>
-    </div>`;
+    body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
 
   } else if (h.status==='en_limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div>
