@@ -545,6 +545,18 @@ async function initApp(){
   sub.textContent = `${ROL_LABELS[ME.rol]||ME.rol} · ${ME.nombre||ME.email||''}`;
 
   // Configurar sidebar según rol
+  if(['admin','cajero'].includes(ME.rol)){
+    const btnCaja   = document.getElementById('snav-caja');
+    const btnEditor = document.getElementById('snav-editor');
+    if(btnCaja)   btnCaja.style.display='';
+    if(btnEditor) btnEditor.style.display='';
+  }
+  if(ME.rol==='admin'){
+    const btnMenu   = document.getElementById('snav-menu');
+    const btnConfig = document.getElementById('nav-config');
+    if(btnMenu)   btnMenu.style.display='';
+    if(btnConfig) btnConfig.style.display='';
+  }
 
   showScreen('screen-main');
   await loadAll();
