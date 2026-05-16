@@ -562,7 +562,9 @@ function buildCard(h) {
     body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
 
   } else if (h.status==='en_limpieza') {
-    body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div></div>`;
+    body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div>
+      ${h.nota?`<div style="font-size:11px;color:#92400e;margin-top:3px;font-weight:600">${h.nota}</div>`:''}
+    </div>`;
 
   } else if (h.status==='limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
@@ -1038,8 +1040,11 @@ function showHabModal(hab) {
   // Botón servicio mucama
   document.getElementById('btn-servicio')?.addEventListener('click', async () => {
     if (mucamaAccion.soloIniciar) {
-      // Solo cambiar estado a "en_limpieza" sin formulario
-      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status: mucamaAccion.nuevoStatus, nota: hab.nota || '' });
+      // Solo cambiar estado a "en_limpieza" — guardar nombre de mucama en nota
+      const notaLimpieza = mucamaAccion.nuevoStatus === 'en_limpieza'
+        ? `🧹 ${currentUser?.nombre || 'Mucama'}`
+        : hab.nota || '';
+      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status: mucamaAccion.nuevoStatus, nota: notaLimpieza });
       if (r?.ok) {
         toast('Servicio iniciado — habitación en limpieza');
         closeModal();
