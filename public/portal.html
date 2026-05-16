@@ -70,7 +70,14 @@
   <div class="lf"><label>Usuario</label>
     <input type="text" id="inp-usuario" placeholder="Tu usuario o email" autocomplete="username" autofocus/></div>
   <div class="lf"><label>Contraseña</label>
-    <input type="password" id="inp-clave" placeholder="••••••••" autocomplete="current-password"/></div>
+    <div style="position:relative">
+      <input type="password" id="inp-clave" placeholder="••••••••" autocomplete="current-password" style="padding-right:44px"/>
+      <button type="button" onclick="togglePass()" id="btn-ojo"
+        style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+        background:none;border:none;cursor:pointer;font-size:18px;color:rgba(196,149,106,.6);
+        padding:4px;line-height:1">👁</button>
+    </div>
+  </div>
 
   <button class="btn" id="btn-login" onclick="doLogin()">
     <span id="btn-text">Ingresar</span>
@@ -112,6 +119,18 @@ function setLoading(on){
 }
 
 document.getElementById('inp-clave').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+function togglePass(){
+  const inp=document.getElementById('inp-clave');
+  const btn=document.getElementById('btn-ojo');
+  if(inp.type==='password'){
+    inp.type='text';
+    btn.style.color='rgba(196,149,106,1)';
+  } else {
+    inp.type='password';
+    btn.style.color='rgba(196,149,106,.6)';
+  }
+}
 document.getElementById('inp-usuario').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('inp-clave').focus();});
 
 // Auto-redirigir si ya hay sesión
