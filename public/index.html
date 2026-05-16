@@ -475,10 +475,11 @@ function startApp() {
   goTo('dashboard');
   // Polling habitaciones cada 15s — actualiza en background sin re-renderizar
   setInterval(async () => {
-    const hayModal = document.querySelector('.modal-overlay.active, .modal-open');
+    // No actualizar si hay un modal abierto
+    const hayModal = document.getElementById('modal-overlay')?.classList.contains('open');
     if(hayModal) return;
     const nuevasHabs = await apiFetch('GET','/habitaciones');
-    if(!nuevasHabs) return;
+    if(!nuevasHabs || !nuevasHabs.length) return;
     // Solo re-renderizar si algo cambió
     const antes  = JSON.stringify(habitaciones.map(h=>({id:h.id,status:h.status,nota:h.nota})));
     const despues= JSON.stringify(nuevasHabs.map(h=>({id:h.id,status:h.status,nota:h.nota})));
@@ -1265,6 +1266,15 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
       .filter(([id,qty]) => qty > 0)
       .map(([id,qty]) => ({ producto_id: parseInt(id), cantidad: qty }));
  
+    // Si la hab era libre antes → al terminar limpieza vuelve a libre_limpia
+    const eraLibre = ['libre','libre_limpia','lista'].includes(hab.status) ||
+                     (hab.status === 'en_limpieza' && !hab.reserva_activa);
+    const statusDestino = necesitaMant
+      ? 'mantenimiento'
+      : (accion.nuevoStatus === 'limpia' && eraLibre)
+        ? 'libre_limpia'
+        : accion.nuevoStatus;
+
     const r = await apiFetch('POST', '/servicios', {
       habitacion_id:         hab.id,
       tipo_servicio:         accion.servicio,
@@ -1272,7 +1282,7 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
       necesita_mantenimiento:necesitaMant,
       nota_mantenimiento:    notaMant,
       consumos:              consumos,
-      nuevo_status:          accion.nuevoStatus,
+      nuevo_status:          statusDestino,
     });
  
     if (r?.ok) {
