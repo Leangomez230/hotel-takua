@@ -108,7 +108,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rcard.mantenimiento{background:#f3f4f6;border-color:#d1d5db}
 .rcard.lista{background:#fefce8;border-color:#fde68a}
 .rcard.en_limpieza{background:#fefce8;border-color:#fde68a}
-.rcard.limpia{background:#fff5f5;border-color:#fca5a5}
+.rcard.limpia{background:#f0fdf4;border-color:#bbf7d0}
 .rcard.limpia-occ{background:#fff5f5;border-color:#fca5a5}
 .rcard.selected{outline:3px solid var(--accent);outline-offset:2px}
 .rcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
@@ -121,7 +121,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .sb-mantenimiento{background:#f3f4f6;color:#4b5563}
 .sb-en-limpieza{background:#fef3c7;color:#d97706}
 .sb-lista{background:#fef9c3;color:#b45309}
-.sb-limpia{background:#dcfce7;color:#16a34a}
+.sb-limpia{background:#dcfce7;color:#16a34a;font-weight:800}
 .rnum{font-size:20px;font-weight:900;color:#1a2035;line-height:1;margin-bottom:1px}
 .rname{font-size:10px;font-weight:700;color:#64748b;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rtipo{font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
@@ -488,7 +488,7 @@ const SCFG = {
   lista:        {label:'Lista',        badge:'sb-lista',        icon:'✨', color:'#b45309', bg:'#fef9c3'},
   ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴', color:'#dc2626', bg:'#fee2e2'},
   en_limpieza:  {label:'En Limpieza',  badge:'sb-en-limpieza',  icon:'🟡', color:'#d97706', bg:'#fef3c7'},
-  limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7'},
+  limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7', bgOcc:'#fee2e2'},
   reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡', color:'#b45309', bg:'#fef9c3'},
   limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
   mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
@@ -518,13 +518,13 @@ function buildCard(h) {
       // Ocupada+limpia: huésped presente, mucama hizo el servicio
       badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
         <span class="sbadge sb-ocupada">OCUPADA</span>
-        <span class="sbadge sb-limpia">LIMPIA</span>
+        <span class="sbadge sb-limpia" style="background:#dcfce7;color:#16a34a">LIMPIA</span>
       </div>`;
     } else {
-      // Libre+limpia: sin huésped, lista para check-in
+      // Libre+limpia: sin huésped, lista para check-in — todo en verde
       badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-        <span class="sbadge sb-libre">LIBRE</span>
-        <span class="sbadge sb-limpia">LIMPIA</span>
+        <span class="sbadge sb-libre" style="background:#dcfce7;color:#16a34a">LIBRE</span>
+        <span class="sbadge sb-libre" style="background:#dcfce7;color:#16a34a">LIMPIA</span>
       </div>`;
     }
   } else {
@@ -552,8 +552,13 @@ function buildCard(h) {
   } else if (h.status==='en_limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div></div>`;
   } else if (h.status==='limpia') {
-    // Igual que ocupada: muestra nombre del huésped
-    body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
+    if (h.nota && h.nota.trim()) {
+      // Ocupada+limpia: mostrar nombre del huésped
+      body = `<div class="rguest">👤 ${h.nota}</div>`;
+    } else {
+      // Libre+limpia: mostrar disponible en verde
+      body = `<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
+    }
   } else if (h.status==='lista') {
     body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
   } else if (h.status==='limpieza') {
