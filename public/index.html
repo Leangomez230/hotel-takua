@@ -489,6 +489,7 @@ const SCFG = {
   ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴', color:'#dc2626', bg:'#fee2e2'},
   en_limpieza:  {label:'En Limpieza',  badge:'sb-en-limpieza',  icon:'🟡', color:'#d97706', bg:'#fef3c7'},
   limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7', bgOcc:'#fee2e2'},
+  libre_limpia: {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7'},
   reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡', color:'#b45309', bg:'#fef9c3'},
   limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
   mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
@@ -496,25 +497,28 @@ const SCFG = {
 const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
 
 function buildCard(h) {
-  const s=SCFG[h.status]||{label:h.status,badge:'sb-reservada',icon:'⚪',color:'#b45309',bg:'#fef9c3'};
-  const tipoLabel=TIPOS[h.tipo]||h.tipo;
+  // Normalizar estado libre_limpia → tratar como limpia sin nota
+  const displayStatus = h.status === 'libre_limpia' ? 'limpia' : h.status;
+  const displayHab = h.status === 'libre_limpia' ? {...h, status:'limpia', nota:''} : h;
+  const s=SCFG[displayStatus]||{label:displayStatus,badge:'sb-libre',icon:'🟢',color:'#16a34a',bg:'#dcfce7'};
+  const tipoLabel=TIPOS[displayHab.tipo]||displayHab.tipo;
 
   // ── Badge(s) arriba a la derecha ──
   let badgeHTML;
-  if (h.status === 'lista') {
+  if (displayStatus === 'lista') {
     // Reservada + Lista: ambos en amarillo
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
       <span class="sbadge sb-reservada">RESERVADA</span>
       <span class="sbadge sb-reservada">LISTA</span>
     </div>`;
-  } else if (h.status === 'en_limpieza') {
+  } else if (displayStatus === 'en_limpieza') {
     // En limpieza: OCUPADA en rojo arriba + EN LIMPIEZA en amarillo abajo
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
       <span class="sbadge sb-ocupada">OCUPADA</span>
       <span class="sbadge sb-limpieza">EN LIMPIEZA</span>
     </div>`;
-  } else if (h.status === 'limpia') {
-    if (h.nota && h.nota.trim()) {
+  } else if (displayStatus === 'limpia') {
+    if (displayHab.nota && displayHab.nota.trim()) {
       // Ocupada+limpia: huésped presente, mucama hizo el servicio
       badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
         <span class="sbadge sb-ocupada">OCUPADA</span>
@@ -533,44 +537,44 @@ function buildCard(h) {
 
   // ── Ícono principal ──
   let icon = s.icon;
-  if (h.status === 'lista')       icon = '🟡';
-  if (h.status === 'en_limpieza') icon = '🟡';
+  if (displayStatus === 'lista')       icon = '🟡';
+  if (displayStatus === 'en_limpieza') icon = '🟡';
   // limpia con nota = ocupada+limpia (rojo), limpia sin nota = libre+limpia (verde)
-  if (h.status === 'limpia')      icon = (h.nota && h.nota.trim()) ? '🔴' : '🟢';
+  if (displayStatus === 'limpia')      icon = (displayHab.nota && displayHab.nota.trim()) ? '🔴' : '🟢';
 
   // ── Fondo de la tarjeta ──
   // en_limpieza → amarillo
   // limpia con nota → rojo (hab. ocupada limpiada)
   // limpia sin nota → verde (hab. libre que fue limpiada)
   let cardBg = '';
-  if (h.status === 'limpia' && h.nota && h.nota.trim()) cardBg = ' limpia-occ';
+  if (displayStatus === 'limpia' && displayHab.nota && displayHab.nota.trim()) cardBg = ' limpia-occ';
 
   // ── Cuerpo de la tarjeta ──
   let body='';
-  if (h.status==='libre') {
+  if (displayStatus==='libre') {
     body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
-  } else if (h.status==='en_limpieza') {
+  } else if (displayStatus==='en_limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div></div>`;
-  } else if (h.status==='limpia') {
-    if (h.nota && h.nota.trim()) {
+  } else if (displayStatus==='limpia') {
+    if (displayHab.nota && displayHab.nota.trim()) {
       // Ocupada+limpia: mostrar nombre del huésped
-      body = `<div class="rguest">👤 ${h.nota}</div>`;
+      body = `<div class="rguest">👤 ${displayHab.nota}</div>`;
     } else {
       // Libre+limpia: mostrar disponible en verde
       body = `<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
     }
-  } else if (h.status==='lista') {
+  } else if (displayStatus==='lista') {
     body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
-  } else if (h.status==='limpieza') {
+  } else if (displayStatus==='limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
-  } else if (h.status==='mantenimiento') {
+  } else if (displayStatus==='mantenimiento') {
     body=`<div class="rclean"><div class="rclean-icon">🔧</div><div class="rclean-label" style="color:#4b5563">Mantenimiento</div></div>`;
   } else if (h.nota) {
     body=`<div class="rguest">👤 ${h.nota}</div>`;
   }
 
   const isAdminOrRecep = currentUser && ['admin','recepcionista'].includes(currentUser.rol);
-  return `<div class="rcard ${h.status}${cardBg}" data-hid="${h.id}">
+  return `<div class="rcard ${displayStatus}${cardBg}" data-hid="${h.id}">
     <div class="rcard-top"><span class="room-icon">${icon}</span>${badgeHTML}</div>
     <div class="rnum">${h.numero}</div>
     ${h.nombre?`<div class="rname">${h.nombre}</div>`:''}
@@ -724,8 +728,6 @@ function afterMapInsert(showLog=false) {
   bindZoom();
   if (showLog) document.getElementById('btn-log')?.addEventListener('click', loadLog);
   renderMap(document.getElementById('room-map'), habitaciones);
-  // Solicitudes pendientes (solo admin/recep)
-  if (!isMucama) loadSolicitudes();
 }
 
 function loadSolicitudes(pendientes) {
