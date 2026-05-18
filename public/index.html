@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hotel Takuá</title>
- 
+
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#00c9b1">
@@ -14,14 +14,14 @@
 <meta name="apple-mobile-web-app-title" content="Takuá">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
- 
+
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--room-cols:5}
 body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px;overflow-x:hidden}
- 
+
 /* LOGIN */
 #login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e3a5f 60%,#0f172a);padding:24px}
 .login-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:40px 36px;width:100%;max-width:380px}
@@ -36,7 +36,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .lf input::placeholder{color:#64748b}
 .login-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:12px;padding:14px;color:#fff;font-size:15px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:8px}
 .login-err{color:#f87171;font-size:12px;text-align:center;margin-top:8px;display:none}
- 
+
 /* LAYOUT */
 #app{display:none;min-height:100vh}
 .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
@@ -60,7 +60,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .tb-btn.caja{background:#f0fdf9;border-color:#a7f3e4;color:#059669}
 .user-av{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#0094ff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;flex-shrink:0}
 .content{padding:20px 22px;flex:1}
- 
+
 /* STAT CARDS */
 .stat-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
 .sc{border-radius:16px;padding:16px 14px;color:#fff;position:relative;overflow:hidden;min-height:100px}
@@ -78,7 +78,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .op{background:rgba(255,255,255,.13);border-radius:6px;padding:2px 6px;font-size:10px;font-weight:700;text-align:center}
 .op span{display:block;font-size:8px;opacity:.7}
 .alert-badge{position:absolute;top:8px;right:8px;background:#ef4444;color:#fff;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:800}
- 
+
 /* SECTION */
 .section-card{background:#fff;border-radius:18px;padding:20px;margin-bottom:20px}
 .sc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
@@ -89,12 +89,12 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .filter-pill:not(.active){background:#f0f4f8;color:#64748b}
 .btn-primary{background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:10px;padding:8px 16px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif}
 .btn-secondary{background:#f0f4f8;border:1.5px solid #e0e6ef;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;color:#374151;cursor:pointer;font-family:'Nunito',sans-serif}
- 
+
 /* ZOOM */
 .zoom-bar{display:flex;align-items:center;gap:6px;background:#f0f4f8;border-radius:20px;padding:4px 10px;border:1px solid #e0e6ef}
 .zoom-bar span{font-size:11px;font-weight:700;color:#64748b;min-width:36px;text-align:center}
 .zoom-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e0e6ef;background:#fff;cursor:pointer;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;color:#374151}
- 
+
 /* ROOM GRID */
 .ala-label{font-size:11px;font-weight:700;color:#64748b;letter-spacing:2px;text-transform:uppercase;padding:8px 0;border-bottom:1px solid #f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .ala-tag{background:#1a2035;color:#fff;font-size:10px;border-radius:6px;padding:2px 8px}
@@ -103,7 +103,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rcard:active{transform:scale(.96)}
 .rcard.libre{background:#f0fdf4;border-color:#bbf7d0}
 .rcard.ocupada{background:#fff5f5;border-color:#fca5a5}
-.rcard.reservada{background:#ede9fe;border-color:#7c3aed}
+.rcard.reservada{background:#fefce8;border-color:#fde68a}
 .rcard.limpieza{background:#fffbeb;border-color:#fde68a}
 .rcard.mantenimiento{background:#f3f4f6;border-color:#d1d5db}
 .rcard.lista{background:#fefce8;border-color:#fde68a}
@@ -127,7 +127,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rtipo{font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
 .qr-btn{display:flex;align-items:center;gap:3px;background:rgba(0,0,0,.06);border:none;border-radius:6px;padding:3px 7px;font-size:9px;font-weight:700;color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:6px;width:fit-content}
 .qr-btn:hover{background:rgba(0,0,0,.12);color:#1a2035}
- 
+
 /* ALERTA SOLICITUD HUÉSPED */
 @keyframes pulse-alert {
   0%   { box-shadow: 0 0 0 0   rgba(239,68,68,.8); }
@@ -166,7 +166,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rclean{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:2px;padding:4px 0}
 .rclean-icon{font-size:24px;opacity:.4}
 .rclean-label{font-size:10px;font-weight:700;color:#d97706}
- 
+
 /* MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
@@ -191,7 +191,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .total-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
 .total-row.big{font-size:15px;font-weight:800;color:#059669;margin-top:6px;padding-top:6px;border-top:1px solid #a7f3e4}
 .info-box{background:#f0fdf9;border:1px solid #a7f3e4;border-radius:10px;padding:10px 14px;font-size:12px;color:#059669;font-weight:600;margin-bottom:12px}
- 
+
 /* TABLES */
 .data-table{width:100%;border-collapse:collapse}
 .data-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;padding:8px 12px;text-align:left;border-bottom:1px solid #f1f5f9}
@@ -200,7 +200,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .pill{display:inline-block;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700}
 .pg{background:#dcfce7;color:#16a34a}.pr{background:#fee2e2;color:#dc2626}
 .pb{background:#dbeafe;color:#2563eb}.py{background:#fef9c3;color:#b45309}.pgr{background:#f3f4f6;color:#4b5563}
- 
+
 /* CAJA */
 .caja-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
 .caja-box{border-radius:12px;padding:14px;text-align:center}
@@ -210,24 +210,24 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .cb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:4px}
 .cb-val{font-size:18px;font-weight:900}
 .caja-box.ing .cb-val{color:#059669}.caja-box.eg .cb-val{color:#dc2626}.caja-box.bal .cb-val{color:#2563eb}
- 
+
 /* TIENDA */
 .cart-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9}
 .cart-item:last-child{border:none}
 .qty-ctrl{display:flex;align-items:center;gap:8px}
 .qty-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e0e6ef;background:#f8fafc;cursor:pointer;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
- 
+
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2035;color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
- 
+
 /* MUCAMA */
 .mucama-header{background:linear-gradient(135deg,#166534,#15803d);color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px}
 .mucama-header .mh-icon{font-size:32px}
 .mucama-header h2{font-size:18px;font-weight:800}
 .mucama-header p{font-size:12px;opacity:.8;margin-top:2px}
 .mstat{border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
- 
+
 /* RESPONSIVE */
 @media(max-width:1100px){.stat-cards{grid-template-columns:repeat(3,1fr)};:root{--room-cols:4}}
 @media(max-width:900px){
@@ -266,10 +266,22 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 </style>
 </head>
 <body>
- 
-<!-- LOGIN — manejado por portal.html -->
-<div id="login-page" style="display:none"></div>
- 
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-sq">T</div>
+      <h1>Hotel Takuá</h1>
+      <p>Sistema de gestión</p>
+    </div>
+    <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="admin@hoteltakua.com"></div>
+    <div class="lf"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"></div>
+    <button class="login-btn" id="btn-login">Iniciar sesión</button>
+    <div class="login-err" id="login-err">Email o contraseña incorrectos</div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app">
   <div class="sb-overlay" id="sb-overlay"></div>
@@ -283,7 +295,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
     <button class="nav-btn nav-admin" id="nav-inventario"><span class="ni">📦</span><span class="nl">Inventario</span></button>
     <button class="nav-btn nav-admin" id="nav-caja"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn nav-admin" id="nav-finanzas"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
-    <button class="nav-btn nav-admin" id="nav-restaurante" onclick="irARestaurante()" style="display:none"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
     <button class="nav-btn nav-admin bottom" id="nav-config"><span class="ni">⚙️</span><span class="nl">Configuración</span></button>
   </nav>
   <div class="main">
@@ -303,19 +314,17 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
     <div class="content" id="content"></div>
   </div>
 </div>
- 
+
 <!-- MODAL -->
 <div class="overlay" id="modal-overlay">
   <div class="modal" id="modal-box"></div>
 </div>
 <div class="toast" id="toast"></div>
- 
+
 <script>
 // ── STATE ──
 let token = localStorage.getItem('takua_token');
 let currentUser = JSON.parse(localStorage.getItem('takua_user')||'null');
-let isMucama   = currentUser?.rol === 'mucama';
-let isAdminUser = currentUser?.rol === 'admin';
 let currentPage = 'dashboard';
 let habitaciones = [];
 let cart = [];
@@ -324,7 +333,7 @@ let roomCols = 0;
 const API = '/api';
 const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
- 
+
 // ── HELPERS ──
 async function apiFetch(method, path, body) {
   const opts = {method, headers: {'Content-Type':'application/json', 'Authorization':`Bearer ${token}`}};
@@ -347,7 +356,7 @@ function toast(msg, ok=true) {
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 2800);
 }
- 
+
 // ── MODAL ──
 // Usamos un solo modal y vinculamos eventos DESPUÉS de inyectar HTML
 function openModal(html) {
@@ -361,7 +370,7 @@ function closeModal() {
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
- 
+
 // ── ZOOM ──
 const ZOOM_LEVELS = [2,3,4,5,6,7];
 function initZoom() {
@@ -377,7 +386,7 @@ function doZoom(delta) {
   document.querySelectorAll('.zlabel').forEach(el=>el.textContent=roomCols+' col.');
 }
 function zoomLabel() { return roomCols?roomCols+' col.':'Auto'; }
- 
+
 // ── SIDEBAR ──
 document.getElementById('hamburger').addEventListener('click',()=>{
   document.getElementById('sidebar').classList.toggle('open');
@@ -391,7 +400,7 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('open');
 }
- 
+
 // Nav wiring
 ['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].forEach(p=>{
   document.getElementById('nav-'+p)?.addEventListener('click',()=>{
@@ -399,29 +408,25 @@ function closeSidebar() {
   });
 });
 document.getElementById('tb-caja')?.addEventListener('click',()=>{ setActiveNav('nav-caja'); goTo('caja'); });
- 
+
 function setActiveNav(id) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(id)?.classList.add('active');
 }
- 
+
 // ── AUTH ──
-// Login manejado por portal.html
+document.getElementById('btn-login').addEventListener('click', doLogin);
+document.getElementById('l-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 document.getElementById('btn-logout').addEventListener('click', doLogout);
- 
-function irARestaurante() {
-  // Pasar a comandas.html manteniendo el token (ya está en localStorage)
-  window.location.href = '/comandas.html';
-}
 
 async function doLogin() {
-  const usuario = document.getElementById('l-email').value.trim();
-  const pass    = document.getElementById('l-pass').value;
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
   document.getElementById('login-err').style.display='none';
-  if (!usuario||!pass) return;
-  const data = await fetch('/api/portal/login',{
+  if (!email||!pass) return;
+  const data = await fetch('/api/login',{
     method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({usuario, clave:pass})
+    body:JSON.stringify({email, password:pass})
   }).then(r=>r.json()).catch(()=>null);
   if (data?.token) {
     token=data.token; currentUser=data.user;
@@ -433,11 +438,6 @@ async function doLogin() {
         cache.put('token', new Response(token))
       );
     }
-    // Redirigir a comandas si el rol no es de habitaciones
-    if (['mozo','cajero'].includes(currentUser?.rol)) {
-      window.location.href = '/comandas.html';
-      return;
-    }
     startApp();
   } else {
     document.getElementById('login-err').style.display='block';
@@ -447,7 +447,7 @@ function doLogout() {
   localStorage.removeItem('takua_token'); localStorage.removeItem('takua_user');
   token=null; currentUser=null;
   document.getElementById('app').style.display='none';
-  window.location.href='/portal.html';
+  document.getElementById('login-page').style.display='flex';
 }
 function startApp() {
   document.getElementById('login-page').style.display='none';
@@ -457,39 +457,12 @@ function startApp() {
   document.getElementById('tb-fecha').textContent=`${DIAS[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]} de ${now.getFullYear()}`;
   document.getElementById('tb-welcome').textContent=`Bienvenido, ${currentUser?.nombre||''}`;
   document.getElementById('user-av').textContent=(currentUser?.nombre||'A')[0].toUpperCase();
-  // Mozo y cajero no pertenecen a este modulo → redirigir a comandas
-  const rolActual = currentUser?.rol;
-  if (['mozo','cajero'].includes(rolActual)) {
-    window.location.href = '/comandas.html';
-    return;
-  }
-  // Visibilidad sidebar segun rol
-  const isMucama = rolActual==='mucama';
-  const isAdminUser = rolActual==='admin';
+  // Ocultar secciones de admin para mucama
+  const isMucama = currentUser?.rol==='mucama';
   document.querySelectorAll('.nav-admin').forEach(el=>el.style.display=isMucama?'none':'');
-  // Configuracion y Restaurante solo para admin
-  document.getElementById('nav-config').style.display=isAdminUser?'':'none';
-  document.getElementById('nav-restaurante').style.display=isAdminUser?'':'none';
   document.getElementById('hamburger').style.display='flex';
   setActiveNav('nav-dashboard');
   goTo('dashboard');
-  // Polling habitaciones cada 15s — actualiza en background sin re-renderizar
-  setInterval(async () => {
-    // No actualizar si hay un modal abierto
-    const hayModal = document.getElementById('modal-overlay')?.classList.contains('open');
-    if(hayModal) return;
-    const nuevasHabs = await apiFetch('GET','/habitaciones');
-    if(!nuevasHabs || !nuevasHabs.length) return;
-    // Solo re-renderizar si algo cambió
-    const antes  = JSON.stringify(habitaciones.map(h=>({id:h.id,status:h.status,nota:h.nota})));
-    const despues= JSON.stringify(nuevasHabs.map(h=>({id:h.id,status:h.status,nota:h.nota})));
-    if(antes !== despues){
-      habitaciones = nuevasHabs;
-      if(currentPage==='dashboard')    renderDashboard();
-      if(currentPage==='habitaciones') renderHabitaciones();
-    }
-  }, 15000);
-
   // Iniciar polling de solicitudes (inmediato + cada 30s)
   loadSolicitudesAll();
   startSolPolling();
@@ -497,7 +470,7 @@ function startApp() {
   // Registrar Periodic Sync para notificaciones con app cerrada (Android Chrome)
   registerPeriodicSync();
 }
- 
+
 // ── NAVIGATION ──
 function goTo(page) {
   currentPage=page;
@@ -508,7 +481,7 @@ function goTo(page) {
     caja:renderCaja, finanzas:renderFinanzas, config:renderConfig};
   if (pages[page]) pages[page]();
 }
- 
+
 // ── ROOM HELPERS ──
 const SCFG = {
   libre:        {label:'Libre',        badge:'sb-libre',        icon:'🟢', color:'#16a34a', bg:'#dcfce7'},
@@ -516,17 +489,16 @@ const SCFG = {
   ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴', color:'#dc2626', bg:'#fee2e2'},
   en_limpieza:  {label:'En Limpieza',  badge:'sb-en-limpieza',  icon:'🟡', color:'#d97706', bg:'#fef3c7'},
   limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7'},
-  libre_limpia: {label:'Libre',        badge:'sb-libre',        icon:'🟢', color:'#16a34a', bg:'#dcfce7'},
   reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡', color:'#b45309', bg:'#fef9c3'},
   limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
   mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
 };
 const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
- 
+
 function buildCard(h) {
   const s=SCFG[h.status]||{label:h.status,badge:'sb-reservada',icon:'⚪',color:'#b45309',bg:'#fef9c3'};
   const tipoLabel=TIPOS[h.tipo]||h.tipo;
- 
+
   // ── Badge(s) arriba a la derecha ──
   let badgeHTML;
   if (h.status === 'lista') {
@@ -542,87 +514,56 @@ function buildCard(h) {
       <span class="sbadge sb-limpieza">EN LIMPIEZA</span>
     </div>`;
   } else if (h.status === 'limpia') {
-    // Limpia: OCUPADA en rojo arriba + LIMPIA en verde abajo
-    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-      <span class="sbadge sb-ocupada">OCUPADA</span>
-      <span class="sbadge sb-limpia">LIMPIA</span>
-    </div>`;
-  } else if (h.status === 'libre_limpia') {
-    // Libre limpia: LIBRE en verde arriba + LIMPIA en verde abajo
-    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-      <span class="sbadge sb-libre">LIBRE</span>
-      <span class="sbadge sb-limpia">LIMPIA</span>
-    </div>`;
+    if (h.nota && h.nota.trim()) {
+      // Ocupada+limpia: huésped presente, mucama hizo el servicio
+      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <span class="sbadge sb-ocupada">OCUPADA</span>
+        <span class="sbadge sb-limpia">LIMPIA</span>
+      </div>`;
+    } else {
+      // Libre+limpia: sin huésped, lista para check-in
+      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <span class="sbadge sb-libre">LIBRE</span>
+        <span class="sbadge sb-limpia">LIMPIA</span>
+      </div>`;
+    }
   } else {
     badgeHTML = `<span class="sbadge ${s.badge}">${s.label.toUpperCase()}</span>`;
   }
- 
+
   // ── Ícono principal ──
   let icon = s.icon;
   if (h.status === 'lista')       icon = '🟡';
   if (h.status === 'en_limpieza') icon = '🟡';
-  if (h.status === 'limpia')      icon = '🔴';  // sigue siendo ocupada
-  if (h.status === 'libre_limpia') icon = '🟢';
- 
+  // limpia con nota = ocupada+limpia (rojo), limpia sin nota = libre+limpia (verde)
+  if (h.status === 'limpia')      icon = (h.nota && h.nota.trim()) ? '🔴' : '🟢';
+
   // ── Fondo de la tarjeta ──
-  // en_limpieza → amarillo, limpia → rojo (sigue siendo hab. ocupada)
+  // en_limpieza → amarillo
+  // limpia con nota → rojo (hab. ocupada limpiada)
+  // limpia sin nota → verde (hab. libre que fue limpiada)
   let cardBg = '';
-  if (h.status === 'limpia')       cardBg = ' limpia-occ';
-  if (h.status === 'libre_limpia') cardBg = ' libre'; // mismo verde
- 
-  // ── Helpers de formato ──
-  const fmtFecha = s => {
-    if (!s) return '—';
-    // Intenta parsear distintos formatos
-    const d = new Date(s);
-    if (!isNaN(d)) return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})
-                     + ' ' + d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-    return s; // devolver tal cual si ya es texto
-  };
+  if (h.status === 'limpia' && h.nota && h.nota.trim()) cardBg = ' limpia-occ';
 
   // ── Cuerpo de la tarjeta ──
-  const r = h.reserva_activa; // datos de la reserva activa
   let body='';
-
   if (h.status==='libre') {
     body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
-  } else if (h.status==='libre_limpia') {
-    body=`<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
-
   } else if (h.status==='en_limpieza') {
-    body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div>
-      ${h.nota?`<div style="font-size:11px;color:#92400e;margin-top:3px;font-weight:600">${h.nota}</div>`:''}
-    </div>`;
-
+    body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div></div>`;
+  } else if (h.status==='limpia') {
+    // Igual que ocupada: muestra nombre del huésped
+    body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
+  } else if (h.status==='lista') {
+    body = h.nota ? `<div class="rguest">👤 ${h.nota}</div>` : '';
   } else if (h.status==='limpieza') {
     body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
-
   } else if (h.status==='mantenimiento') {
     body=`<div class="rclean"><div class="rclean-icon">🔧</div><div class="rclean-label" style="color:#4b5563">Mantenimiento</div></div>`;
-
-  } else {
-    // Ocupada, lista, limpia, reservada — mostrar datos de la reserva
-    const nombre   = r?.nombre_huesped || h.nota || '';
-    const entrada  = fmtFecha(r?.entrada);
-    const salida   = fmtFecha(r?.salida);
-    // Extraer patente de notas (si existe)
-    const notas    = r?.notas || '';
-    const patMatch = notas.match(/[A-Z]{2,3}[-\s]?\d{3}[-\s]?[A-Z]{0,2}\d{0,3}/i);
-    const patente  = patMatch ? patMatch[0].toUpperCase() : '';
-
-    body = `
-      ${nombre ? `<div class="rguest" style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${nombre}</div>` : ''}
-      ${r ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:4px;font-size:10px">
-        <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">ENTRADA</div>
-        <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">SALIDA</div>
-        <div style="color:#1e293b;font-weight:700;font-size:10px">${entrada}</div>
-        <div style="color:#1e293b;font-weight:700;font-size:10px">${salida}</div>
-      </div>` : ''}
-      ${patente ? `<div style="margin-top:5px;background:#f1f5f9;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:4px">🚗 ${patente}</div>` : ''}
-      ${!r && !nombre ? `<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>` : ''}
-    `;
+  } else if (h.nota) {
+    body=`<div class="rguest">👤 ${h.nota}</div>`;
   }
- 
+
   const isAdminOrRecep = currentUser && ['admin','recepcionista'].includes(currentUser.rol);
   return `<div class="rcard ${h.status}${cardBg}" data-hid="${h.id}">
     <div class="rcard-top"><span class="room-icon">${icon}</span>${badgeHTML}</div>
@@ -635,7 +576,7 @@ function buildCard(h) {
     </button>`:''}
   </div>`;
 }
- 
+
 function renderMap(container, habs) {
   const alas = currentAla==='todas'?['Este','Oeste']:[currentAla];
   container.innerHTML = alas.map(a=>{
@@ -662,7 +603,7 @@ function renderMap(container, habs) {
     });
   });
 }
- 
+
 function bindZoom() {
   document.getElementById('zoom-in')?.addEventListener('click',()=>doZoom(-1));
   document.getElementById('zoom-out')?.addEventListener('click',()=>doZoom(1));
@@ -678,7 +619,7 @@ function bindAlaFilters() {
     });
   });
 }
- 
+
 async function refreshHabs() {
   habitaciones = await apiFetch('GET','/habitaciones') || [];
   const map=document.getElementById('room-map');
@@ -686,7 +627,7 @@ async function refreshHabs() {
   // Actualizar stats
   if (currentPage==='dashboard') renderDashboard();
 }
- 
+
 // ══════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════
@@ -709,39 +650,23 @@ async function renderDashboard() {
         <div class="mstat" style="background:#fef9c3;color:#b45309">📋 ${res} reservadas</div>
         <div class="mstat" style="background:#f3f4f6;color:#4b5563">🔧 ${mant} mantenimiento</div>
       </div>
-      <div id="mucama-sols" style="margin-bottom:12px"></div>
-      ${mapSection()}`;
+      ${mapSection()}
+      <div id="mucama-sols" style="display:none"></div>`;
     afterMapInsert();
     setTimeout(() => loadSolicitudesAll(), 100);
     return;
   }
- 
-  const [dash, habs, turnoRest] = await Promise.all([
-    apiFetch('GET','/dashboard'),
-    apiFetch('GET','/habitaciones'),
-    apiFetch('GET','/restaurante/turno/ultimo').catch(()=>null),
-  ]);
-  habitaciones = habs||[];
+
+  const [dash,habs]=await Promise.all([apiFetch('GET','/dashboard'),apiFetch('GET','/habitaciones')]);
+  habitaciones=habs||[];
   const OCUPADAS=['ocupada','en_limpieza','limpia'];
-  const LIBRES  =['libre','lista','libre_limpia'];
-  const occ  = habitaciones.filter(h=>OCUPADAS.includes(h.status)).length;
-  const lib  = habitaciones.filter(h=>LIBRES.includes(h.status)).length;
-  const limp = habitaciones.filter(h=>h.status==='limpieza').length;
-  const mant = habitaciones.filter(h=>h.status==='mantenimiento').length;
-  const reserv=habitaciones.filter(h=>h.status==='reservada').length;
-  const pct  = Math.round(occ/(habitaciones.length||1)*100);
-
-  // Métricas restaurante
-  const cerradas   = turnoRest?.cerradas||[];
-  const restTotal  = cerradas.reduce((s,c)=>s+(Number(c.total_final)||0),0);
-  const restCmdas  = cerradas.length;
-  const restComen  = cerradas.reduce((s,c)=>s+(c.comensales||0),0);
-  const turnoAbierto = turnoRest?.estado==='abierto';
-
+  const LIBRES=['libre','lista'];
+  const occ=habitaciones.filter(h=>OCUPADAS.includes(h.status)).length;
+  const lib=habitaciones.filter(h=>LIBRES.includes(h.status)).length;
+  const limp=habitaciones.filter(h=>h.status==='limpieza').length;
+  const pct=Math.round(occ/(habitaciones.length||1)*100);
   document.getElementById('content').innerHTML=`
-    <!-- HABITACIONES -->
-    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🏨 Habitaciones</div>
-    <div class="stat-cards" style="margin-bottom:20px">
+    <div class="stat-cards">
       <div class="sc occ">
         <div class="lbl">Turno actual</div><div class="ttl">OCUPACIÓN</div>
         <div class="occ-big">${pct}%</div>
@@ -752,74 +677,21 @@ async function renderDashboard() {
         </div>
         ${(dash?.alertas_stock||0)>0?`<div class="alert-badge">⚠️ ${dash.alertas_stock} stock</div>`:''}
       </div>
-      <div class="sc hosp" style="cursor:pointer" onclick="toggleHuespedes(this)">
-        <div class="lbl">Turno actual</div>
-        <div class="ttl">HOSPEDAJE</div>
-        <div class="val">${fmt(dash?.hospedaje)}</div>
-        ${(dash?.reservas_activas||0)>0?`<div style="font-size:11px;opacity:.8;margin-top:4px">👥 ${dash.reservas_activas} huéspedes</div>`:''}
-        <div class="huespedes-detalle" style="display:none;margin-top:8px;text-align:left">
-          ${(dash?.huespedes_actuales||[]).map(h=>`
-            <div style="font-size:11px;padding:3px 0;border-top:1px solid rgba(255,255,255,.15)">
-              <strong>Hab.${h.numero}</strong> ${h.nombre||'—'}
-              <span style="float:right;opacity:.8">${fmt(h.precio_total)}</span>
-            </div>`).join('')}
-        </div>
-      </div>
+      <div class="sc hosp"><div class="lbl">Turno actual</div><div class="ttl">HOSPEDAJE</div><div class="val">${fmt(dash?.hospedaje)}</div></div>
+      <div class="sc tienda"><div class="lbl">Turno actual</div><div class="ttl">TIENDA</div><div class="val">${fmt(dash?.tienda)}</div></div>
+      <div class="sc gastos"><div class="lbl">Turno actual</div><div class="ttl">GASTOS</div><div class="val">${fmt(dash?.egresos)}</div></div>
+      <div class="sc balance"><div class="lbl">Turno actual</div><div class="ttl">BALANCE</div><div class="val">${fmt(dash?.balance)}</div></div>
     </div>
-
-    <!-- Estado rápido habitaciones -->
-    <div class="section-card" style="margin-bottom:20px">
-      <div class="sc-head" style="margin-bottom:12px"><h2 style="font-size:15px">Estado de habitaciones</h2>
-        <button class="btn-secondary" onclick="setActiveNav('nav-habitaciones');goTo('habitaciones')">Ver mapa →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
-        ${[
-          {label:'Ocupadas',   val:occ,   color:'#dc2626', bg:'#fee2e2', icon:'🔴'},
-          {label:'Libres',     val:lib,   color:'#16a34a', bg:'#dcfce7', icon:'🟢'},
-          {label:'Reservadas', val:reserv,color:'#7c3aed', bg:'#ede9fe', icon:'📅'},
-          {label:'Limpieza',   val:limp,  color:'#d97706', bg:'#fef3c7', icon:'🧹'},
-          {label:'Mantenimiento',val:mant,color:'#4b5563', bg:'#f3f4f6', icon:'🔧'},
-        ].map(x=>`<div style="background:${x.bg};border-radius:12px;padding:12px 14px;border:1px solid ${x.color}22">
-          <div style="font-size:20px;margin-bottom:4px">${x.icon}</div>
-          <div style="font-size:22px;font-weight:800;color:${x.color}">${x.val}</div>
-          <div style="font-size:12px;color:#64748b">${x.label}</div>
-        </div>`).join('')}
-      </div>
-    </div>
-
-    <!-- RESTAURANTE -->
-    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🍽️ Restaurante ${turnoAbierto?'<span style="color:#22c55e">● Turno abierto</span>':'<span style="color:#94a3b8">○ Sin turno activo</span>'}</div>
-    <div class="stat-cards" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
-      <div class="sc" style="background:linear-gradient(135deg,#059669,#10b981)">
-        <div class="lbl">Restaurante</div><div class="ttl">TOTAL COBRADO</div>
-        <div class="val">${fmt(restTotal)}</div>
-      </div>
-      <div class="sc" style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
-        <div class="lbl">Restaurante</div><div class="ttl">COMANDAS</div>
-        <div class="val">${restCmdas}</div>
-      </div>
-      <div class="sc" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">
-        <div class="lbl">Restaurante</div><div class="ttl">COMENSALES</div>
-        <div class="val">${restComen}</div>
-      </div>
-    </div>
-
-    <!-- SOLICITUDES PENDIENTES -->
+    ${mapSection(true)}
     <div class="section-card" id="sols-pendientes" style="display:none">
       <div class="sc-head" style="flex-wrap:nowrap">
-        <h2 style="display:flex;align-items:center;gap:8px">🔔 Solicitudes de huéspedes
-          <span id="sols-count" style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px">0</span>
-        </h2>
+        <h2 style="display:flex;align-items:center;gap:8px">🔔 Solicitudes de huéspedes <span id="sols-count" style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px">0</span></h2>
       </div>
       <div id="sols-rows"></div>
     </div>`;
-
+  afterMapInsert(true);
+  // Cargar solicitudes inmediatamente después de que el mapa esté listo
   setTimeout(() => loadSolicitudesAll(), 100);
-}
- 
-function toggleHuespedes(card) {
-  const detalle = card.querySelector('.huespedes-detalle');
-  if (detalle) detalle.style.display = detalle.style.display === 'none' ? 'block' : 'none';
 }
 
 function mapSection(showLog=false) {
@@ -841,7 +713,7 @@ function mapSection(showLog=false) {
     <div id="room-map"></div>
   </div>`;
 }
- 
+
 function afterMapInsert(showLog=false) {
   bindAlaFilters();
   bindZoom();
@@ -850,7 +722,7 @@ function afterMapInsert(showLog=false) {
   // Solicitudes pendientes (solo admin/recep)
   if (!isMucama) loadSolicitudes();
 }
- 
+
 function loadSolicitudes(pendientes) {
   const el = document.getElementById('sols-pendientes');
   if (!el) return;
@@ -869,7 +741,7 @@ function loadSolicitudes(pendientes) {
       </div>
       <button class="btn-primary" data-sol-id="${s.id}" style="font-size:11px;padding:6px 10px;white-space:nowrap;flex-shrink:0">✅ Atendida</button>
     </div>`).join('');
- 
+
   document.querySelectorAll('[data-sol-id]').forEach(btn => {
     btn.addEventListener('click', async () => {
       await apiFetch('PUT', `/solicitudes/${btn.dataset.solId}`, { estado: 'atendida' });
@@ -878,7 +750,7 @@ function loadSolicitudes(pendientes) {
     });
   });
 }
- 
+
 // Polling automático cada 30 segundos para nuevas solicitudes
 let solInterval = null;
 function startSolPolling() {
@@ -887,7 +759,7 @@ function startSolPolling() {
     if (currentPage === 'dashboard') loadSolicitudesAll();
   }, 30000);
 }
- 
+
 // ══════════════════════════════════════
 // HABITACIONES PAGE
 // ══════════════════════════════════════
@@ -896,7 +768,7 @@ async function renderHabitaciones() {
   document.getElementById('content').innerHTML = mapSection();
   afterMapInsert();
 }
- 
+
 // ══════════════════════════════════════
 // HAB MODAL
 // ══════════════════════════════════════
@@ -920,30 +792,31 @@ function showHabModal(hab) {
   const isAdmin  = rol === 'admin';
   const isRecep  = rol === 'recepcionista';
   const canEdit  = isAdmin || isRecep;
- 
+
   const s = SCFG[hab.status] || {label:hab.status, color:'#374151', bg:'#f8fafc', icon:'⚪'};
   const tipoLabel = TIPOS[hab.tipo] || hab.tipo;
- 
+
   // ── ACCIONES POR ROL Y ESTADO ──
- 
+
   // Mucama: abre modal de servicio específico según estado
   const mucamaAcciones = {
-    reservada:    { label:'✨ Preparar habitación',      color:'#0891b2', servicio:'pre_checkin',   nuevoStatus:'lista',       soloIniciar:false },
-    libre:        { label:'🧹 Iniciar limpieza',         color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true, esLibre:true },
-    libre_limpia: { label:'🧹 Nuevo repaso',              color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true, esLibre:true },
-    ocupada:      { label:'🧹 Iniciar servicio diario',  color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
-    en_limpieza:  { label:'✅ Finalizar servicio',       color:'#166534', servicio:'diario',         nuevoStatus:'limpia',      soloIniciar:false },
-    limpia:       { label:'🧹 Nuevo servicio diario',    color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
-    limpieza:     { label:'🧹 Limpieza post-checkout',   color:'#d97706', servicio:'post_checkout',  nuevoStatus:'lista',       soloIniciar:false },
-    mantenimiento:{ label:'✅ Finalizar mantenimiento',  color:'#0891b2', servicio:'mantenimiento',  nuevoStatus:'lista',       soloIniciar:false },
+    // Habitación reservada → mucama la prepara → queda Lista
+    reservada:    { label:'✨ Preparar habitación',         color:'#0891b2', servicio:'pre_checkin',   nuevoStatus:'lista',       soloIniciar:false },
+    // Habitación ocupada → mucama inicia servicio → pasa a En Limpieza (sin formulario aún)
+    ocupada:      { label:'🧹 Iniciar servicio diario',    color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
+    // En limpieza → mucama terminó → abre formulario frigobar → vuelve a Ocupada+Limpia
+    en_limpieza:  { label:'✅ Finalizar servicio',         color:'#166534', servicio:'diario',         nuevoStatus:'limpia',      soloIniciar:false },
+    // Limpia (hab. ocupada ya limpiada) → puede hacer otro servicio
+    limpia:       { label:'🧹 Nuevo servicio diario',      color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
+    // Limpieza post-checkout → mucama limpia → queda Lista
+    limpieza:     { label:'🧹 Limpieza post-checkout',     color:'#d97706', servicio:'post_checkout',  nuevoStatus:'lista',       soloIniciar:false },
+    // Mantenimiento → mucama lo resolvió → queda Lista
+    mantenimiento:{ label:'✅ Marcar como lista',           color:'#0891b2', servicio:'mantenimiento',  nuevoStatus:'lista',       soloIniciar:false },
   };
- 
+
   // Recep/Admin: transiciones directas de estado
   const recepTransitions = {
     libre:        [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
-                   {s:'reservada',     label:'📋 Reservar',           color:'#7c3aed'},
-                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
-    libre_limpia: [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
                    {s:'reservada',     label:'📋 Reservar',           color:'#7c3aed'},
                    {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
     lista:        [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
@@ -952,11 +825,11 @@ function showHabModal(hab) {
                    {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
     reservada:    [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
                    {s:'libre',         label:'✕ Cancelar reserva',   color:'#6b7280'}],
-    ocupada:      [{s:'checkout',      label:'🚪 Check-out',          color:'#dc2626'},
-                   {s:'cambiar-hab',   label:'🔄 Cambiar habitación',  color:'#7c3aed'}],
+    ocupada:      [{s:'checkout',      label:'🚪 Check-out',          color:'#dc2626'}],
     en_limpieza:  [{s:'ocupada',       label:'🔴 Volver a Ocupada',   color:'#dc2626'},
                    {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
-    limpia:       [{s:'ocupada',       label:'🔴 Volver a Ocupada',   color:'#dc2626'},
+    limpia:       [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
+                   {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'},
                    {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
     limpieza:     [{s:'lista',         label:'✨ Marcar Lista',        color:'#0891b2'},
                    {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'},
@@ -964,13 +837,13 @@ function showHabModal(hab) {
     mantenimiento:[{s:'lista',         label:'✨ Marcar Lista',        color:'#0891b2'},
                    {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'}],
   };
- 
+
   const mucamaAccion  = mucamaAcciones[hab.status] || null;
   const transitions   = canEdit ? (recepTransitions[hab.status] || []) : [];
   const actHTML = transitions.map((t,i) =>
     `<button class="act-btn" id="hab-act-${i}" style="background:${t.color}">${t.label}</button>`
   ).join('');
- 
+
   // Selector tipo cama (visible para todos)
   const esTwin  = !['queen','suite'].includes(hab.tipo);
   const tipoCamaHTML = `
@@ -979,7 +852,7 @@ function showHabModal(hab) {
       <button id="tbtn-twin"  style="flex:1;padding:10px;border:2px solid ${esTwin ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
       <button id="tbtn-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
     </div>`;
- 
+
   const adminHTML = isAdmin ? `
     <details style="margin-top:14px;border:1px solid #e0e6ef;border-radius:10px;padding:10px 12px">
       <summary style="cursor:pointer;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">⚙️ Editar habitación (Admin)</summary>
@@ -995,7 +868,7 @@ function showHabModal(hab) {
         <button class="btn-primary" id="btn-save-hab" style="width:100%">💾 Guardar cambios</button>
       </div>
     </details>` : '';
- 
+
   openModal(`
     <div class="modal-hd">
       <h3>Hab. ${hab.numero}${hab.nombre?' · '+hab.nombre:''} — Ala ${hab.ala}</h3>
@@ -1006,18 +879,15 @@ function showHabModal(hab) {
       <span style="color:#64748b;font-size:12px">· ${tipoLabel} · ${hab.capacidad} pers. · ${fmt(hab.precio_noche)}/noche</span>
     </div>
     ${hab.nota&&!['libre','lista','limpia'].includes(hab.status)?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:''}
- 
+
     ${tipoCamaHTML}
- 
-    ${isMucama ? `
-      <button class="save-btn" id="btn-save-tipo" style="margin-bottom:10px;width:100%">💾 Guardar tipo de cama</button>
-    ` : ''}
+
     ${isMucama && mucamaAccion ? `
       <button class="confirm-btn" id="btn-servicio" style="background:linear-gradient(135deg,${mucamaAccion.color},${mucamaAccion.color}cc);margin-bottom:8px">
         ${mucamaAccion.label}
       </button>
     ` : ''}
- 
+
     ${canEdit && transitions.length > 0 ? `
       <div class="form-col" style="margin-bottom:12px">
         <label>Nota / Observación</label>
@@ -1027,19 +897,19 @@ function showHabModal(hab) {
       <div class="act-grid">${actHTML}</div>
       <button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>
     ` : ''}
- 
+
     ${isMucama && !mucamaAccion ? `
       <div style="background:#f8fafc;border-radius:8px;padding:12px;font-size:13px;color:#64748b;text-align:center">
         Esta habitación no requiere acción en este momento.
       </div>
     ` : ''}
- 
+
     ${adminHTML}
   `);
- 
+
   // ── BIND EVENTS ──
   document.getElementById('hab-close').addEventListener('click', closeModal);
- 
+
   // Selector tipo cama
   let tipoCamaSeleccionada = esTwin ? 'twin' : 'queen';
   const btnTwin  = document.getElementById('tbtn-twin');
@@ -1054,24 +924,11 @@ function showHabModal(hab) {
   btnTwin?.addEventListener('click',  () => selectTipo('twin'));
   btnQueen?.addEventListener('click', () => selectTipo('queen'));
 
-  // Mucama: guardar tipo de cama
-  document.getElementById('btn-save-tipo')?.addEventListener('click', async () => {
-    const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
-      nombre: hab.nombre||'', tipo: tipoCamaSeleccionada,
-      capacidad: hab.capacidad, precio_noche: hab.precio_noche, precio_hora: hab.precio_hora
-    });
-    if (r?.ok) { toast('Tipo de cama guardado ✓'); closeModal(); await refreshHabs(); }
-    else toast(r?.error||'Error', false);
-  });
-
   // Botón servicio mucama
   document.getElementById('btn-servicio')?.addEventListener('click', async () => {
     if (mucamaAccion.soloIniciar) {
-      // Solo cambiar estado a "en_limpieza" — guardar nombre de mucama en nota
-      const notaLimpieza = mucamaAccion.nuevoStatus === 'en_limpieza'
-        ? (currentUser?.nombre || 'Mucama')
-        : hab.nota || '';
-      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status: mucamaAccion.nuevoStatus, nota: notaLimpieza });
+      // Solo cambiar estado a "en_limpieza" sin formulario
+      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status: mucamaAccion.nuevoStatus, nota: hab.nota || '' });
       if (r?.ok) {
         toast('Servicio iniciado — habitación en limpieza');
         closeModal();
@@ -1084,14 +941,13 @@ function showHabModal(hab) {
       showServicioModal(hab, mucamaAccion, tipoCamaSeleccionada);
     }
   });
- 
+
   // Acciones recep/admin
   transitions.forEach((t,i) => {
     document.getElementById(`hab-act-${i}`)?.addEventListener('click', async () => {
-      if (t.s==='check-in')   { closeModal(); showCheckinModal(hab.id); return; }
-      if (t.s==='reservada')  { closeModal(); showReservaModal(hab.id); return; }
-      if (t.s==='cambiar-hab'){ closeModal(); showCambiarHabModal(hab); return; }
-      if (t.s==='checkout')   {
+      if (t.s==='check-in')  { closeModal(); showCheckinModal(hab.id); return; }
+      if (t.s==='reservada') { closeModal(); showReservaModal(hab.id); return; }
+      if (t.s==='checkout')  {
         if (!confirm('¿Confirmar check-out? La habitación pasará a "A Limpiar".')) return;
         const r = await apiFetch('POST', `/checkout/${hab.id}`);
         if (r?.ok) toast('Check-out realizado. Habitación a limpiar.');
@@ -1110,7 +966,7 @@ function showHabModal(hab) {
       await refreshHabs();
     });
   });
- 
+
   // Guardar nota
   document.getElementById('hab-save-nota')?.addEventListener('click', async () => {
     const nota = document.getElementById('hab-nota').value;
@@ -1123,7 +979,7 @@ function showHabModal(hab) {
     closeModal();
     await refreshHabs();
   });
- 
+
   // Admin guardar cambios
   document.getElementById('btn-save-hab')?.addEventListener('click', async () => {
     const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
@@ -1137,14 +993,14 @@ function showHabModal(hab) {
     else toast(r?.error||'Error', false);
   });
 }
- 
+
 // ══════════════════════════════════════
 // SERVICIO DE HABITACION (MUCAMA)
 // ══════════════════════════════════════
 async function showServicioModal(hab, accion, tipoCamaInicial) {
   const productos = await apiFetch('GET', '/productos') || [];
   const esDiario = accion.servicio === 'diario';
- 
+
   // Descripción según tipo
   const titulos = {
     pre_checkin:    '✨ Preparar hab. para check-in',
@@ -1153,7 +1009,7 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
     diario:         '✅ Finalizar servicio diario',
     mantenimiento:  '✅ Finalizar mantenimiento',
   };
- 
+
   const prodRows = productos.map(p => `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
       <div>
@@ -1166,28 +1022,28 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
         <button class="qty-btn srv-mas" data-id="${p.id}">+</button>
       </div>
     </div>`).join('');
- 
+
   const esTwin = tipoCamaInicial !== 'queen';
- 
+
   openModal(`
     <div class="modal-hd">
       <h3>${titulos[accion.servicio]||'Servicio'} — Hab. ${hab.numero}</h3>
       <button class="modal-close" id="srv-close">✕</button>
     </div>
- 
+
     <div style="background:${accion.color}18;border:1px solid ${accion.color}40;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:${accion.color};font-weight:700">
       ${hab.status==='reservada'   ? 'La habitación está reservada. Al terminar quedará <strong>Lista</strong> para recibir al huésped.' :
         hab.status==='limpieza'    ? 'Limpieza post-checkout. Al terminar quedará <strong>Lista</strong> para nueva reserva/venta.' :
         hab.status==='en_limpieza' ? 'Registrá consumos del frigobar. Al confirmar la habitación vuelve a <strong>Ocupada</strong> con marca <strong>Limpia</strong>.' :
         'Al terminar, indicá el nuevo estado de la habitación.'}
     </div>
- 
+
     <div class="stitle">Tipo de cama preparada</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button id="srv-twin"  style="flex:1;padding:10px;border:2px solid ${esTwin ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
       <button id="srv-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
     </div>
- 
+
     ${esDiario || accion.servicio==='post_checkout' ? `
       <div class="stitle">Consumos del frigobar (opcional)</div>
       <div style="max-height:180px;overflow-y:auto;margin-bottom:8px">${prodRows}</div>
@@ -1195,7 +1051,7 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
         <span>Total consumos:</span><span id="srv-total" style="color:var(--accent)">$ 0</span>
       </div>
     ` : ''}
- 
+
     <div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:12px;padding:12px;margin-bottom:14px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
         <input type="checkbox" id="srv-mant" style="width:18px;height:18px">
@@ -1206,12 +1062,12 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
           style="width:100%;border:1.5px solid #fca5a5;border-radius:8px;padding:8px;font-size:13px;font-family:'Nunito',sans-serif;resize:none"></textarea>
       </div>
     </div>
- 
+
     <button class="confirm-btn" id="srv-confirm" style="background:linear-gradient(135deg,${accion.color},${accion.color}bb)">
       ✅ Confirmar y guardar
     </button>
   `);
- 
+
   // Tipo cama
   let tipoCama = esTwin ? 'twin' : 'queen';
   const btnT = document.getElementById('srv-twin');
@@ -1223,7 +1079,7 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
   }
   btnT.addEventListener('click', () => selTipo('twin'));
   btnQ.addEventListener('click', () => selTipo('queen'));
- 
+
   // Cantidades frigobar
   const cantidades = {};
   function updateTotal() {
@@ -1255,29 +1111,20 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
       }
     });
   });
- 
+
   // Mantenimiento toggle
   document.getElementById('srv-mant').addEventListener('change', function() {
     document.getElementById('srv-mant-wrap').style.display = this.checked ? 'block' : 'none';
   });
- 
+
   document.getElementById('srv-close').addEventListener('click', closeModal);
- 
+
   document.getElementById('srv-confirm').addEventListener('click', async () => {
     const necesitaMant = document.getElementById('srv-mant').checked;
     const notaMant = document.getElementById('srv-mant-nota')?.value || '';
     const consumos = Object.entries(cantidades)
       .filter(([id,qty]) => qty > 0)
       .map(([id,qty]) => ({ producto_id: parseInt(id), cantidad: qty }));
- 
-    // Si la hab era libre antes → al terminar limpieza vuelve a libre_limpia
-    const eraLibre = ['libre','libre_limpia','lista'].includes(hab.status) ||
-                     (hab.status === 'en_limpieza' && !hab.reserva_activa);
-    const statusDestino = necesitaMant
-      ? 'mantenimiento'
-      : (accion.nuevoStatus === 'limpia' && eraLibre)
-        ? 'libre_limpia'
-        : accion.nuevoStatus;
 
     const r = await apiFetch('POST', '/servicios', {
       habitacion_id:         hab.id,
@@ -1286,9 +1133,9 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
       necesita_mantenimiento:necesitaMant,
       nota_mantenimiento:    notaMant,
       consumos:              consumos,
-      nuevo_status:          statusDestino,
+      nuevo_status:          accion.nuevoStatus,
     });
- 
+
     if (r?.ok) {
       let msg = '✅ Servicio registrado';
       if (r.total_consumos > 0) msg += ` · Frigobar: ${fmt(r.total_consumos)}`;
@@ -1301,123 +1148,6 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
     }
   });
 }
- 
-// ══════════════════════════════════════
-// CAMBIAR HABITACIÓN
-// ══════════════════════════════════════
-function showCambiarHabModal(hab) {
-  // Filtrar habitaciones libres o lista como destino
-  const libres = habitaciones.filter(h =>
-    ['libre','lista'].includes(h.status) && h.id !== hab.id
-  );
-  if (!libres.length) {
-    toast('No hay habitaciones disponibles para el traslado', false);
-    return;
-  }
-  const reserva = hab.reserva_activa;
-
-  openModal(`
-    <div class="modal-hd">
-      <h3>🔄 Cambiar habitación — Hab. ${hab.numero} Ala ${hab.ala}</h3>
-      <button class="modal-close" id="ch-close">✕</button>
-    </div>
-    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px">
-      <div style="font-weight:700;color:#0369a1">👤 ${reserva?.nombre_huesped || hab.nota || 'Huésped'}</div>
-      <div style="color:#0369a1;font-size:12px;margin-top:2px">Hab. ${hab.numero} · Ala ${hab.ala}</div>
-    </div>
-    <div class="form-col" style="margin-bottom:14px">
-      <label>Habitación destino</label>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:6px" id="ch-grid">
-        ${libres.map(h=>`
-          <button data-hid="${h.id}" class="ch-hab-btn"
-            style="padding:12px 8px;border-radius:10px;border:2px solid #e2e8f0;
-            background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;
-            transition:all .15s;text-align:center">
-            <div style="font-size:16px;font-weight:800">${h.numero}</div>
-            <div style="font-size:10px;color:#94a3b8">${h.ala} · ${h.tipo||''}</div>
-            <div style="font-size:10px;color:#16a34a;margin-top:2px">${h.status}</div>
-          </button>`).join('')}
-      </div>
-    </div>
-    <div class="form-col" style="margin-bottom:14px">
-      <label>¿Qué pasa con la Hab. ${hab.numero} al liberar?</label>
-      <div style="display:flex;gap:8px;margin-top:6px">
-        <button id="ch-estado-libre" class="ch-estado-btn"
-          style="flex:1;padding:10px;border-radius:10px;border:2px solid #16a34a;
-          background:#dcfce7;color:#166534;font-weight:700;font-size:13px;cursor:pointer">
-          🟢 Pasa a Libre
-        </button>
-        <button id="ch-estado-mant" class="ch-estado-btn"
-          style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;
-          background:#f8fafc;color:#4b5563;font-weight:700;font-size:13px;cursor:pointer">
-          🔧 Necesita mantenimiento
-        </button>
-      </div>
-    </div>
-    <div class="form-col" style="margin-bottom:16px">
-      <label>Motivo / Nota (opcional)</label>
-      <input type="text" id="ch-motivo" placeholder="Ej: Solicitud del huésped, problema de AC..."/>
-    </div>
-    <button class="confirm-btn" id="ch-confirm" disabled
-      style="background:#7c3aed;opacity:.5;cursor:not-allowed">
-      🔄 Confirmar traslado
-    </button>
-  `);
-
-  document.getElementById('ch-close').addEventListener('click', closeModal);
-
-  let habDestinoId = null;
-  document.querySelectorAll('.ch-hab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      // Deseleccionar todos
-      document.querySelectorAll('.ch-hab-btn').forEach(b => {
-        b.style.borderColor = '#e2e8f0';
-        b.style.background  = '#f8fafc';
-        b.style.color       = '';
-      });
-      // Seleccionar este
-      btn.style.borderColor = '#7c3aed';
-      btn.style.background  = '#faf5ff';
-      habDestinoId = parseInt(btn.dataset.hid);
-      const confirmBtn = document.getElementById('ch-confirm');
-      confirmBtn.disabled = false;
-      confirmBtn.style.opacity = '1';
-      confirmBtn.style.cursor  = 'pointer';
-    });
-  });
-
-  // Selector estado origen
-  let estadoOrigen = 'libre'; // default
-  const btnLibre = document.getElementById('ch-estado-libre');
-  const btnMant  = document.getElementById('ch-estado-mant');
-  function selEstadoOrigen(estado) {
-    estadoOrigen = estado;
-    btnLibre.style.borderColor = estado==='libre'    ? '#16a34a' : '#e2e8f0';
-    btnLibre.style.background  = estado==='libre'    ? '#dcfce7' : '#f8fafc';
-    btnLibre.style.color       = estado==='libre'    ? '#166534' : '#4b5563';
-    btnMant.style.borderColor  = estado==='mantenimiento' ? '#6b7280' : '#e2e8f0';
-    btnMant.style.background   = estado==='mantenimiento' ? '#f3f4f6' : '#f8fafc';
-    btnMant.style.color        = estado==='mantenimiento' ? '#374151' : '#4b5563';
-  }
-  btnLibre.addEventListener('click', () => selEstadoOrigen('libre'));
-  btnMant.addEventListener('click',  () => selEstadoOrigen('mantenimiento'));
-
-  document.getElementById('ch-confirm').addEventListener('click', async () => {
-    if (!habDestinoId) return;
-    const motivo = document.getElementById('ch-motivo').value.trim();
-    const r = await apiFetch('POST', `/habitaciones/${hab.id}/cambiar`, {
-      nueva_habitacion_id: habDestinoId, motivo, estado_origen: estadoOrigen
-    });
-    if (r?.ok) {
-      const destino = habitaciones.find(h => h.id === habDestinoId);
-      toast(`✅ ${r.nombre_huesped} trasladado/a a Hab. ${destino?.numero}`);
-      closeModal();
-      await refreshHabs();
-    } else {
-      toast(r?.error || 'Error al cambiar habitación', false);
-    }
-  });
-}
 
 // ══════════════════════════════════════
 // CHECK-IN
@@ -1427,7 +1157,7 @@ function showCheckinModal(habId) {
   const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
   const iso=d=>d.toISOString().slice(0,16);
   const pn=hab?.precio_noche||50000;
- 
+
   openModal(`
     <div class="modal-hd"><h3>Check-in — Hab. ${hab?.numero} Ala ${hab?.ala}</h3><button class="modal-close" id="ci-close">✕</button></div>
     <div class="form-row">
@@ -1459,7 +1189,7 @@ function showCheckinModal(habId) {
     </div>
     <button class="confirm-btn" id="ci-confirm">✅ Confirmar Check-in</button>
   `);
- 
+
   const recalc=()=>{
     const inn=document.getElementById('ci-in')?.value;
     const out=document.getElementById('ci-out')?.value;
@@ -1471,7 +1201,7 @@ function showCheckinModal(habId) {
     document.getElementById('ci-tot').textContent=fmt(n*tar);
   };
   ['ci-in','ci-out','ci-tarifa'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalc));
- 
+
   document.getElementById('ci-doc').addEventListener('input', async ()=>{
     const doc=document.getElementById('ci-doc').value;
     if (doc.length<6) return;
@@ -1483,9 +1213,9 @@ function showCheckinModal(habId) {
       gi.style.display='block'; gi.textContent=`✅ Huésped encontrado — ${h.visitas} visitas previas`;
     }
   });
- 
+
   document.getElementById('ci-close').addEventListener('click',closeModal);
- 
+
   document.getElementById('ci-confirm').addEventListener('click', async ()=>{
     const nombre=document.getElementById('ci-nombre').value.trim();
     if (!nombre) { toast('Ingresá el nombre del huésped',false); return; }
@@ -1506,7 +1236,7 @@ function showCheckinModal(habId) {
     else toast(r?.error||'Error en check-in',false);
   });
 }
- 
+
 // ══════════════════════════════════════
 // RESERVA
 // ══════════════════════════════════════
@@ -1515,7 +1245,7 @@ function showReservaModal(habId) {
   const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
   const iso=d=>d.toISOString().slice(0,16);
   const pn=hab?.precio_noche||50000;
- 
+
   openModal(`
     <div class="modal-hd"><h3>Reserva — Hab. ${hab?.numero} Ala ${hab?.ala}</h3><button class="modal-close" id="res-close">✕</button></div>
     <div class="form-row">
@@ -1539,7 +1269,7 @@ function showReservaModal(habId) {
     </div>
     <button class="confirm-btn" id="res-confirm" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">📋 Confirmar Reserva</button>
   `);
- 
+
   const recalc=()=>{
     const inn=document.getElementById('res-in')?.value;
     const out=document.getElementById('res-out')?.value;
@@ -1569,7 +1299,7 @@ function showReservaModal(habId) {
     else toast(r?.error||'Error',false);
   });
 }
- 
+
 // ══════════════════════════════════════
 // RESERVAS PAGE
 // ══════════════════════════════════════
@@ -1592,7 +1322,7 @@ async function renderReservas() {
     </div>`;
   document.getElementById('btn-nueva-res').addEventListener('click',()=>{ setActiveNav('nav-habitaciones'); goTo('habitaciones'); });
 }
- 
+
 // ══════════════════════════════════════
 // HUÉSPEDES
 // ══════════════════════════════════════
@@ -1619,7 +1349,7 @@ async function renderHuespedes() {
     document.querySelector('#h-tbl tbody').innerHTML=buildRows(res)||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">Sin resultados</td></tr>';
   });
 }
- 
+
 // ══════════════════════════════════════
 // TIENDA
 // ══════════════════════════════════════
@@ -1688,7 +1418,7 @@ async function cobrar() {
   if(r?.ok){toast(`Venta: ${fmt(r.total)}`);cart=[];renderCart();}
   else toast(r?.error||'Error',false);
 }
- 
+
 // ══════════════════════════════════════
 // INVENTARIO
 // ══════════════════════════════════════
@@ -1767,7 +1497,7 @@ function showNuevoProd() {
     else toast('Error',false);
   });
 }
- 
+
 // ══════════════════════════════════════
 // CAJA
 // ══════════════════════════════════════
@@ -1847,7 +1577,7 @@ function showMov(tipo) {
     if(r?.ok){toast('Registrado');closeModal();renderCaja();}else toast('Error',false);
   });
 }
- 
+
 // ══════════════════════════════════════
 // FINANZAS
 // ══════════════════════════════════════
@@ -1891,44 +1621,22 @@ async function loadFin(desde,hasta) {
     loadFin(document.getElementById('fin-d').value,document.getElementById('fin-h').value);
   });
 }
- 
+
 // ══════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════
-const ROL_OPTS = `
-  <optgroup label="— Habitaciones —">
-    <option value="recepcionista">Recepcionista</option>
-    <option value="mucama">Mucama / Limpieza</option>
-  </optgroup>
-  <optgroup label="— Restaurante —">
-    <option value="mozo">Mozo</option>
-    <option value="cajero">Cajero</option>
-  </optgroup>
-  <optgroup label="— Sistema —">
-    <option value="admin">Administrador</option>
-  </optgroup>`;
-
 async function renderConfig() {
-  let usuarios = await apiFetch('GET','/portal/usuarios');
-  if (!usuarios) usuarios = await apiFetch('GET','/usuarios') || [];
-  const rolColor = { admin:'pb', recepcionista:'pg', mucama:'py', mozo:'pgr', cajero:'pr' };
-  const rows = usuarios.map(u=>`<tr>
-    <td><strong>${u.nombre}</strong></td>
-    <td style="color:#64748b;font-size:12px">${u.usuario||'—'}</td>
-    <td style="color:#94a3b8;font-size:12px">${u.email||'—'}</td>
-    <td><span class="pill ${rolColor[u.rol]||'pgr'}">${u.rol}</span></td>
+  const usuarios=await apiFetch('GET','/usuarios')||[];
+  const rows=usuarios.map(u=>`<tr>
+    <td><strong>${u.nombre}</strong></td><td>${u.email}</td>
+    <td><span class="pill ${u.rol==='admin'?'pb':'pgr'}">${u.rol}</span></td>
     <td><span class="pill ${u.activo?'pg':'pr'}">${u.activo?'Activo':'Inactivo'}</span></td>
-    <td style="white-space:nowrap">
-      <button onclick="editarUsuario(${u.id})" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-right:4px">✏️ Editar</button>
-      <button onclick="eliminarUsuario(${u.id},'${u.nombre.replace(/'/g,"\'")}')" style="background:#fff1f2;border:1px solid #fecdd3;color:#be123c;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">🗑️</button>
-    </td>
   </tr>`).join('');
-
   document.getElementById('content').innerHTML=`
     <div class="section-card">
       <div class="sc-head"><h2>⚙️ Usuarios</h2><button class="btn-primary" id="btn-nuser">+ Nuevo usuario</button></div>
       <table class="data-table">
-        <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -1941,97 +1649,46 @@ async function renderConfig() {
         <div><span style="color:#94a3b8">Versión:</span> <strong>1.1.0</strong></div>
       </div>
     </div>`;
-
-  // Botón nuevo usuario
-  document.getElementById('btn-nuser').addEventListener('click', () => abrirModalUsuario(null));
-}
-
-function abrirModalUsuario(u) {
-  const esEdicion = !!u;
-  openModal(`
-    <div class="modal-hd">
-      <h3>${esEdicion ? '✏️ Editar usuario' : '➕ Nuevo usuario'}</h3>
-      <button class="modal-close" id="mu-c">✕</button>
-    </div>
-    <div class="form-row">
-      <div class="form-col"><label>Nombre completo</label>
-        <input type="text" id="mu-nom" value="${u?.nombre||''}" placeholder="María García"></div>
-      <div class="form-col"><label>Usuario</label>
-        <input type="text" id="mu-usuario" value="${u?.usuario||''}" placeholder="maria.garcia"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-col"><label>Email (opcional)</label>
-        <input type="email" id="mu-email" value="${u?.email||''}" placeholder="maria@hotel.com"></div>
-      <div class="form-col"><label>${esEdicion ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña'}</label>
-        <input type="password" id="mu-pass" placeholder="${esEdicion ? 'Nueva contraseña...' : 'min. 6 caracteres'}"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-col"><label>Rol</label>
-        <select id="mu-rol">${ROL_OPTS}</select>
+  document.getElementById('btn-nuser').addEventListener('click',()=>{
+    openModal(`
+      <div class="modal-hd"><h3>Nuevo usuario</h3><button class="modal-close" id="nu-c">✕</button></div>
+      <div class="form-row">
+        <div class="form-col"><label>Nombre</label><input type="text" id="nu-nom" placeholder="María García"></div>
+        <div class="form-col"><label>Email</label><input type="email" id="nu-email" placeholder="maria@hotel.com"></div>
       </div>
-      ${esEdicion ? `<div class="form-col"><label>Estado</label>
-        <select id="mu-activo">
-          <option value="1" ${u.activo?'selected':''}>Activo</option>
-          <option value="0" ${!u.activo?'selected':''}>Inactivo</option>
-        </select></div>` : ''}
-    </div>
-    <button class="confirm-btn" id="mu-ok">${esEdicion ? '💾 Guardar cambios' : '✅ Crear usuario'}</button>
-  `);
-
-  // Setear rol seleccionado
-  if (u?.rol) setTimeout(() => {
-    const sel = document.getElementById('mu-rol');
-    if (sel) sel.value = u.rol;
-  }, 0);
-
-  document.getElementById('mu-c').addEventListener('click', closeModal);
-  document.getElementById('mu-ok').addEventListener('click', async () => {
-    const nombre   = document.getElementById('mu-nom').value.trim();
-    const usuario  = document.getElementById('mu-usuario').value.trim();
-    const email    = document.getElementById('mu-email').value.trim();
-    const password = document.getElementById('mu-pass').value;
-    const rol      = document.getElementById('mu-rol').value;
-    const activo   = document.getElementById('mu-activo')?.value ?? '1';
-
-    if (!nombre || !usuario) { toast('Completá nombre y usuario', false); return; }
-    if (!esEdicion && !password) { toast('La contraseña es obligatoria', false); return; }
-
-    let r;
-    if (esEdicion) {
-      const body = { nombre, usuario, email: email||null, rol, activo: Number(activo) };
-      if (password) body.password = password;
-      r = await apiFetch('PUT', `/portal/usuarios/${u.id}`, body);
-      if (r?.ok) { toast('Usuario actualizado ✓'); closeModal(); renderConfig(); }
-      else toast(r?.error || 'Error al actualizar', false);
-    } else {
-      r = await apiFetch('POST', '/portal/usuarios', { nombre, usuario, email: email||null, password, rol });
-      if (r?.id) { toast('Usuario creado ✓'); closeModal(); renderConfig(); }
-      else toast(r?.error || 'Error al crear', false);
-    }
+      <div class="form-row">
+        <div class="form-col"><label>Contraseña</label><input type="password" id="nu-pass" placeholder="min. 6 caracteres"></div>
+        <div class="form-col"><label>Rol</label>
+          <select id="nu-rol">
+            <option value="recepcionista">Recepcionista</option>
+            <option value="mucama">Mucama</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+      </div>
+      <button class="confirm-btn" id="nu-ok">✅ Crear usuario</button>
+    `);
+    document.getElementById('nu-c').addEventListener('click',closeModal);
+    document.getElementById('nu-ok').addEventListener('click',async()=>{
+      const r=await apiFetch('POST','/usuarios',{
+        nombre:document.getElementById('nu-nom').value,
+        email:document.getElementById('nu-email').value,
+        password:document.getElementById('nu-pass').value,
+        rol:document.getElementById('nu-rol').value,
+      });
+      if(r?.id){toast('Usuario creado');closeModal();renderConfig();}
+      else toast(r?.error||'Error',false);
+    });
   });
 }
 
-async function editarUsuario(id) {
-  const usuarios = await apiFetch('GET', '/portal/usuarios') || [];
-  const u = usuarios.find(x => x.id === id);
-  if (!u) return;
-  abrirModalUsuario(u);
-}
-
-async function eliminarUsuario(id, nombre) {
-  if (!confirm(`¿Eliminar al usuario "${nombre}"? Esta acción no se puede deshacer.`)) return;
-  const r = await apiFetch('DELETE', `/portal/usuarios/${id}`);
-  if (r?.ok) { toast('Usuario eliminado'); renderConfig(); }
-  else toast(r?.error || 'Error al eliminar', false);
-}
- 
 // ══════════════════════════════════════
 // QR MODAL
 // ══════════════════════════════════════
 function showQRModal(hab) {
   const isAdmin = currentUser?.rol === 'admin';
   const url = `${window.location.origin}/huesped.html?hab=${hab.numero}`;
- 
+
   openModal(`
     <div class="modal-hd">
       <h3>📱 QR Huésped — Hab. ${hab.numero}</h3>
@@ -2056,9 +1713,9 @@ function showQRModal(hab) {
       📋 Copiar enlace
     </button>
   `);
- 
+
   document.getElementById('qr-close').addEventListener('click', closeModal);
- 
+
   // Generar QR
   setTimeout(() => {
     const canvas = document.getElementById('qr-canvas');
@@ -2066,14 +1723,14 @@ function showQRModal(hab) {
       new QRCode(canvas, { text: url, width: 200, height: 200, colorDark: '#1a2035', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
     }
   }, 100);
- 
+
   // Copiar enlace
   document.getElementById('qr-copy').addEventListener('click', () => {
     navigator.clipboard.writeText(url).then(() => toast('Enlace copiado')).catch(() => {
       prompt('Copiá este enlace:', url);
     });
   });
- 
+
   // Guardar contraseña (solo admin)
   if (isAdmin) {
     // Cargar contraseña actual
@@ -2092,7 +1749,7 @@ function showQRModal(hab) {
     });
   }
 }
- 
+
 // ══════════════════════════════════════
 // HISTORIAL
 // ══════════════════════════════════════
@@ -2110,12 +1767,12 @@ async function loadLog() {
   `);
   document.getElementById('log-c').addEventListener('click',closeModal);
 }
- 
+
 // ── SONIDO DE NOTIFICACIÓN ──
 let soundEnabled = localStorage.getItem('takua_sound') !== 'off';
 let lastSolCount = -1;
 let notifPermission = Notification?.permission || 'default';
- 
+
 // Pedir permiso de notificaciones del sistema
 // En Android DEBE ser llamado desde un gesto del usuario (click)
 async function requestNotifPermission() {
@@ -2133,10 +1790,10 @@ async function requestNotifPermission() {
     } catch(e) { console.log('Notif permission error:', e); }
   }
 }
- 
+
 function sendSystemNotif(titulo, cuerpo, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
- 
+
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
     // MÉTODO CORRECTO PARA ANDROID:
     // Enviamos mensaje al SW — el SW usa event.waitUntil() que mantiene
@@ -2164,7 +1821,7 @@ function sendSystemNotif(titulo, cuerpo, tag) {
     });
   }
 }
- 
+
 function updateSoundBtn() {
   const btn = document.getElementById('btn-sound');
   if (!btn) return;
@@ -2172,7 +1829,7 @@ function updateSoundBtn() {
   btn.title = soundEnabled ? 'Sonido activo — toca para apagar' : 'Sonido apagado — toca para activar';
   btn.style.opacity = soundEnabled ? '1' : '0.5';
 }
- 
+
 function playNotifSound() {
   if (!soundEnabled) return;
   try {
@@ -2188,7 +1845,7 @@ function playNotifSound() {
     });
   } catch(e) {}
 }
- 
+
 document.getElementById('btn-sound')?.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   localStorage.setItem('takua_sound', soundEnabled ? 'on' : 'off');
@@ -2200,7 +1857,7 @@ document.getElementById('btn-sound')?.addEventListener('click', () => {
   }
   toast(soundEnabled ? '🔔 Sonido y notificaciones activados' : '🔕 Sonido silenciado');
 });
- 
+
 async function registerPeriodicSync() {
   if (!('serviceWorker' in navigator)) return;
   try {
@@ -2215,13 +1872,13 @@ async function registerPeriodicSync() {
     }
   } catch(e) { console.log('Periodic sync no disponible:', e.message); }
 }
- 
+
 // Solicitudes con sonido y mucama
 async function loadSolicitudesAll() {
   const sols = await apiFetch('GET', '/solicitudes') || [];
   const pendientes = sols.filter(s => s.estado === 'pendiente');
   const isMucama = currentUser?.rol === 'mucama';
- 
+
   // Sonido + notificación del sistema cuando hay nuevas
   if (lastSolCount >= 0 && pendientes.length > lastSolCount) {
     playNotifSound();
@@ -2232,10 +1889,10 @@ async function loadSolicitudesAll() {
     }
   }
   lastSolCount = pendientes.length;
- 
+
   // Aplicar alerta visual en tarjetas del mapa (todos los roles)
   applyMapAlerts(pendientes);
- 
+
   // Panel de solicitudes según rol
   if (isMucama) {
     renderMucamaSolicitudes(pendientes);
@@ -2243,7 +1900,7 @@ async function loadSolicitudesAll() {
     loadSolicitudes(pendientes);
   }
 }
- 
+
 function applyMapAlerts(pendientes) {
   const habsConSol = new Set(pendientes.map(s => s.habitacion_id));
   document.querySelectorAll('.rcard[data-hid]').forEach(card => {
@@ -2262,70 +1919,36 @@ function applyMapAlerts(pendientes) {
     }
   });
 }
- 
+
 function renderMucamaSolicitudes(pendientes) {
   const el = document.getElementById('mucama-sols');
   if (!el) return;
-  if (!pendientes.length) {
-    el.innerHTML = '';
-    return;
-  }
-  el.innerHTML = `
-    <div class="section-card" style="border:2px solid #fca5a5;background:#fff7f7">
-      <div class="sc-head" style="margin-bottom:10px">
-        <h2 style="display:flex;align-items:center;gap:8px;font-size:16px;color:#dc2626">
-          🔔 Solicitudes pendientes
-          <span style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:800">${pendientes.length}</span>
-        </h2>
+  if (!pendientes.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `<div class="section-card">
+    <div class="sc-head"><h2 style="display:flex;align-items:center;gap:8px;font-size:16px">
+      🔔 Solicitudes pendientes
+      <span style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:12px">${pendientes.length}</span>
+    </h2></div>
+    ${pendientes.map(s=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #f1f5f9">
+      <div style="font-size:26px">${s.tipo==='servicio'?'🧹':'🍫'}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800">Hab. ${s.numero} — Ala ${s.ala}</div>
+        <div style="font-size:12px;color:#64748b">${s.tipo==='servicio'?'Limpieza solicitada':'Pedido de frigobar'}</div>
+        ${s.detalle?`<div style="font-size:11px;font-style:italic;color:#374151">"${s.detalle}"</div>`:''}
       </div>
-      ${pendientes.map(s=>`
-      <div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;
-                  background:#fff;border-radius:12px;border:1px solid #fecdd3;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-        <div style="font-size:32px;flex-shrink:0">${s.tipo==='servicio'?'🧹':'🍫'}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:800;color:#1e293b">Hab. ${s.numero} — Ala ${s.ala}</div>
-          <div style="font-size:13px;color:#64748b;margin-top:1px">${s.tipo==='servicio'?'Limpieza solicitada':'Pedido de frigobar'}</div>
-          ${s.detalle?`<div style="font-size:12px;font-style:italic;color:#374151;margin-top:2px">"${s.detalle}"</div>`:''}
-        </div>
-        <button data-sol-id="${s.id}"
-          style="flex-shrink:0;background:#16a34a;color:#fff;border:none;border-radius:10px;
-                 padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
-          ✅ Atendido
-        </button>
-      </div>`).join('')}
-    </div>`;
-
-  // Bind botones atendido
-  el.querySelectorAll('[data-sol-id]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      btn.textContent = '...';
-      const r = await apiFetch('PUT', `/solicitudes/${btn.dataset.solId}`, { estado: 'atendida' });
-      if (r?.ok) {
-        toast('Solicitud marcada como atendida ✓');
-        loadSolicitudesAll();
-      } else {
-        toast('Error al actualizar', false);
-        btn.disabled = false;
-        btn.textContent = '✅ Atendido';
-      }
-    });
-  });
+      <span style="background:#fef9c3;color:#b45309;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700">Pendiente</span>
+    </div>`).join('')}
+  </div>`;
 }
- 
- 
+
+
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
-if (token && currentUser) {
-  startApp();
-  // Si viene con hash (desde comandas), navegar a esa sección
-  const hash = window.location.hash.replace('#','');
-  if (hash && ['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].includes(hash)) {
-    setTimeout(() => { setActiveNav('nav-'+hash); goTo(hash); }, 100);
-  }
-} else { window.location.href = "/portal.html"; }
- 
+if (token && currentUser) startApp();
+
 // ── SERVICE WORKER (PWA) ──
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -2334,7 +1957,7 @@ if ('serviceWorker' in navigator) {
       .catch(e => console.log('SW error:', e));
   });
 }
- 
+
 // ── INSTALAR PWA ──
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
@@ -2355,7 +1978,7 @@ function installPWA() {
   }
 }
 </script>
- 
+
 <!-- Banner instalar app -->
 <div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1a2035;color:#fff;padding:14px 20px;z-index:9999;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.3)">
   <div style="display:flex;align-items:center;gap:12px">
@@ -2376,7 +1999,6 @@ function installPWA() {
     </button>
   </div>
 </div>
- 
+
 </body>
 </html>
- 
