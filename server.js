@@ -214,7 +214,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
 
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
-    const statusesPermitidos = ['libre','lista','reservada','limpia'];
+    const statusesPermitidos = ['libre','lista','reservada','limpia','libre_limpia'];
     if (!statusesPermitidos.includes(hab.status))
       return res.status(400).json({ error: `La habitación está en estado "${hab.status}". No está disponible para check-in.` });
 
@@ -626,7 +626,13 @@ function scheduleReset() {
 }
 
 // ── ARRANQUE ──
-db.initDB().then(() => {
+db.initDB().then(async () => {
+  // Migrar estado libre_limpia → libre (debería ser solo libre)
+  try {
+    const r = await db.query("UPDATE habitaciones SET status='libre' WHERE status='libre_limpia'");
+    if (r.rowCount > 0) console.log(`✅ ${r.rowCount} hab. libre_limpia → libre`);
+  } catch(e) { console.log('Migración libre_limpia:', e.message); }
+
   app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT}`));
   scheduleReset();
 }).catch(e => {
