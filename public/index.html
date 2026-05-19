@@ -295,6 +295,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
       </div>
       <div class="tb-right">
         <button class="tb-btn caja nav-admin" id="tb-caja">💰 Caja</button>
+        <button class="tb-btn" id="tb-libro" style="display:none" onclick="abrirLibro()">📋 Libro</button>
         <button class="tb-btn" id="btn-sound" title="Notificaciones de sonido" style="font-size:16px;padding:6px 10px">🔔</button>
         <div class="user-av" id="user-av">A</div>
         <button class="tb-btn" id="btn-logout" style="color:#dc2626">Salir</button>
@@ -310,6 +311,31 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 </div>
 <div class="toast" id="toast"></div>
  
+<!-- LIBRO DE NOVEDADES -->
+<div class="libro-overlay" id="libro-overlay" onclick="cerrarLibro(event)">
+  <div class="libro-panel" onclick="event.stopPropagation()">
+    <div class="libro-header">
+      <div>
+        <h3>📋 Libro de Novedades</h3>
+        <p id="libro-turno-label">Cargando...</p>
+      </div>
+      <button class="libro-close" onclick="cerrarLibro()">✕</button>
+    </div>
+    <div class="libro-body" id="libro-body">
+      <div style="text-align:center;color:#94a3b8;padding:32px;font-size:13px">Cargando novedades...</div>
+    </div>
+    <div class="libro-footer" id="libro-footer" style="display:none">
+      <div class="libro-input-row">
+        <textarea class="libro-input" id="libro-input" placeholder="Escribí una novedad..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarNovedad()}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+        <button class="libro-send" onclick="enviarNovedad()">Enviar</button>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px">Enter para enviar · Shift+Enter nueva línea</div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── STATE ──
 let token = localStorage.getItem('takua_token');
@@ -470,6 +496,9 @@ function startApp() {
   // Configuracion y Restaurante solo para admin
   document.getElementById('nav-config').style.display=isAdminUser?'':'none';
   document.getElementById('nav-restaurante').style.display=isAdminUser?'':'none';
+  // Libro visible para admin, recepcionista y mucama
+  const tbLibro = document.getElementById('tb-libro');
+  if(tbLibro && ['admin','recepcionista','mucama'].includes(rolActual)) tbLibro.style.display=''
   document.getElementById('hamburger').style.display='flex';
   setActiveNav('nav-dashboard');
   goTo('dashboard');
@@ -2314,6 +2343,88 @@ function renderMucamaSolicitudes(pendientes) {
 }
  
  
+// ══════════════════════════════════════
+// ══════════════════════════════════════
+// LIBRO DE NOVEDADES
+// ══════════════════════════════════════
+let _libroInterval = null;
+
+function abrirLibro() {
+  document.getElementById('libro-overlay').classList.add('open');
+  // Mostrar input solo para mucamas
+  const footer = document.getElementById('libro-footer');
+  if (footer) footer.style.display = isMucama ? '' : 'none';
+  cargarLibro();
+  // Refrescar cada 15s mientras está abierto
+  _libroInterval = setInterval(cargarLibro, 15000);
+}
+
+function cerrarLibro(e) {
+  if (e && e.target !== document.getElementById('libro-overlay')) return;
+  document.getElementById('libro-overlay').classList.remove('open');
+  clearInterval(_libroInterval);
+}
+
+async function cargarLibro() {
+  const body = document.getElementById('libro-body');
+  const data = await apiFetch('GET', '/libro-novedades');
+  if (!data) return;
+
+  const hoy = new Date().toLocaleDateString('es-AR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('libro-turno-label').textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
+
+  if (!data.length) {
+    body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:32px;font-size:13px">Sin novedades hoy</div>';
+    return;
+  }
+
+  // Agrupar por fecha
+  let html = '';
+  let fechaActual = '';
+  data.forEach(m => {
+    const fecha = new Date(m.created_at).toLocaleDateString('es-AR', {weekday:'long',day:'numeric',month:'long'});
+    if (fecha !== fechaActual) {
+      fechaActual = fecha;
+      html += `<div class="libro-fecha-sep"><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)}</span></div>`;
+    }
+    const hora = new Date(m.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    const esManual = m.tipo === 'manual';
+    html += `<div class="libro-msg ${esManual?'manual':'auto'}">
+      <div class="lm-autor">${m.usuario_nombre}</div>
+      ${m.habitacion_id ? `<div class="lm-hab">Hab. ${m.habitacion_id}</div>` : ''}
+      <div>${m.mensaje}</div>
+      <div class="lm-hora">${hora}</div>
+    </div>`;
+  });
+
+  const wasAtBottom = body.scrollHeight - body.scrollTop <= body.clientHeight + 50;
+  body.innerHTML = html;
+  if (wasAtBottom) body.scrollTop = body.scrollHeight;
+}
+
+async function enviarNovedad() {
+  const input = document.getElementById('libro-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const r = await apiFetch('POST', '/libro-novedades', { mensaje: msg, tipo: 'manual' });
+  if (r?.ok) {
+    input.value = '';
+    input.style.height = '42px';
+    await cargarLibro();
+    const body = document.getElementById('libro-body');
+    body.scrollTop = body.scrollHeight;
+  } else {
+    toast('Error al enviar', false);
+  }
+}
+
+// Registrar evento automático en el libro
+async function registrarLibro(mensaje, habitacion_id='') {
+  await apiFetch('POST', '/libro-novedades', {
+    mensaje, tipo: 'auto', habitacion_id
+  });
+}
+
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
