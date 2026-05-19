@@ -37,6 +37,17 @@ async function logAction(userId, userName, accion, detalle) {
   catch(e) { console.error('Log error:', e.message); }
 }
 
+// Registro automático en libro de novedades
+async function registrarLibro(userId, userName, userRol, habitacionId, mensaje) {
+  try {
+    await db.query(
+      `INSERT INTO libro_novedades (tipo, usuario_id, usuario_nombre, usuario_rol, habitacion_id, mensaje)
+       VALUES ('auto', $1, $2, $3, $4, $5)`,
+      [userId, userName, userRol, habitacionId||'', mensaje]
+    );
+  } catch(e) { /* silencioso — no interrumpir el flujo */ }
+}
+
 // ── LOGIN ────────────────────────────────────────────────────────────
 app.post('/api/login', async (req, res) => {
   try {
@@ -204,6 +215,10 @@ app.post('/api/servicios', auth, async (req, res) => {
     else notaFinal = '';
     await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', [statusFinal, notaFinal, habitacion_id]);
     await logAction(req.user.id, req.user.nombre, 'SERVICIO_HAB', `Hab ${hab.numero} - ${tipo_servicio}${necesita_mantenimiento?' [MANT]':''}`);
+    const msgServicio = necesita_mantenimiento
+      ? `🔧 Mantenimiento reportado — Hab. ${hab.numero}: ${nota_mantenimiento||'sin detalle'}`
+      : `🧹 Servicio completado — Hab. ${hab.numero} (${tipo_servicio})`;
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, msgServicio);
     res.json({ ok: true, id: r.rows[0].id, total_consumos });
   } catch(e) { console.error('Servicio error:', e); res.status(500).json({ error: e.message }); }
 });
@@ -277,6 +292,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
       }
     }
     await logAction(req.user.id, req.user.nombre, 'CHECKIN', `Hab ${hab.numero} - ${nombre}`);
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habId, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
     res.json({ ok: true, reserva_id: reserva.rows[0].id });
   } catch(e) { console.error('CHECKIN ERROR:', e); res.status(500).json({ error: 'Error en check-in: ' + e.message }); }
 });
@@ -290,6 +306,7 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
     await db.query("UPDATE habitaciones SET status='limpieza',nota='',updated_at=NOW() WHERE id=$1", [id]);
     await db.query("UPDATE reservas SET estado='finalizada' WHERE habitacion_id=$1 AND estado='activa'", [id]);
     await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}`);
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, `🚪 Check-out — Hab. ${hab.numero} (${hab.nota||''})`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1308,6 +1325,35 @@ app.put('/api/restaurante/comandas/:id/pedir-cuenta', auth, authRestaurante, asy
 });
 
 // ════════════════════════════════════════════════════════════════════
+// ── LIBRO DE NOVEDADES ──────────────────────────────────────────────
+app.get('/api/libro-novedades', auth, async (req, res) => {
+  try {
+    // Últimos 7 días
+    const rows = await db.getAll(
+      `SELECT * FROM libro_novedades
+       WHERE created_at >= NOW() - INTERVAL '7 days'
+       ORDER BY created_at ASC`
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/libro-novedades', auth, async (req, res) => {
+  try {
+    const { mensaje, tipo, habitacion_id } = req.body;
+    if (!mensaje) return res.status(400).json({ error: 'Mensaje requerido' });
+    // Solo mucamas pueden escribir mensajes manuales
+    if (tipo === 'manual' && !['mucama','admin'].includes(req.user.rol))
+      return res.status(403).json({ error: 'Sin permisos para escribir en el libro' });
+    await db.query(
+      `INSERT INTO libro_novedades (tipo, usuario_id, usuario_nombre, usuario_rol, habitacion_id, mensaje)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [tipo||'auto', req.user.id, req.user.nombre, req.user.rol, habitacion_id||'', mensaje]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── CATCH-ALL & ARRANQUE ─────────────────────────────────────════════
 // ════════════════════════════════════════════════════════════════════
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
