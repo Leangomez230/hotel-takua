@@ -1563,57 +1563,57 @@ function imprimirArqueo(){
 
   const linea=(char='-',n=32)=>char.repeat(n);
 
-  const html=`
-    <div style="font-family:'Courier New',monospace;font-size:12px;width:280px;margin:0 auto;padding:8px;line-height:1.5">
+  const html = `
+    <div style="font-family:monospace;font-size:12px;width:280px;margin:0 auto;padding:8px;line-height:1.5;color:#000">
       <div style="text-align:center;font-weight:700;font-size:14px">🏨 Hotel Takuá</div>
       <div style="text-align:center;font-size:11px">Restaurante — Arqueo de Caja</div>
-      <div style="text-align:center;font-size:11px;color:#555">${nowFull()}</div>
-      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="text-align:center;font-size:11px;color:#000">${nowFull()}</div>
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
 
       <div style="display:flex;justify-content:space-between">
-        <span>Cajero:</span><span>${turno.cajero_nombre||'—'}</span>
+        <span>Cajero:</span><span style="font-weight:600">${turno.cajero_nombre||'—'}</span>
       </div>
       <div style="display:flex;justify-content:space-between">
         <span>Apertura:</span>
-        <span>${turno.abierto_at?new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'-'}</span>
+        <span style="font-weight:600">${turno.abierto_at?new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'-'}</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span>Cierre:</span><span>${nowFull()}</span>
+        <span>Cierre:</span><span style="font-weight:600">${nowFull()}</span>
       </div>
 
-      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
 
       <div style="font-weight:700;margin-bottom:4px">RESUMEN</div>
       ${[
-        ['Fondo inicial',    fmt(fondo)],
+        ['Fondo inicial',   fmt(fondo)],
         ['Comandas cobradas',cerradas.length+''],
         ['Total bruto',      fmt(totalBruto)],
         ['Descuentos',       '- '+fmt(totalDesc)],
         ['Total neto',       fmt(totalNeto)],
         ['Total en caja',    fmt(fondo+totalNeto)],
       ].map(([l,v])=>`<div style="display:flex;justify-content:space-between">
-        <span>${l}</span><span style="font-weight:600">${v}</span>
+        <span>${l}</span><span style="font-weight:700">${v}</span>
       </div>`).join('')}
 
       ${activos.length?`
-      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
       <div style="font-weight:700;margin-bottom:4px">POR MÉTODO DE PAGO</div>
       ${activos.map(m=>`<div style="display:flex;justify-content:space-between">
-        <span>${METODO_ICONS[m]} ${m}</span><span style="font-weight:600">${fmt(porMetodo[m])}</span>
+        <span>${METODO_ICONS[m]} ${m}</span><span style="font-weight:700">${fmt(porMetodo[m])}</span>
       </div>`).join('')}`:''}
 
       ${cerradas.length?`
-      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
       <div style="font-weight:700;margin-bottom:4px">COMANDAS CERRADAS</div>
       ${cerradas.map(c=>{
         const m=S.mesas.find(ms=>ms.id===c.mesa_id);
-        return `<div style="display:flex;justify-content:space-between;border-bottom:1px dotted #eee;padding:2px 0">
+        return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #ccc;padding:2px 0">
           <span>${m?mesaLabel(m):'Mesa '+c.mesa_id} ${c.mozo_nombre?'('+c.mozo_nombre+')':''}</span>
-          <span style="font-weight:600">${fmt(c.total_final||0)}</span>
+          <span style="font-weight:700">${fmt(c.total_final||0)}</span>
         </div>`;
       }).join('')}`:''}
 
-      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
       <div style="text-align:center;font-size:11px;margin-top:4px">— Fin del arqueo —</div>
     </div>`;
 
