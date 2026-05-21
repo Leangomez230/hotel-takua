@@ -1619,11 +1619,17 @@ function imprimirArqueo(){
 
   // Usar el mismo mecanismo que imprimirComanda
   const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:320px;height:900px;border:none';
+  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:80mm;border:none';
   document.body.appendChild(iframe);
   const doc=iframe.contentDocument||iframe.contentWindow.document;
   doc.open();
-  doc.write(`<style>@media print{body{margin:0}}</style>${html}`);
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><style>
+    @page { size: 80mm auto; margin: 0mm; }
+    @media print { html, body { margin: 0; padding: 0; } }
+    body { font-family: 'Courier New', Courier, monospace; font-size: 13px;
+           width: 72mm; margin: 0 auto; padding: 3mm 0; line-height: 1.6; color: #000; }
+    div { margin: 0; padding: 0; }
+  </style></head><body>${html}</body></html>`);
   doc.close();
   setTimeout(()=>{
     iframe.contentWindow.focus();
@@ -1727,13 +1733,38 @@ function imprimirComanda(){ imprimirTicket('caja'); }
 function doPrint(){
   const body=document.getElementById('m-ticket-body').innerHTML;
   const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:320px;height:600px;border:none';
+  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:80mm;border:none';
   document.body.appendChild(iframe);
   const doc=iframe.contentDocument||iframe.contentWindow.document;
   doc.open();
-  doc.write(`<style>body{font-family:'Courier New',monospace;font-size:13px;width:280px;margin:0 auto;padding:8px}</style>${body}`);
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><style>
+    @page {
+      size: 80mm auto;
+      margin: 0mm;
+    }
+    @media print {
+      html, body { margin: 0; padding: 0; }
+      /* Ocultar encabezado y pie del navegador (URL, fecha, etc.) */
+      head { display: none; }
+    }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+      width: 72mm;
+      margin: 0 auto;
+      padding: 4mm 0;
+      line-height: 1.6;
+      color: #000;
+    }
+    div { margin: 0; padding: 0; }
+    hr { border: none; border-top: 1px dashed #000; margin: 3mm 0; }
+  </style></head><body>${body}</body></html>`);
   doc.close();
-  setTimeout(()=>{iframe.contentWindow.focus();iframe.contentWindow.print();setTimeout(()=>document.body.removeChild(iframe),1000);},300);
+  setTimeout(()=>{
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(()=>document.body.removeChild(iframe), 1500);
+  }, 400);
 }
 
 // ════════════════════════════════════
