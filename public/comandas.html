@@ -275,6 +275,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <button class="nav-btn" onclick="irA('caja')"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn" onclick="irA('finanzas')"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
     <button class="nav-btn active" id="snav-salon" onclick="snav('salon')"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
+    <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">🧾</span><span class="nl">Res. Caja</span></button>
+    <button class="nav-btn" id="snav-menu" onclick="snav('menu')" style="display:none"><span class="ni">📖</span><span class="nl">Menú</span></button>
+    <button class="nav-btn" id="snav-editor" onclick="abrirEditorSalon()" style="display:none"><span class="ni">🪑</span><span class="nl">Editor</span></button>
     <button class="nav-btn bottom" id="nav-config" onclick="irA('config')" style="display:none"><span class="ni">⚙️</span><span class="nl">Config</span></button>
   </nav>
   <div class="main-wrap">
@@ -644,6 +647,8 @@ function snav(id) {
     else if (ME.rol === 'cajero') renderCajero(el);
     else renderAdmin(el);
   }
+  if (id === 'caja') renderCajero(el);
+  if (id === 'menu') renderAdmin(el);
 }
 
 // ════════════════════════════════════
