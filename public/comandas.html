@@ -1700,26 +1700,43 @@ function imprimirTicket(tipo){
   const titulo   = esCocina ? '🍳 COCINA' : '🖨️ CAJA — Comanda';
   const showTotal= !esCocina;
 
-  document.getElementById('m-ticket-body').innerHTML=`
-    <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:4px">${titulo}</div>
-    ${esCocina?'':'<div style="text-align:center;font-size:11px;font-weight:600">TK Serrano — Restaurante</div>'}
-    <div style="text-align:center;font-size:11px;color:#555;margin-bottom:8px">${nowFull()}</div>
-    <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
-    <div style="display:flex;justify-content:space-between">
-      <b>${mesa?mesaLabel(mesa):'Mesa'}</b>
-      <span>👥 ${cmd.comensales||'—'} com.</span>
-    </div>
-    ${cmd.mozo_nombre?`<div style="font-size:11px;color:#555">👤 ${cmd.mozo_nombre}</div>`:''}
-    ${cmd.observaciones?`<div style="font-size:11px;font-style:italic;margin-top:2px">📝 ${cmd.observaciones}</div>`:''}
-    <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
-    ${items.map(it=>`
-      <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #eee">
-        <span style="flex:1"><b>${it.cantidad}x</b> ${it.nombre}${it.nota?`<br><span style="font-size:10px;color:#666">📝 ${it.nota}</span>`:''}</span>
-        ${showTotal?`<span style="font-weight:600;margin-left:8px">${fmt((it.precio_unitario||it.precio||0)*it.cantidad)}</span>`:''}
-      </div>`).join('')}
-    <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
-    ${showTotal?`<div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px"><span>TOTAL</span><span>${fmt(cmd.total)}</span></div>`:''}
-    <div style="text-align:center;font-size:10px;color:#aaa;margin-top:6px">${esCocina?'— Ticket de cocina —':'— Gracias por su visita —'}</div>`;
+  // Función para alinear texto en 32 caracteres (ancho estándar térmica 80mm)
+  const COL = 32;
+  const linea = (izq, der='', sep='.') => {
+    const espacio = COL - izq.length - der.length;
+    return izq + (espacio > 0 ? sep.repeat(espacio) : ' ') + der;
+  };
+  const centro = txt => {
+    const pad = Math.max(0, Math.floor((COL - txt.length) / 2));
+    return ' '.repeat(pad) + txt;
+  };
+  const sep = () => '-'.repeat(COL);
+  const sepD = () => '- '.repeat(COL/2);
+
+  const ticketLines = [
+    centro('TK SERRANO'),
+    esCocina ? centro('*** COCINA ***') : centro('Restaurante'),
+    centro(nowFull()),
+    sep(),
+    linea(mesa ? mesaLabel(mesa) : 'Mesa', `Coms: ${cmd.comensales||'?'}`, ' '),
+    cmd.mozo_nombre ? `Mozo: ${cmd.mozo_nombre}` : '',
+    cmd.observaciones ? `Obs: ${cmd.observaciones}` : '',
+    sep(),
+    ...items.map(it => {
+      const nombre = `${it.cantidad}x ${it.nombre}`;
+      const precio = showTotal ? fmt((it.precio_unitario||it.precio||0)*it.cantidad) : '';
+      const nota = it.nota ? `   > ${it.nota}` : '';
+      return linea(nombre.substring(0,COL-precio.length-1), precio, ' ') + (nota ? '\n' + nota : '');
+    }),
+    sep(),
+    showTotal ? linea('TOTAL', fmt(cmd.total), ' ') : '',
+    '',
+    centro(esCocina ? '* Ticket de cocina *' : '¡Gracias por su visita!'),
+    '',
+  ].filter(l => l !== null).join('\n');
+
+  document.getElementById('m-ticket-body').innerHTML =
+    `<pre style="font-family:'Courier New',monospace;font-size:13px;white-space:pre-wrap;margin:0;line-height:1.5">${ticketLines}</pre>`;
 
   document.getElementById('m-ticket').querySelector('.modal-title').textContent =
     esCocina ? '🍳 Ticket Cocina' : '🖨️ Ticket Caja';
@@ -1731,40 +1748,51 @@ function imprimirTicket(tipo){
 // Alias para compatibilidad con arqueo
 function imprimirComanda(){ imprimirTicket('caja'); }
 function doPrint(){
-  const body=document.getElementById('m-ticket-body').innerHTML;
-  const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:80mm;border:none';
+  const bodyEl = document.getElementById('m-ticket-body');
+  const body = bodyEl.innerHTML;
+
+  // Crear iframe oculto
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;border:none;visibility:hidden';
   document.body.appendChild(iframe);
-  const doc=iframe.contentDocument||iframe.contentWindow.document;
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+
   doc.open();
-  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><style>
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <style>
+    * { box-sizing: border-box; }
     @page {
       size: 80mm auto;
-      margin: 0mm;
+      margin: 3mm 4mm;
     }
     @media print {
-      html, body { margin: 0; padding: 0; }
-      /* Ocultar encabezado y pie del navegador (URL, fecha, etc.) */
-      head { display: none; }
+      html, body { margin: 0; padding: 0; width: 72mm; }
     }
     body {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 14px;
+      font-size: 13pt;
       width: 72mm;
-      margin: 0 auto;
-      padding: 4mm 0;
-      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      line-height: 1.5;
       color: #000;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
-    div { margin: 0; padding: 0; }
-    hr { border: none; border-top: 1px dashed #000; margin: 3mm 0; }
-  </style></head><body>${body}</body></html>`);
+    div { word-wrap: break-word; overflow-wrap: break-word; }
+    hr, .sep { border: none; border-top: 1px dashed #000; margin: 2mm 0; }
+    span { display: inline; }
+  </style>
+  </head><body>${body}</body></html>`);
   doc.close();
-  setTimeout(()=>{
+
+  // Esperar render y luego imprimir
+  setTimeout(() => {
+    iframe.style.visibility = 'visible';
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
-    setTimeout(()=>document.body.removeChild(iframe), 1500);
-  }, 400);
+    setTimeout(() => document.body.removeChild(iframe), 2000);
+  }, 500);
 }
 
 // ════════════════════════════════════
