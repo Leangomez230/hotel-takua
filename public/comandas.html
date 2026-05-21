@@ -861,6 +861,49 @@ function renderAdmin(el){
   const totalDesc  = cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)), 0);
   const totalComen = cerradas.reduce((s,c)=>s+(c.comensales||0), 0);
   const hayTurno   = S.turno ? (S.turno.estado==='abierto' ? '🟢 Turno abierto' : '⚪ Último turno') : 'Sin turno';
+  const porMetodo  = METODOS.reduce((acc,m)=>{acc[m]=cerradas.filter(c=>c.metodo_pago===m).reduce((s,c)=>s+(Number(c.total_final)||0),0);return acc;},{});
+
+  // Panel de caja (igual que cajero)
+  let cajaPanelHTML = '';
+  if(!S.turno){
+    cajaPanelHTML=`<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div><div class="card-title">💰 Caja cerrada</div>
+        <div style="font-size:13px;color:#64748b">Ingresá el fondo inicial para abrir el turno</div></div>
+      </div>
+      <div class="turno-form">
+        <input type="number" id="fondo-inp" placeholder="Fondo inicial ($)" min="0"/>
+        <button class="btn-green" onclick="abrirTurno()">Abrir turno</button>
+      </div></div>`;
+  } else if(S.turno.estado==='cerrado'){
+    cajaPanelHTML=`<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div><div class="card-title">📊 Resumen del turno</div>
+          <div style="font-size:12px;color:#64748b">${S.turno.abierto_at?new Date(S.turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
+          <button class="btn-ghost-light" onclick="nuevoTurno()">+ Nuevo turno</button>
+        </div>
+      </div>
+      ${renderResumenCaja(S.turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas)}</div>`;
+  } else {
+    cajaPanelHTML=`<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div class="caja-turno-info"><div class="dot-green"></div><span style="font-weight:700;font-size:17px">Caja abierta</span></div>
+          <div style="font-size:12px;color:#64748b">Cajero: ${S.turno.cajero_nombre||'—'} · Fondo: ${fmt(S.turno.fondo_inicial||0)}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost-light" onclick="toggleResumen()">Ver detalle</button>
+          <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
+          <button class="btn-red" onclick="cerrarTurno()">Cerrar turno</button>
+        </div>
+      </div>
+      <div id="resumen-detail" style="display:none">
+        ${renderResumenCaja(S.turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas)}
+      </div></div>`;
+  }
 
   el.innerHTML=`
     <div class="metricas-grid">
@@ -886,7 +929,7 @@ function renderAdmin(el){
       </div>
     </div>
 
-    <!-- Mapa -->
+    ${cajaPanelHTML}
     <div class="desplegable" id="desp-mapa">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
         <button class="desp-btn" onclick="toggleDesp('mapa')" style="flex:1;padding:0;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
