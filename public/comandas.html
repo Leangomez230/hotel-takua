@@ -1236,7 +1236,8 @@ function clickMesa(mesaId){
   S.selMesaId=mesaId;
   const cmd=S.comandas.find(c=>c.mesa_id===mesaId&&c.estado!=='cerrada');
   if(ME.rol==='cajero'||ME.rol==='admin'){
-    if(cmd&&(cmd.estado==='cuenta'||cmd.estado==='abierta')) abrirModalCobrar(cmd.id);
+    if(cmd&&cmd.estado==='cuenta') abrirModalCobrar(cmd.id);
+    else if(cmd&&cmd.estado==='abierta') verComanda(cmd.id); // puede ver e imprimir
     return;
   }
   // Mozo
