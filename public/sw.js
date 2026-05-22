@@ -1,5 +1,5 @@
-const CACHE = 'takua-v4';
-const OFFLINE_ASSETS = ['/', '/index.html', '/manifest.json', '/icon-192.png'];
+const CACHE = 'takua-v5';
+const OFFLINE_ASSETS = ['/', '/index.html', '/portal.html', '/comandas.html', '/manifest.json', '/icon-192.png'];
  
 // ── INSTALL ──
 self.addEventListener('install', event => {
@@ -25,6 +25,20 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(event.request).catch(() => new Response('{"error":"offline"}', {headers:{'Content-Type':'application/json'}})));
     return;
   }
+  // HTML siempre desde la red primero (garantiza versión actualizada)
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+  // Resto de assets: network first con fallback a cache
   event.respondWith(
     fetch(event.request)
       .then(response => {
