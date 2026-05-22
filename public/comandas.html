@@ -620,10 +620,8 @@ async function initApp(){
   }
 
   // Configurar sidebar según rol
-  if(['admin','cajero'].includes(ME.rol)){
-    document.getElementById('snav-menu').style.display='';
-  }
   if(ME.rol==='admin'){
+    document.getElementById('snav-menu').style.display='';
     document.getElementById('snav-editor').style.display='';
     const btnConfig = document.getElementById('nav-config');
     if(btnConfig) btnConfig.style.display='';
@@ -871,6 +869,38 @@ function renderCajero(el){
   </div>
   <div class="pills-row">${renderPills()}</div>
   <div style="overflow-x:auto">${renderMapa(false)}</div></div>`;
+
+  // Menú / productos — igual que admin
+  const cats=[...new Set((S.menu||[]).map(m=>m.categoria).filter(Boolean))];
+  html+=`<div class="card">
+    <div class="card-title" style="margin-bottom:14px">➕ Nuevo producto</div>
+    <div class="form-grid-2">
+      <input id="mp-nombre" placeholder="Nombre"/>
+      <input id="mp-precio" placeholder="Precio" type="number"/>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <select id="mp-cat" style="flex:1">
+        <option value="">-- Categoría --</option>
+        ${cats.map(c=>`<option>${c}</option>`).join('')}
+      </select>
+      <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+      <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+    </div>
+    <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
+  </div>
+  ${cats.map(cat=>{
+    const prods=S.menu.filter(m=>m.categoria===cat);
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:10px">${cat}</div>
+      ${prods.map(p=>`<div class="prod-row">
+        <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
+        <span class="prod-precio">${fmt(p.precio)}</span>
+        <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
+        <button class="btn-sm" style="background:${p.disponible?'#fee2e2':'#dcfce7'};color:${p.disponible?'#dc2626':'#16a34a'}"
+          onclick="toggleProducto(${p.id},${p.disponible})">${p.disponible?'❌':'✅'}</button>
+      </div>`).join('')}
+    </div>`;
+  }).join('')}`;
 
   el.innerHTML=html;
 }
