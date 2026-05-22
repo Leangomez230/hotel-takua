@@ -361,8 +361,36 @@ app.get('/api/reservas', auth, async (req, res) => {
     res.json(await db.getAll(`
       SELECT r.*,h.nombre as hab_nombre,h.numero as hab_numero,h.ala,h.tipo
       FROM reservas r LEFT JOIN habitaciones h ON r.habitacion_id=h.id
-      ORDER BY r.created_at DESC LIMIT 100
+      WHERE r.estado IN ('activa','futura')
+      ORDER BY r.entrada ASC
     `));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
+  try {
+    const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas } = req.body;
+    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
+    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
+    await db.query(
+      `UPDATE reservas SET nombre_huesped=$1,documento=$2,entrada=$3,salida=$4,noches=$5,precio_total=$6,metodo_pago=$7,notas=$8 WHERE id=$9`,
+      [nombre_huesped, documento||'', entrada, salida, noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', req.params.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'EDITAR_RESERVA', `Reserva #${req.params.id} - ${nombre_huesped}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
+  try {
+    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
+    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
+    await db.query('DELETE FROM reservas WHERE id=$1', [req.params.id]);
+    // Si la habitacion estaba reservada por esta reserva, liberarla
+    const otraReserva = await db.getOne("SELECT id FROM reservas WHERE habitacion_id=$1 AND estado IN ('activa','futura')", [reserva.habitacion_id]);
+    if (!otraReserva) {
+      await db.query("UPDATE habitaciones SET status='libre',nota='',updated_at=NOW() WHERE id=$1 AND status='reservada'", [reserva.habitacion_id]);
+    }
+    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_RESERVA', `Reserva #${req.params.id} - ${reserva.nombre_huesped}`);
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
