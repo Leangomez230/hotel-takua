@@ -1558,7 +1558,10 @@ function renderModalCobrar(cmd){
           ${METODO_ICONS[m]} ${m}</button>`).join('')}
       </div>
     </div>
-    <button class="btn-green" style="width:100%;padding:14px" onclick="confirmarCobro(${S.selCmdId},${baseTotal})">✓ Cobrar y cerrar</button>`;
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button onclick="imprimirTicketCobrar(${S.selCmdId})" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-weight:700;font-size:14px;cursor:pointer">🖨️ Imprimir</button>
+      <button class="btn-green" style="flex:2;padding:13px" onclick="confirmarCobro(${S.selCmdId},${baseTotal})">✓ Cobrar y cerrar</button>
+    </div>`;
 }
 
 function agregarExtra(){
@@ -1780,6 +1783,25 @@ async function verCliente(cmdId){
 // Categorías que NO van a cocina
 const CATS_BEBIDAS = ['bebidas','bebida','drinks'];
 function esBebida(cat){ return CATS_BEBIDAS.includes((cat||'').toLowerCase()); }
+
+function imprimirTicketCobrar(cmdId){
+  const cmd = S.comandas.find(c=>c.id===cmdId);
+  if(!cmd) return;
+  const mesa = S.mesas.find(m=>m.id===cmd.mesa_id);
+  const desc = Number(document.getElementById('cob-desc')?.value)||0;
+  const extra = _extraItems.reduce((s,i)=>s+i.precio,0);
+  const subtotal = (Number(cmd.total)||0) + extra;
+  const totalFinal = subtotal*(1-desc/100);
+  const metodo = METODOS[S._metodoIdx||0];
+  const items = (cmd.items||[]).map(i=>({nombre:i.nombre,cantidad:i.cantidad,precio:(i.precio_unitario||i.precio||0)*i.cantidad}));
+  const todosItems = [...items, ..._extraItems.map(i=>({nombre:i.nombre,cantidad:1,precio:i.precio}))];
+
+  // Reutilizar imprimirTicket pasando datos manualmente
+  const prevData = S.ticketData;
+  S.ticketData = { mesa, cmd: {...cmd, items: todosItems.map((i,idx)=>({...i,id:idx,precio_unitario:i.precio/i.cantidad})), total: subtotal, total_final: totalFinal, descuento: desc, metodo_pago: metodo }};
+  imprimirTicket('caja');
+  S.ticketData = prevData;
+}
 
 function imprimirTicket(tipo) {
   const { mesa, cmd } = S.ticketData || {};
