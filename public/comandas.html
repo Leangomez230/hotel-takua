@@ -620,7 +620,11 @@ async function initApp(){
   }
 
   // Configurar sidebar según rol
+  if(['admin','cajero'].includes(ME.rol)){
+    document.getElementById('snav-menu').style.display='';
+  }
   if(ME.rol==='admin'){
+    document.getElementById('snav-editor').style.display='';
     const btnConfig = document.getElementById('nav-config');
     if(btnConfig) btnConfig.style.display='';
   }
