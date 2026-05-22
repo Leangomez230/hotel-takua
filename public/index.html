@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Hotel Takuá</title>
  
 <!-- PWA -->
@@ -51,11 +51,11 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .nav-btn.bottom{margin-top:auto}
 .main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
 .topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
+.tb-left{flex:1;min-width:0}
+.tb-left h2{font-size:15px;font-weight:800;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-left p{font-size:11px;color:#94a3b8;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .hamburger{display:none;background:none;border:none;cursor:pointer;font-size:22px;color:#1a2035;padding:2px 6px}
-.tb-left{flex:1}
-.tb-left h2{font-size:17px;font-weight:800}
-.tb-left p{font-size:11px;color:#8a9ab0;margin-top:1px}
-.tb-right{display:flex;align-items:center;gap:8px}
 .tb-btn{display:flex;align-items:center;gap:6px;background:#f5f7fb;border:1.5px solid #e0e6ef;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;color:#1a2035;cursor:pointer;font-family:'Nunito',sans-serif}
 .tb-btn.caja{background:#f0fdf9;border-color:#a7f3e4;color:#059669}
 .user-av{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#0094ff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;flex-shrink:0}
@@ -199,7 +199,15 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 /* MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
-.modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:580px;padding:22px 20px;max-height:88vh;overflow-y:auto;animation:slideUp .22s ease}
+.modal{
+  background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:580px;
+  padding:22px 20px;
+  max-height:88vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  animation:slideUp .22s ease;
+}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .modal-hd h3{font-size:16px;font-weight:800;flex:1;margin-right:10px}
@@ -258,10 +266,12 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .mstat{border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
  
 /* RESPONSIVE */
-@media(max-width:1100px){.stat-cards{grid-template-columns:repeat(3,1fr)};:root{--room-cols:4}}
+@media(max-width:1100px){
+  .stat-cards{grid-template-columns:repeat(3,1fr)};:root{--room-cols:4}
+}
 @media(max-width:900px){
   :root{--sw:0px;--room-cols:3}
-  .sidebar{transform:translateX(-100%);width:200px;align-items:flex-start;padding:14px 10px}
+  .sidebar{transform:translateX(-100%);width:220px;align-items:flex-start;padding:14px 10px}
   .sidebar .nav-btn{width:100%;justify-content:flex-start;gap:10px;padding:0 10px;height:48px}
   .sidebar .nav-btn .nl{display:block;font-size:13px;letter-spacing:0;text-transform:none;font-weight:700}
   .sidebar .s-logo{margin-left:6px}
@@ -269,28 +279,72 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
   .main{margin-left:0!important}
   .hamburger{display:flex!important;align-items:center;justify-content:center}
   .stat-cards{grid-template-columns:repeat(2,1fr);gap:10px}
-  .section-card{padding:14px 12px}.content{padding:14px 12px}.topbar{padding:10px 14px}
+  .section-card{padding:14px 12px}
+  .content{padding:14px 12px}
+  .topbar{padding:10px 14px}
   .sc-head{flex-direction:column;align-items:flex-start}
   .caja-summary{grid-template-columns:1fr 1fr 1fr}
 }
 @media(max-width:600px){
-  .stat-cards{grid-template-columns:1fr 1fr;gap:8px};:root{--room-cols:2}
+  :root{--room-cols:2}
+  /* Layout */
+  .content{padding:10px 8px}
+  .section-card{padding:12px 10px}
+  .topbar{padding:8px 10px;gap:6px}
+  .tb-right{gap:6px}
+  /* Stat cards */
+  .stat-cards{grid-template-columns:1fr 1fr;gap:8px}
   .caja-summary{grid-template-columns:1fr 1fr}
-  .form-row{flex-direction:column;gap:8px}
-  .act-btn{min-width:100px}
+  /* Mapa */
+  .rnum{font-size:20px}
+  .sbadge{font-size:8px;padding:2px 5px}
+  .rtipo{font-size:9px}
+  .rcard-top{margin-bottom:4px}
+  .rcard{min-height:100px;padding:8px 7px 7px}
+  /* Modal — ocupa casi toda la pantalla en mobile */
+  .modal{
+    padding:16px 14px 28px;
+    max-height:93vh;
+    border-radius:18px 18px 0 0;
+  }
+  .modal-hd h3{font-size:14px;line-height:1.3}
+  .modal-hd{margin-bottom:12px;gap:8px}
+  .modal-close{padding:6px 10px;font-size:16px}
+  .stitle{margin:10px 0 6px}
+  /* Formularios */
+  .form-row{flex-direction:column;gap:8px;margin-bottom:10px}
+  .form-col input,.form-col select,.form-col textarea{
+    font-size:16px; /* evita zoom automático en iOS */
+    padding:11px 12px;
+  }
+  .act-btn{min-width:0;font-size:12px;padding:10px 8px}
+  .confirm-btn{padding:15px;font-size:15px}
+  /* Tabla reservas / huéspedes — scroll horizontal */
+  .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .data-table th,.data-table td{padding:8px 10px;font-size:12px;white-space:nowrap}
+  /* Dashboard mucama/mantenimiento */
+  .mucama-header{padding:12px 14px}
+  .mucama-header .mh-icon{font-size:26px}
+  .mucama-header h2{font-size:15px}
+  .mstat{font-size:12px;padding:8px 11px}
+  /* Caja */
+  .cb-val{font-size:15px}
+}
+@media(max-width:400px){
+  :root{--room-cols:2}
   .rnum{font-size:18px}
-  .sbadge{font-size:8px;padding:2px 4px}
-  .rtipo{font-size:8px}
-  .rcard-top{margin-bottom:3px}
+  .topbar-title{display:none} /* oculta subtítulo de fecha en pantallas muy pequeñas */
 }
 @media(max-width:900px) and (orientation:landscape){
   :root{--room-cols:4}
   .stat-cards{grid-template-columns:repeat(4,1fr)}
+  .modal{max-height:96vh}
 }
 @media(max-width:600px) and (orientation:landscape){
   :root{--room-cols:3}
   .content{padding:8px}
   .stat-cards{grid-template-columns:repeat(3,1fr)}
+  .modal{max-height:96vh}
 }
 /* ── LIBRO DE NOVEDADES ── */
 .libro-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-start;justify-content:flex-end}
@@ -344,7 +398,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
       <button class="hamburger" id="hamburger" style="display:none">☰</button>
       <div class="tb-left">
         <h2 id="tb-welcome">Hotel Takuá</h2>
-        <p id="tb-fecha"></p>
+        <p id="tb-fecha" class="topbar-title"></p>
       </div>
       <div class="tb-right">
         <button class="tb-btn caja nav-admin" id="tb-caja">💰 Caja</button>
