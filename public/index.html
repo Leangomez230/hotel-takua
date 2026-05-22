@@ -1627,23 +1627,127 @@ function showReservaModal(habId) {
 // RESERVAS PAGE
 // ══════════════════════════════════════
 async function renderReservas() {
-  const reservas=await apiFetch('GET','/reservas')||[];
-  const rows=reservas.map(r=>`<tr>
-    <td><strong>Hab. ${r.habitacion_id}</strong> <small style="color:#94a3b8">Ala ${r.ala||''}</small></td>
-    <td>${r.nombre_huesped}<br><small style="color:#94a3b8">${r.documento||''}</small></td>
-    <td>${fmtDate(r.entrada)}</td><td>${fmtDate(r.salida)}</td>
-    <td><strong>${fmt(r.precio_total)}</strong></td><td>${r.metodo_pago}</td>
-    <td><span class="pill ${r.estado==='activa'?'pg':r.estado==='futura'?'pb':'pgr'}">${r.estado}</span></td>
-  </tr>`).join('');
-  document.getElementById('content').innerHTML=`
+  const reservas = await apiFetch('GET', '/reservas') || [];
+  const isAdmin = currentUser?.rol === 'admin';
+  const isAdminOrRecep = ['admin','recepcionista'].includes(currentUser?.rol);
+
+  const rows = reservas.length
+    ? reservas.map(r => `<tr>
+        <td><strong>Hab. ${r.habitacion_id}</strong> <small style="color:#94a3b8">Ala ${r.ala||''}</small></td>
+        <td>${r.nombre_huesped}<br><small style="color:#94a3b8">${r.documento||''}</small></td>
+        <td>${fmtDate(r.entrada)}</td>
+        <td>${fmtDate(r.salida)}</td>
+        <td><strong>${fmt(r.precio_total)}</strong></td>
+        <td>${r.metodo_pago}</td>
+        <td><span class="pill ${r.estado==='activa'?'pg':r.estado==='futura'?'pb':'pgr'}">${r.estado}</span></td>
+        ${isAdminOrRecep ? `<td style="white-space:nowrap;display:flex;gap:6px">
+          <button onclick="editarReserva(${r.id})" style="background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif">✏️ Editar</button>
+          <button onclick="eliminarReserva(${r.id},'${r.nombre_huesped.replace(/'/g,"\\'")}')" style="background:#fff1f2;border:1px solid #fecdd3;color:#be123c;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif">🗑️</button>
+        </td>` : ''}
+      </tr>`).join('')
+    : `<tr><td colspan="${isAdminOrRecep?8:7}" style="text-align:center;color:#94a3b8;padding:32px">Sin reservas activas</td></tr>`;
+
+  document.getElementById('content').innerHTML = `
     <div class="section-card">
-      <div class="sc-head"><h2>📅 Reservas</h2><button class="btn-primary" id="btn-nueva-res">+ Nueva reserva</button></div>
-      <div style="overflow-x:auto"><table class="data-table">
-        <thead><tr><th>Hab.</th><th>Huésped</th><th>Entrada</th><th>Salida</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px">Sin reservas</td></tr>'}</tbody>
-      </table></div>
+      <div class="sc-head">
+        <h2>📅 Reservas</h2>
+        <button class="btn-primary" id="btn-nueva-res">+ Nueva reserva</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr>
+            <th>Hab.</th><th>Huésped</th><th>Entrada</th><th>Salida</th>
+            <th>Total</th><th>Pago</th><th>Estado</th>
+            ${isAdminOrRecep ? '<th>Acciones</th>' : ''}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
     </div>`;
-  document.getElementById('btn-nueva-res').addEventListener('click',()=>{ setActiveNav('nav-habitaciones'); goTo('habitaciones'); });
+
+  document.getElementById('btn-nueva-res').addEventListener('click', () => { setActiveNav('nav-habitaciones'); goTo('habitaciones'); });
+}
+
+async function editarReserva(id) {
+  const reservas = await apiFetch('GET', '/reservas') || [];
+  const r = reservas.find(x => x.id === id);
+  if (!r) { toast('Reserva no encontrada', false); return; }
+
+  const toDatetimeLocal = iso => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>✏️ Editar Reserva — Hab. ${r.habitacion_id}</h3>
+      <button class="modal-close" id="er-close">✕</button>
+    </div>
+    <div class="stitle">Huésped</div>
+    <div class="form-row">
+      <div class="form-col"><label>Nombre</label>
+        <input id="er-nombre" value="${r.nombre_huesped||''}">
+      </div>
+      <div class="form-col"><label>Documento</label>
+        <input id="er-doc" value="${r.documento||''}">
+      </div>
+    </div>
+    <div class="stitle">Fechas</div>
+    <div class="form-row">
+      <div class="form-col"><label>Entrada</label>
+        <input type="datetime-local" id="er-entrada" value="${toDatetimeLocal(r.entrada)}">
+      </div>
+      <div class="form-col"><label>Salida</label>
+        <input type="datetime-local" id="er-salida" value="${toDatetimeLocal(r.salida)}">
+      </div>
+    </div>
+    <div class="stitle">Pago</div>
+    <div class="form-row">
+      <div class="form-col"><label>Total ($)</label>
+        <input type="number" id="er-total" value="${r.precio_total||0}">
+      </div>
+      <div class="form-col"><label>Método de pago</label>
+        <select id="er-metodo">
+          ${['Efectivo','Tarjeta','Transferencia','Débito','Otro'].map(m=>`<option value="${m}" ${r.metodo_pago===m?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:14px"><label>Notas</label>
+      <textarea id="er-notas" rows="2" style="border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 11px;font-size:13px;font-family:'Nunito',sans-serif;width:100%;resize:vertical">${r.notas||''}</textarea>
+    </div>
+    <button class="confirm-btn" id="er-save">💾 Guardar cambios</button>
+  `);
+
+  document.getElementById('er-close').addEventListener('click', closeModal);
+  document.getElementById('er-save').addEventListener('click', async () => {
+    const entrada = document.getElementById('er-entrada').value;
+    const salida  = document.getElementById('er-salida').value;
+    if (!entrada || !salida) { toast('Completá las fechas', false); return; }
+    const noches = Math.max(1, Math.round((new Date(salida) - new Date(entrada)) / 86400000));
+    const body = {
+      nombre_huesped: document.getElementById('er-nombre').value.trim(),
+      documento:      document.getElementById('er-doc').value.trim(),
+      entrada, salida, noches,
+      precio_total:   parseFloat(document.getElementById('er-total').value) || 0,
+      metodo_pago:    document.getElementById('er-metodo').value,
+      notas:          document.getElementById('er-notas').value.trim(),
+    };
+    if (!body.nombre_huesped) { toast('Ingresá el nombre', false); return; }
+    const btn = document.getElementById('er-save');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    const res = await apiFetch('PUT', `/reservas/${id}`, body);
+    if (res?.ok) { toast('Reserva actualizada'); closeModal(); renderReservas(); }
+    else { toast(res?.error || 'Error al guardar', false); btn.disabled = false; btn.textContent = '💾 Guardar cambios'; }
+  });
+}
+
+async function eliminarReserva(id, nombre) {
+  if (!confirm(`¿Eliminar la reserva de ${nombre}?\n\nSi la habitación estaba reservada, volverá a estado "libre".`)) return;
+  const r = await apiFetch('DELETE', `/reservas/${id}`);
+  if (r?.ok) { toast('Reserva eliminada'); renderReservas(); }
+  else toast(r?.error || 'Error al eliminar', false);
 }
  
 // ══════════════════════════════════════
