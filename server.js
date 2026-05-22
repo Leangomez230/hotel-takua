@@ -32,6 +32,10 @@ function authRestaurante(req, res, next) {
   if (!['admin','mozo','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos para restaurante' });
   next();
 }
+function authHabitaciones(req, res, next) {
+  if (!['admin','recepcionista','mucama','mantenimiento'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
+  next();
+}
 async function logAction(userId, userName, accion, detalle) {
   try { await db.query('INSERT INTO log_acciones (usuario_id,usuario_nombre,accion,detalle) VALUES ($1,$2,$3,$4)', [userId, userName, accion, detalle||'']); }
   catch(e) { console.error('Log error:', e.message); }
@@ -152,6 +156,45 @@ app.put('/api/habitaciones/:id/status', auth, async (req, res) => {
     await logAction(req.user.id, req.user.nombre, 'CAMBIO_STATUS', `Hab ${req.params.id}: ${hab.status}→${status}`);
     res.json({ ok: true });
   } catch(e) { console.error('Status error:', e); res.status(500).json({ error: e.message }); }
+});
+
+// ── MANTENIMIENTO: poner/quitar mantenimiento en habitación ──────────
+app.put('/api/habitaciones/:id/mantenimiento', auth, async (req, res) => {
+  try {
+    if (!['admin','recepcionista','mantenimiento'].includes(req.user.rol))
+      return res.status(403).json({ error: 'Sin permisos' });
+    const { accion, nota } = req.body; // accion: 'iniciar' | 'finalizar'
+    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [req.params.id]);
+    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada' });
+
+    let nuevoStatus, msg;
+    if (accion === 'iniciar') {
+      // Guardamos el estado anterior en la nota para poder restaurarlo
+      nuevoStatus = 'mantenimiento';
+      const notaFinal = nota || `Mantenimiento iniciado por ${req.user.nombre}`;
+      // Guardar el status anterior en nota con prefijo especial
+      const prevStatus = ['ocupada','en_limpieza','limpia'].includes(hab.status) ? 'ocupada' : 'libre';
+      await db.query(
+        "UPDATE habitaciones SET status='mantenimiento',nota=$1,updated_at=NOW() WHERE id=$2",
+        [`[prev:${prevStatus}] ${notaFinal}`, req.params.id]
+      );
+      msg = `🔧 Mantenimiento iniciado — Hab. ${hab.numero}${nota ? ': ' + nota : ''}`;
+    } else {
+      // Restaurar estado anterior según lo guardado en nota
+      const prevMatch = (hab.nota || '').match(/^\[prev:(libre|ocupada)\]/);
+      const prevStatus = prevMatch ? prevMatch[1] : 'libre';
+      await db.query(
+        'UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3',
+        [prevStatus, '', req.params.id]
+      );
+      nuevoStatus = prevStatus;
+      msg = `✅ Mantenimiento finalizado — Hab. ${hab.numero} → ${prevStatus}`;
+    }
+
+    await logAction(req.user.id, req.user.nombre, accion === 'iniciar' ? 'MANT_INICIO' : 'MANT_FIN', `Hab ${hab.numero}`);
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, req.params.id, msg);
+    res.json({ ok: true, nuevoStatus });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 app.put('/api/habitaciones/:id', auth, async (req, res) => {
   try {
@@ -968,23 +1011,20 @@ app.put('/api/restaurante/comandas/:id/cuenta', auth, authRestaurante, async (re
 // Cerrar/cobrar comanda
 app.put('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (req, res) => {
   try {
-    const { metodo_pago, descuento, monto_recibido } = req.body;
+    const { metodo_pago, descuento } = req.body;
     const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
     if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
     if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'Ya está cerrada' });
     const desc = descuento || 0;
     const totalFinal = cmd.total * (1 - desc / 100);
-    const esEfectivo = (metodo_pago || 'Efectivo') === 'Efectivo';
-    const montoRec = esEfectivo ? (Number(monto_recibido) || totalFinal) : totalFinal;
-    const vuelto = esEfectivo ? Math.max(0, montoRec - totalFinal) : 0;
     await db.query(
       `UPDATE comandas SET estado='cerrada',metodo_pago=$1,descuento=$2,total_final=$3,
-       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW(),monto_recibido=$6,vuelto=$7 WHERE id=$8`,
-      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, montoRec, vuelto, cmd.id]
+       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW() WHERE id=$6`,
+      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, cmd.id]
     );
     await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}${vuelto>0?' vuelto:$'+vuelto:''}`);
-    res.json({ ok: true, total_final: totalFinal, vuelto });
+    await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
+    res.json({ ok: true, total_final: totalFinal });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
