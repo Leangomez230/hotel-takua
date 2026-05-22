@@ -816,6 +816,8 @@ function renderCajero(el){
 function renderResumenCaja(fondo,totalNeto,totalDesc,porMetodo,cerradas){
   const totalBruto=totalNeto+totalDesc;
   const activos=METODOS.filter(m=>porMetodo[m]>0);
+  const totalVuelto=cerradas.reduce((s,c)=>s+(Number(c.vuelto)||0),0);
+  const efectivoEnCaja=Number(fondo)+(porMetodo['Efectivo']||0)-totalVuelto;
   return `
     ${activos.length?`<div style="margin-bottom:14px">
       <div style="font-weight:600;font-size:14px;color:#475569;margin-bottom:8px">Por método de pago</div>
@@ -823,7 +825,15 @@ function renderResumenCaja(fondo,totalNeto,totalDesc,porMetodo,cerradas){
         ${activos.map(m=>`<div class="metodo-card"><div style="font-size:18px">${METODO_ICONS[m]}</div><div style="font-weight:700;font-size:15px">${fmt(porMetodo[m])}</div><div style="font-size:12px;color:#64748b">${m}</div></div>`).join('')}
       </div></div>`:''}
     <div style="background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid #e2e8f0">
-      ${[['Fondo inicial',fmt(fondo),'#475569'],['Total bruto',fmt(totalBruto),'#1e293b'],['Descuentos','- '+fmt(totalDesc),'#f97316'],['Total neto',fmt(totalNeto),'#22c55e'],['Total en caja',fmt(Number(fondo)+totalNeto),'#3b82f6']].map(([l,v,c])=>`
+      ${[
+        ['Fondo inicial',          fmt(fondo),                    '#475569'],
+        ['Total bruto',            fmt(totalBruto),               '#1e293b'],
+        ['Descuentos',             '- '+fmt(totalDesc),           '#f97316'],
+        ['Total neto cobrado',     fmt(totalNeto),                '#22c55e'],
+        totalVuelto>0?['Vuelto entregado (efectivo)','- '+fmt(totalVuelto),'#ef4444']:null,
+        ['Total en caja',          fmt(Number(fondo)+totalNeto),  '#3b82f6'],
+        totalVuelto>0?['Efectivo real en caja',      fmt(efectivoEnCaja),           '#7c3aed']:null,
+      ].filter(Boolean).map(([l,v,c])=>`
         <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9">
           <span style="font-size:14px;color:#64748b">${l}</span><span style="font-size:14px;font-weight:700;color:${c}">${v}</span>
         </div>`).join('')}
@@ -837,8 +847,9 @@ function renderResumenCaja(fondo,totalNeto,totalDesc,porMetodo,cerradas){
               ${c.mozo_nombre?`<span style="font-size:11px;color:#64748b;margin-left:6px">👤${c.mozo_nombre}</span>`:''}
               ${c.cajero_nombre?`<span style="font-size:11px;color:#64748b;margin-left:6px">💰${c.cajero_nombre}</span>`:''}
             </div>
-            <div style="text-align:right"><div style="font-weight:700;color:#22c55e">${fmt(c.total_final||0)}</div>
-              <div style="font-size:11px;color:#64748b">${METODO_ICONS[c.metodo_pago]||''} ${c.metodo_pago||'—'}</div>
+            <div style="text-align:right">
+              <div style="font-weight:700;color:#22c55e">${fmt(c.total_final||0)}</div>
+              <div style="font-size:11px;color:#64748b">${METODO_ICONS[c.metodo_pago]||''} ${c.metodo_pago||'—'}${Number(c.vuelto)>0?` · vuelto ${fmt(c.vuelto)}`:''}</div>
             </div>
           </div>`}).join('')}
       </div></div>`:''}`;
@@ -1459,6 +1470,19 @@ function renderModalCobrar(cmd){
           ${METODO_ICONS[m]} ${m}</button>`).join('')}
       </div>
     </div>
+
+    <!-- Recibido + Vuelto (solo efectivo) -->
+    <div id="cob-efectivo-box" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+      <label style="font-size:13px;font-weight:600;color:#166534;display:block;margin-bottom:8px">💵 Monto recibido</label>
+      <input type="number" id="cob-recibido" placeholder="$ Ingresá el monto" min="0"
+        oninput="updVuelto(${totalFinal})"
+        style="width:100%;padding:10px 12px;border-radius:9px;border:1.5px solid #86efac;font-size:16px;font-weight:700;font-family:'Nunito',sans-serif;margin-bottom:10px"/>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:600;color:#166534">Vuelto</span>
+        <span id="cob-vuelto" style="font-size:20px;font-weight:900;color:#16a34a">$ 0</span>
+      </div>
+    </div>
+
     <button class="btn-green" style="width:100%;padding:14px" onclick="confirmarCobro(${S.selCmdId},${baseTotal})">✓ Cobrar y cerrar</button>`;
 }
 
@@ -1497,22 +1521,42 @@ function selMetodo(idx){
     b.style.background=i===idx?'#eff6ff':'#fff';
     b.style.color=i===idx?'#3b82f6':'#475569';
   });
+  // Mostrar box de efectivo solo si el método es Efectivo
+  const box=document.getElementById('cob-efectivo-box');
+  if(box) box.style.display=METODOS[idx]==='Efectivo'?'':'none';
+}
+
+function updVuelto(totalFinal){
+  const recibido=Number(document.getElementById('cob-recibido')?.value)||0;
+  const vuelto=Math.max(0,recibido-totalFinal);
+  const el=document.getElementById('cob-vuelto');
+  if(el) el.textContent=fmt(vuelto);
 }
 
 async function confirmarCobro(cmdId,totalOrig){
   const desc=Number(document.getElementById('cob-desc')?.value)||0;
   const metodo=METODOS[S._metodoIdx||0];
   const extra=_extraItems.reduce((s,i)=>s+i.precio,0);
+  const totalFinal=(totalOrig+extra)*(1-desc/100);
+  const montoRecibido=metodo==='Efectivo'?(Number(document.getElementById('cob-recibido')?.value)||0):totalFinal;
+  if(metodo==='Efectivo' && montoRecibido < totalFinal){
+    toast('El monto recibido es menor al total','err'); return;
+  }
   loading(true);
   try{
-    // Si hay ítems extra, agregarlos a la comanda primero
     for(const it of _extraItems){
       await api('POST',`/api/restaurante/comandas/${cmdId}/items/extra`,{
         nombre:it.nombre, precio:it.precio
       });
     }
-    await api('POST',`/api/restaurante/comandas/${cmdId}/cerrar`,{metodo_pago:metodo,descuento:desc});
-    toast('Cobrado ✓','ok');
+    const res=await api('POST',`/api/restaurante/comandas/${cmdId}/cerrar`,{
+      metodo_pago:metodo, descuento:desc, monto_recibido:montoRecibido
+    });
+    if(metodo==='Efectivo' && res?.vuelto>0){
+      toast(`Cobrado ✓ — Vuelto: ${fmt(res.vuelto)}`,'ok');
+    } else {
+      toast('Cobrado ✓','ok');
+    }
     _extraItems=[];
     closeModal('m-cobrar');
     await loadAll(); renderMain();
@@ -1555,13 +1599,24 @@ function imprimirArqueo(){
   const totalDesc=cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)),0);
   const totalBruto=totalNeto+totalDesc;
   const fondo=Number(turno.fondo_inicial)||0;
+  const totalVuelto=cerradas.reduce((s,c)=>s+(Number(c.vuelto)||0),0);
   const porMetodo=METODOS.reduce((acc,m)=>{
     acc[m]=cerradas.filter(c=>c.metodo_pago===m).reduce((s,c)=>s+(Number(c.total_final)||0),0);
     return acc;
   },{});
   const activos=METODOS.filter(m=>porMetodo[m]>0);
+  const efectivoEnCaja=fondo+(porMetodo['Efectivo']||0)-totalVuelto;
 
-  const linea=(char='-',n=32)=>char.repeat(n);
+  const resumen=[
+    ['Fondo inicial',      fmt(fondo)],
+    ['Comandas cobradas',  cerradas.length+''],
+    ['Total bruto',        fmt(totalBruto)],
+    ['Descuentos',         '- '+fmt(totalDesc)],
+    ['Total neto',         fmt(totalNeto)],
+    totalVuelto>0?['Vuelto entregado', '- '+fmt(totalVuelto)]:null,
+    ['Total en caja',      fmt(fondo+totalNeto)],
+    totalVuelto>0?['Efectivo real en caja', fmt(efectivoEnCaja)]:null,
+  ].filter(Boolean);
 
   const html = `
     <div style="font-family:monospace;font-size:14px;width:280px;margin:0 auto;padding:8px;line-height:1.4;color:#000;font-weight:500">
@@ -1584,14 +1639,7 @@ function imprimirArqueo(){
       <div style="border-top:2px solid #000;margin:8px 0"></div>
 
       <div style="font-weight:bold;margin-bottom:6px;font-size:15px">RESUMEN</div>
-      ${[
-        ['Fondo inicial',   fmt(fondo)],
-        ['Comandas cobradas',cerradas.length+''],
-        ['Total bruto',      fmt(totalBruto)],
-        ['Descuentos',       '- '+fmt(totalDesc)],
-        ['Total neto',       fmt(totalNeto)],
-        ['Total en caja',    fmt(fondo+totalNeto)],
-      ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;margin-bottom:2px">
+      ${resumen.map(([l,v])=>`<div style="display:flex;justify-content:space-between;margin-bottom:2px">
         <span>${l}</span><span style="font-weight:bold">${v}</span>
       </div>`).join('')}
 
