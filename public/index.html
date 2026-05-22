@@ -159,35 +159,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
   pointer-events: none;
   animation: pulse-alert 1.5s ease-out infinite;
 }
-
-/* ALERTA MANTENIMIENTO (solo visible para rol mantenimiento) */
-@keyframes pulse-mant {
-  0%   { box-shadow: 0 0 0 0   rgba(220,38,38,.9); }
-  40%  { box-shadow: 0 0 0 12px rgba(220,38,38,.25); }
-  100% { box-shadow: 0 0 0 0   rgba(220,38,38,.0); }
-}
-.rcard.necesita-mantenimiento {
-  animation: pulse-mant 1.2s ease-out infinite, float-card 2s ease-in-out infinite;
-  border-color: #dc2626 !important;
-  border-width: 3px !important;
-  background: #fff5f5 !important;
-  z-index: 3;
-  position: relative;
-}
-.mant-badge-card {
-  display: block;
-  background: #dc2626;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  border-radius: 20px;
-  padding: 2px 8px;
-  text-align: center;
-  margin-bottom: 4px;
-  box-shadow: 0 2px 8px rgba(220,38,38,.6);
-  pointer-events: none;
-  animation: pulse-mant 1.2s ease-out infinite;
-}
 .rguest{font-size:10px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px}
 .ravail{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:2px;padding:4px 0}
 .ravail-circle{width:32px;height:32px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:16px}
@@ -545,15 +516,13 @@ function startApp() {
   // Visibilidad sidebar segun rol
   const isMucama = rolActual==='mucama';
   const isAdminUser = rolActual==='admin';
-  const isMantenimiento = rolActual==='mantenimiento';
-  // Mantenimiento: solo ve Inicio y Habitaciones
-  document.querySelectorAll('.nav-admin').forEach(el=>el.style.display=(isMucama||isMantenimiento)?'none':'');
+  document.querySelectorAll('.nav-admin').forEach(el=>el.style.display=isMucama?'none':'');
   // Configuracion y Restaurante solo para admin
   document.getElementById('nav-config').style.display=isAdminUser?'':'none';
   document.getElementById('nav-restaurante').style.display=isAdminUser?'':'none';
-  // Libro visible para admin, recepcionista y mucama (no mantenimiento)
+  // Libro visible para admin, recepcionista y mucama
   const tbLibro = document.getElementById('tb-libro');
-  if(tbLibro) tbLibro.style.display=['admin','recepcionista','mucama'].includes(rolActual)?'':'none';
+  if(tbLibro && ['admin','recepcionista','mucama'].includes(rolActual)) tbLibro.style.display=''
   document.getElementById('hamburger').style.display='flex';
   setActiveNav('nav-dashboard');
   goTo('dashboard');
@@ -571,9 +540,6 @@ function startApp() {
       habitaciones = nuevasHabs;
       if(currentPage==='dashboard')    renderDashboard();
       if(currentPage==='habitaciones') renderHabitaciones();
-    } else if(currentUser?.rol==='mantenimiento') {
-      // Aunque no haya cambios de status, refrescar alertas del mapa
-      applyMantMapAlerts();
     }
   }, 15000);
 
@@ -590,8 +556,6 @@ function goTo(page) {
   currentPage=page;
   const isMucama=currentUser?.rol==='mucama';
   if (isMucama && !['dashboard','habitaciones'].includes(page)) { goTo('dashboard'); return; }
-  const isMantenimiento=currentUser?.rol==='mantenimiento';
-  if (isMantenimiento && !['dashboard','habitaciones'].includes(page)) { goTo('dashboard'); return; }
   const pages={dashboard:renderDashboard, habitaciones:renderHabitaciones, reservas:renderReservas,
     huespedes:renderHuespedes, tienda:renderTienda, inventario:renderInventario,
     caja:renderCaja, finanzas:renderFinanzas, config:renderConfig};
@@ -781,30 +745,6 @@ async function refreshHabs() {
 // ══════════════════════════════════════
 async function renderDashboard() {
   const isMucama=currentUser?.rol==='mucama';
-  const isMantenimiento=currentUser?.rol==='mantenimiento';
-
-  if (isMantenimiento) {
-    habitaciones = await apiFetch('GET','/habitaciones') || [];
-    const mant  = habitaciones.filter(h=>h.status==='mantenimiento').length;
-    const occ   = habitaciones.filter(h=>['ocupada','en_limpieza','limpia'].includes(h.status)).length;
-    const lib   = habitaciones.filter(h=>['libre','lista','libre_limpia'].includes(h.status)).length;
-    document.getElementById('content').innerHTML=`
-      <div class="mucama-header">
-        <div class="mh-icon">🔧</div>
-        <div><h2>Bienvenido, ${currentUser?.nombre||'Mantenimiento'}</h2><p>Gestión de mantenimiento</p></div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        <div class="mstat" style="background:#fee2e2;color:#dc2626">🔧 ${mant} en mantenimiento</div>
-        <div class="mstat" style="background:#fee2e2;color:#dc2626">🔴 ${occ} ocupadas</div>
-        <div class="mstat" style="background:#dcfce7;color:#16a34a">🟢 ${lib} libres</div>
-      </div>
-      <div id="mant-alerts" style="margin-bottom:12px"></div>
-      ${mapSection()}`;
-    afterMapInsert();
-    renderMantAlerts();
-    return;
-  }
-
   if (isMucama) {
     habitaciones = await apiFetch('GET','/habitaciones') || [];
     const limp  = habitaciones.filter(h=>h.status==='limpieza').length;
@@ -1032,14 +972,7 @@ function showHabModal(hab) {
   const isMucama = rol === 'mucama';
   const isAdmin  = rol === 'admin';
   const isRecep  = rol === 'recepcionista';
-  const isMantenimiento = rol === 'mantenimiento';
   const canEdit  = isAdmin || isRecep;
-
-  // ── MODAL EXCLUSIVO PARA MANTENIMIENTO ──
-  if (isMantenimiento) {
-    showMantModal(hab);
-    return;
-  }
  
   const s = SCFG[hab.status] || {label:hab.status, color:'#374151', bg:'#f8fafc', icon:'⚪'};
   const tipoLabel = TIPOS[hab.tipo] || hab.tipo;
@@ -1258,97 +1191,6 @@ function showHabModal(hab) {
   });
 }
  
-// ══════════════════════════════════════
-// MODAL MANTENIMIENTO
-// ══════════════════════════════════════
-function showMantModal(hab) {
-  const s = SCFG[hab.status] || {label:hab.status, color:'#374151', bg:'#f8fafc', icon:'⚪'};
-  const enMant = hab.status === 'mantenimiento';
-
-  openModal(`
-    <div class="modal-hd">
-      <h3>🔧 Hab. ${hab.numero}${hab.nombre?' · '+hab.nombre:''} — Ala ${hab.ala}</h3>
-      <button class="modal-close" id="mant-close">✕</button>
-    </div>
-    <div class="status-info" style="background:${s.bg||'#f8fafc'}">
-      <span style="font-weight:800;color:${s.color||'#374151'};font-size:15px">${s.icon} ${s.label}</span>
-    </div>
-    ${enMant && hab.nota ? `<div style="background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;font-size:13px;color:#7f1d1d;margin-bottom:12px">📝 ${hab.nota.replace(/^\[prev:(libre|ocupada)\]\s*/,'')}</div>` : ''}
-
-    ${!enMant ? `
-      <div class="form-col" style="margin-bottom:14px">
-        <label>Motivo / Descripción</label>
-        <input type="text" id="mant-nota" placeholder="Ej: Cañería rota, aire acondicionado...">
-      </div>
-      <button class="confirm-btn" id="btn-mant-iniciar" style="background:linear-gradient(135deg,#dc2626,#b91c1c);width:100%">
-        🔧 Poner en mantenimiento
-      </button>
-    ` : `
-      <button class="confirm-btn" id="btn-mant-fin" style="background:linear-gradient(135deg,#059669,#047857);width:100%">
-        ✅ Mantenimiento finalizado
-      </button>
-    `}
-  `);
-
-  document.getElementById('mant-close').addEventListener('click', closeModal);
-
-  document.getElementById('btn-mant-iniciar')?.addEventListener('click', async () => {
-    const nota = document.getElementById('mant-nota')?.value.trim();
-    const btn = document.getElementById('btn-mant-iniciar');
-    btn.disabled = true; btn.textContent = 'Procesando...';
-    const r = await apiFetch('PUT', `/habitaciones/${hab.id}/mantenimiento`, { accion:'iniciar', nota });
-    if (r?.ok) { toast('Habitación en mantenimiento'); closeModal(); await refreshHabs(); renderMantAlerts(); }
-    else { toast(r?.error||'Error', false); btn.disabled=false; btn.textContent='🔧 Poner en mantenimiento'; }
-  });
-
-  document.getElementById('btn-mant-fin')?.addEventListener('click', async () => {
-    const btn = document.getElementById('btn-mant-fin');
-    btn.disabled = true; btn.textContent = 'Finalizando...';
-    const r = await apiFetch('PUT', `/habitaciones/${hab.id}/mantenimiento`, { accion:'finalizar' });
-    if (r?.ok) { toast('Mantenimiento finalizado ✓'); closeModal(); await refreshHabs(); renderMantAlerts(); }
-    else { toast(r?.error||'Error', false); btn.disabled=false; btn.textContent='✅ Mantenimiento finalizado'; }
-  });
-}
-
-function renderMantAlerts() {
-  const el = document.getElementById('mant-alerts');
-  if (!el) return;
-  const enMant = (habitaciones||[]).filter(h => h.status === 'mantenimiento');
-  if (!enMant.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `
-    <div class="section-card" style="border:2px solid #fca5a5;background:#fff5f5">
-      <div class="sc-head" style="margin-bottom:10px">
-        <h2 style="display:flex;align-items:center;gap:8px;font-size:16px;color:#dc2626">
-          🔧 En mantenimiento
-          <span style="background:#dc2626;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:800">${enMant.length}</span>
-        </h2>
-      </div>
-      ${enMant.map(h=>`
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;
-                    background:#fff;border-radius:12px;border:1px solid #fecaca;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-          <div style="font-size:32px;flex-shrink:0">🔧</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:15px;font-weight:800;color:#1e293b">Hab. ${h.numero} — Ala ${h.ala}</div>
-            <div style="font-size:12px;color:#64748b;margin-top:2px">${(h.nota||'').replace(/^\[prev:(libre|ocupada)\]\s*/,'') || 'Sin detalle'}</div>
-          </div>
-          <button data-hid="${h.id}"
-            style="flex-shrink:0;background:#059669;color:#fff;border:none;border-radius:10px;
-                   padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
-            ✅ Finalizar
-          </button>
-        </div>`).join('')}
-    </div>`;
-
-  el.querySelectorAll('[data-hid]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      btn.disabled = true; btn.textContent = '...';
-      const r = await apiFetch('PUT', `/habitaciones/${btn.dataset.hid}/mantenimiento`, { accion:'finalizar' });
-      if (r?.ok) { toast('Finalizado ✓'); await refreshHabs(); renderMantAlerts(); }
-      else { toast('Error', false); btn.disabled=false; btn.textContent='✅ Finalizar'; }
-    });
-  });
-}
-
 // ══════════════════════════════════════
 // SERVICIO DE HABITACION (MUCAMA)
 // ══════════════════════════════════════
@@ -2110,6 +1952,7 @@ const ROL_OPTS = `
   <optgroup label="— Habitaciones —">
     <option value="recepcionista">Recepcionista</option>
     <option value="mucama">Mucama / Limpieza</option>
+    <option value="mantenimiento">Mantenimiento</option>
   </optgroup>
   <optgroup label="— Restaurante —">
     <option value="mozo">Mozo</option>
@@ -2122,7 +1965,7 @@ const ROL_OPTS = `
 async function renderConfig() {
   let usuarios = await apiFetch('GET','/portal/usuarios');
   if (!usuarios) usuarios = await apiFetch('GET','/usuarios') || [];
-  const rolColor = { admin:'pb', recepcionista:'pg', mucama:'py', mozo:'pgr', cajero:'pr' };
+  const rolColor = { admin:'pb', recepcionista:'pg', mucama:'py', mozo:'pgr', cajero:'pr', mantenimiento:'pgr' };
   const rows = usuarios.map(u=>`<tr>
     <td><strong>${u.nombre}</strong></td>
     <td style="color:#64748b;font-size:12px">${u.usuario||'—'}</td>
@@ -2432,8 +2275,7 @@ async function loadSolicitudesAll() {
   const sols = await apiFetch('GET', '/solicitudes') || [];
   const pendientes = sols.filter(s => s.estado === 'pendiente');
   const isMucama = currentUser?.rol === 'mucama';
-  const isMantenimiento = currentUser?.rol === 'mantenimiento';
-
+ 
   // Sonido + notificación del sistema cuando hay nuevas
   if (lastSolCount >= 0 && pendientes.length > lastSolCount) {
     playNotifSound();
@@ -2444,18 +2286,10 @@ async function loadSolicitudesAll() {
     }
   }
   lastSolCount = pendientes.length;
-
-  // Alertas de solicitudes huésped — NO mostrar a mantenimiento
-  if (!isMantenimiento) {
-    applyMapAlerts(pendientes);
-  }
-
-  // Alertas de mantenimiento en el mapa — SOLO para mantenimiento
-  if (isMantenimiento) {
-    applyMantMapAlerts();
-    return; // mantenimiento no ve solicitudes de huésped
-  }
-
+ 
+  // Aplicar alerta visual en tarjetas del mapa (todos los roles)
+  applyMapAlerts(pendientes);
+ 
   // Panel de solicitudes según rol
   if (isMucama) {
     renderMucamaSolicitudes(pendientes);
@@ -2479,26 +2313,6 @@ function applyMapAlerts(pendientes) {
     } else {
       card.classList.remove('tiene-solicitud');
       card.querySelector('.sol-badge-card')?.remove();
-    }
-  });
-}
-
-// Alertas rojas en el mapa SOLO para rol mantenimiento
-function applyMantMapAlerts() {
-  document.querySelectorAll('.rcard[data-hid]').forEach(card => {
-    const hid = card.dataset.hid;
-    const hab = (habitaciones||[]).find(h => h.id === hid);
-    if (hab?.status === 'mantenimiento') {
-      card.classList.add('necesita-mantenimiento');
-      if (!card.querySelector('.mant-badge-card')) {
-        const badge = document.createElement('div');
-        badge.className = 'mant-badge-card';
-        badge.textContent = '🔧 MANT.';
-        card.insertBefore(badge, card.firstChild);
-      }
-    } else {
-      card.classList.remove('necesita-mantenimiento');
-      card.querySelector('.mant-badge-card')?.remove();
     }
   });
 }
