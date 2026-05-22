@@ -2105,9 +2105,14 @@ function showQRModal(hab) {
       </div>
       <div style="font-size:11px;color:#94a3b8;margin-top:6px">Esta contraseña la usa el huésped para acceder al panel QR</div>
     </div>` : ''}
-    <button class="confirm-btn" id="qr-copy" style="margin-top:14px;background:linear-gradient(135deg,#1a2035,#2d3a5a)">
-      📋 Copiar enlace
-    </button>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="confirm-btn" id="qr-copy" style="flex:1;background:linear-gradient(135deg,#1a2035,#2d3a5a)">
+        📋 Copiar enlace
+      </button>
+      <button class="confirm-btn" id="qr-print" style="flex:1;background:linear-gradient(135deg,#374151,#1f2937)">
+        🖨️ Imprimir
+      </button>
+    </div>
   `);
  
   document.getElementById('qr-close').addEventListener('click', closeModal);
@@ -2125,6 +2130,11 @@ function showQRModal(hab) {
     navigator.clipboard.writeText(url).then(() => toast('Enlace copiado')).catch(() => {
       prompt('Copiá este enlace:', url);
     });
+  });
+
+  // Imprimir QR
+  document.getElementById('qr-print').addEventListener('click', () => {
+    imprimirQR(hab.numero, url);
   });
  
   // Guardar contraseña (solo admin)
@@ -2146,6 +2156,72 @@ function showQRModal(hab) {
   }
 }
  
+// ══════════════════════════════════════
+// IMPRIMIR QR (80mm — misma impresora que comandas)
+// ══════════════════════════════════════
+function imprimirQR(numHab, url) {
+  // Capturar el canvas del QR ya generado como imagen base64
+  const qrCanvas = document.querySelector('#qr-canvas canvas') || document.querySelector('#qr-canvas img');
+  let qrSrc = '';
+  if (qrCanvas && qrCanvas.tagName === 'CANVAS') {
+    qrSrc = qrCanvas.toDataURL('image/png');
+  } else if (qrCanvas && qrCanvas.tagName === 'IMG') {
+    qrSrc = qrCanvas.src;
+  }
+
+  const hotel = 'Hotel TK Serrano';
+  const ahora = new Date().toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  const contenido = `
+    <div style="text-align:center;padding:4px 0 2px">
+      <div style="font-size:18px;font-weight:900;letter-spacing:1px">${hotel}</div>
+      <div style="font-size:11px;margin-top:2px">Panel de huésped</div>
+      <div style="border-top:1px dashed #000;margin:8px 0"></div>
+      <div style="font-size:14px;font-weight:700">HABITACIÓN ${numHab}</div>
+      <div style="border-top:1px dashed #000;margin:8px 0"></div>
+      ${qrSrc
+        ? `<img src="${qrSrc}" style="width:160px;height:160px;display:block;margin:0 auto">`
+        : `<div style="font-size:11px;color:#555">QR no disponible</div>`
+      }
+      <div style="font-size:10px;margin-top:8px;word-break:break-all;padding:0 4px">${url}</div>
+      <div style="border-top:1px dashed #000;margin:8px 0"></div>
+      <div style="font-size:10px">Escaneá el código para acceder</div>
+      <div style="font-size:10px">al panel de servicios de tu habitación</div>
+      <div style="font-size:9px;color:#555;margin-top:6px">${ahora}</div>
+    </div>
+  `;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;border:none;visibility:hidden';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <style>
+    * { box-sizing: border-box; }
+    @page { size: 80mm auto; margin: 0; }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      width: 72mm;
+      margin: 0;
+      padding: 4px;
+      line-height: 1.4;
+      color: #000;
+    }
+  </style>
+  </head><body>${contenido}</body></html>`);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.style.visibility = 'visible';
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(() => document.body.removeChild(iframe), 2000);
+  }, 500);
+}
+
 // ══════════════════════════════════════
 // HISTORIAL
 // ══════════════════════════════════════
