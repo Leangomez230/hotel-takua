@@ -238,6 +238,13 @@ await query(`
   );
 `);
 
+// Migración: columnas vuelto en comandas
+try {
+  await query('ALTER TABLE comandas ADD COLUMN IF NOT EXISTS monto_recibido REAL DEFAULT 0');
+  await query('ALTER TABLE comandas ADD COLUMN IF NOT EXISTS vuelto REAL DEFAULT 0');
+  console.log('✅ Columnas monto_recibido y vuelto listas');
+} catch(e) { console.log('columnas vuelto ya existen'); }
+
 // Seed habitaciones
   const countH = await getOne('SELECT COUNT(*) as c FROM habitaciones');
   if (parseInt(countH.c) === 0) {
