@@ -1637,9 +1637,10 @@ function imprimirArqueo(){
     setTimeout(()=>document.body.removeChild(iframe),1500);
   },400);
 }
-async function nuevoTurno(){
-  await api('POST','/api/restaurante/turno/nuevo').catch(()=>{});
-  await loadAll(); renderMain();
+function nuevoTurno(){
+  S.turno = null;
+  renderMain();
+  setTimeout(() => { document.getElementById('fondo-inp')?.focus(); }, 100);
 }
 
 // ════════════════════════════════════
