@@ -361,36 +361,8 @@ app.get('/api/reservas', auth, async (req, res) => {
     res.json(await db.getAll(`
       SELECT r.*,h.nombre as hab_nombre,h.numero as hab_numero,h.ala,h.tipo
       FROM reservas r LEFT JOIN habitaciones h ON r.habitacion_id=h.id
-      WHERE r.estado IN ('activa','futura')
-      ORDER BY r.entrada ASC
+      ORDER BY r.created_at DESC LIMIT 100
     `));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas } = req.body;
-    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
-    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-    await db.query(
-      `UPDATE reservas SET nombre_huesped=$1,documento=$2,entrada=$3,salida=$4,noches=$5,precio_total=$6,metodo_pago=$7,notas=$8 WHERE id=$9`,
-      [nombre_huesped, documento||'', entrada, salida, noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', req.params.id]
-    );
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_RESERVA', `Reserva #${req.params.id} - ${nombre_huesped}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.delete('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
-  try {
-    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
-    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-    await db.query('DELETE FROM reservas WHERE id=$1', [req.params.id]);
-    // Si la habitacion estaba reservada por esta reserva, liberarla
-    const otraReserva = await db.getOne("SELECT id FROM reservas WHERE habitacion_id=$1 AND estado IN ('activa','futura')", [reserva.habitacion_id]);
-    if (!otraReserva) {
-      await db.query("UPDATE habitaciones SET status='libre',nota='',updated_at=NOW() WHERE id=$1 AND status='reservada'", [reserva.habitacion_id]);
-    }
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_RESERVA', `Reserva #${req.params.id} - ${reserva.nombre_huesped}`);
-    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
@@ -996,20 +968,23 @@ app.put('/api/restaurante/comandas/:id/cuenta', auth, authRestaurante, async (re
 // Cerrar/cobrar comanda
 app.put('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (req, res) => {
   try {
-    const { metodo_pago, descuento } = req.body;
+    const { metodo_pago, descuento, monto_recibido } = req.body;
     const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
     if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
     if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'Ya está cerrada' });
     const desc = descuento || 0;
     const totalFinal = cmd.total * (1 - desc / 100);
+    const esEfectivo = (metodo_pago || 'Efectivo') === 'Efectivo';
+    const montoRec = esEfectivo ? (Number(monto_recibido) || totalFinal) : totalFinal;
+    const vuelto = esEfectivo ? Math.max(0, montoRec - totalFinal) : 0;
     await db.query(
       `UPDATE comandas SET estado='cerrada',metodo_pago=$1,descuento=$2,total_final=$3,
-       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW() WHERE id=$6`,
-      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, cmd.id]
+       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW(),monto_recibido=$6,vuelto=$7 WHERE id=$8`,
+      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, montoRec, vuelto, cmd.id]
     );
     await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
-    res.json({ ok: true, total_final: totalFinal });
+    await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}${vuelto>0?' vuelto:$'+vuelto:''}`);
+    res.json({ ok: true, total_final: totalFinal, vuelto });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
