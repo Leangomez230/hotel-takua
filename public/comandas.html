@@ -79,13 +79,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 /* TARJETAS MÉTRICAS estilo habitaciones */
 .metricas-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-@media(max-width:700px){.metricas-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:400px){.metricas-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.metricas-grid{grid-template-columns:repeat(2,1fr);gap:8px}}
+@media(max-width:400px){.metricas-grid{grid-template-columns:1fr 1fr;gap:6px}}
 .metrica-card{border-radius:16px;padding:16px 14px;color:#fff;position:relative;overflow:hidden;min-height:90px;border:none}
 .metrica-card::after{content:'';position:absolute;right:-15px;bottom:-15px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08)}
 .metrica-card .mc-lbl{font-size:9px;font-weight:700;letter-spacing:1px;opacity:.75;text-transform:uppercase}
 .metrica-card .mc-ttl{font-size:11px;font-weight:800;opacity:.9;margin-bottom:4px}
 .metrica-card .mc-val{font-size:clamp(18px,3vw,22px);font-weight:900;line-height:1.1}
+@media(max-width:700px){
+  .metrica-card{padding:10px 12px;min-height:70px;border-radius:12px}
+  .metrica-card .mc-lbl{font-size:8px}
+  .metrica-card .mc-ttl{font-size:10px;margin-bottom:2px}
+  .metrica-card .mc-val{font-size:16px}
+}
 .mc-total  {background:linear-gradient(135deg,#059669,#10b981)}
 .mc-cobradas{background:linear-gradient(135deg,#2563eb,#3b82f6)}
 .mc-comen  {background:linear-gradient(135deg,#f59e0b,#fbbf24)}
@@ -916,8 +922,8 @@ function renderResumenCaja(fondo,totalNeto,totalDesc,porMetodo,cerradas){
       </div></div>`:''}
     <div style="background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid #e2e8f0">
       ${[['Fondo inicial',fmt(fondo),'#475569'],['Total bruto',fmt(totalBruto),'#1e293b'],['Descuentos','- '+fmt(totalDesc),'#f97316'],['Total neto',fmt(totalNeto),'#22c55e'],['Total en caja',fmt(Number(fondo)+totalNeto),'#3b82f6']].map(([l,v,c])=>`
-        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9">
-          <span style="font-size:14px;color:#64748b">${l}</span><span style="font-size:14px;font-weight:700;color:${c}">${v}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;gap:8px">
+          <span style="font-size:13px;color:#64748b;flex-shrink:0">${l}</span><span style="font-size:13px;font-weight:700;color:${c};text-align:right">${v}</span>
         </div>`).join('')}
     </div>
     ${cerradas.length?`<div>
