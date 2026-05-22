@@ -2160,7 +2160,6 @@ function showQRModal(hab) {
 // IMPRIMIR QR (80mm — misma impresora que comandas)
 // ══════════════════════════════════════
 function imprimirQR(numHab, url) {
-  // Capturar el canvas del QR ya generado como imagen base64
   const qrCanvas = document.querySelector('#qr-canvas canvas') || document.querySelector('#qr-canvas img');
   let qrSrc = '';
   if (qrCanvas && qrCanvas.tagName === 'CANVAS') {
@@ -2169,57 +2168,44 @@ function imprimirQR(numHab, url) {
     qrSrc = qrCanvas.src;
   }
 
-  const hotel = 'Hotel TK Serrano';
   const ahora = new Date().toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
-  const contenido = `
-    <div style="text-align:center;padding:4px 0 2px">
-      <div style="font-size:18px;font-weight:900;letter-spacing:1px">${hotel}</div>
-      <div style="font-size:11px;margin-top:2px">Panel de huésped</div>
-      <div style="border-top:1px dashed #000;margin:8px 0"></div>
-      <div style="font-size:14px;font-weight:700">HABITACIÓN ${numHab}</div>
-      <div style="border-top:1px dashed #000;margin:8px 0"></div>
+  const html = `
+    <div style="font-family:monospace;font-size:16px;width:280px;margin:0 auto;padding:8px;line-height:1.5;color:#000;font-weight:500;text-align:center">
+      <div style="font-weight:bold;font-size:22px">Hotel TK Serrano</div>
+      <div style="font-size:15px;margin-top:2px">Panel de Huesped</div>
+      <div style="border-top:2px solid #000;margin:10px 0"></div>
+      <div style="font-size:20px;font-weight:bold;letter-spacing:1px">HABITACION ${numHab}</div>
+      <div style="border-top:2px solid #000;margin:10px 0"></div>
       ${qrSrc
-        ? `<img src="${qrSrc}" style="width:160px;height:160px;display:block;margin:0 auto">`
-        : `<div style="font-size:11px;color:#555">QR no disponible</div>`
+        ? `<img src="${qrSrc}" style="width:200px;height:200px;display:block;margin:0 auto">`
+        : `<div style="font-size:14px;padding:20px 0">QR no disponible</div>`
       }
-      <div style="font-size:10px;margin-top:8px;word-break:break-all;padding:0 4px">${url}</div>
-      <div style="border-top:1px dashed #000;margin:8px 0"></div>
-      <div style="font-size:10px">Escaneá el código para acceder</div>
-      <div style="font-size:10px">al panel de servicios de tu habitación</div>
-      <div style="font-size:9px;color:#555;margin-top:6px">${ahora}</div>
+      <div style="border-top:2px solid #000;margin:10px 0"></div>
+      <div style="font-size:15px">Escaneá el codigo para acceder</div>
+      <div style="font-size:15px">al panel de servicios</div>
+      <div style="font-size:13px;color:#555;margin-top:8px">${ahora}</div>
     </div>
   `;
 
   const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;border:none;visibility:hidden';
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;border:none';
   document.body.appendChild(iframe);
   const doc = iframe.contentDocument || iframe.contentWindow.document;
-
   doc.open();
-  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-  <style>
-    * { box-sizing: border-box; }
-    @page { size: 80mm auto; margin: 0; }
-    body {
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      width: 72mm;
-      margin: 0;
-      padding: 4px;
-      line-height: 1.4;
-      color: #000;
-    }
-  </style>
-  </head><body>${contenido}</body></html>`);
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><style>
+    @page { size: 80mm auto; margin: 0mm; }
+    @media print { html, body { margin: 0; padding: 0; } }
+    body { font-family: 'Courier New', Courier, monospace; font-size: 16px;
+           width: 72mm; margin: 0 auto; padding: 3mm 0; line-height: 1.5; color: #000; }
+    div { margin: 0; padding: 0; }
+  </style></head><body>${html}</body></html>`);
   doc.close();
-
   setTimeout(() => {
-    iframe.style.visibility = 'visible';
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
-    setTimeout(() => document.body.removeChild(iframe), 2000);
-  }, 500);
+    setTimeout(() => document.body.removeChild(iframe), 1500);
+  }, 400);
 }
 
 // ══════════════════════════════════════
