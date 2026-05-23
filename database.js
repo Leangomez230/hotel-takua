@@ -280,6 +280,26 @@ await query(`
 `);
 console.log('✅ Tabla inventario_movimientos lista');
 
+// Migración: sincronizar bebidas del menú → inventario
+try {
+  const bebidasMenu = await getAll(
+    "SELECT * FROM menu_restaurante WHERE es_bebida=1 AND disponible=1"
+  );
+  for (const b of bebidasMenu) {
+    // Solo migrar si no existe ya un producto con ese menu_id
+    const existe = await getOne('SELECT id FROM productos WHERE menu_id=$1', [b.id]);
+    if (!existe) {
+      const r = await query(
+        `INSERT INTO productos (nombre,categoria,precio,costo,stock,stock_minimo,unidad,modulo,menu_id,activo)
+         VALUES ($1,$2,$3,0,0,5,'unidad','bebidas',$4,1) RETURNING id`,
+        [b.nombre, b.categoria, b.precio, b.id]
+      );
+      console.log('✅ Bebida migrada al inventario:', b.nombre);
+    }
+  }
+  console.log('✅ Migración bebidas→inventario completada');
+} catch(e) { console.log('Error migrando bebidas:', e.message); }
+
 // Seed habitaciones
   const countH = await getOne('SELECT COUNT(*) as c FROM habitaciones');
   if (parseInt(countH.c) === 0) {
