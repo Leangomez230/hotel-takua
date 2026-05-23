@@ -931,8 +931,6 @@ function renderCajero(el){
         <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
         <span class="prod-precio">${fmt(p.precio)}</span>
         <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
-        <button class="btn-sm" style="background:${p.disponible?'#fee2e2':'#dcfce7'};color:${p.disponible?'#dc2626':'#16a34a'}"
-          onclick="toggleProducto(${p.id},${p.disponible})">${p.disponible?'❌':'✅'}</button>
         <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
       </div>`).join('')}
     </div>`;
@@ -1102,8 +1100,6 @@ function renderAdmin(el){
           <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
           <span class="prod-precio">${fmt(p.precio)}</span>
           <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
-          <button class="btn-sm" style="background:${p.disponible?'#fee2e2':'#dcfce7'};color:${p.disponible?'#dc2626':'#16a34a'}"
-            onclick="toggleProducto(${p.id},${p.disponible})">${p.disponible?'❌':'✅'}</button>
           <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
         </div>`).join('')}
       </div>`;
