@@ -927,40 +927,54 @@ function renderCajero(el){
           <div style="overflow-x:auto">${renderMapa(false)}</div>
         </div>
 
-        <div class="card" style="margin-bottom:12px">
-          <div class="card-title" style="margin-bottom:14px">➕ Nuevo producto</div>
-          <div class="form-grid-2">
-            <input id="mp-nombre" placeholder="Nombre"/>
-            <input id="mp-precio" placeholder="Precio" type="number"/>
+        <!-- Menú productos — desplegable -->
+        <div class="desplegable" id="desp-menu">
+          <button class="desp-btn" onclick="toggleDesp('menu')">
+            <div class="desp-left"><span class="desp-icon">🍽️</span>
+              <div>
+                <div class="desp-title">Gestión de productos</div>
+                <div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div>
+              </div>
+            </div>
+            <div class="desp-arrow" id="arr-menu">▼</div>
+          </button>
+          <div class="desp-body" id="body-menu">
+            <div class="desp-content">
+              <div style="margin-bottom:16px">
+                <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:10px">➕ Nuevo producto</div>
+                <div class="form-grid-2">
+                  <input id="mp-nombre" placeholder="Nombre"/>
+                  <input id="mp-precio" placeholder="Precio" type="number"/>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:12px">
+                  <select id="mp-cat" style="flex:1">
+                    <option value="">-- Categoría --</option>
+                    ${cats.map(c=>`<option>${c}</option>`).join('')}
+                  </select>
+                  <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+                  <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
+                  <input type="checkbox" id="mp-bebida" style="width:16px;height:16px;cursor:pointer">
+                  Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
+                </label>
+                <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
+              </div>
+              ${cats.map(cat=>{
+                const prods=S.menu.filter(m=>m.categoria===cat);
+                return `<div style="margin-bottom:12px">
+                  <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f1f5f9">${cat}</div>
+                  ${prods.map(p=>`<div class="prod-row">
+                    <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
+                    <span class="prod-precio">${fmt(p.precio)}</span>
+                    <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
+                    <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+                  </div>`).join('')}
+                </div>`;
+              }).join('')}
+            </div>
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <select id="mp-cat" style="flex:1">
-              <option value="">-- Categoría --</option>
-              ${cats.map(c=>`<option>${c}</option>`).join('')}
-            </select>
-            <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
-            <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
-          </div>
-          <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
-            <input type="checkbox" id="mp-bebida" style="width:16px;height:16px;cursor:pointer">
-            Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
-          </label>
-          <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
         </div>
-
-        ${cats.map(cat=>{
-          const prods=S.menu.filter(m=>m.categoria===cat);
-          return `<div class="card" style="margin-bottom:12px">
-            <div class="card-title" style="margin-bottom:10px">${cat}</div>
-            ${prods.map(p=>`<div class="prod-row">
-              <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
-              
-              <span class="prod-precio">${fmt(p.precio)}</span>
-              <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
-              <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
-            </div>`).join('')}
-          </div>`;
-        }).join('')}
       </div><!-- fin col-main -->
     </div>`;
 }
@@ -1115,41 +1129,55 @@ function renderAdmin(el){
           <div style="overflow-x:auto">${renderMapa(false)}</div>
         </div>
 
-        <!-- Menú productos -->
-        <div class="card" style="margin-bottom:12px">
-          <div class="card-title" style="margin-bottom:14px">➕ Nuevo producto</div>
-          <div class="form-grid-2">
-            <input id="mp-nombre" placeholder="Nombre"/>
-            <input id="mp-precio" placeholder="Precio" type="number"/>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <select id="mp-cat" style="flex:1">
-              <option value="">-- Categoría --</option>
-              ${cats.map(c=>`<option>${c}</option>`).join('')}
-            </select>
-            <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
-            <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
-          </div>
-          <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
-            <input type="checkbox" id="mp-bebida" style="width:16px;height:16px;cursor:pointer">
-            Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
-          </label>
-          <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
-        </div>
+        <!-- Menú productos — desplegable -->
+        <div class="desplegable" id="desp-menu">
+          <button class="desp-btn" onclick="toggleDesp('menu')">
+            <div class="desp-left"><span class="desp-icon">🍽️</span>
+              <div>
+                <div class="desp-title">Gestión de productos</div>
+                <div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div>
+              </div>
+            </div>
+            <div class="desp-arrow" id="arr-menu">▼</div>
+          </button>
+          <div class="desp-body" id="body-menu">
+            <div class="desp-content">
+              <div style="margin-bottom:16px">
+                <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:10px">➕ Nuevo producto</div>
+                <div class="form-grid-2">
+                  <input id="mp-nombre" placeholder="Nombre"/>
+                  <input id="mp-precio" placeholder="Precio" type="number"/>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:12px">
+                  <select id="mp-cat" style="flex:1">
+                    <option value="">-- Categoría --</option>
+                    ${cats.map(c=>`<option>${c}</option>`).join('')}
+                  </select>
+                  <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+                  <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
+                  <input type="checkbox" id="mp-bebida" style="width:16px;height:16px;cursor:pointer">
+                  Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
+                </label>
+                <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
+              </div>
 
-        ${cats.map(cat=>{
-          const prods=S.menu.filter(m=>m.categoria===cat);
-          return `<div class="card" style="margin-bottom:12px">
-            <div class="card-title" style="margin-bottom:10px">${cat}</div>
-            ${prods.map(p=>`<div class="prod-row">
-              <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
-              
-              <span class="prod-precio">${fmt(p.precio)}</span>
-              <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
-              <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
-            </div>`).join('')}
-          </div>`;
-        }).join('')}
+              ${cats.map(cat=>{
+                const prods=S.menu.filter(m=>m.categoria===cat);
+                return `<div style="margin-bottom:12px">
+                  <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f1f5f9">${cat}</div>
+                  ${prods.map(p=>`<div class="prod-row">
+                    <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
+                    <span class="prod-precio">${fmt(p.precio)}</span>
+                    <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
+                    <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+                  </div>`).join('')}
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
       </div><!-- fin col-main -->
     </div><!-- fin layout-2col -->`;
 
