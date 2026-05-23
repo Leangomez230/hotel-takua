@@ -245,6 +245,14 @@ try {
   console.log('✅ Columnas monto_recibido y vuelto listas');
 } catch(e) { console.log('columnas vuelto ya existen'); }
 
+// Migración: es_bebida en menu_restaurante
+try {
+  await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS es_bebida INTEGER DEFAULT 0');
+  // Marcar automáticamente los productos de categoría "Bebidas" como bebida
+  await query("UPDATE menu_restaurante SET es_bebida=1 WHERE LOWER(categoria) IN ('bebidas','bebida','drinks') AND es_bebida=0");
+  console.log('✅ Columna es_bebida lista');
+} catch(e) { console.log('es_bebida ya existe'); }
+
 // Seed habitaciones
   const countH = await getOne('SELECT COUNT(*) as c FROM habitaciones');
   if (parseInt(countH.c) === 0) {
