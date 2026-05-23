@@ -814,12 +814,15 @@ app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/restaurante/menu', auth, adminOnly, async (req, res) => {
+app.post('/api/restaurante/menu', auth, async (req, res) => {
   try {
-    const { nombre, categoria, precio } = req.body;
+    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
+    const { nombre, categoria, precio, es_bebida } = req.body;
     if (!nombre || !precio) return res.status(400).json({ error: 'Nombre y precio requeridos' });
-    const r = await db.query('INSERT INTO menu_restaurante (nombre,categoria,precio) VALUES ($1,$2,$3) RETURNING *',
-      [nombre, categoria||'General', precio]);
+    const r = await db.query(
+      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida) VALUES ($1,$2,$3,$4) RETURNING *',
+      [nombre, categoria||'General', precio, es_bebida?1:0]
+    );
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -827,16 +830,17 @@ app.post('/api/restaurante/menu', auth, adminOnly, async (req, res) => {
 app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, disponible } = req.body;
+    const { nombre, categoria, precio, disponible, es_bebida } = req.body;
     const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [req.params.id]);
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
     await db.query(
-      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4 WHERE id=$5',
+      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5 WHERE id=$6',
       [
         nombre     !== undefined ? nombre     : prod.nombre,
         categoria  !== undefined ? categoria  : prod.categoria,
         precio     !== undefined ? precio     : prod.precio,
         disponible !== undefined ? disponible : prod.disponible,
+        es_bebida  !== undefined ? (es_bebida?1:0) : prod.es_bebida,
         req.params.id
       ]
     );
