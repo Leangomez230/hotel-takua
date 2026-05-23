@@ -74,11 +74,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .content{padding:clamp(12px,2vw,24px);max-width:1400px;margin:0 auto;flex:1;width:100%}
 
 /* LAYOUT DOS COLUMNAS EN DESKTOP */
-.layout-2col{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
-.layout-2col .col-main{}
-.layout-2col .col-side{}
-@media(max-width:1100px){.layout-2col{grid-template-columns:1fr 340px}}
-@media(max-width:900px){.layout-2col{grid-template-columns:1fr;gap:0}}
+.layout-2col{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start}
+.col-side{position:sticky;top:20px}
+@media(max-width:1100px){.layout-2col{grid-template-columns:320px 1fr}}
+@media(max-width:900px){
+  .layout-2col{grid-template-columns:1fr;gap:0}
+  .col-side{position:static}
+}
 
 /* PILLS ESTADO */
 .pills-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -904,7 +906,12 @@ function renderCajero(el){
     </div>
 
     <div class="layout-2col">
-      <!-- Columna principal: Mesas en cuenta + Mapa + Menú -->
+      <!-- Columna lateral IZQUIERDA: Caja -->
+      <div class="col-side">
+        ${cajaHTML}
+      </div>
+
+      <!-- Columna principal DERECHA: Mesas en cuenta + Mapa + Menú -->
       <div class="col-main">
         ${cuentaHTML}
 
@@ -949,12 +956,7 @@ function renderCajero(el){
             </div>`).join('')}
           </div>`;
         }).join('')}
-      </div>
-
-      <!-- Columna lateral: Caja -->
-      <div class="col-side">
-        ${cajaHTML}
-      </div>
+      </div><!-- fin col-main -->
     </div>`;
 }
 
@@ -1075,7 +1077,23 @@ function renderAdmin(el){
     </div>
 
     <div class="layout-2col">
-      <!-- COLUMNA PRINCIPAL: Mapa + Menú -->
+      <!-- Columna lateral IZQUIERDA: Caja + Historial -->
+      <div class="col-side">
+        ${cajaPanelHTML}
+
+        <!-- Historial -->
+        <div class="desplegable" id="desp-hist">
+          <button class="desp-btn" onclick="toggleDesp('hist');loadHist()">
+            <div class="desp-left"><span class="desp-icon">📊</span>
+              <div><div class="desp-title">Historial de comandas</div><div class="desp-sub">Últimas cerradas</div></div>
+            </div>
+            <div class="desp-arrow" id="arr-hist">▼</div>
+          </button>
+          <div class="desp-body" id="body-hist"><div class="desp-content" id="hist-content"></div></div>
+        </div>
+      </div>
+
+      <!-- COLUMNA PRINCIPAL DERECHA: Mapa + Menú -->
       <div class="col-main">
         <div class="card" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1122,23 +1140,8 @@ function renderAdmin(el){
             </div>`).join('')}
           </div>`;
         }).join('')}
-
-      <!-- Columna lateral: Caja + Historial -->
-      <div class="col-side">
-        ${cajaPanelHTML}
-
-        <!-- Historial -->
-        <div class="desplegable" id="desp-hist">
-          <button class="desp-btn" onclick="toggleDesp('hist');loadHist()">
-            <div class="desp-left"><span class="desp-icon">📊</span>
-              <div><div class="desp-title">Historial de comandas</div><div class="desp-sub">Últimas cerradas</div></div>
-            </div>
-            <div class="desp-arrow" id="arr-hist">▼</div>
-          </button>
-          <div class="desp-body" id="body-hist"><div class="desp-content" id="hist-content"></div></div>
-        </div>
-      </div>
-    </div>`;
+      </div><!-- fin col-main -->
+    </div><!-- fin layout-2col -->`;
 
   S._rolNuevo='mozo';
 }
