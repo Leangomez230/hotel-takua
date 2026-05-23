@@ -943,7 +943,7 @@ function renderCajero(el){
           </div>
           <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
             <input type="checkbox" id="mp-bebida" style="width:16px;height:16px;cursor:pointer">
-            🍹 Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
+            Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
           </label>
           <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
         </div>
@@ -954,7 +954,7 @@ function renderCajero(el){
             <div class="card-title" style="margin-bottom:10px">${cat}</div>
             ${prods.map(p=>`<div class="prod-row">
               <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
-              ${p.es_bebida?`<span style="font-size:10px;background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:2px 7px;font-weight:700;white-space:nowrap">🍹 Beb.</span>`:''}
+              
               <span class="prod-precio">${fmt(p.precio)}</span>
               <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
               <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
@@ -1132,7 +1132,7 @@ function renderAdmin(el){
           </div>
           <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
             <input type="checkbox" id="mp-bebida" style="width:16px;height:16px;cursor:pointer">
-            🍹 Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
+            Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
           </label>
           <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
         </div>
@@ -1143,7 +1143,7 @@ function renderAdmin(el){
             <div class="card-title" style="margin-bottom:10px">${cat}</div>
             ${prods.map(p=>`<div class="prod-row">
               <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
-              ${p.es_bebida?`<span style="font-size:10px;background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:2px 7px;font-weight:700;white-space:nowrap">🍹 Beb.</span>`:''}
+              
               <span class="prod-precio">${fmt(p.precio)}</span>
               <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
               <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
@@ -1236,7 +1236,7 @@ function editarProducto(id){
     </div>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
       <input type="checkbox" id="ep-bebida" ${p.es_bebida?'checked':''} style="width:16px;height:16px;cursor:pointer">
-      🍹 Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
+      Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
     </label>
     <button class="btn-primary" onclick="guardarEdicionProducto()">Guardar cambios</button>`;
   openModal('m-edit-prod');
