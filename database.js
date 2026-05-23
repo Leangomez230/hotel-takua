@@ -248,10 +248,37 @@ try {
 // Migración: es_bebida en menu_restaurante
 try {
   await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS es_bebida INTEGER DEFAULT 0');
-  // Marcar automáticamente los productos de categoría "Bebidas" como bebida
   await query("UPDATE menu_restaurante SET es_bebida=1 WHERE LOWER(categoria) IN ('bebidas','bebida','drinks') AND es_bebida=0");
   console.log('✅ Columna es_bebida lista');
 } catch(e) { console.log('es_bebida ya existe'); }
+
+// Migración: inventario extendido
+try {
+  await query("ALTER TABLE productos ADD COLUMN IF NOT EXISTS unidad TEXT DEFAULT 'unidad'");
+  await query('ALTER TABLE productos ADD COLUMN IF NOT EXISTS costo REAL DEFAULT 0');
+  await query("ALTER TABLE productos ADD COLUMN IF NOT EXISTS proveedor TEXT DEFAULT ''");
+  await query("ALTER TABLE productos ADD COLUMN IF NOT EXISTS modulo TEXT DEFAULT 'general'");
+  await query('ALTER TABLE productos ADD COLUMN IF NOT EXISTS menu_id INTEGER DEFAULT NULL');
+  console.log('✅ Columnas inventario extendido listas');
+} catch(e) { console.log('columnas inventario ya existen'); }
+
+// Tabla movimientos de inventario
+await query(`
+  CREATE TABLE IF NOT EXISTS inventario_movimientos (
+    id SERIAL PRIMARY KEY,
+    producto_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL DEFAULT 'entrada',
+    cantidad REAL NOT NULL,
+    motivo TEXT DEFAULT '',
+    referencia TEXT DEFAULT '',
+    usuario_id INTEGER,
+    usuario_nombre TEXT,
+    stock_antes REAL DEFAULT 0,
+    stock_despues REAL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+console.log('✅ Tabla inventario_movimientos lista');
 
 // Seed habitaciones
   const countH = await getOne('SELECT COUNT(*) as c FROM habitaciones');
