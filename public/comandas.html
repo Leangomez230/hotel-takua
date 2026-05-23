@@ -141,7 +141,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .desp-arrow{width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:14px;color:#475569;transition:transform .25s;flex-shrink:0}
 .desp-arrow.open{transform:rotate(180deg)}
 .desp-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
-.desp-body.open{max-height:1200px}
+.desp-body.open{max-height:6000px}
 .desp-content{padding:0 16px 20px}
 
 /* CAJA */
@@ -928,17 +928,17 @@ function renderCajero(el){
         </div>
 
         <!-- Menú productos — desplegable -->
-        <div class="desplegable" id="desp-menu">
-          <button class="desp-btn" onclick="toggleDesp('menu')">
+        <div class="desplegable" id="desp-menuC">
+          <button class="desp-btn" onclick="toggleDesp('menuC')">
             <div class="desp-left"><span class="desp-icon">🍽️</span>
               <div>
                 <div class="desp-title">Gestión de productos</div>
                 <div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div>
               </div>
             </div>
-            <div class="desp-arrow" id="arr-menu">▼</div>
+            <div class="desp-arrow" id="arr-menuC">▼</div>
           </button>
-          <div class="desp-body" id="body-menu">
+          <div class="desp-body" id="body-menuC">
             <div class="desp-content">
               <div style="margin-bottom:16px">
                 <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:10px">➕ Nuevo producto</div>
