@@ -408,6 +408,8 @@ app.delete('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
   try {
     const { habitacion_id, nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas } = req.body;
     if (!habitacion_id)  return res.status(400).json({ error: 'Falta habitacion_id' });
