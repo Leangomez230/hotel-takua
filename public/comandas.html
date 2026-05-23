@@ -1206,10 +1206,25 @@ async function loadHist(){
 }
 
 function toggleDesp(id){
-  const body=document.getElementById('body-'+id);
-  const arr=document.getElementById('arr-'+id);
-  body.classList.toggle('open');
-  arr.classList.toggle('open');
+  const body = document.getElementById('body-'+id);
+  const arr  = document.getElementById('arr-'+id);
+  if(!body) return;
+  const isOpen = body.style.maxHeight && body.style.maxHeight !== '0px';
+  if(isOpen){
+    body.style.maxHeight = '0px';
+    body.style.overflow  = 'hidden';
+    if(arr) arr.style.transform = '';
+  } else {
+    body.style.maxHeight = body.scrollHeight + 'px';
+    if(arr) arr.style.transform = 'rotate(180deg)';
+    // Una vez terminada la animación, quitar el límite para que nunca corte
+    setTimeout(() => {
+      if(body.style.maxHeight !== '0px') {
+        body.style.maxHeight = 'none';
+        body.style.overflow  = 'visible';
+      }
+    }, 420);
+  }
 }
 
 function selectRolNuevo(rol){
