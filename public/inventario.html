@@ -424,23 +424,41 @@ function modalNuevoProducto() {
   openModal('<div class="modal-hd"><h3>+ Nuevo producto</h3><button class="modal-close" onclick="closeModal()">✕</button></div>'
     +'<div class="stitle">Datos básicos</div>'
     +'<div class="form-row"><div class="form-col"><label>Nombre *</label><input id="np-nom" placeholder="Ej: Agua mineral 500ml"></div>'
-    +'<div class="form-col"><label>Módulo *</label><select id="np-mod">'
+    +'<div class="form-col"><label>Módulo *</label><select id="np-mod" onchange="toggleModuloAviso(this.value)">'
     +'<option value="bebidas">🍺 Bebidas</option><option value="frigobar">🧊 Frigobar</option>'
     +'<option value="cocina">🍳 Cocina</option><option value="limpieza">🧹 Limpieza</option>'
     +'<option value="general" selected>📋 General</option></select></div></div>'
-    +'<div class="form-row"><div class="form-col"><label>Categoría</label><input id="np-cat" placeholder="Ej: Aguas, Vinos..."></div>'
+    +'<div id="aviso-bebida" style="display:none;background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 12px;font-size:12px;color:#1d4ed8;margin-bottom:12px">'
+    +'🍺 <strong>Módulo Bebidas:</strong> este producto aparecerá automáticamente en el Menú del Restaurante y se descuentará del stock cuando se agregue a una comanda.</div>'
+    +'<div class="form-row"><div class="form-col"><label>Categoría</label><input id="np-cat" placeholder="Ej: Aguas, Vinos, Gaseosas..."></div>'
     +'<div class="form-col"><label>Unidad</label><select id="np-uni">'
     +'<option value="unidad">Unidad</option><option value="kg">Kilogramos</option>'
     +'<option value="litro">Litros</option><option value="caja">Caja</option>'
     +'<option value="paquete">Paquete</option><option value="botella">Botella</option></select></div></div>'
     +'<div class="stitle">Precios</div>'
     +'<div class="form-row"><div class="form-col"><label>Costo (precio compra)</label><input type="number" id="np-costo" placeholder="0" min="0"></div>'
-    +'<div class="form-col"><label>Precio de venta</label><input type="number" id="np-precio" placeholder="0" min="0"></div></div>'
+    +'<div class="form-col"><label id="np-precio-lbl">Precio de venta</label><input type="number" id="np-precio" placeholder="0" min="0"></div></div>'
     +'<div class="stitle">Stock</div>'
     +'<div class="form-row"><div class="form-col"><label>Stock inicial</label><input type="number" id="np-stock" placeholder="0" min="0"></div>'
     +'<div class="form-col"><label>Mínimo para alerta</label><input type="number" id="np-min" placeholder="5" min="0"></div></div>'
     +'<div class="form-col" style="margin-bottom:16px"><label>Proveedor (opcional)</label><input id="np-prov" placeholder="Nombre del proveedor"></div>'
     +'<button class="confirm-btn" onclick="crearProducto()">✅ Crear producto</button>');
+
+  // Trigger para el módulo por defecto
+  toggleModuloAviso('general');
+}
+
+function toggleModuloAviso(mod) {
+  const aviso = document.getElementById('aviso-bebida');
+  const lbl   = document.getElementById('np-precio-lbl');
+  if (!aviso) return;
+  if (mod === 'bebidas') {
+    aviso.style.display = 'block';
+    if (lbl) lbl.textContent = 'Precio de venta (menú restaurante)';
+  } else {
+    aviso.style.display = 'none';
+    if (lbl) lbl.textContent = 'Precio de venta';
+  }
 }
 async function crearProducto() {
   const nombre=document.getElementById('np-nom').value.trim();
@@ -467,7 +485,13 @@ function modalEditar(id) {
     .map(m=>'<option value="'+m+'" '+(p.modulo===m?'selected':'')+'>'+MOD_ICON[m]+' '+m+'</option>').join('');
   const optUni=['unidad','kg','litro','caja','paquete','botella']
     .map(u=>'<option value="'+u+'" '+(p.unidad===u?'selected':'')+'>'+u+'</option>').join('');
+  const avisoMenu = (p.modulo==='bebidas' && p.menu_id)
+    ? '<div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 12px;font-size:12px;color:#1d4ed8;margin-bottom:12px">'
+    +'🍺 Vinculada al Menú Restaurante. Cambios de nombre, categoría y precio se sincronizan automáticamente.</div>'
+    : '';
+
   openModal('<div class="modal-hd"><h3>✏️ Editar — '+p.nombre+'</h3><button class="modal-close" onclick="closeModal()">✕</button></div>'
+    +avisoMenu
     +'<div class="form-row"><div class="form-col"><label>Nombre</label><input id="ep-nom" value="'+p.nombre+'"></div>'
     +'<div class="form-col"><label>Módulo</label><select id="ep-mod">'+optMod+'</select></div></div>'
     +'<div class="form-row"><div class="form-col"><label>Categoría</label><input id="ep-cat" value="'+(p.categoria||'')+'"></div>'
