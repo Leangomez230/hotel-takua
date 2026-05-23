@@ -558,16 +558,40 @@ app.get('/api/inventario/productos', auth, async (req, res) => {
 
 app.post('/api/inventario/productos', auth, adminOnly, async (req, res) => {
   try {
-    const { nombre, categoria, precio, costo, stock, stock_minimo, unidad, proveedor, modulo, menu_id } = req.body;
+    const { nombre, categoria, precio, costo, stock, stock_minimo, unidad, proveedor, modulo } = req.body;
     if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+    const esBebida = modulo === 'bebidas';
+    let menu_id = null;
+
+    // Si es bebida, crear también en menu_restaurante
+    if (esBebida) {
+      const menuExistente = await db.getOne(
+        'SELECT id FROM menu_restaurante WHERE LOWER(nombre)=LOWER($1)', [nombre]
+      );
+      if (menuExistente) {
+        menu_id = menuExistente.id;
+        // Actualizar precio y marcar como bebida
+        await db.query(
+          'UPDATE menu_restaurante SET precio=$1,categoria=$2,es_bebida=1,disponible=1 WHERE id=$3',
+          [precio||0, categoria||'Bebidas', menu_id]
+        );
+      } else {
+        const rm = await db.query(
+          'INSERT INTO menu_restaurante (nombre,categoria,precio,disponible,es_bebida) VALUES ($1,$2,$3,1,1) RETURNING id',
+          [nombre, categoria||'Bebidas', precio||0]
+        );
+        menu_id = rm.rows[0].id;
+      }
+    }
+
     const r = await db.query(
       `INSERT INTO productos (nombre,categoria,precio,costo,stock,stock_minimo,unidad,proveedor,modulo,menu_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
       [nombre, categoria||'General', precio||0, costo||0, stock||0, stock_minimo||5,
-       unidad||'unidad', proveedor||'', modulo||'general', menu_id||null]
+       unidad||'unidad', proveedor||'', modulo||'general', menu_id]
     );
     await logAction(req.user.id, req.user.nombre, 'CREAR_PRODUCTO', nombre);
-    // Registrar movimiento inicial si hay stock
+
     if ((stock||0) > 0) {
       await db.query(
         `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
@@ -575,7 +599,7 @@ app.post('/api/inventario/productos', auth, adminOnly, async (req, res) => {
         [r.rows[0].id, stock||0, req.user.id, req.user.nombre]
       );
     }
-    res.json({ id: r.rows[0].id });
+    res.json({ id: r.rows[0].id, menu_id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -583,23 +607,60 @@ app.put('/api/inventario/productos/:id', auth, adminOnly, async (req, res) => {
   try {
     const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [req.params.id]);
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const { nombre, categoria, precio, costo, stock_minimo, unidad, proveedor, modulo, menu_id, activo } = req.body;
+    const { nombre, categoria, precio, costo, stock_minimo, unidad, proveedor, modulo, activo } = req.body;
+    const nuevoModulo = modulo ?? prod.modulo;
+    const esBebida = nuevoModulo === 'bebidas';
+    let menu_id = prod.menu_id;
+
+    // Sincronizar con menú si es bebida
+    if (esBebida) {
+      if (menu_id) {
+        // Actualizar el registro existente en el menú
+        await db.query(
+          'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,es_bebida=1 WHERE id=$4',
+          [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio, menu_id]
+        );
+      } else {
+        // Crear en el menú si no existe
+        const rm = await db.query(
+          'INSERT INTO menu_restaurante (nombre,categoria,precio,disponible,es_bebida) VALUES ($1,$2,$3,1,1) RETURNING id',
+          [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio]
+        );
+        menu_id = rm.rows[0].id;
+      }
+      // Si se desactiva el producto, deshabilitar en el menú también
+      if (activo === 0 && menu_id) {
+        await db.query('UPDATE menu_restaurante SET disponible=0 WHERE id=$1', [menu_id]);
+      }
+    } else if (prod.modulo === 'bebidas' && nuevoModulo !== 'bebidas' && menu_id) {
+      // Si cambió de bebidas a otro módulo, deshabilitar del menú
+      await db.query('UPDATE menu_restaurante SET disponible=0,es_bebida=0 WHERE id=$1', [menu_id]);
+      menu_id = null;
+    }
+
     await db.query(
       `UPDATE productos SET nombre=$1,categoria=$2,precio=$3,costo=$4,stock_minimo=$5,
        unidad=$6,proveedor=$7,modulo=$8,menu_id=$9,activo=$10 WHERE id=$11`,
       [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio, costo??prod.costo,
        stock_minimo??prod.stock_minimo, unidad??prod.unidad, proveedor??prod.proveedor,
-       modulo??prod.modulo, menu_id??prod.menu_id, activo??prod.activo, req.params.id]
+       nuevoModulo, menu_id, activo??prod.activo, req.params.id]
     );
     await logAction(req.user.id, req.user.nombre, 'EDITAR_PRODUCTO', nombre??prod.nombre);
-    res.json({ ok: true });
+    res.json({ ok: true, menu_id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/inventario/productos/:id', auth, adminOnly, async (req, res) => {
   try {
+    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [req.params.id]);
+    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    // Soft delete en inventario
     await db.query('UPDATE productos SET activo=0 WHERE id=$1', [req.params.id]);
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_PRODUCTO', `ID ${req.params.id}`);
+    // Si tiene vinculo con el menú, deshabilitar también
+    if (prod.menu_id) {
+      await db.query('UPDATE menu_restaurante SET disponible=0 WHERE id=$1', [prod.menu_id]);
+    }
+    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_PRODUCTO', prod.nombre);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
