@@ -2817,8 +2817,10 @@ let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
-  const banner = document.getElementById('install-banner');
-  if (banner) banner.style.display = 'flex';
+  if (window.innerWidth <= 900) {
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'flex';
+  }
 });
 window.addEventListener('appinstalled', () => {
   const banner = document.getElementById('install-banner');
