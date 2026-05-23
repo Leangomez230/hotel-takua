@@ -933,6 +933,7 @@ function renderCajero(el){
         <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
         <button class="btn-sm" style="background:${p.disponible?'#fee2e2':'#dcfce7'};color:${p.disponible?'#dc2626':'#16a34a'}"
           onclick="toggleProducto(${p.id},${p.disponible})">${p.disponible?'❌':'✅'}</button>
+        <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
       </div>`).join('')}
     </div>`;
   }).join('')}`;
@@ -1103,6 +1104,7 @@ function renderAdmin(el){
           <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
           <button class="btn-sm" style="background:${p.disponible?'#fee2e2':'#dcfce7'};color:${p.disponible?'#dc2626':'#16a34a'}"
             onclick="toggleProducto(${p.id},${p.disponible})">${p.disponible?'❌':'✅'}</button>
+          <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
         </div>`).join('')}
       </div>`;
     }).join('')}
@@ -1247,6 +1249,17 @@ async function guardarProducto(){
   }catch(e){toast(e.message,'err');}
   finally{loading(false);}
 }
+async function eliminarProducto(id, nombre){
+  if(!confirm(`¿Eliminar "${nombre}"?`)) return;
+  loading(true);
+  try{
+    await api('DELETE',`/api/restaurante/menu/${id}`);
+    toast('Producto eliminado','ok');
+    await loadAll(); renderMain();
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
+
 async function toggleProducto(id,actual){
   loading(true);
   try{
