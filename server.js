@@ -378,7 +378,6 @@ app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
       [nombre_huesped, documento||'', entrada, salida,
        noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', req.params.id]
     );
-    // Sincronizar nota de la habitación con el nuevo nombre
     await db.query(
       "UPDATE habitaciones SET nota=$1,updated_at=NOW() WHERE id=$2 AND status IN ('reservada','lista')",
       [nombre_huesped, reserva.habitacion_id]
@@ -393,7 +392,6 @@ app.delete('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
     const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
     if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
     await db.query('DELETE FROM reservas WHERE id=$1', [req.params.id]);
-    // Liberar la habitación solo si no tiene otra reserva vigente
     const otraReserva = await db.getOne(
       "SELECT id FROM reservas WHERE habitacion_id=$1 AND estado IN ('activa','futura')",
       [reserva.habitacion_id]
@@ -826,17 +824,29 @@ app.post('/api/restaurante/menu', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/restaurante/menu/:id', auth, adminOnly, async (req, res) => {
+app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
   try {
+    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
     const { nombre, categoria, precio, disponible } = req.body;
-    await db.query('UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4 WHERE id=$5',
-      [nombre, categoria, precio, disponible!==undefined?disponible:1, req.params.id]);
+    const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [req.params.id]);
+    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    await db.query(
+      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4 WHERE id=$5',
+      [
+        nombre     !== undefined ? nombre     : prod.nombre,
+        categoria  !== undefined ? categoria  : prod.categoria,
+        precio     !== undefined ? precio     : prod.precio,
+        disponible !== undefined ? disponible : prod.disponible,
+        req.params.id
+      ]
+    );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/restaurante/menu/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/restaurante/menu/:id', auth, async (req, res) => {
   try {
+    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
     await db.query('DELETE FROM menu_restaurante WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1012,20 +1022,23 @@ app.put('/api/restaurante/comandas/:id/cuenta', auth, authRestaurante, async (re
 // Cerrar/cobrar comanda
 app.put('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (req, res) => {
   try {
-    const { metodo_pago, descuento } = req.body;
+    const { metodo_pago, descuento, monto_recibido } = req.body;
     const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
     if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
     if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'Ya está cerrada' });
     const desc = descuento || 0;
     const totalFinal = cmd.total * (1 - desc / 100);
+    const esEfectivo = (metodo_pago || 'Efectivo') === 'Efectivo';
+    const montoRec = esEfectivo ? (Number(monto_recibido) || totalFinal) : totalFinal;
+    const vuelto = esEfectivo ? Math.max(0, montoRec - totalFinal) : 0;
     await db.query(
       `UPDATE comandas SET estado='cerrada',metodo_pago=$1,descuento=$2,total_final=$3,
-       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW() WHERE id=$6`,
-      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, cmd.id]
+       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW(),monto_recibido=$6,vuelto=$7 WHERE id=$8`,
+      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, montoRec, vuelto, cmd.id]
     );
     await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
     await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
-    res.json({ ok: true, total_final: totalFinal });
+    res.json({ ok: true, total_final: totalFinal, vuelto });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
