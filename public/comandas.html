@@ -71,7 +71,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 
 /* CONTENT */
-.content{padding:clamp(12px,3vw,20px);max-width:760px;margin:0 auto;flex:1;width:100%}
+.content{padding:clamp(12px,2vw,24px);max-width:1400px;margin:0 auto;flex:1;width:100%}
+
+/* LAYOUT DOS COLUMNAS EN DESKTOP */
+.layout-2col{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+.layout-2col .col-main{}
+.layout-2col .col-side{}
+@media(max-width:1100px){.layout-2col{grid-template-columns:1fr 340px}}
+@media(max-width:900px){.layout-2col{grid-template-columns:1fr;gap:0}}
 
 /* PILLS ESTADO */
 .pills-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -809,35 +816,14 @@ function renderCajero(el){
   const enCuenta=S.comandas.filter(c=>c.estado==='cuenta');
   const totalNeto=cerradas.reduce((s,c)=>s+(Number(c.total_final)||0),0);
   const totalDesc=cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)),0);
+  const totalComen=cerradas.reduce((s,c)=>s+(c.comensales||0),0);
   const porMetodo=METODOS.reduce((acc,m)=>{acc[m]=cerradas.filter(c=>c.metodo_pago===m).reduce((s,c)=>s+(Number(c.total_final)||0),0);return acc;},{});
-
-  // Tarjetas métricas
-  let html=`<div class="metricas-grid">
-    <div class="metrica-card mc-total">
-      <div class="mc-lbl">Turno actual</div>
-      <div class="mc-ttl">TOTAL COBRADO</div>
-      <div class="mc-val">${fmt(totalNeto)}</div>
-    </div>
-    <div class="metrica-card mc-cobradas">
-      <div class="mc-lbl">Turno actual</div>
-      <div class="mc-ttl">COMANDAS</div>
-      <div class="mc-val">${cerradas.length}</div>
-    </div>
-    <div class="metrica-card mc-comen">
-      <div class="mc-lbl">Turno actual</div>
-      <div class="mc-ttl">COMENSALES</div>
-      <div class="mc-val">${cerradas.reduce((s,c)=>s+(c.comensales||0),0)}</div>
-    </div>
-    <div class="metrica-card mc-desc">
-      <div class="mc-lbl">Turno actual</div>
-      <div class="mc-ttl">DESCUENTOS</div>
-      <div class="mc-val">${fmt(totalDesc)}</div>
-    </div>
-  </div>`;
+  const hayTurno=turno?(turno.estado==='abierto'?'🟢 Turno abierto':'⚪ Último turno'):'Sin turno';
 
   // Panel caja
+  let cajaHTML = '';
   if(!turno){
-    html+=`<div class="card">
+    cajaHTML=`<div class="card">
       <div class="card-title" style="margin-bottom:4px">💰 Caja cerrada</div>
       <div style="font-size:13px;color:#64748b;margin-bottom:16px">Ingresá el fondo inicial para abrir el turno</div>
       <div class="turno-form">
@@ -845,26 +831,26 @@ function renderCajero(el){
         <button class="btn-green" onclick="abrirTurno()">Abrir turno</button>
       </div></div>`;
   } else if(turno.estado==='cerrado'){
-    html+=`<div class="card">
+    cajaHTML=`<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div>
           <div class="card-title">📊 Resumen del turno</div>
           <div style="font-size:12px;color:#64748b">${turno.abierto_at?new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
           <button class="btn-ghost-light" onclick="nuevoTurno()">+ Nuevo turno</button>
         </div>
       </div>
       ${renderResumenCaja(turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas)}</div>`;
   } else {
-    html+=`<div class="card">
+    cajaHTML=`<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
           <div class="caja-turno-info"><div class="dot-green"></div><span style="font-weight:700;font-size:17px">Caja abierta</span></div>
           <div style="font-size:12px;color:#64748b">Fondo: ${fmt(turno.fondo_inicial||0)}</div>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-ghost-light" onclick="toggleResumen()">Ver detalle</button>
           <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
           <button class="btn-red" onclick="cerrarTurno()">Cerrar turno</button>
@@ -876,8 +862,9 @@ function renderCajero(el){
   }
 
   // Mesas en cuenta
+  let cuentaHTML = '';
   if(enCuenta.length){
-    html+=`<div class="card"><div class="card-title" style="margin-bottom:12px">🔔 Mesas pidieron la cuenta (${enCuenta.length})</div>
+    cuentaHTML=`<div class="card"><div class="card-title" style="margin-bottom:12px">🔔 Mesas pidieron la cuenta (${enCuenta.length})</div>
     <div class="cuenta-cards">
       ${enCuenta.map(c=>{
         const mesa=S.mesas.find(m=>m.id===c.mesa_id);
@@ -894,49 +881,81 @@ function renderCajero(el){
     </div></div>`;
   }
 
-  // Mapa
-  html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <div class="card-title">🗺️ Salón</div>
-    <div style="display:flex;gap:6px">
-      <button class="btn-ghost-light btn-sm" onclick="abrirEditorSalon()">✏️ Editar</button>
-      <button class="btn-ghost-light btn-sm" onclick="loadAll().then(renderMain)">↻</button>
-    </div>
-  </div>
-  <div class="pills-row">${renderPills()}</div>
-  <div style="overflow-x:auto">${renderMapa(false)}</div></div>`;
-
-  // Menú / productos — igual que admin
   const cats=[...new Set((S.menu||[]).map(m=>m.categoria).filter(Boolean))];
-  html+=`<div class="card">
-    <div class="card-title" style="margin-bottom:14px">➕ Nuevo producto</div>
-    <div class="form-grid-2">
-      <input id="mp-nombre" placeholder="Nombre"/>
-      <input id="mp-precio" placeholder="Precio" type="number"/>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <select id="mp-cat" style="flex:1">
-        <option value="">-- Categoría --</option>
-        ${cats.map(c=>`<option>${c}</option>`).join('')}
-      </select>
-      <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
-      <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
-    </div>
-    <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
-  </div>
-  ${cats.map(cat=>{
-    const prods=S.menu.filter(m=>m.categoria===cat);
-    return `<div class="card" style="margin-bottom:12px">
-      <div class="card-title" style="margin-bottom:10px">${cat}</div>
-      ${prods.map(p=>`<div class="prod-row">
-        <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
-        <span class="prod-precio">${fmt(p.precio)}</span>
-        <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
-        <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
-      </div>`).join('')}
-    </div>`;
-  }).join('')}`;
 
-  el.innerHTML=html;
+  el.innerHTML=`
+    <div class="metricas-grid" style="margin-bottom:16px">
+      <div class="metrica-card mc-total">
+        <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">TOTAL COBRADO</div>
+        <div class="mc-val">${fmt(totalNeto)}</div>
+      </div>
+      <div class="metrica-card mc-cobradas">
+        <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">COMANDAS</div>
+        <div class="mc-val">${cerradas.length}</div>
+      </div>
+      <div class="metrica-card mc-comen">
+        <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">COMENSALES</div>
+        <div class="mc-val">${totalComen}</div>
+      </div>
+      <div class="metrica-card mc-desc">
+        <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">DESCUENTOS</div>
+        <div class="mc-val">${fmt(totalDesc)}</div>
+      </div>
+    </div>
+
+    <div class="layout-2col">
+      <!-- Columna principal: Mesas en cuenta + Mapa + Menú -->
+      <div class="col-main">
+        ${cuentaHTML}
+
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title">🗺️ Salón</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-ghost-light btn-sm" onclick="abrirEditorSalon()">✏️ Editar</button>
+              <button class="btn-ghost-light btn-sm" onclick="loadAll().then(renderMain)">↻</button>
+            </div>
+          </div>
+          <div class="pills-row">${renderPills()}</div>
+          <div style="overflow-x:auto">${renderMapa(false)}</div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:14px">➕ Nuevo producto</div>
+          <div class="form-grid-2">
+            <input id="mp-nombre" placeholder="Nombre"/>
+            <input id="mp-precio" placeholder="Precio" type="number"/>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <select id="mp-cat" style="flex:1">
+              <option value="">-- Categoría --</option>
+              ${cats.map(c=>`<option>${c}</option>`).join('')}
+            </select>
+            <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+            <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+          </div>
+          <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
+        </div>
+
+        ${cats.map(cat=>{
+          const prods=S.menu.filter(m=>m.categoria===cat);
+          return `<div class="card" style="margin-bottom:12px">
+            <div class="card-title" style="margin-bottom:10px">${cat}</div>
+            ${prods.map(p=>`<div class="prod-row">
+              <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
+              <span class="prod-precio">${fmt(p.precio)}</span>
+              <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
+              <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+            </div>`).join('')}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Columna lateral: Caja -->
+      <div class="col-side">
+        ${cajaHTML}
+      </div>
+    </div>`;
 }
 
 function renderResumenCaja(fondo,totalNeto,totalDesc,porMetodo,cerradas){
@@ -1032,7 +1051,7 @@ function renderAdmin(el){
   }
 
   el.innerHTML=`
-    <div class="metricas-grid">
+    <div class="metricas-grid" style="margin-bottom:16px">
       <div class="metrica-card mc-total">
         <div class="mc-lbl">${hayTurno}</div>
         <div class="mc-ttl">TOTAL COBRADO</div>
@@ -1055,68 +1074,72 @@ function renderAdmin(el){
       </div>
     </div>
 
-    ${cajaPanelHTML}
-    <div class="desplegable" id="desp-mapa">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
-        <button class="desp-btn" onclick="toggleDesp('mapa')" style="flex:1;padding:0;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-          <div class="desp-left"><span class="desp-icon">🗺️</span>
-            <div><div class="desp-title">Mapa del salón</div><div class="desp-sub">${activas} activas</div></div>
+    <div class="layout-2col">
+      <!-- COLUMNA PRINCIPAL: Mapa + Menú -->
+      <div class="col-main">
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div>
+              <div class="card-title">🗺️ Salón</div>
+              <div style="font-size:12px;color:#64748b">${activas} activas</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button onclick="abrirEditorSalon()" style="padding:7px 14px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;font-weight:700;color:#475569;cursor:pointer">✏️ Editar</button>
+              <button onclick="loadAll().then(renderMain)" style="padding:7px 10px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;color:#475569;cursor:pointer">↻</button>
+            </div>
           </div>
-          <div class="desp-arrow" id="arr-mapa">▼</div>
-        </button>
-        <button onclick="abrirEditorSalon()" style="margin-left:12px;padding:7px 14px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;font-weight:700;color:#475569;cursor:pointer;white-space:nowrap;flex-shrink:0">✏️ Editar</button>
-      </div>
-      <div class="desp-body" id="body-mapa">
-        <div class="desp-content">
           <div class="pills-row">${renderPills()}</div>
           <div style="overflow-x:auto">${renderMapa(false)}</div>
         </div>
-      </div>
-    </div>
 
-    <!-- Menú -->
-    <div class="card">
-      <div class="card-title" style="margin-bottom:14px">➕ Nuevo producto</div>
-      <div class="form-grid-2">
-        <input id="mp-nombre" placeholder="Nombre"/>
-        <input id="mp-precio" placeholder="Precio" type="number"/>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <select id="mp-cat" style="flex:1">
-          <option value="">-- Categoría --</option>
-          ${cats.map(c=>`<option>${c}</option>`).join('')}
-        </select>
-        <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
-        <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
-      </div>
-      <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
-    </div>
-
-    ${cats.map(cat=>{
-      const prods=S.menu.filter(m=>m.categoria===cat);
-      return `<div class="card" style="margin-bottom:12px">
-        <div class="card-title" style="margin-bottom:10px">${cat}</div>
-        ${prods.map(p=>`<div class="prod-row">
-          <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
-          <span class="prod-precio">${fmt(p.precio)}</span>
-          <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
-          <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
-        </div>`).join('')}
-      </div>`;
-    }).join('')}
-
-    <!-- Historial -->
-    <div class="desplegable" id="desp-hist">
-      <button class="desp-btn" onclick="toggleDesp('hist');loadHist()">
-        <div class="desp-left"><span class="desp-icon">📊</span>
-          <div><div class="desp-title">Historial de comandas</div><div class="desp-sub">Últimas cerradas</div></div>
+        <!-- Menú productos -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:14px">➕ Nuevo producto</div>
+          <div class="form-grid-2">
+            <input id="mp-nombre" placeholder="Nombre"/>
+            <input id="mp-precio" placeholder="Precio" type="number"/>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <select id="mp-cat" style="flex:1">
+              <option value="">-- Categoría --</option>
+              ${cats.map(c=>`<option>${c}</option>`).join('')}
+            </select>
+            <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+            <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+          </div>
+          <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
         </div>
-        <div class="desp-arrow" id="arr-hist">▼</div>
-      </button>
-      <div class="desp-body" id="body-hist"><div class="desp-content" id="hist-content"></div></div>
+
+        ${cats.map(cat=>{
+          const prods=S.menu.filter(m=>m.categoria===cat);
+          return `<div class="card" style="margin-bottom:12px">
+            <div class="card-title" style="margin-bottom:10px">${cat}</div>
+            ${prods.map(p=>`<div class="prod-row">
+              <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
+              <span class="prod-precio">${fmt(p.precio)}</span>
+              <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
+              <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+            </div>`).join('')}
+          </div>`;
+        }).join('')}
+
+      <!-- Columna lateral: Caja + Historial -->
+      <div class="col-side">
+        ${cajaPanelHTML}
+
+        <!-- Historial -->
+        <div class="desplegable" id="desp-hist">
+          <button class="desp-btn" onclick="toggleDesp('hist');loadHist()">
+            <div class="desp-left"><span class="desp-icon">📊</span>
+              <div><div class="desp-title">Historial de comandas</div><div class="desp-sub">Últimas cerradas</div></div>
+            </div>
+            <div class="desp-arrow" id="arr-hist">▼</div>
+          </button>
+          <div class="desp-body" id="body-hist"><div class="desp-content" id="hist-content"></div></div>
+        </div>
+      </div>
     </div>`;
 
-  // Inicializar rol seleccionado
   S._rolNuevo='mozo';
 }
 
