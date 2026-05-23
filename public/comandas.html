@@ -1442,12 +1442,19 @@ async function verComanda(cmdId){
           ${cats.map((c,i)=>`<button class="cat-pill${i===0?' active':''}" onclick="filtrarCatsMC('${c}',this)">${c}</button>`).join('')}
         </div>
         <div class="menu-grid" id="mc-menu-grid">
-          ${S.menu.filter(m=>m.disponible).map(m=>`
-            <div class="menu-item-btn" onclick="agregarItemConNota(${cmdId},${m.id})">
+          ${S.menu.filter(m=>m.disponible).map(m=>{
+            const sinStock = m.sin_stock === true || m.sin_stock == 1;
+            return `<div class="menu-item-btn${sinStock?' disabled':''}"
+              style="${sinStock?'opacity:.4;cursor:not-allowed;filter:grayscale(.5)':''}"
+              onclick="${sinStock?'':'agregarItemConNota('+cmdId+','+m.id+')'}">
               <div class="menu-item-nombre">${m.nombre}</div>
               <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${m.categoria}</div>
-              <div class="menu-item-precio">${fmt(m.precio)}</div>
-            </div>`).join('')}
+              ${sinStock
+                ? '<div style="font-size:10px;color:#dc2626;font-weight:700">Sin stock</div>'
+                : '<div class="menu-item-precio">'+fmt(m.precio)+'</div>'
+              }
+            </div>`;
+          }).join('')}
         </div>
       </div>`;
     }
