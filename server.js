@@ -544,15 +544,180 @@ app.post('/api/tienda/venta', auth, async (req, res) => {
   } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
-// ── INVENTARIO ───────────────────────────────────────────────────────
-app.get('/api/inventario/alertas', auth, async (req, res) => {
-  try { res.json(await db.getAll("SELECT * FROM productos WHERE stock<=stock_minimo AND activo=1")); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+// ── INVENTARIO COMPLETO ──────────────────────────────────────────────
+app.get('/api/inventario/productos', auth, async (req, res) => {
+  try {
+    const { modulo } = req.query;
+    let q = 'SELECT * FROM productos WHERE activo=1';
+    const params = [];
+    if (modulo) { q += ` AND modulo=$1`; params.push(modulo); }
+    q += ' ORDER BY modulo,categoria,nombre';
+    res.json(await db.getAll(q, params));
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+app.post('/api/inventario/productos', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, categoria, precio, costo, stock, stock_minimo, unidad, proveedor, modulo, menu_id } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+    const r = await db.query(
+      `INSERT INTO productos (nombre,categoria,precio,costo,stock,stock_minimo,unidad,proveedor,modulo,menu_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+      [nombre, categoria||'General', precio||0, costo||0, stock||0, stock_minimo||5,
+       unidad||'unidad', proveedor||'', modulo||'general', menu_id||null]
+    );
+    await logAction(req.user.id, req.user.nombre, 'CREAR_PRODUCTO', nombre);
+    // Registrar movimiento inicial si hay stock
+    if ((stock||0) > 0) {
+      await db.query(
+        `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
+         VALUES ($1,'entrada',$2,'Stock inicial',$3,$4,0,$2)`,
+        [r.rows[0].id, stock||0, req.user.id, req.user.nombre]
+      );
+    }
+    res.json({ id: r.rows[0].id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/inventario/productos/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [req.params.id]);
+    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    const { nombre, categoria, precio, costo, stock_minimo, unidad, proveedor, modulo, menu_id, activo } = req.body;
+    await db.query(
+      `UPDATE productos SET nombre=$1,categoria=$2,precio=$3,costo=$4,stock_minimo=$5,
+       unidad=$6,proveedor=$7,modulo=$8,menu_id=$9,activo=$10 WHERE id=$11`,
+      [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio, costo??prod.costo,
+       stock_minimo??prod.stock_minimo, unidad??prod.unidad, proveedor??prod.proveedor,
+       modulo??prod.modulo, menu_id??prod.menu_id, activo??prod.activo, req.params.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'EDITAR_PRODUCTO', nombre??prod.nombre);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/inventario/productos/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await db.query('UPDATE productos SET activo=0 WHERE id=$1', [req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_PRODUCTO', `ID ${req.params.id}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Entrada de stock
 app.post('/api/inventario/entrada', auth, async (req, res) => {
   try {
-    await db.query('UPDATE productos SET stock=stock+$1 WHERE id=$2', [req.body.cantidad, req.body.producto_id]);
-    await logAction(req.user.id, req.user.nombre, 'ENTRADA_STOCK', `Prod ${req.body.producto_id}: +${req.body.cantidad}`);
+    const { producto_id, cantidad, motivo } = req.body;
+    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
+    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    const stockAntes = Number(prod.stock)||0;
+    const stockDespues = stockAntes + (Number(cantidad)||0);
+    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, producto_id]);
+    await db.query(
+      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
+       VALUES ($1,'entrada',$2,$3,$4,$5,$6,$7)`,
+      [producto_id, cantidad, motivo||'Entrada manual', req.user.id, req.user.nombre, stockAntes, stockDespues]
+    );
+    await logAction(req.user.id, req.user.nombre, 'ENTRADA_STOCK', `${prod.nombre}: +${cantidad}`);
+    res.json({ ok: true, stock: stockDespues });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Salida manual de stock
+app.post('/api/inventario/salida', auth, adminOnly, async (req, res) => {
+  try {
+    const { producto_id, cantidad, motivo } = req.body;
+    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
+    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    const stockAntes = Number(prod.stock)||0;
+    if (stockAntes < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
+    const stockDespues = stockAntes - (Number(cantidad)||0);
+    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, producto_id]);
+    await db.query(
+      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
+       VALUES ($1,'salida',$2,$3,$4,$5,$6,$7)`,
+      [producto_id, cantidad, motivo||'Salida manual', req.user.id, req.user.nombre, stockAntes, stockDespues]
+    );
+    await logAction(req.user.id, req.user.nombre, 'SALIDA_STOCK', `${prod.nombre}: -${cantidad}`);
+    res.json({ ok: true, stock: stockDespues });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Ajuste de stock (corrección)
+app.post('/api/inventario/ajuste', auth, adminOnly, async (req, res) => {
+  try {
+    const { producto_id, stock_nuevo, motivo } = req.body;
+    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
+    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    const stockAntes = Number(prod.stock)||0;
+    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stock_nuevo, producto_id]);
+    await db.query(
+      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
+       VALUES ($1,'ajuste',$2,$3,$4,$5,$6,$7)`,
+      [producto_id, Math.abs(stock_nuevo-stockAntes), motivo||'Ajuste manual', req.user.id, req.user.nombre, stockAntes, stock_nuevo]
+    );
+    res.json({ ok: true, stock: stock_nuevo });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Historial de movimientos de un producto
+app.get('/api/inventario/movimientos/:producto_id', auth, async (req, res) => {
+  try {
+    res.json(await db.getAll(
+      'SELECT * FROM inventario_movimientos WHERE producto_id=$1 ORDER BY created_at DESC LIMIT 100',
+      [req.params.producto_id]
+    ));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Alertas de stock bajo
+app.get('/api/inventario/alertas', auth, async (req, res) => {
+  try {
+    res.json(await db.getAll('SELECT * FROM productos WHERE stock<=stock_minimo AND activo=1 ORDER BY modulo,nombre'));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Reporte de inventario
+app.get('/api/inventario/reporte', auth, async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+    const productos = await db.getAll('SELECT * FROM productos WHERE activo=1 ORDER BY modulo,categoria,nombre');
+    let movimientos;
+    if (desde && hasta) {
+      movimientos = await db.getAll(
+        `SELECT im.*, p.nombre as producto_nombre, p.modulo, p.categoria
+         FROM inventario_movimientos im JOIN productos p ON im.producto_id=p.id
+         WHERE im.created_at BETWEEN $1 AND $2 ORDER BY im.created_at DESC`,
+        [desde, hasta+' 23:59:59']
+      );
+    } else {
+      movimientos = await db.getAll(
+        `SELECT im.*, p.nombre as producto_nombre, p.modulo, p.categoria
+         FROM inventario_movimientos im JOIN productos p ON im.producto_id=p.id
+         ORDER BY im.created_at DESC LIMIT 200`
+      );
+    }
+    const valorTotal = productos.reduce((s,p)=>s+(Number(p.stock)*Number(p.costo||0)),0);
+    res.json({ productos, movimientos, valorTotal });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── INVENTARIO LEGACY ────────────────────────────────────────────────
+app.get('/api/productos', auth, async (req, res) => {
+  try { res.json(await db.getAll("SELECT * FROM productos WHERE activo=1 ORDER BY categoria,nombre")); }
+  catch(e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/productos', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await db.query('INSERT INTO productos (nombre,categoria,precio,stock,stock_minimo) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [req.body.nombre, req.body.categoria||'general', req.body.precio, req.body.stock||0, req.body.stock_minimo||5]);
+    res.json({ id: r.rows[0].id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/productos/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await db.query('UPDATE productos SET nombre=$1,categoria=$2,precio=$3,stock=$4,stock_minimo=$5,activo=$6 WHERE id=$7',
+      [req.body.nombre, req.body.categoria, req.body.precio, req.body.stock, req.body.stock_minimo, req.body.activo!==undefined?req.body.activo:1, req.params.id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -810,7 +975,18 @@ app.put('/api/restaurante/salon', auth, adminOnly, async (req, res) => {
 // ── MENÚ RESTAURANTE ─────────────────────────────────────────────────
 app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
   try {
-    res.json(await db.getAll('SELECT * FROM menu_restaurante ORDER BY categoria,nombre'));
+    const menu = await db.getAll('SELECT * FROM menu_restaurante ORDER BY categoria,nombre');
+    // Para cada producto, verificar si tiene stock vinculado
+    for (const item of menu) {
+      if (item.es_bebida) {
+        const invProd = await db.getOne('SELECT stock FROM productos WHERE menu_id=$1 AND activo=1', [item.id]);
+        if (invProd) {
+          item.stock_inv = Number(invProd.stock)||0;
+          item.sin_stock = item.stock_inv <= 0;
+        }
+      }
+    }
+    res.json(menu);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -962,6 +1138,23 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
     // Recalcular total
     const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
     await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, cmd.id]);
+
+    // Descontar stock si el producto tiene vinculo con inventario
+    if (prod.es_bebida && prod.id) {
+      const invProd = await db.getOne('SELECT * FROM productos WHERE menu_id=$1 AND activo=1', [prod.id]);
+      if (invProd) {
+        const cant = (itemExistente ? cantidad||1 : cantidad||1);
+        const stockAntes = Number(invProd.stock)||0;
+        const stockDespues = Math.max(0, stockAntes - cant);
+        await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, invProd.id]);
+        await db.query(
+          `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,referencia,usuario_id,usuario_nombre,stock_antes,stock_despues)
+           VALUES ($1,'consumo',$2,'Consumo comanda','Comanda #'||$3,$4,$5,$6,$7)`,
+          [invProd.id, cant, cmd.id, req.user.id, req.user.nombre, stockAntes, stockDespues]
+        );
+      }
+    }
+
     res.json(item);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
