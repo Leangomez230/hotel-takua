@@ -1585,6 +1585,19 @@ function renderModalCobrar(cmd){
           ${METODO_ICONS[m]} ${m}</button>`).join('')}
       </div>
     </div>
+
+    <!-- Box efectivo: monto recibido + vuelto -->
+    <div id="cob-efectivo-box" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+      <label style="font-size:13px;font-weight:700;color:#166534;display:block;margin-bottom:8px">💵 Monto recibido</label>
+      <input type="number" id="cob-recibido" placeholder="$ Ingresá el monto" min="0"
+        oninput="updVuelto(${totalFinal})"
+        style="margin-bottom:10px;font-size:16px;font-weight:700;border-color:#86efac"/>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:600;color:#166534">Vuelto</span>
+        <span id="cob-vuelto" style="font-size:22px;font-weight:900;color:#16a34a">$ 0</span>
+      </div>
+    </div>
+
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <button onclick="imprimirTicketCobrar(${S.selCmdId})" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#475569;font-weight:700;font-size:14px;cursor:pointer">🖨️ Imprimir</button>
       <button class="btn-green" style="flex:2;padding:13px" onclick="confirmarCobro(${S.selCmdId},${baseTotal})">✓ Cobrar y cerrar</button>
@@ -1626,22 +1639,37 @@ function selMetodo(idx){
     b.style.background=i===idx?'#eff6ff':'#fff';
     b.style.color=i===idx?'#3b82f6':'#475569';
   });
+  const box=document.getElementById('cob-efectivo-box');
+  if(box) box.style.display=METODOS[idx]==='Efectivo'?'':'none';
+}
+
+function updVuelto(totalFinal){
+  const recibido=Number(document.getElementById('cob-recibido')?.value)||0;
+  const vuelto=Math.max(0,recibido-totalFinal);
+  const el=document.getElementById('cob-vuelto');
+  if(el) el.textContent=fmt(vuelto);
 }
 
 async function confirmarCobro(cmdId,totalOrig){
   const desc=Number(document.getElementById('cob-desc')?.value)||0;
   const metodo=METODOS[S._metodoIdx||0];
   const extra=_extraItems.reduce((s,i)=>s+i.precio,0);
+  const totalFinal=(totalOrig+extra)*(1-desc/100);
+  const montoRecibido=metodo==='Efectivo'?(Number(document.getElementById('cob-recibido')?.value)||0):totalFinal;
+  if(metodo==='Efectivo' && montoRecibido < totalFinal){
+    toast('El monto recibido es menor al total','err'); return;
+  }
   loading(true);
   try{
-    // Si hay ítems extra, agregarlos a la comanda primero
     for(const it of _extraItems){
-      await api('POST',`/api/restaurante/comandas/${cmdId}/items/extra`,{
-        nombre:it.nombre, precio:it.precio
-      });
+      await api('POST',`/api/restaurante/comandas/${cmdId}/items/extra`,{nombre:it.nombre,precio:it.precio});
     }
-    await api('POST',`/api/restaurante/comandas/${cmdId}/cerrar`,{metodo_pago:metodo,descuento:desc});
-    toast('Cobrado ✓','ok');
+    const res=await api('POST',`/api/restaurante/comandas/${cmdId}/cerrar`,{
+      metodo_pago:metodo, descuento:desc, monto_recibido:montoRecibido
+    });
+    const vuelto=res?.vuelto||Math.max(0,montoRecibido-totalFinal);
+    if(metodo==='Efectivo'&&vuelto>0) toast(`Cobrado ✓ — Vuelto: ${fmt(vuelto)}`,'ok');
+    else toast('Cobrado ✓','ok');
     _extraItems=[];
     closeModal('m-cobrar');
     await loadAll(); renderMain();
