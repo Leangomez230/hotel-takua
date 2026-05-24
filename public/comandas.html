@@ -955,10 +955,6 @@ function renderCajero(el){
                   <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
                   <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
                 </div>
-                <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
-                  <input type="checkbox" id="mp-bebida" style="width:16px;height:16px;cursor:pointer">
-                  Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
-                </label>
                 <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
               </div>
               ${cats.map(cat=>{
@@ -1157,10 +1153,6 @@ function renderAdmin(el){
                   <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
                   <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
                 </div>
-                <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
-                  <input type="checkbox" id="mp-bebida" style="width:16px;height:16px;cursor:pointer">
-                  Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
-                </label>
                 <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
               </div>
 
@@ -1278,10 +1270,6 @@ function editarProducto(id){
       <label style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Precio</label>
       <input type="number" id="ep-precio" value="${p.precio}" min="0" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px"/>
     </div>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">
-      <input type="checkbox" id="ep-bebida" ${p.es_bebida?'checked':''} style="width:16px;height:16px;cursor:pointer">
-      Es bebida <span style="font-size:11px;color:#94a3b8;font-weight:400">(no aparece en ticket de cocina)</span>
-    </label>
     <button class="btn-primary" onclick="guardarEdicionProducto()">Guardar cambios</button>`;
   openModal('m-edit-prod');
 }
@@ -1290,11 +1278,10 @@ async function guardarEdicionProducto(){
   const nombre   =document.getElementById('ep-nombre')?.value.trim();
   const categoria=document.getElementById('ep-cat')?.value;
   const precio   =parseFloat(document.getElementById('ep-precio')?.value);
-  const es_bebida=document.getElementById('ep-bebida')?.checked?1:0;
   if(!nombre||!precio){toast('Completá todos los campos','err');return;}
   loading(true);
   try{
-    await api('PUT',`/api/restaurante/menu/${_editProdId}`,{nombre,precio,categoria,es_bebida});
+    await api('PUT',`/api/restaurante/menu/${_editProdId}`,{nombre,precio,categoria});
     toast('Producto actualizado ✓','ok');
     _editProdId=null;
     closeModal('m-edit-prod');
@@ -1313,7 +1300,7 @@ async function guardarProducto(){
   const nombre=document.getElementById('mp-nombre').value.trim();
   const precio=parseFloat(document.getElementById('mp-precio').value);
   const categoria=document.getElementById('mp-cat').value||document.getElementById('mp-cat-nueva').value.trim();
-  const es_bebida=document.getElementById('mp-bebida')?.checked?1:0;
+  const es_bebida=0; // Las bebidas se gestionan desde Inventario
   if(!nombre||!precio||!categoria){toast('Completá todos los campos','err');return;}
   loading(true);
   try{
@@ -1327,7 +1314,6 @@ async function guardarProducto(){
     }
     document.getElementById('mp-nombre').value='';
     document.getElementById('mp-precio').value='';
-    if(document.getElementById('mp-bebida')) document.getElementById('mp-bebida').checked=false;
     await loadAll(); renderMain();
   }catch(e){toast(e.message,'err');}
   finally{loading(false);}
@@ -1942,6 +1928,8 @@ async function verCliente(cmdId){
 // ════════════════════════════════════
 // Categorías que NO van a cocina — ahora basado en flag es_bebida del producto
 const CATS_BEBIDAS = ['bebidas','bebida','drinks']; // fallback legacy
+// Categorías que vienen del inventario — no se crean desde comandas
+const CATS_INVENTARIO = ['bebidas','vinos','tragos','aguas','gaseosas','cervezas','drinks'];
 function esBebida(cat, productoId){
   // Primero chequear el flag es_bebida del producto en S.menu
   if (productoId && S.menu) {
