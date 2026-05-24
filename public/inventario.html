@@ -305,15 +305,15 @@ function renderTab() {
 
 // ── TAB PRODUCTOS ─────────────────────────────────────
 function renderTabProductos(el) {
-  let prods = G.productos;
-  if (G.filtroModulo!=='todos') prods = prods.filter(p=>p.modulo===G.filtroModulo);
-  if (G.filtroCat!=='todas')    prods = prods.filter(p=>p.categoria===G.filtroCat);
-  if (G.busqueda) {
-    const q=G.busqueda.toLowerCase();
-    prods=prods.filter(p=>p.nombre.toLowerCase().includes(q)||(p.categoria||'').toLowerCase().includes(q)||(p.proveedor||'').toLowerCase().includes(q));
-  }
-  const cats=[...new Set(G.productos.map(p=>p.categoria).filter(Boolean))].sort();
-  const rows=prods.map(p=>'<tr>'
+  // Renderizar SIEMPRE todos los productos — el filtrado es en DOM
+  const prods = G.productos;
+  const cats  = [...new Set(prods.map(p=>p.categoria).filter(Boolean))].sort();
+
+  const rows = prods.map(p=>'<tr'
+    +' data-nombre="'+(p.nombre||'').toLowerCase()+'"'
+    +' data-cat="'+(p.categoria||'').toLowerCase()+'"'
+    +' data-mod="'+(p.modulo||'general')+'"'
+    +' data-prov="'+(p.proveedor||'').toLowerCase()+'">'
     +'<td><div style="font-weight:700">'+p.nombre+'</div>'+(p.proveedor?'<div style="font-size:11px;color:#94a3b8">'+p.proveedor+'</div>':'')+'</td>'
     +'<td><span class="mod-badge '+(MOD_CLASS[p.modulo]||'mod-general')+'">'+(MOD_ICON[p.modulo]||'📋')+' '+(p.modulo||'general')+'</span></td>'
     +'<td><span class="pill pgr">'+(p.categoria||'—')+'</span></td>'
@@ -331,22 +331,28 @@ function renderTabProductos(el) {
   el.innerHTML='<div class="section-card">'
     +'<div class="sc-head"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
     +'<span class="card-title">Productos ('+prods.length+')</span>'
-    +'<input type="text" placeholder="🔍 Buscar..." value="'+G.busqueda+'"'
-    +' oninput="G.busqueda=this.value;renderTabProductos(document.getElementById(\'tab-content\'))"'
-    +' style="border:1.5px solid #e2e8f0;border-radius:9px;padding:7px 12px;font-size:13px;font-family:Nunito,sans-serif;width:180px"></div>'
+    +'<div style="position:relative">'
+    +'<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔍</span>'
+    +'<input type="text" id="inv-search" placeholder="Buscar producto, categoría o proveedor..." autocomplete="off"'
+    +' oninput="filtrarInventarioDom(this.value)"'
+    +' onfocus="this.style.borderColor=\'#00c9b1\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
+    +' style="border:2px solid #e2e8f0;border-radius:10px;padding:9px 12px 9px 32px;font-size:13px;font-family:Nunito,sans-serif;width:260px;transition:border .15s">'
+    +'</div></div>'
     +'<button class="btn-primary" onclick="modalNuevoProducto()">+ Nuevo producto</button></div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
-    +MODULOS.map(m=>'<button class="filtro-pill '+(G.filtroModulo===m.id?'active':'')+'" onclick="G.filtroModulo=\''+m.id+'\';renderTabProductos(document.getElementById(\'tab-content\'))">'+m.icon+' '+m.label+'</button>').join('')
+    +MODULOS.map(m=>'<button class="filtro-pill '+(G.filtroModulo===m.id?'active':'')+'" onclick="setFiltroModulo(\''+m.id+'\',this)">'+m.icon+' '+m.label+'</button>').join('')
     +'</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">'
-    +'<button class="filtro-pill '+(G.filtroCat==='todas'?'active':'')+'" onclick="G.filtroCat=\'todas\';renderTabProductos(document.getElementById(\'tab-content\'))">Todas</button>'
-    +cats.map(c=>'<button class="filtro-pill '+(G.filtroCat===c?'active':'')+'" onclick="G.filtroCat=\''+c+'\';renderTabProductos(document.getElementById(\'tab-content\'))">'+c+'</button>').join('')
+    +'<button class="filtro-pill '+(G.filtroCat==='todas'?'active':'')+'" onclick="setFiltroCat(\'todas\',this)">Todas</button>'
+    +cats.map(c=>'<button class="filtro-pill '+(G.filtroCat===c?'active':'')+'" onclick="setFiltroCat(\''+c+'\',this)">'+c+'</button>').join('')
     +'</div>'
     +'<div style="overflow-x:auto"><table class="data-table"><thead><tr>'
     +'<th>Producto</th><th>Módulo</th><th>Categoría</th><th>Stock</th><th>Mínimo</th><th>Costo</th><th>Precio venta</th><th>Acciones</th>'
-    +'</tr></thead><tbody>'
+    +'</tr></thead><tbody id="inv-tbody">'
     +(rows||'<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:32px">Sin productos'+(G.filtroModulo!=='todos'?' en este módulo':'')+'</td></tr>')
-    +'</tbody></table></div></div>';
+    +'</tbody></table>'
+    +'<div id="inv-noresult" style="display:none;text-align:center;color:#94a3b8;padding:32px;font-size:13px">Sin resultados</div>'
+    +'</div></div>';
 }
 
 // ── TAB MOVIMIENTOS ───────────────────────────────────
@@ -609,6 +615,47 @@ async function modalHistorial(id,nombre) {
     +'<div style="font-weight:800;font-size:15px;color:'+(TIPO_COLOR[m.tipo]||'#374151')+'">'+(m.tipo==='entrada'?'+':'-')+m.cantidad+'</div>'
     +'<div style="font-size:11px;color:#94a3b8">'+m.stock_antes+' → '+m.stock_despues+'</div>'
     +'</div></div>').join('');
+}
+
+// ── FILTRADO EN DOM (instantáneo) ─────────────────────
+function _aplicarFiltrosInv() {
+  const q   = (document.getElementById('inv-search')?.value||'').toLowerCase().trim();
+  const mod = G.filtroModulo;
+  const cat = G.filtroCat;
+  const rows = document.querySelectorAll('#inv-tbody tr[data-nombre]');
+  let visible = 0;
+  rows.forEach(tr => {
+    const matchQ   = !q   || tr.dataset.nombre.includes(q) || tr.dataset.cat.includes(q) || tr.dataset.prov.includes(q);
+    const matchMod = mod==='todos' || tr.dataset.mod===mod;
+    const matchCat = cat==='todas' || tr.dataset.cat===cat;
+    const show = matchQ && matchMod && matchCat;
+    tr.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const noRes = document.getElementById('inv-noresult');
+  if (noRes) noRes.style.display = visible===0 ? 'block' : 'none';
+  // Actualizar contador
+  const titulo = document.querySelector('.sc-head .card-title');
+  if (titulo) titulo.textContent = 'Productos ('+(q||mod!=='todos'||cat!=='todas'?visible+' de '+G.productos.length:G.productos.length)+')';
+}
+
+function filtrarInventarioDom(q) {
+  G.busqueda = q;
+  _aplicarFiltrosInv();
+}
+
+function setFiltroModulo(mod, btn) {
+  G.filtroModulo = mod;
+  document.querySelectorAll('.filtro-pill[onclick^="setFiltroModulo"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  _aplicarFiltrosInv();
+}
+
+function setFiltroCat(cat, btn) {
+  G.filtroCat = cat;
+  document.querySelectorAll('.filtro-pill[onclick^="setFiltroCat"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  _aplicarFiltrosInv();
 }
 
 // ── INIT ──────────────────────────────────────────────
