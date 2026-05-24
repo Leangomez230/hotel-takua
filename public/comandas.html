@@ -1421,27 +1421,40 @@ async function verComanda(cmdId){
     let menuHTML='';
     if(canEdit&&cmd.estado==='abierta'){
       const cats=['Todas',...new Set(S.menu.filter(m=>m.disponible).map(m=>m.categoria))];
+      const renderItems = (filtro='', catActiva='Todas') => S.menu.filter(m=>m.disponible).filter(m=>{
+        const matchCat = catActiva==='Todas' || m.categoria===catActiva;
+        const matchQ   = !filtro || m.nombre.toLowerCase().includes(filtro) || (m.categoria||'').toLowerCase().includes(filtro);
+        return matchCat && matchQ;
+      }).map(m=>{
+        const sinStock = m.sin_stock===true||m.sin_stock==1;
+        return `<div class="menu-item-btn${sinStock?' disabled':''}"
+          style="${sinStock?'opacity:.4;cursor:not-allowed;filter:grayscale(.5)':''}"
+          onclick="${sinStock?'':'agregarItemConNota('+cmdId+','+m.id+')'}">
+          <div class="menu-item-nombre">${m.nombre}</div>
+          <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${m.categoria}</div>
+          ${sinStock?'<div style="font-size:10px;color:#dc2626;font-weight:700">Sin stock</div>':'<div class="menu-item-precio">'+fmt(m.precio)+'</div>'}
+        </div>`;
+      }).join('') || '<div style="text-align:center;color:#94a3b8;padding:20px;grid-column:1/-1;font-size:13px">Sin resultados</div>';
+
       menuHTML=`<div style="margin-top:16px;border-top:2px solid #f1f5f9;padding-top:14px">
-        <div style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Agregar ítem</div>
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Agregar ítem</div>
+
+        <!-- BUSCADOR -->
+        <div style="position:relative;margin-bottom:10px">
+          <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔍</span>
+          <input id="mc-search" type="text" placeholder="Buscar producto..." autocomplete="off"
+            style="width:100%;padding:10px 12px 10px 34px;border-radius:10px;border:2px solid #e2e8f0;
+                   font-size:14px;font-family:'Nunito',sans-serif;transition:border .15s"
+            oninput="filtrarMenuMC(this.value)"
+            onfocus="this.style.borderColor='#00c9b1'"
+            onblur="this.style.borderColor='#e2e8f0'">
+        </div>
+
         <div class="nota-row"><input id="nota-item" placeholder="Nota para el próximo ítem (opcional)"/></div>
         <div class="cats-row" id="mc-cats">
           ${cats.map((c,i)=>`<button class="cat-pill${i===0?' active':''}" onclick="filtrarCatsMC('${c}',this)">${c}</button>`).join('')}
         </div>
-        <div class="menu-grid" id="mc-menu-grid">
-          ${S.menu.filter(m=>m.disponible).map(m=>{
-            const sinStock = m.sin_stock === true || m.sin_stock == 1;
-            return `<div class="menu-item-btn${sinStock?' disabled':''}"
-              style="${sinStock?'opacity:.4;cursor:not-allowed;filter:grayscale(.5)':''}"
-              onclick="${sinStock?'':'agregarItemConNota('+cmdId+','+m.id+')'}">
-              <div class="menu-item-nombre">${m.nombre}</div>
-              <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${m.categoria}</div>
-              ${sinStock
-                ? '<div style="font-size:10px;color:#dc2626;font-weight:700">Sin stock</div>'
-                : '<div class="menu-item-precio">'+fmt(m.precio)+'</div>'
-              }
-            </div>`;
-          }).join('')}
-        </div>
+        <div class="menu-grid" id="mc-menu-grid" data-cmdid="${cmdId}">${renderItems()}</div>
       </div>`;
     }
 
@@ -1482,13 +1495,55 @@ async function verComanda(cmdId){
   finally{loading(false);}
 }
 
-function filtrarCatsMC(cat,btn){
-  document.querySelectorAll('#mc-cats .cat-pill').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('#mc-menu-grid .menu-item-btn').forEach(el=>{
-    const c=el.querySelector('div:nth-child(2)').textContent;
-    el.style.display=(cat==='Todas'||c===cat)?'':'none';
+function filtrarMenuMC(q) {
+  const filtro = (q||'').toLowerCase().trim();
+  const grid = document.getElementById('mc-menu-grid');
+  if (!grid) return;
+
+  // Si hay búsqueda, limpiar filtro de categoría visualmente
+  if (filtro) {
+    document.querySelectorAll('#mc-cats .cat-pill').forEach(b => b.classList.remove('active'));
+    window._mcCatActiva = 'Todas';
+  }
+
+  let hayResultados = false;
+  grid.querySelectorAll('.menu-item-btn').forEach(el => {
+    const nombre = (el.querySelector('.menu-item-nombre')?.textContent||'').toLowerCase();
+    const cat    = (el.querySelector('div:nth-child(2)')?.textContent||'').toLowerCase();
+    const match  = !filtro || nombre.includes(filtro) || cat.includes(filtro);
+    el.style.display = match ? '' : 'none';
+    if (match) hayResultados = true;
   });
+
+  // Mostrar mensaje si no hay resultados
+  let noRes = grid.querySelector('.no-resultados');
+  if (!hayResultados) {
+    if (!noRes) {
+      noRes = document.createElement('div');
+      noRes.className = 'no-resultados';
+      noRes.style.cssText = 'text-align:center;color:#94a3b8;padding:20px;grid-column:1/-1;font-size:13px';
+      noRes.textContent = 'Sin resultados para "'+q+'"';
+      grid.appendChild(noRes);
+    }
+  } else if (noRes) noRes.remove();
+}
+
+function filtrarCatsMC(cat, btn) {
+  document.querySelectorAll('#mc-cats .cat-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  window._mcCatActiva = cat;
+
+  // Limpiar buscador al filtrar por categoría
+  const search = document.getElementById('mc-search');
+  if (search) search.value = '';
+
+  document.querySelectorAll('#mc-menu-grid .menu-item-btn').forEach(el => {
+    const c = el.querySelector('div:nth-child(2)')?.textContent||'';
+    el.style.display = (cat==='Todas' || c===cat) ? '' : 'none';
+  });
+
+  // Quitar mensaje sin resultados si existía
+  document.querySelector('#mc-menu-grid .no-resultados')?.remove();
 }
 
 async function agregarItemConNota(cmdId,prodId){
