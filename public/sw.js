@@ -29,18 +29,26 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
-  // Network first para HTML
+  // Network first para HTML — no clonar dos veces
   if (event.request.destination === 'document') {
     event.respondWith(
       fetch(event.request)
-        .then(r => { caches.open(CACHE).then(c => c.put(event.request, r.clone())); return r; })
+        .then(r => {
+          const clone = r.clone();
+          caches.open(CACHE).then(c => c.put(event.request, clone));
+          return r;
+        })
         .catch(() => caches.match(event.request))
     );
     return;
   }
   event.respondWith(
     fetch(event.request)
-      .then(r => { caches.open(CACHE).then(c => c.put(event.request, r.clone())); return r; })
+      .then(r => {
+        const clone = r.clone();
+        caches.open(CACHE).then(c => c.put(event.request, clone));
+        return r;
+      })
       .catch(() => caches.match(event.request))
   );
 });
