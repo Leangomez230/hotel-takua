@@ -2803,11 +2803,50 @@ if (token && currentUser) {
   }
 } else { window.location.href = "/portal.html"; }
  
-// ── SERVICE WORKER (PWA) ──
+// ── SERVICE WORKER + PUSH SUBSCRIPTION ──────────────
+const ROLES_PUSH = ['recepcionista','mucama','admin'];
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function suscribirPush(swReg) {
+  try {
+    if (!ROLES_PUSH.includes(currentUser?.rol)) return;
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+
+    // Obtener VAPID public key del server
+    const { publicKey } = await apiFetch('GET', '/push/vapid-public');
+    if (!publicKey) return;
+
+    // Suscribir este dispositivo
+    const sub = await swReg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+
+    // Enviar suscripción al server
+    const subJSON = sub.toJSON();
+    await apiFetch('POST', '/push/suscribir', {
+      endpoint: subJSON.endpoint,
+      keys: { p256dh: subJSON.keys.p256dh, auth: subJSON.keys.auth }
+    });
+    console.log('✅ Push suscripto');
+  } catch(e) { console.log('Push no disponible:', e.message); }
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('SW registrado'))
+      .then(reg => {
+        console.log('SW registrado');
+        // Suscribir push para roles que deben recibir notificaciones
+        suscribirPush(reg);
+      })
       .catch(e => console.log('SW error:', e));
   });
 }
