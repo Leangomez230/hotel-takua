@@ -280,6 +280,21 @@ await query(`
 `);
 console.log('✅ Tabla inventario_movimientos lista');
 
+// Tabla suscripciones push
+await query(`
+  CREATE TABLE IF NOT EXISTS push_suscripciones (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL,
+    usuario_nombre TEXT,
+    rol TEXT,
+    endpoint TEXT UNIQUE NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+console.log('✅ Tabla push_suscripciones lista');
+
 // Migración: sincronizar bebidas del menú → inventario
 try {
   const bebidasMenu = await getAll(
