@@ -2877,11 +2877,11 @@ async function activarNotificaciones() {
 async function suscribirPush() {
   if (!ROLES_PUSH.includes(currentUser?.rol)) return;
   const reg = await navigator.serviceWorker.ready;
-  const { publicKey } = await apiFetch('GET', '/push/vapid-public');
-  if (!publicKey) return;
+  const resp = await apiFetch('GET', '/push/vapid-public');
+  if (!resp?.publicKey) throw new Error('No se pudo obtener la clave del servidor');
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey)
+    applicationServerKey: urlBase64ToUint8Array(resp.publicKey)
   });
   const subJSON = sub.toJSON();
   await apiFetch('POST', '/push/suscribir', {
