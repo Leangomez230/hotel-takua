@@ -1,15 +1,15 @@
-const CACHE = 'takua-v5.1.4';
+const CACHE = 'takua-v6';
 const OFFLINE_ASSETS = ['/', '/index.html', '/portal.html', '/comandas.html', '/manifest.json', '/icon-192.png'];
- 
-// ── INSTALL ──
+
+// ── INSTALL ──────────────────────────────────────────
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll(OFFLINE_ASSETS))
   );
   self.skipWaiting();
 });
- 
-// ── ACTIVATE ──
+
+// ── ACTIVATE ─────────────────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -18,135 +18,87 @@ self.addEventListener('activate', event => {
   );
   self.clients.claim();
 });
- 
-// ── FETCH ──
+
+// ── FETCH ─────────────────────────────────────────────
 self.addEventListener('fetch', event => {
   if (event.request.url.includes('/api/')) {
-    event.respondWith(fetch(event.request).catch(() => new Response('{"error":"offline"}', {headers:{'Content-Type':'application/json'}})));
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        new Response('{"error":"offline"}', { headers: { 'Content-Type': 'application/json' } })
+      )
+    );
     return;
   }
-  // HTML siempre desde la red primero (garantiza versión actualizada)
-  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+  // Network first para HTML
+  if (event.request.destination === 'document') {
     event.respondWith(
       fetch(event.request)
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE).then(cache => cache.put(event.request, clone));
-          return response;
-        })
+        .then(r => { caches.open(CACHE).then(c => c.put(event.request, r.clone())); return r; })
         .catch(() => caches.match(event.request))
     );
     return;
   }
-  // Resto de assets: network first con fallback a cache
   event.respondWith(
     fetch(event.request)
-      .then(response => {
-        const clone = response.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, clone));
-        return response;
-      })
+      .then(r => { caches.open(CACHE).then(c => c.put(event.request, r.clone())); return r; })
       .catch(() => caches.match(event.request))
   );
 });
- 
-// ── NOTIFICACIÓN AL TOCAR ──
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
+
+// ── PUSH — app cerrada o en segundo plano ─────────────
+self.addEventListener('push', event => {
+  let data = { title: 'Hotel Takuá', body: 'Nueva notificación', icon: '/icon-192.png', data: {} };
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch(e) {}
+
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      // Si la app está abierta en alguna pestaña, enfocarla
-      for (const client of list) {
-        if ('focus' in client) return client.focus();
-      }
-      // Si no está abierta, abrirla
-      if (clients.openWindow) return clients.openWindow('/');
+    self.registration.showNotification(data.title, {
+      body:               data.body,
+      icon:               data.icon || '/icon-192.png',
+      badge:              '/icon-192.png',
+      vibrate:            [200, 100, 200, 100, 200],
+      tag:                data.tag || 'takua-push',
+      renotify:           true,
+      requireInteraction: true,   // No desaparece sola en Android
+      data:               data.data || {}
     })
   );
 });
- 
-// ── MENSAJES DESDE LA PÁGINA ──
-// La página llama postMessage({type:'SHOW_NOTIF',...}) cuando detecta una solicitud nueva
+
+// ── CLICK EN NOTIFICACIÓN ─────────────────────────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/index.html';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      // Si la app ya está abierta, enfocarla y navegar
+      for (const client of list) {
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client) client.navigate(url);
+          return;
+        }
+      }
+      // Si no, abrir nueva ventana
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});
+
+// ── MENSAJES DESDE LA PÁGINA (notif local cuando app está abierta) ──
 self.addEventListener('message', event => {
   if (!event.data) return;
- 
   if (event.data.type === 'SHOW_NOTIF') {
     const { title, body, tag } = event.data;
-    // event.waitUntil es CLAVE en Android — mantiene el SW vivo hasta mostrar la notif
     event.waitUntil(
       self.registration.showNotification(title || 'Hotel Takuá', {
-        body: body || 'Nueva solicitud',
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
+        body:    body || 'Nueva solicitud',
+        icon:    '/icon-192.png',
+        badge:   '/icon-192.png',
         vibrate: [200, 100, 200],
-        tag: tag || 'takua-sol',
-        renotify: true,
-        requireInteraction: false,
+        tag:     tag || 'takua-sol',
+        renotify: true
       })
     );
   }
- 
-  if (event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
- 
-// ── SYNC EN BACKGROUND (para polling cuando la app está cerrada) ──
-self.addEventListener('sync', event => {
-  if (event.tag === 'check-solicitudes') {
-    event.waitUntil(checkSolicitudesBackground());
-  }
-});
- 
-// ── PERIODIC SYNC (Chrome Android, requiere permiso) ──
-self.addEventListener('periodicsync', event => {
-  if (event.tag === 'check-solicitudes-periodic') {
-    event.waitUntil(checkSolicitudesBackground());
-  }
-});
- 
-// Verificar solicitudes pendientes desde el SW (funciona con app cerrada)
-async function checkSolicitudesBackground() {
-  try {
-    // Obtener token guardado
-    const cache = await caches.open('takua-auth');
-    const tokenResp = await cache.match('token');
-    if (!tokenResp) return;
-    const token = await tokenResp.text();
- 
-    // Consultar API
-    const resp = await fetch('/api/solicitudes', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (!resp.ok) return;
-    const sols = await resp.json();
-    const pendientes = sols.filter(s => s.estado === 'pendiente');
-    if (!pendientes.length) return;
- 
-    // Ver cuántas había antes
-    const prevCache = await caches.open('takua-state');
-    const prevResp = await prevCache.match('sol-count');
-    const prevCount = prevResp ? parseInt(await prevResp.text()) : 0;
- 
-    if (pendientes.length > prevCount) {
-      // Hay nuevas — mostrar notificación
-      const nueva = pendientes[pendientes.length - 1];
-      const tipo = nueva.tipo === 'servicio' ? '🧹 Limpieza solicitada' : '🍫 Pedido de frigobar';
-      await self.registration.showNotification('Hotel Takuá — Hab. ' + nueva.numero, {
-        body: tipo + (nueva.detalle ? ': ' + nueva.detalle : ''),
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        vibrate: [200, 100, 200],
-        tag: 'takua-sol-' + nueva.id,
-        renotify: true,
-        requireInteraction: true,
-      });
-    }
- 
-    // Guardar conteo actual
-    await prevCache.put('sol-count', new Response(String(pendientes.length)));
-  } catch(e) {
-    console.error('SW check solicitudes:', e);
-  }
-}
- 
