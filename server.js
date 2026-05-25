@@ -1746,9 +1746,27 @@ app.post('/api/push/desuscribir', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── CATCH-ALL & ARRANQUE ─────────────────────────────────────════════
-// ════════════════════════════════════════════════════════════════════
+// ── CATCH-ALL ────────────────────────────────────────
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// ── RESET DIARIO 8 AM ────────────────────────────────
+function scheduleReset() {
+  const now = new Date();
+  const next8am = new Date();
+  next8am.setHours(8, 0, 0, 0);
+  if (now >= next8am) next8am.setDate(next8am.getDate() + 1);
+  const msUntil = next8am - now;
+  console.log(`⏰ Reset diario en ${Math.round(msUntil/1000/60)} minutos`);
+  setTimeout(async () => {
+    try {
+      const result = await db.query("UPDATE habitaciones SET status='ocupada',updated_at=NOW() WHERE status='limpia'");
+      console.log(`⏰ Reset 8 AM: ${result.rowCount||0} habitaciones limpia→ocupada`);
+      await db.query("INSERT INTO log_acciones (usuario_nombre,accion,detalle) VALUES ($1,$2,$3)",
+        ['Sistema','RESET_DIARIO',`${result.rowCount||0} hab. limpia→ocupada`]);
+    } catch(e) { console.error('Error reset diario:', e.message); }
+    scheduleReset();
+  }, msUntil);
+}
 
 db.initDB().then(() => {
   app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT}`));
