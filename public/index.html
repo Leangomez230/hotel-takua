@@ -403,7 +403,12 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
       <div class="tb-right">
         <button class="tb-btn caja nav-admin" id="tb-caja">💰 Caja</button>
         <button class="tb-btn" id="tb-libro" style="display:none" onclick="abrirLibro()">📋 Libro</button>
-        <button class="tb-btn" id="btn-sound" title="Notificaciones de sonido" style="font-size:16px;padding:6px 10px">🔔</button>
+        <button class="tb-btn" id="btn-notif" title="Activar notificaciones"
+          onclick="activarNotificaciones()"
+          style="font-size:16px;padding:6px 10px;position:relative">🔔
+          <span id="notif-badge" style="display:none;position:absolute;top:2px;right:2px;
+            width:8px;height:8px;border-radius:50%;background:#dc2626"></span>
+        </button>
         <div class="user-av" id="user-av">A</div>
         <button class="tb-btn" id="btn-logout" style="color:#dc2626">Salir</button>
       </div>
@@ -2813,39 +2818,88 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
-async function suscribirPush(swReg) {
+// Actualiza el ícono del botón según el estado actual
+async function actualizarEstadoNotif() {
+  const btn   = document.getElementById('btn-notif');
+  const badge = document.getElementById('notif-badge');
+  if (!btn || !ROLES_PUSH.includes(currentUser?.rol)) { btn && (btn.style.display='none'); return; }
+
+  if (!('Notification' in window) || !('PushManager' in window)) {
+    btn.style.display = 'none'; return;
+  }
+
+  const perm = Notification.permission;
+  if (perm === 'granted') {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      btn.textContent = '🔔'; btn.style.color = '#16a34a';
+      btn.title = 'Notificaciones activas';
+      badge.style.display = 'none';
+      return;
+    }
+  }
+  // No suscripto o permiso no dado — mostrar badge rojo
+  btn.textContent = '🔔'; btn.style.color = '';
+  btn.title = 'Activar notificaciones push';
+  badge.style.display = 'block';
+}
+
+// El usuario tocó el botón — pedir permiso y suscribir
+async function activarNotificaciones() {
+  const btn = document.getElementById('btn-notif');
+  if (!btn) return;
+
+  // Si ya está activo, informar
+  if (Notification.permission === 'granted') {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) { toast('✅ Las notificaciones ya están activas'); return; }
+  }
+
+  btn.textContent = '⏳'; btn.disabled = true;
   try {
-    if (!ROLES_PUSH.includes(currentUser?.rol)) return;
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
+    if (perm !== 'granted') {
+      toast('Permiso denegado — activalo desde la configuración del navegador', false);
+      btn.textContent = '🔔'; btn.disabled = false;
+      return;
+    }
+    await suscribirPush();
+    toast('🔔 Notificaciones activadas');
+  } catch(e) {
+    toast('Error al activar: ' + e.message, false);
+  }
+  btn.disabled = false;
+  actualizarEstadoNotif();
+}
 
-    // Obtener VAPID public key del server
-    const { publicKey } = await apiFetch('GET', '/push/vapid-public');
-    if (!publicKey) return;
-
-    // Suscribir este dispositivo
-    const sub = await swReg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey)
-    });
-
-    // Enviar suscripción al server
-    const subJSON = sub.toJSON();
-    await apiFetch('POST', '/push/suscribir', {
-      endpoint: subJSON.endpoint,
-      keys: { p256dh: subJSON.keys.p256dh, auth: subJSON.keys.auth }
-    });
-    console.log('✅ Push suscripto');
-  } catch(e) { console.log('Push no disponible:', e.message); }
+async function suscribirPush() {
+  if (!ROLES_PUSH.includes(currentUser?.rol)) return;
+  const reg = await navigator.serviceWorker.ready;
+  const { publicKey } = await apiFetch('GET', '/push/vapid-public');
+  if (!publicKey) return;
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey)
+  });
+  const subJSON = sub.toJSON();
+  await apiFetch('POST', '/push/suscribir', {
+    endpoint: subJSON.endpoint,
+    keys: { p256dh: subJSON.keys.p256dh, auth: subJSON.keys.auth }
+  });
 }
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(reg => {
+      .then(async () => {
         console.log('SW registrado');
-        // Suscribir push para roles que deben recibir notificaciones
-        suscribirPush(reg);
+        // Auto-suscribir solo si ya tiene permiso previo (no pedir prompt automático)
+        if (Notification.permission === 'granted' && ROLES_PUSH.includes(currentUser?.rol)) {
+          try { await suscribirPush(); } catch(e) {}
+        }
+        actualizarEstadoNotif();
       })
       .catch(e => console.log('SW error:', e));
   });
