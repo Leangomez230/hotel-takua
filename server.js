@@ -4,10 +4,39 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
 const db = require('./database');
+const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'takua_secret_2024';
+
+// ── VAPID ────────────────────────────────────────────────────────────
+const VAPID_PUBLIC  = process.env.VAPID_PUBLIC  || 'BGgqRVlRquUxbONf-LOZDc9dsvh9mMh-Al37U9B7XM108NA6LteBSzfmCogTbXAVbNuJULyBaymGOHwpqyjgay8';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE || '5fhOAg_7L6Nnbprwb7JiFcwhMR8qn5Tm80JVDHAn2xo';
+webpush.setVapidDetails('mailto:hotel@takua.com', VAPID_PUBLIC, VAPID_PRIVATE);
+
+// Enviar push a todos los usuarios de ciertos roles
+async function sendPushToRoles(roles, payload) {
+  try {
+    const subs = await db.getAll(
+      `SELECT * FROM push_suscripciones WHERE rol = ANY($1)`,
+      [roles]
+    );
+    for (const s of subs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          JSON.stringify(payload)
+        );
+      } catch(e) {
+        // Suscripción expirada o inválida — eliminar
+        if (e.statusCode === 410 || e.statusCode === 404) {
+          await db.query('DELETE FROM push_suscripciones WHERE endpoint=$1', [s.endpoint]);
+        }
+      }
+    }
+  } catch(e) { console.error('Error enviando push:', e.message); }
+}
 
 app.use(cors());
 app.use(express.json());
@@ -924,6 +953,22 @@ app.post('/api/huesped/solicitud', authHuesped, async (req, res) => {
     }
     await db.query('INSERT INTO solicitudes_huesped (habitacion_id,tipo,detalle,consumos,estado) VALUES ($1,$2,$3,$4,$5)',
       [req.huesped.hab_id, tipo||'servicio', detalle||'', JSON.stringify(consumosCompletos), 'pendiente']);
+
+    // Push notification a recepcionistas y mucamas
+    const hab = await db.getOne('SELECT numero FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
+    const esLimpieza = (tipo||'servicio') === 'servicio';
+    const titulo = esLimpieza ? '🧹 Solicitud de Mucama' : '🛎️ Solicitud de huésped';
+    const cuerpo  = `Habitación ${hab?.numero||req.huesped.hab_id}${detalle ? ': ' + detalle : ''}`;
+    const rolesDestino = esLimpieza ? ['recepcionista','mucama','admin'] : ['recepcionista','admin'];
+    sendPushToRoles(rolesDestino, {
+      title: titulo,
+      body:  cuerpo,
+      icon:  '/icon-192.png',
+      badge: '/icon-192.png',
+      tag:   'solicitud-huesped',
+      data:  { url: '/index.html#huespedes' }
+    });
+
     res.json({ ok: true, total });
   } catch(e) { console.error('Solicitud huesped:', e); res.status(500).json({ error: e.message }); }
 });
@@ -1691,6 +1736,38 @@ function scheduleReset() {
     scheduleReset();
   }, msUntil);
 }
+
+// ── PUSH NOTIFICATIONS ───────────────────────────────────────────────
+
+// Devolver la VAPID public key al frontend
+app.get('/api/push/vapid-public', (req, res) => {
+  res.json({ publicKey: VAPID_PUBLIC });
+});
+
+// Suscribir dispositivo
+app.post('/api/push/suscribir', auth, async (req, res) => {
+  try {
+    const { endpoint, keys } = req.body;
+    if (!endpoint || !keys?.p256dh || !keys?.auth)
+      return res.status(400).json({ error: 'Datos de suscripción incompletos' });
+    await db.query(
+      `INSERT INTO push_suscripciones (usuario_id, usuario_nombre, rol, endpoint, p256dh, auth)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (endpoint) DO UPDATE SET
+         usuario_id=$1, usuario_nombre=$2, rol=$3, p256dh=$5, auth=$6`,
+      [req.user.id, req.user.nombre, req.user.rol, endpoint, keys.p256dh, keys.auth]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Desuscribir dispositivo
+app.post('/api/push/desuscribir', auth, async (req, res) => {
+  try {
+    await db.query('DELETE FROM push_suscripciones WHERE usuario_id=$1', [req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 db.initDB().then(() => {
   app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT}`));
