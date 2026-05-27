@@ -542,6 +542,29 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   </div>
 </div>
 
+<div class="overlay" id="m-retiro">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-handle"><div></div></div>
+    <div class="modal-header">
+      <span class="modal-title">Retiro de caja</span>
+      <button class="btn-close-modal" onclick="closeModal('m-retiro')">×</button>
+    </div>
+    <div style="padding:0 20px 24px">
+      <div class="stitle">Monto a retirar</div>
+      <input type="number" id="ret-monto" placeholder="$0" min="1"
+        style="width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:12px 14px;
+               font-size:20px;font-weight:700;font-family:'Nunito',sans-serif;
+               margin-bottom:14px;text-align:center">
+      <div class="stitle">Motivo</div>
+      <input id="ret-motivo" placeholder="Ej: Pago proveedor, gastos del día..."
+        style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 13px;
+               font-size:14px;font-family:'Nunito',sans-serif;margin-bottom:20px">
+      <button class="btn-primary" style="width:100%;padding:13px;font-size:15px;background:linear-gradient(135deg,#dc2626,#b91c1c)"
+        id="ret-confirm-btn">Confirmar retiro</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════
 // CONFIG & STATE
@@ -855,7 +878,7 @@ function renderCajero(el){
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-ghost-light" onclick="toggleResumen()">Ver detalle</button>
-          <button class="btn-ghost-light" onclick="modalRetiro()" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa">💸 Retiro</button>
+          <button class="btn-ghost-light" onclick="modalRetiro()" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa">Retiro</button>
           <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
           <button class="btn-red" onclick="cerrarTurno()">Cerrar turno</button>
         </div>
@@ -1003,7 +1026,7 @@ function renderResumenCaja(fondo, totalNeto, totalDesc, porMetodo, cerradas, ret
         </div>`).join('')}
     </div>
     ${(retiros||[]).length?`<div style="margin-bottom:14px">
-      <div style="font-weight:600;font-size:14px;color:#475569;margin-bottom:8px">💸 Retiros (${retiros.length})</div>
+      <div style="font-weight:600;font-size:14px;color:#475569;margin-bottom:8px">Retiros (${retiros.length})</div>
       <div style="display:flex;flex-direction:column;gap:6px">
         ${retiros.map(r=>`<div class="cmd-row">
           <div>
@@ -1030,39 +1053,28 @@ function renderResumenCaja(fondo, totalNeto, totalDesc, porMetodo, cerradas, ret
 }
 
 function modalRetiro(){
-  openModal(`
-    <div class="modal-hd">
-      <h3>💸 Retiro de caja</h3>
-      <button class="modal-close" id="ret-close">✕</button>
-    </div>
-    <div class="stitle">Monto a retirar</div>
-    <input type="number" id="ret-monto" placeholder="$0" min="1"
-      style="width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:12px 14px;font-size:18px;font-weight:700;font-family:'Nunito',sans-serif;margin-bottom:14px;text-align:center">
-    <div class="stitle">Motivo</div>
-    <input id="ret-motivo" placeholder="Ej: Pago proveedor, gastos del día..."
-      style="width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 13px;font-size:14px;font-family:'Nunito',sans-serif;margin-bottom:16px">
-    <button class="confirm-btn" style="background:linear-gradient(135deg,#dc2626,#b91c1c)" id="ret-confirm">
-      💸 Confirmar retiro
-    </button>
-  `);
-  document.getElementById('ret-close').addEventListener('click', closeModal);
-  document.getElementById('ret-confirm').addEventListener('click', async () => {
+  document.getElementById('ret-monto').value = '';
+  document.getElementById('ret-motivo').value = '';
+  const btn = document.getElementById('ret-confirm-btn');
+  btn.disabled = false;
+  btn.textContent = 'Confirmar retiro';
+  btn.onclick = async () => {
     const monto  = parseFloat(document.getElementById('ret-monto').value)||0;
     const motivo = document.getElementById('ret-motivo').value.trim();
     if (!monto||monto<=0) { toast('Ingresá un monto válido','err'); return; }
     if (!motivo) { toast('Ingresá el motivo del retiro','err'); return; }
-    const btn = document.getElementById('ret-confirm');
     btn.disabled=true; btn.textContent='Procesando...';
     const r = await api('POST','/api/restaurante/turno/retiro',{monto,motivo});
     if (r?.ok) {
-      toast(`💸 Retiro de ${fmt(monto)} registrado`,'ok');
-      closeModal();
+      toast(`Retiro de ${fmt(monto)} registrado`,'ok');
+      closeModal('m-retiro');
       await loadAll(); renderMain();
     } else {
       toast(r?.error||'Error al registrar','err');
-      btn.disabled=false; btn.textContent='💸 Confirmar retiro';
+      btn.disabled=false; btn.textContent='Confirmar retiro';
     }
-  });
+  };
+  openModal('m-retiro');
 }
 
 function toggleResumen(){
@@ -1117,7 +1129,7 @@ function renderAdmin(el){
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn-ghost-light" onclick="toggleResumen()">Ver detalle</button>
-          <button class="btn-ghost-light" onclick="modalRetiro()" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa">💸 Retiro</button>
+          <button class="btn-ghost-light" onclick="modalRetiro()" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa">Retiro</button>
           <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
           <button class="btn-red" onclick="cerrarTurno()">Cerrar turno</button>
         </div>
