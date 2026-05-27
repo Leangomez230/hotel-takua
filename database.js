@@ -287,13 +287,43 @@ await query(`
     usuario_id INTEGER NOT NULL,
     usuario_nombre TEXT,
     rol TEXT,
-    endpoint TEXT UNIQUE NOT NULL,
+    endpoint TEXT NOT NULL,
     p256dh TEXT NOT NULL,
     auth TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(endpoint, usuario_id)
+  );
+`);
+// Migración: cambiar UNIQUE de solo endpoint a (endpoint, usuario_id)
+// para soportar múltiples usuarios en el mismo dispositivo
+try {
+  await query(`
+    DO $$ BEGIN
+      IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'push_suscripciones_endpoint_key'
+      ) THEN
+        ALTER TABLE push_suscripciones DROP CONSTRAINT push_suscripciones_endpoint_key;
+        ALTER TABLE push_suscripciones ADD CONSTRAINT push_suscripciones_endpoint_usuario_unique UNIQUE (endpoint, usuario_id);
+      END IF;
+    END $$;
+  `);
+} catch(e) { console.log('Constraint push ya migrado'); }
+console.log('✅ Tabla push_suscripciones lista');
+
+// Tabla retiros de caja restaurante
+await query(`
+  CREATE TABLE IF NOT EXISTS caja_retiros (
+    id SERIAL PRIMARY KEY,
+    turno_id INTEGER NOT NULL,
+    monto REAL NOT NULL,
+    motivo TEXT DEFAULT '',
+    usuario_id INTEGER,
+    usuario_nombre TEXT,
     created_at TIMESTAMP DEFAULT NOW()
   );
 `);
-console.log('✅ Tabla push_suscripciones lista');
+console.log('✅ Tabla caja_retiros lista');
 
 // Migración: sincronizar bebidas del menú → inventario
 try {
