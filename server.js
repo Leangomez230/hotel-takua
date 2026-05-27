@@ -1427,7 +1427,6 @@ app.get('/api/restaurante/turno/activo', auth, authRestaurante, async (req, res)
   try {
     const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
     if (!turno) return res.json(null);
-    // Comandas cerradas en este turno
     const cerradas = await db.getAll(
       "SELECT * FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 ORDER BY cerrada_at DESC",
       [turno.abierto_at]
@@ -1435,11 +1434,14 @@ app.get('/api/restaurante/turno/activo', auth, authRestaurante, async (req, res)
     for (const c of cerradas) {
       c.items = await db.getAll('SELECT * FROM comanda_items WHERE comanda_id=$1', [c.id]);
     }
-    res.json({ ...turno, cerradas });
+    const retiros = await db.getAll(
+      "SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at DESC",
+      [turno.id]
+    );
+    res.json({ ...turno, cerradas, retiros });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Último turno (abierto o cerrado) — para mostrar resumen aunque esté cerrado
 app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res) => {
   try {
     const turno = await db.getOne('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 1');
@@ -1448,7 +1450,28 @@ app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res)
       "SELECT c.*, u.nombre as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
       [turno.abierto_at]
     );
-    res.json({ ...turno, cerradas });
+    const retiros = await db.getAll(
+      "SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at DESC",
+      [turno.id]
+    );
+    res.json({ ...turno, cerradas, retiros });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Registrar retiro de caja
+app.post('/api/restaurante/turno/retiro', auth, authRestaurante, async (req, res) => {
+  try {
+    const { monto, motivo } = req.body;
+    if (!monto || monto <= 0) return res.status(400).json({ error: 'Monto inválido' });
+    const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+    if (!turno) return res.status(400).json({ error: 'No hay turno abierto' });
+    await db.query(
+      `INSERT INTO caja_retiros (turno_id, monto, motivo, usuario_id, usuario_nombre)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [turno.id, monto, motivo||'Sin motivo', req.user.id, req.user.nombre]
+    );
+    await logAction(req.user.id, req.user.nombre, 'RETIRO_CAJA', `$${monto} — ${motivo||'Sin motivo'}`);
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1785,11 +1808,12 @@ app.post('/api/push/suscribir', auth, async (req, res) => {
     const { endpoint, keys } = req.body;
     if (!endpoint || !keys?.p256dh || !keys?.auth)
       return res.status(400).json({ error: 'Datos de suscripción incompletos' });
+    // Usar endpoint+usuario_id como clave única — mismo celular, distintos usuarios
     await db.query(
       `INSERT INTO push_suscripciones (usuario_id, usuario_nombre, rol, endpoint, p256dh, auth)
        VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (endpoint) DO UPDATE SET
-         usuario_id=$1, usuario_nombre=$2, rol=$3, p256dh=$5, auth=$6`,
+       ON CONFLICT (endpoint, usuario_id) DO UPDATE SET
+         usuario_nombre=$2, rol=$3, p256dh=$5, auth=$6`,
       [req.user.id, req.user.nombre, req.user.rol, endpoint, keys.p256dh, keys.auth]
     );
     res.json({ ok: true });
