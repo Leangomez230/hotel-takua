@@ -338,7 +338,8 @@ function renderTabProductos(el) {
     +' onfocus="this.style.borderColor=\'#00c9b1\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
     +' style="border:2px solid #e2e8f0;border-radius:10px;padding:9px 12px 9px 32px;font-size:13px;font-family:Nunito,sans-serif;width:260px;transition:border .15s">'
     +'</div></div>'
-    +'<button class="btn-primary" onclick="modalNuevoProducto()">+ Nuevo producto</button></div>'
+    +'<button class="btn-primary" onclick="modalNuevoProducto()">+ Nuevo producto</button>'
+    +'<button class="btn-secondary" onclick="imprimirInventario()" style="background:#1e293b;color:#fff;border-color:#1e293b">🖨️ Imprimir</button></div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
     +MODULOS.map(m=>'<button class="filtro-pill '+(G.filtroModulo===m.id?'active':'')+'" onclick="setFiltroModulo(\''+m.id+'\',this)">'+m.icon+' '+m.label+'</button>').join('')
     +'</div>'
@@ -656,6 +657,92 @@ function setFiltroCat(cat, btn) {
   document.querySelectorAll('.filtro-pill[onclick^="setFiltroCat"]').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   _aplicarFiltrosInv();
+}
+
+// ── IMPRIMIR INVENTARIO ───────────────────────────────
+function imprimirInventario() {
+  // Tomar los productos filtrados actualmente visibles
+  const rows = document.querySelectorAll('#inv-tbody tr[data-nombre]:not([style*="display: none"]):not([style*="display:none"])');
+  if (!rows.length) { toast('No hay productos para imprimir', false); return; }
+
+  const fecha = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const filtroMod = G.filtroModulo !== 'todos' ? ` · Módulo: ${G.filtroModulo}` : '';
+  const filtroCat = G.filtroCat   !== 'todas'  ? ` · Categoría: ${G.filtroCat}` : '';
+
+  // Agrupar por módulo
+  const grupos = {};
+  rows.forEach(tr => {
+    const mod = tr.dataset.mod || 'general';
+    if (!grupos[mod]) grupos[mod] = [];
+    const celdas = tr.querySelectorAll('td');
+    grupos[mod].push({
+      nombre:    celdas[0]?.querySelector('div')?.textContent || '',
+      proveedor: celdas[0]?.querySelectorAll('div')[1]?.textContent || '',
+      modulo:    celdas[1]?.textContent.trim() || '',
+      categoria: celdas[2]?.textContent.trim() || '',
+      stock:     celdas[3]?.textContent.trim() || '',
+      minimo:    celdas[4]?.textContent.trim() || '',
+      costo:     celdas[5]?.textContent.trim() || '',
+      precio:    celdas[6]?.textContent.trim() || '',
+    });
+  });
+
+  const MOD_ICON = {bebidas:'🍺',frigobar:'🧊',cocina:'🍳',limpieza:'🧹',general:'📋'};
+
+  const tablaGrupos = Object.entries(grupos).map(([mod, prods]) => `
+    <tr style="background:#f1f5f9">
+      <td colspan="7" style="font-weight:800;font-size:13px;padding:8px 10px;color:#1a2035">
+        ${MOD_ICON[mod]||'📋'} ${mod.toUpperCase()} (${prods.length})
+      </td>
+    </tr>
+    ${prods.map(p => `<tr>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">
+        <strong>${p.nombre}</strong>
+        ${p.proveedor?`<br><small style="color:#94a3b8">${p.proveedor}</small>`:''}
+      </td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${p.categoria}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-weight:700;color:${p.stock.includes('⛔')?'#dc2626':p.stock.includes('⚠️')?'#d97706':'#16a34a'}">${p.stock}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8">${p.minimo}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">${p.costo}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">${p.precio}</td>
+    </tr>`).join('')}
+  `).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>Inventario — Hotel Takuá</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Nunito',Arial,sans-serif;font-size:12px;color:#1a2035;padding:20px}
+    h1{font-size:18px;font-weight:900;margin-bottom:4px}
+    .sub{font-size:12px;color:#64748b;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th{text-align:left;padding:8px 10px;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid #1a2035}
+    tr:hover td{background:#f8fafc}
+    @media print{body{padding:10px}.no-print{display:none}}
+  </style>
+  </head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+    <div>
+      <h1>📦 Inventario — Hotel Takuá</h1>
+      <div class="sub">${fecha}${filtroMod}${filtroCat} · ${rows.length} productos</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Producto</th><th>Categoría</th><th>Stock</th>
+      <th>Mínimo</th><th>Costo</th><th>Precio venta</th>
+    </tr></thead>
+    <tbody>${tablaGrupos}</tbody>
+  </table>
+  <div style="margin-top:20px;font-size:11px;color:#94a3b8;text-align:center">
+    Hotel Takuá · Generado el ${fecha}
+  </div>
+  <scr'+'ipt>window.onload=()=>window.print();</scr'+'ipt>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
 
 // ── INIT ──────────────────────────────────────────────
