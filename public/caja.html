@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Caja Global — Hotel Takuá</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00c9b1">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1}
+body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px;overflow-x:hidden}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
+.sb-overlay.open{display:block}
+.sidebar{width:var(--sw);background:var(--sidebar);position:fixed;top:0;left:0;bottom:0;z-index:200;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:2px;transition:transform .25s ease}
+.s-logo{width:50px;height:50px;border-radius:50%;overflow:hidden;margin-bottom:18px;flex-shrink:0;border:2px solid rgba(196,149,106,.4);background:#1a2035;display:flex;align-items:center;justify-content:center}
+.nav-btn{width:58px;height:52px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:#64748b;border:none;background:none;font-family:'Nunito',sans-serif;transition:all .15s;flex-shrink:0;text-decoration:none}
+.nav-btn:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-btn.active{background:rgba(0,201,177,.18);color:var(--accent)}
+.nav-btn .ni{font-size:18px;line-height:1}
+.nav-btn .nl{font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:inherit}
+.hamburger{display:none;background:none;border:none;cursor:pointer;font-size:22px;color:#1a2035;padding:2px 6px}
+.main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
+.tb-left{flex:1;min-width:0}
+.tb-left h2{font-size:16px;font-weight:800;color:#1a2035;margin:0}
+.tb-left p{font-size:11px;color:#94a3b8;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.content{padding:20px 24px;max-width:1400px;margin:0 auto;width:100%}
+.user-av{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.btn-salir{background:none;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;color:#dc2626;cursor:pointer;font-family:'Nunito',sans-serif}
+.section-card{background:#fff;border-radius:18px;padding:22px 24px;box-shadow:0 1px 8px rgba(0,0,0,.07);margin-bottom:20px}
+.sc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.card-title{font-size:16px;font-weight:800;color:#1a2035}
+.tabs{display:flex;gap:4px;background:#f1f5f9;border-radius:12px;padding:4px;margin-bottom:20px;flex-wrap:wrap}
+.tab{flex:1;min-width:80px;padding:8px 14px;border-radius:9px;border:none;background:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tab.active{background:#fff;color:#1a2035;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{border-radius:14px;padding:16px 18px;color:#fff;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.08)}
+.stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.8;margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:900;line-height:1}
+.stat-sub{font-size:11px;opacity:.7;margin-top:4px}
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{text-align:left;padding:10px 12px;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #f1f5f9}
+.data-table td{padding:10px 12px;border-bottom:1px solid #f8fafc;font-size:13px;vertical-align:middle}
+.data-table tbody tr:hover{background:#f8fafc}
+.pill{display:inline-block;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700}
+.pg{background:#dcfce7;color:#16a34a}.pr{background:#fee2e2;color:#dc2626}
+.pb{background:#dbeafe;color:#1d4ed8}.pgr{background:#f3f4f6;color:#374151}
+.po{background:#ffedd5;color:#c2410c}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:10px;padding:10px 18px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif}
+.btn-secondary{background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 16px;color:#475569;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif}
+/* MOV ROW — billetera */
+.mov-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;margin-bottom:8px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.mov-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.mov-icon.ing{background:#dcfce7}
+.mov-icon.egr{background:#fee2e2}
+.mov-body{flex:1;min-width:0}
+.mov-concepto{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mov-meta{font-size:11px;color:#94a3b8;margin-top:2px}
+.mov-monto{font-size:16px;font-weight:900;text-align:right;flex-shrink:0}
+/* FUENTE BADGE */
+.fuente-rest{background:#dbeafe;color:#1d4ed8;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700}
+.fuente-hab{background:#dcfce7;color:#15803d;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700}
+/* METODO */
+.metodo-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+/* DATE INPUT */
+.date-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.date-row input[type=date]{border:1.5px solid #e2e8f0;border-radius:9px;padding:8px 12px;font-size:13px;font-family:'Nunito',sans-serif}
+/* POR DIA */
+.dia-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:13px}
+.dia-row:nth-child(even){background:#f8fafc}
+/* RESUMEN BLOQUES */
+.resumen-bloque{border-radius:14px;padding:16px 18px;border:1.5px solid #e2e8f0;margin-bottom:12px}
+@media(max-width:900px){
+  :root{--sw:0px}
+  .sidebar{transform:translateX(-100%);width:220px;align-items:flex-start;padding:14px 10px}
+  .sidebar .nav-btn{width:100%;justify-content:flex-start;gap:10px;padding:0 10px;height:48px}
+  .sidebar .nav-btn .nl{font-size:13px;letter-spacing:0;text-transform:none}
+  .sidebar.open{transform:translateX(0)}
+  .sb-overlay.open{display:block}
+  .main{margin-left:0!important}
+  .hamburger{display:flex!important;align-items:center;justify-content:center}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .content{padding:12px 10px}
+}
+@media(max-width:600px){
+  .stats-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .stat-val{font-size:17px}
+  input[type=date]{font-size:16px!important}
+}
+</style>
+</head>
+<body>
+
+<div class="sb-overlay" id="sb-overlay"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="s-logo" id="s-logo-caja">
+    <span style="font-size:18px;font-weight:900;color:var(--accent)">TK</span>
+  </div>
+  <a href="/index.html" style="text-decoration:none">
+    <button class="nav-btn" title="Inicio"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
+  </a>
+  <a href="/index.html#habitaciones" style="text-decoration:none">
+    <button class="nav-btn" title="Habitaciones"><span class="ni">🛏️</span><span class="nl">Hab.</span></button>
+  </a>
+  <a href="/inventario.html" style="text-decoration:none">
+    <button class="nav-btn" title="Inventario"><span class="ni">📦</span><span class="nl">Inventario</span></button>
+  </a>
+  <button class="nav-btn active" title="Caja"><span class="ni">💰</span><span class="nl">Caja</span></button>
+  <a href="/index.html#finanzas" style="text-decoration:none">
+    <button class="nav-btn" title="Finanzas"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
+  </a>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <button class="hamburger" id="hamburger">☰</button>
+    <div class="tb-left">
+      <h2>💰 Caja Global — Hotel Takuá</h2>
+      <p id="tb-fecha">Cargando...</p>
+    </div>
+    <div class="tb-right">
+      <div class="user-av" id="user-av">A</div>
+      <button class="btn-salir" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+  <div class="content" id="main-content">
+    <div style="text-align:center;padding:60px;color:#94a3b8;font-size:16px">⏳ Cargando caja...</div>
+  </div>
+</div>
+
+<script>
+// ── AUTH ──────────────────────────────────────────────
+const TOKEN = localStorage.getItem('takua_token');
+const ME    = JSON.parse(localStorage.getItem('takua_user') || 'null');
+if (!TOKEN || !ME) window.location.href = '/portal.html';
+if (ME && ME.rol !== 'admin') window.location.href = '/index.html';
+
+document.getElementById('user-av').textContent = (ME?.nombre||'A')[0].toUpperCase();
+document.getElementById('tb-fecha').textContent = new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+function doLogout() {
+  localStorage.removeItem('takua_token');
+  localStorage.removeItem('takua_user');
+  window.location.href = '/portal.html';
+}
+
+document.getElementById('hamburger').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sb-overlay').classList.toggle('open');
+});
+document.getElementById('sb-overlay').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-overlay').classList.remove('open');
+});
+
+// Cargar logo
+fetch('/index.html').then(r=>r.text()).then(txt => {
+  const m = txt.match(/class="s-logo"><img src="(data:image[^"]+)"/);
+  if (m) document.getElementById('s-logo-caja').innerHTML =
+    '<img src="'+m[1]+'" style="width:100%;height:100%;object-fit:cover">';
+}).catch(()=>{});
+
+// ── API ───────────────────────────────────────────────
+async function api(method, path, body) {
+  try {
+    const r = await fetch('/api'+path, {
+      method,
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},
+      body: body ? JSON.stringify(body) : undefined
+    });
+    return r.json();
+  } catch(e) { return {error:e.message}; }
+}
+
+// ── UTILS ─────────────────────────────────────────────
+const fmt = n => n==null?'—':new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+const fmtDate = iso => iso?new Date(iso).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+const fmtDay  = iso => iso?new Date(iso+'T00:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'2-digit',month:'2-digit'}):'—';
+const hoy = () => new Date().toISOString().split('T')[0];
+
+function toast(msg, ok=true) {
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:'+(ok?'#1a2035':'#dc2626')+';color:#fff;padding:12px 22px;border-radius:12px;font-weight:700;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:Nunito,sans-serif';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+const METODO_ICONS = {Efectivo:'💵',Tarjeta:'💳',Transferencia:'🏦',Débito:'💳',Otro:'📋'};
+
+// ── ESTADO ────────────────────────────────────────────
+const G = { tab:'hoy', desdePeriodo:'', hastaPeriodo:'' };
+
+// ── RENDER ────────────────────────────────────────────
+async function render() {
+  const el = document.getElementById('main-content');
+  el.innerHTML = `
+    <div class="tabs">
+      <button class="tab ${G.tab==='hoy'?'active':''}" onclick="setTab('hoy')">📅 Hoy</button>
+      <button class="tab ${G.tab==='historial'?'active':''}" onclick="setTab('historial')">📋 Historial</button>
+      <button class="tab ${G.tab==='periodo'?'active':''}" onclick="setTab('periodo')">📊 Por período</button>
+      <button class="tab ${G.tab==='mensual'?'active':''}" onclick="setTab('mensual')">🗓️ Mensual</button>
+    </div>
+    <div id="tab-content"></div>`;
+  renderTab();
+}
+
+function setTab(tab) {
+  G.tab = tab;
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active', ['hoy','historial','periodo','mensual'][i]===tab);
+  });
+  renderTab();
+}
+
+async function renderTab() {
+  const el = document.getElementById('tab-content');
+  if (!el) return;
+  if (G.tab==='hoy')       await renderHoy(el);
+  else if (G.tab==='historial') await renderHistorial(el);
+  else if (G.tab==='periodo')   await renderPeriodo(el);
+  else await renderMensual(el);
+}
+
+// ── TAB HOY ──────────────────────────────────────────
+async function renderHoy(el) {
+  el.innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8">Cargando...</div>';
+  const data = await api('GET', '/caja-global/resumen-dia?fecha='+hoy());
+
+  // Restaurante
+  const rest = data?.restaurante || {};
+  const restPorMetodo = rest.por_metodo || [];
+  const restTotal = restPorMetodo.reduce((s,m)=>s+Number(m.total||0),0);
+  const restRetiros = Number(rest.retiros||0);
+  const restNeto = restTotal - restRetiros;
+
+  // Habitaciones
+  const hab = data?.habitaciones || {};
+  const habMovs = hab.movimientos || [];
+  const habIngresos = habMovs.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.total||0),0);
+  const habEgresos  = habMovs.filter(m=>m.tipo==='egreso').reduce((s,m)=>s+Number(m.total||0),0);
+  const habNeto = habIngresos - habEgresos;
+
+  const totalDia = restNeto + habNeto;
+
+  // Por método consolidado
+  const metodos = {};
+  restPorMetodo.forEach(m => { metodos[m.metodo_pago]=(metodos[m.metodo_pago]||0)+Number(m.total||0); });
+  habMovs.filter(m=>m.tipo==='ingreso').forEach(m => { metodos[m.metodo_pago]=(metodos[m.metodo_pago]||0)+Number(m.total||0); });
+
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6)">
+        <div class="stat-lbl">🍽️ Restaurante</div>
+        <div class="stat-val">${fmt(restNeto)}</div>
+        <div class="stat-sub">bruto ${fmt(restTotal)}${restRetiros?` · retiros -${fmt(restRetiros)}`:''}</div>
+      </div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#0f766e,#14b8a6)">
+        <div class="stat-lbl">🛏️ Habitaciones</div>
+        <div class="stat-val">${fmt(habNeto)}</div>
+        <div class="stat-sub">ingresos ${fmt(habIngresos)}${habEgresos?` · egresos -${fmt(habEgresos)}`:''}</div>
+      </div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">
+        <div class="stat-lbl">💰 Total del día</div>
+        <div class="stat-val">${fmt(totalDia)}</div>
+        <div class="stat-sub">ambas cajas</div>
+      </div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#dc2626,#ef4444)">
+        <div class="stat-lbl">💸 Egresos</div>
+        <div class="stat-val">${fmt(restRetiros+habEgresos)}</div>
+        <div class="stat-sub">retiros + egresos</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <!-- Por método -->
+      <div class="section-card">
+        <div class="card-title" style="margin-bottom:16px">💳 Por método de pago</div>
+        ${Object.keys(metodos).length ? Object.entries(metodos).map(([m,v])=>`
+          <div class="metodo-row">
+            <span>${METODO_ICONS[m]||'💰'} ${m}</span>
+            <strong>${fmt(v)}</strong>
+          </div>`).join('')
+          :'<div style="color:#94a3b8;text-align:center;padding:20px">Sin movimientos hoy</div>'}
+      </div>
+
+      <!-- Detalle por fuente -->
+      <div class="section-card">
+        <div class="card-title" style="margin-bottom:16px">📊 Detalle por caja</div>
+        <div class="resumen-bloque" style="border-color:#bfdbfe;background:#eff6ff">
+          <div style="font-weight:700;color:#1d4ed8;margin-bottom:8px">🍽️ Restaurante</div>
+          ${restPorMetodo.map(m=>`<div class="metodo-row" style="font-size:12px">
+            <span>${METODO_ICONS[m.metodo_pago]||''} ${m.metodo_pago} (${m.cant||0})</span>
+            <span>${fmt(Number(m.total))}</span>
+          </div>`).join('')||'<div style="color:#94a3b8;font-size:12px">Sin comandas</div>'}
+          ${restRetiros?`<div class="metodo-row" style="font-size:12px;color:#dc2626"><span>💸 Retiros</span><span>- ${fmt(restRetiros)}</span></div>`:''}
+        </div>
+        <div class="resumen-bloque" style="border-color:#a7f3d0;background:#f0fdf9">
+          <div style="font-weight:700;color:#0f766e;margin-bottom:8px">🛏️ Habitaciones</div>
+          ${habMovs.map(m=>`<div class="metodo-row" style="font-size:12px">
+            <span>${m.tipo==='egreso'?'💸':'💰'} ${m.metodo_pago} (${m.tipo})</span>
+            <span style="color:${m.tipo==='egreso'?'#dc2626':'inherit'}">${m.tipo==='egreso'?'-':''}${fmt(Number(m.total))}</span>
+          </div>`).join('')||'<div style="color:#94a3b8;font-size:12px">Sin movimientos</div>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── TAB HISTORIAL ─────────────────────────────────────
+async function renderHistorial(el) {
+  el.innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8">Cargando historial...</div>';
+  const data = await api('GET', '/caja-global/historial?limit=100');
+  const movs = data?.movimientos || [];
+
+  el.innerHTML = `
+    <div class="section-card">
+      <div class="sc-head">
+        <span class="card-title">Últimos 30 días (${movs.length} movimientos)</span>
+      </div>
+      ${movs.length ? movs.map(m => {
+        const esEgreso = m.tipo==='egreso';
+        return `<div class="mov-item">
+          <div class="mov-icon ${esEgreso?'egr':'ing'}">${esEgreso?'⬇️':'⬆️'}</div>
+          <div class="mov-body">
+            <div class="mov-concepto">${m.concepto||'—'}</div>
+            <div class="mov-meta">
+              ${m.fuente==='restaurante'?'<span class="fuente-rest">Restaurante</span>':'<span class="fuente-hab">Habitaciones</span>'}
+              &nbsp;${METODO_ICONS[m.metodo_pago]||''} ${m.metodo_pago||''}
+              &nbsp;· ${fmtDate(m.fecha)}
+              ${m.usuario?'· '+m.usuario:''}
+            </div>
+          </div>
+          <div class="mov-monto" style="color:${esEgreso?'#dc2626':'#16a34a'}">
+            ${esEgreso?'-':'+'} ${fmt(Math.abs(Number(m.monto||0)))}
+          </div>
+        </div>`;
+      }).join('') : '<div style="text-align:center;color:#94a3b8;padding:32px">Sin movimientos</div>'}
+    </div>`;
+}
+
+// ── TAB PERÍODO ───────────────────────────────────────
+async function renderPeriodo(el) {
+  const hoyStr = hoy();
+  const hace7  = new Date(Date.now()-7*24*60*60*1000).toISOString().split('T')[0];
+  const desde  = G.desdePeriodo || hace7;
+  const hasta  = G.hastaPeriodo || hoyStr;
+
+  el.innerHTML = `
+    <div class="section-card">
+      <div class="date-row">
+        <label style="font-weight:700;font-size:13px;color:#475569">Desde</label>
+        <input type="date" id="per-desde" value="${desde}" max="${hoyStr}">
+        <label style="font-weight:700;font-size:13px;color:#475569">Hasta</label>
+        <input type="date" id="per-hasta" value="${hasta}" max="${hoyStr}">
+        <button class="btn-primary" onclick="buscarPeriodo()">Buscar</button>
+      </div>
+      <div id="per-result"><div style="text-align:center;color:#94a3b8;padding:20px">Seleccioná un período y buscá</div></div>
+    </div>`;
+
+  if (G.desdePeriodo && G.hastaPeriodo) buscarPeriodo();
+}
+
+async function buscarPeriodo() {
+  const desde = document.getElementById('per-desde')?.value;
+  const hasta = document.getElementById('per-hasta')?.value;
+  if (!desde||!hasta) return;
+  G.desdePeriodo = desde; G.hastaPeriodo = hasta;
+  const el = document.getElementById('per-result');
+  el.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px">Cargando...</div>';
+  const data = await api('GET', `/caja-global/reporte-periodo?desde=${desde}&hasta=${hasta}`);
+  if (data?.error) { el.innerHTML='<div style="color:#dc2626">'+data.error+'</div>'; return; }
+
+  const rest = data.restaurante || {};
+  const hab  = data.habitaciones || {};
+  const restTotal = (rest.por_metodo||[]).reduce((s,m)=>s+Number(m.total||0),0);
+  const restRetiros = Number(rest.retiros||0);
+  const habTotal = (hab.ingresos||[]).reduce((s,m)=>s+Number(m.total||0),0);
+  const habEgresos = Number(hab.egresos||0);
+  const total = restTotal - restRetiros + habTotal - habEgresos;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div class="resumen-bloque" style="border-color:#bfdbfe;background:#eff6ff">
+        <div style="font-weight:800;color:#1d4ed8;font-size:15px;margin-bottom:10px">🍽️ Restaurante</div>
+        ${(rest.por_metodo||[]).map(m=>`<div class="metodo-row">
+          <span>${METODO_ICONS[m.metodo_pago]||''} ${m.metodo_pago} (${m.cant} cmd)</span>
+          <strong>${fmt(Number(m.total))}</strong>
+        </div>`).join('')||'<div style="color:#94a3b8;font-size:12px">Sin movimientos</div>'}
+        ${restRetiros?`<div class="metodo-row" style="color:#dc2626"><span>💸 Retiros</span><strong>- ${fmt(restRetiros)}</strong></div>`:''}
+        <div class="metodo-row" style="border-top:2px solid #bfdbfe;margin-top:6px;padding-top:8px">
+          <span style="font-weight:700">Neto restaurante</span><strong style="color:#1d4ed8">${fmt(restTotal-restRetiros)}</strong>
+        </div>
+      </div>
+      <div class="resumen-bloque" style="border-color:#a7f3d0;background:#f0fdf9">
+        <div style="font-weight:800;color:#0f766e;font-size:15px;margin-bottom:10px">🛏️ Habitaciones</div>
+        ${(hab.ingresos||[]).map(m=>`<div class="metodo-row">
+          <span>${METODO_ICONS[m.metodo_pago]||''} ${m.metodo_pago} (${m.cant})</span>
+          <strong>${fmt(Number(m.total))}</strong>
+        </div>`).join('')||'<div style="color:#94a3b8;font-size:12px">Sin movimientos</div>'}
+        ${habEgresos?`<div class="metodo-row" style="color:#dc2626"><span>💸 Egresos</span><strong>- ${fmt(habEgresos)}</strong></div>`:''}
+        <div class="metodo-row" style="border-top:2px solid #a7f3d0;margin-top:6px;padding-top:8px">
+          <span style="font-weight:700">Neto habitaciones</span><strong style="color:#0f766e">${fmt(habTotal-habEgresos)}</strong>
+        </div>
+      </div>
+    </div>
+    <div style="background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:14px;padding:18px 22px;color:#fff;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11px;font-weight:700;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Total período ${desde} → ${hasta}</div>
+        <div style="font-size:28px;font-weight:900;margin-top:4px">${fmt(total)}</div>
+      </div>
+      <div style="font-size:40px;opacity:.3">💰</div>
+    </div>
+
+    <!-- Por día -->
+    <div class="card-title" style="margin-bottom:12px">📅 Por día</div>
+    ${(data.por_dia||[]).length ? (() => {
+      const dias = {};
+      (data.por_dia||[]).forEach(d=>{
+        if(!dias[d.dia]) dias[d.dia]={rest:0,hab:0};
+        if(d.fuente==='restaurante') dias[d.dia].rest=Number(d.total||0);
+        else dias[d.dia].hab=Number(d.total||0);
+      });
+      return Object.entries(dias).sort((a,b)=>b[0]>a[0]?1:-1).map(([dia,v])=>`
+        <div class="dia-row">
+          <span style="font-weight:600;min-width:90px">${fmtDay(dia)}</span>
+          <span class="fuente-rest">🍽️ ${fmt(v.rest)}</span>
+          <span class="fuente-hab">🛏️ ${fmt(v.hab)}</span>
+          <strong>${fmt(v.rest+v.hab)}</strong>
+        </div>`).join('');
+    })() : '<div style="color:#94a3b8;text-align:center;padding:20px">Sin datos para este período</div>'}`;
+}
+
+// ── TAB MENSUAL ───────────────────────────────────────
+async function renderMensual(el) {
+  el.innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8">Cargando resumen mensual...</div>';
+  const now = new Date();
+  const desde = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  const hasta  = hoy();
+  const data = await api('GET', `/caja-global/reporte-periodo?desde=${desde}&hasta=${hasta}`);
+
+  const rest = data?.restaurante || {};
+  const hab  = data?.habitaciones || {};
+  const restTotal = (rest.por_metodo||[]).reduce((s,m)=>s+Number(m.total||0),0);
+  const restRetiros = Number(rest.retiros||0);
+  const habTotal = (hab.ingresos||[]).reduce((s,m)=>s+Number(m.total||0),0);
+  const habEgresos = Number(hab.egresos||0);
+  const total = restTotal - restRetiros + habTotal - habEgresos;
+
+  const mesNombre = now.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+
+  el.innerHTML = `
+    <div class="section-card">
+      <div class="card-title" style="margin-bottom:4px;text-transform:capitalize">${mesNombre}</div>
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:18px">${desde} al ${hasta}</div>
+
+      <div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6)">
+          <div class="stat-lbl">Restaurante</div>
+          <div class="stat-val">${fmt(restTotal-restRetiros)}</div>
+          <div class="stat-sub">${(rest.por_metodo||[]).reduce((s,m)=>s+Number(m.cant||0),0)} comandas</div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,#0f766e,#14b8a6)">
+          <div class="stat-lbl">Habitaciones</div>
+          <div class="stat-val">${fmt(habTotal-habEgresos)}</div>
+          <div class="stat-sub">ingresos netos</div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">
+          <div class="stat-lbl">Total mes</div>
+          <div class="stat-val">${fmt(total)}</div>
+          <div class="stat-sub">consolidado</div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,#dc2626,#ef4444)">
+          <div class="stat-lbl">Egresos mes</div>
+          <div class="stat-val">${fmt(restRetiros+habEgresos)}</div>
+          <div class="stat-sub">retiros + egresos</div>
+        </div>
+      </div>
+
+      <!-- Por método consolidado -->
+      <div class="card-title" style="margin-bottom:12px">💳 Por método de pago</div>
+      ${(() => {
+        const metodos = {};
+        (rest.por_metodo||[]).forEach(m=>{ metodos[m.metodo_pago]=(metodos[m.metodo_pago]||0)+Number(m.total||0); });
+        (hab.ingresos||[]).forEach(m=>{ metodos[m.metodo_pago]=(metodos[m.metodo_pago]||0)+Number(m.total||0); });
+        return Object.entries(metodos).sort((a,b)=>b[1]-a[1]).map(([m,v])=>`
+          <div class="metodo-row">
+            <span style="font-size:14px">${METODO_ICONS[m]||'💰'} ${m}</span>
+            <strong style="font-size:15px">${fmt(v)}</strong>
+          </div>`).join('') || '<div style="color:#94a3b8;text-align:center;padding:20px">Sin datos</div>';
+      })()}
+
+      <!-- Por día del mes -->
+      <div class="card-title" style="margin:18px 0 12px">📅 Por día</div>
+      ${(data?.por_dia||[]).length ? (() => {
+        const dias = {};
+        (data.por_dia||[]).forEach(d=>{
+          if(!dias[d.dia]) dias[d.dia]={rest:0,hab:0};
+          if(d.fuente==='restaurante') dias[d.dia].rest=Number(d.total||0);
+          else dias[d.dia].hab=Number(d.total||0);
+        });
+        return Object.entries(dias).sort((a,b)=>a[0]>b[0]?1:-1).map(([dia,v])=>`
+          <div class="dia-row">
+            <span style="font-weight:600;min-width:100px">${fmtDay(dia)}</span>
+            <span class="fuente-rest" style="min-width:100px;text-align:right">🍽️ ${fmt(v.rest)}</span>
+            <span class="fuente-hab" style="min-width:100px;text-align:right">🛏️ ${fmt(v.hab)}</span>
+            <strong style="min-width:90px;text-align:right">${fmt(v.rest+v.hab)}</strong>
+          </div>`).join('');
+      })() : '<div style="color:#94a3b8;text-align:center;padding:20px">Sin datos este mes</div>'}
+    </div>`;
+}
+
+// ── INIT ──────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
