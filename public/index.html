@@ -388,7 +388,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
     <button class="nav-btn nav-admin" id="nav-huespedes"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
     <button class="nav-btn nav-admin" id="nav-tienda"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
     <button class="nav-btn nav-admin" id="nav-inventario" onclick="window.location.href='/inventario.html'"><span class="ni">📦</span><span class="nl">Inventario</span></button>
-    <button class="nav-btn nav-admin" id="nav-caja"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn nav-admin" id="nav-caja" onclick="currentUser?.rol==='admin'?window.location.href='/caja.html':goTo('caja')"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn nav-admin" id="nav-finanzas"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
     <button class="nav-btn nav-admin" id="nav-restaurante" onclick="irARestaurante()" style="display:none"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
     <button class="nav-btn nav-admin bottom" id="nav-config"><span class="ni">⚙️</span><span class="nl">Configuración</span></button>
@@ -536,7 +536,10 @@ function closeSidebar() {
     setActiveNav('nav-'+p); closeSidebar(); goTo(p);
   });
 });
-document.getElementById('tb-caja')?.addEventListener('click',()=>{ setActiveNav('nav-caja'); goTo('caja'); });
+document.getElementById('tb-caja')?.addEventListener('click',()=>{
+  if(currentUser?.rol==='admin') window.location.href='/caja.html';
+  else { setActiveNav('nav-caja'); goTo('caja'); }
+});
  
 function setActiveNav(id) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -2808,6 +2811,34 @@ if (token && currentUser) {
   }
 } else { window.location.href = "/portal.html"; }
  
+// ── SONIDO DE NOTIFICACIÓN ────────────────────────────
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Dos beeps cortos tipo "ding"
+    [0, 0.25].forEach(delay => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime + delay);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + delay + 0.15);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.2);
+    });
+  } catch(e) {}
+}
+
+// Escuchar mensajes del SW (cuando llega push con la app abierta)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'PLAY_SOUND') playNotifSound();
+  });
+}
+
 // ── SERVICE WORKER + PUSH SUBSCRIPTION ──────────────
 const ROLES_PUSH = ['recepcionista','mucama','admin','mantenimiento'];
 
