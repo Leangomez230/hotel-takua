@@ -325,6 +325,37 @@ await query(`
 `);
 console.log('✅ Tabla caja_retiros lista');
 
+// Caja habitaciones — turnos
+await query(`
+  CREATE TABLE IF NOT EXISTS turnos_habitaciones (
+    id SERIAL PRIMARY KEY,
+    cajero_id INTEGER,
+    cajero_nombre TEXT,
+    fondo_inicial REAL DEFAULT 0,
+    estado TEXT DEFAULT 'abierto',
+    abierto_at TIMESTAMP DEFAULT NOW(),
+    cerrado_at TIMESTAMP
+  );
+`);
+// Caja habitaciones — movimientos
+await query(`
+  CREATE TABLE IF NOT EXISTS movimientos_habitaciones (
+    id SERIAL PRIMARY KEY,
+    turno_id INTEGER,
+    tipo TEXT NOT NULL DEFAULT 'ingreso',
+    concepto TEXT NOT NULL DEFAULT '',
+    monto REAL NOT NULL DEFAULT 0,
+    metodo_pago TEXT DEFAULT 'Efectivo',
+    referencia TEXT DEFAULT '',
+    usuario_id INTEGER,
+    usuario_nombre TEXT,
+    habitacion_id INTEGER,
+    habitacion_numero TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+console.log('✅ Tablas caja habitaciones listas');
+
 // Migración: sincronizar bebidas del menú → inventario
 try {
   const bebidasMenu = await getAll(
