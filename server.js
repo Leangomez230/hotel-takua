@@ -319,6 +319,17 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
         await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
           [caja.id,'ingreso','hospedaje',`Check-in hab.${hab.numero} - ${nombre}`,precio_total,metodo_pago||'Efectivo',habitacion_id,req.user.id]);
       }
+      // Registrar en caja habitaciones (nuevo sistema)
+      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+      if (turnoHab) {
+        await db.query(
+          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [turnoHab.id, `Check-in Hab. ${hab.numero} — ${nombre}`, precio_total,
+           metodo_pago||'Efectivo', `Reserva #${reserva.rows[0].id}`,
+           req.user.id, req.user.nombre, habitacion_id, hab.numero]
+        );
+      }
     }
     await logAction(req.user.id, req.user.nombre, 'CHECKIN', `Hab ${hab.numero} - ${nombre}`);
     await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habId, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
@@ -330,12 +341,25 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
 app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) => {
   try {
     const id = req.params.habitacion_id;
+    const { monto_extra, metodo_pago_extra, concepto_extra } = req.body;
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + id });
     await db.query("UPDATE habitaciones SET status='limpieza',nota='',updated_at=NOW() WHERE id=$1", [id]);
     await db.query("UPDATE reservas SET estado='finalizada' WHERE habitacion_id=$1 AND estado='activa'", [id]);
+    // Si hay cobro extra al checkout, registrarlo en movimientos_habitaciones
+    if (monto_extra && Number(monto_extra) > 0) {
+      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+      if (turnoHab) {
+        await db.query(
+          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
+          [turnoHab.id, concepto_extra||`Checkout Hab. ${hab.numero}`, Number(monto_extra),
+           metodo_pago_extra||'Efectivo', req.user.id, req.user.nombre, id, hab.numero]
+        );
+      }
+    }
     await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}`);
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, `🚪 Check-out — Hab. ${hab.numero} (${hab.nota||''})`);
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, id, `🚪 Check-out — Hab. ${hab.numero} (${hab.nota||''})`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1792,6 +1816,168 @@ app.post('/api/libro-novedades', auth, async (req, res) => {
       [tipo||'auto', req.user.id, req.user.nombre, req.user.rol, habitacion_id||'', mensaje]
     );
     res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CAJA HABITACIONES ────────────────────────────────────────────────
+app.get('/api/caja-hab/turno/activo', auth, async (req, res) => {
+  try {
+    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+    if (!t) return res.json(null);
+    const movs = await db.getAll("SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at DESC", [t.id]);
+    res.json({ ...t, movimientos: movs });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/caja-hab/turno/ultimo', auth, async (req, res) => {
+  try {
+    const t = await db.getOne('SELECT * FROM turnos_habitaciones ORDER BY id DESC LIMIT 1');
+    if (!t) return res.json(null);
+    const movs = await db.getAll("SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at DESC", [t.id]);
+    res.json({ ...t, movimientos: movs });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/caja-hab/turno/abrir', auth, adminOrRecep, async (req, res) => {
+  try {
+    const ya = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto'");
+    if (ya) return res.status(400).json({ error: 'Ya hay un turno abierto' });
+    const r = await db.query(
+      "INSERT INTO turnos_habitaciones (cajero_id,cajero_nombre,fondo_inicial) VALUES ($1,$2,$3) RETURNING *",
+      [req.user.id, req.user.nombre, req.body.fondo_inicial||0]
+    );
+    await logAction(req.user.id, req.user.nombre, 'ABRIR_TURNO_HAB', `Fondo: $${req.body.fondo_inicial||0}`);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/caja-hab/turno/cerrar', auth, adminOrRecep, async (req, res) => {
+  try {
+    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+    if (!t) return res.status(400).json({ error: 'No hay turno abierto' });
+    await db.query("UPDATE turnos_habitaciones SET estado='cerrado',cerrado_at=NOW() WHERE id=$1", [t.id]);
+    await logAction(req.user.id, req.user.nombre, 'CERRAR_TURNO_HAB', `Turno #${t.id}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/caja-hab/movimiento', auth, adminOrRecep, async (req, res) => {
+  try {
+    const { tipo, concepto, monto, metodo_pago, referencia, habitacion_id, habitacion_numero } = req.body;
+    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+    if (!t) return res.status(400).json({ error: 'No hay turno abierto en habitaciones' });
+    await db.query(
+      `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [t.id, tipo||'ingreso', concepto||'', monto||0, metodo_pago||'Efectivo',
+       referencia||'', req.user.id, req.user.nombre, habitacion_id||null, habitacion_numero||'']
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CAJA GLOBAL (admin) ──────────────────────────────────────────────
+app.get('/api/caja-global/resumen-dia', auth, adminOnly, async (req, res) => {
+  try {
+    const hoy = req.query.fecha || new Date().toISOString().split('T')[0];
+    const desde = hoy + ' 00:00:00';
+    const hasta  = hoy + ' 23:59:59';
+
+    // Restaurante — comandas cerradas hoy
+    const cmdHoy = await db.getAll(
+      "SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2 GROUP BY metodo_pago",
+      [desde, hasta]
+    );
+    // Restaurante — retiros hoy
+    const retirosRest = await db.getAll(
+      "SELECT SUM(monto) as total FROM caja_retiros WHERE created_at BETWEEN $1 AND $2",
+      [desde, hasta]
+    );
+    // Habitaciones — movimientos hoy
+    const movHab = await db.getAll(
+      "SELECT tipo, metodo_pago, SUM(monto) as total FROM movimientos_habitaciones WHERE created_at BETWEEN $1 AND $2 GROUP BY tipo, metodo_pago",
+      [desde, hasta]
+    );
+
+    res.json({
+      fecha: hoy,
+      restaurante: { por_metodo: cmdHoy, retiros: Number(retirosRest[0]?.total||0) },
+      habitaciones: { movimientos: movHab }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
+  try {
+    const { desde, hasta, limit } = req.query;
+    const lim = parseInt(limit)||200;
+    const d = desde || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    const h = hasta  || new Date().toISOString().split('T')[0];
+
+    // Comandas restaurante
+    const cmds = await db.getAll(
+      `SELECT 'restaurante' as fuente, 'ingreso' as tipo, total_final as monto,
+              metodo_pago, concat('Mesa ', mesa_id) as concepto,
+              cajero_nombre as usuario, cerrada_at as fecha
+       FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2
+       ORDER BY cerrada_at DESC LIMIT $3`,
+      [d+' 00:00:00', h+' 23:59:59', lim]
+    );
+    // Retiros restaurante
+    const retRest = await db.getAll(
+      `SELECT 'restaurante' as fuente, 'egreso' as tipo, monto,
+              'Efectivo' as metodo_pago, motivo as concepto,
+              usuario_nombre as usuario, created_at as fecha
+       FROM caja_retiros WHERE created_at BETWEEN $1 AND $2
+       ORDER BY created_at DESC`,
+      [d+' 00:00:00', h+' 23:59:59']
+    );
+    // Movimientos habitaciones
+    const movHab = await db.getAll(
+      `SELECT 'habitaciones' as fuente, tipo, monto, metodo_pago, concepto,
+              usuario_nombre as usuario, created_at as fecha
+       FROM movimientos_habitaciones WHERE created_at BETWEEN $1 AND $2
+       ORDER BY created_at DESC`,
+      [d+' 00:00:00', h+' 23:59:59']
+    );
+
+    // Unir y ordenar por fecha desc
+    const todo = [...cmds, ...retRest, ...movHab]
+      .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+
+    res.json({ desde: d, hasta: h, movimientos: todo });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+    if (!desde||!hasta) return res.status(400).json({ error: 'Falta rango de fechas' });
+    const d = desde+' 00:00:00', h = hasta+' 23:59:59';
+
+    const [cmdTotal, retTotal, habIngresos, habEgresos] = await Promise.all([
+      db.getAll("SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2 GROUP BY metodo_pago", [d,h]),
+      db.getAll("SELECT SUM(monto) as total, COUNT(*) as cant FROM caja_retiros WHERE created_at BETWEEN $1 AND $2", [d,h]),
+      db.getAll("SELECT metodo_pago, SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='ingreso' AND created_at BETWEEN $1 AND $2 GROUP BY metodo_pago", [d,h]),
+      db.getAll("SELECT SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='egreso' AND created_at BETWEEN $1 AND $2", [d,h]),
+    ]);
+
+    // Resumen por día
+    const porDia = await db.getAll(`
+      SELECT dia, SUM(total) as total, fuente FROM (
+        SELECT DATE(cerrada_at) as dia, SUM(total_final) as total, 'restaurante' as fuente
+        FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2 GROUP BY DATE(cerrada_at)
+        UNION ALL
+        SELECT DATE(created_at), SUM(monto), 'habitaciones'
+        FROM movimientos_habitaciones WHERE tipo='ingreso' AND created_at BETWEEN $1 AND $2 GROUP BY DATE(created_at)
+      ) t GROUP BY dia, fuente ORDER BY dia DESC
+    `, [d,h]);
+
+    res.json({
+      restaurante: { por_metodo: cmdTotal, retiros: Number(retTotal[0]?.total||0) },
+      habitaciones: { ingresos: habIngresos, egresos: Number(habEgresos[0]?.total||0) },
+      por_dia: porDia
+    });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
