@@ -1981,6 +1981,29 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Historial de turnos (restaurante + habitaciones)
+app.get('/api/caja-global/turnos', auth, adminOnly, async (req, res) => {
+  try {
+    const { fuente } = req.query;
+    if (fuente === 'restaurante') {
+      res.json(await db.getAll('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 50'));
+    } else {
+      res.json(await db.getAll('SELECT * FROM turnos_habitaciones ORDER BY id DESC LIMIT 50'));
+    }
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Editar fondo inicial de un turno (solo admin)
+app.put('/api/caja-global/turno-fondo', auth, adminOnly, async (req, res) => {
+  try {
+    const { turno_id, fuente, fondo_inicial } = req.body;
+    const tabla = fuente === 'restaurante' ? 'turnos_restaurante' : 'turnos_habitaciones';
+    await db.query(`UPDATE ${tabla} SET fondo_inicial=$1 WHERE id=$2`, [fondo_inicial, turno_id]);
+    await logAction(req.user.id, req.user.nombre, 'EDITAR_FONDO', `${fuente} turno #${turno_id}: $${fondo_inicial}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── PUSH NOTIFICATIONS ───────────────────────────────────────────────
 
 // Devolver la VAPID public key al frontend
