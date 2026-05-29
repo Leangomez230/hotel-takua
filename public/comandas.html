@@ -1714,6 +1714,11 @@ async function confirmarCambioMesa(){
 let _extraItems = [];
 
 function abrirModalCobrar(cmdId){
+  // Verificar que haya turno abierto antes de cobrar
+  if (!S.turno || S.turno.estado !== 'abierto') {
+    toast('⚠️ Debés abrir la caja antes de cobrar', 'err');
+    return;
+  }
   const cmd=S.comandas.find(c=>c.id===cmdId); if(!cmd) return;
   S.selCmdId=cmdId;
   _extraItems=[];
@@ -1865,6 +1870,9 @@ function updVuelto(totalFinal){
 }
 
 async function confirmarCobro(cmdId,totalOrig){
+  if (!S.turno || S.turno.estado !== 'abierto') {
+    toast('⚠️ No hay turno de caja abierto', 'err'); return;
+  }
   const desc=Number(document.getElementById('cob-desc')?.value)||0;
   const metodo=METODOS[S._metodoIdx||0];
   const extra=_extraItems.reduce((s,i)=>s+i.precio,0);
