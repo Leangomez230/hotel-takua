@@ -687,13 +687,10 @@ async function initApp(){
     });
   }
 
-  // Configurar sidebar según rol
-  if(ME.rol==='admin'){
-    document.getElementById('snav-menu').style.display='';
-    document.getElementById('snav-editor').style.display='';
-    const btnConfig = document.getElementById('nav-config');
-    if(btnConfig) btnConfig.style.display='';
-  }
+  // Configurar sidebar según rol — snav-menu y snav-editor ya no se muestran
+  // (gestión de productos está dentro del desplegable en la pantalla principal)
+  const btnConfig = document.getElementById('nav-config');
+  if(btnConfig && ME.rol==='admin') btnConfig.style.display='';
 
   showScreen('screen-main');
   await loadAll();
