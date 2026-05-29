@@ -922,6 +922,27 @@ async function renderDashboard() {
   document.getElementById('content').innerHTML=`
     <!-- HABITACIONES -->
     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🏨 Habitaciones</div>
+
+    <!-- Estado rápido habitaciones -->
+    <div class="section-card" style="margin-bottom:20px">
+      <div class="sc-head" style="margin-bottom:12px"><h2 style="font-size:15px">Estado de habitaciones</h2>
+        <button class="btn-secondary" onclick="setActiveNav('nav-habitaciones');goTo('habitaciones')">Ver mapa →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
+        ${[
+          {label:'Ocupadas',   val:occ,   color:'#dc2626', bg:'#fee2e2', icon:'🔴'},
+          {label:'Libres',     val:lib,   color:'#16a34a', bg:'#dcfce7', icon:'🟢'},
+          {label:'Reservadas', val:reserv,color:'#7c3aed', bg:'#ede9fe', icon:'📅'},
+          {label:'Limpieza',   val:limp,  color:'#d97706', bg:'#fef3c7', icon:'🧹'},
+          {label:'Mantenimiento',val:mant,color:'#4b5563', bg:'#f3f4f6', icon:'🔧'},
+        ].map(x=>`<div style="background:${x.bg};border-radius:12px;padding:12px 14px;border:1px solid ${x.color}22">
+          <div style="font-size:20px;margin-bottom:4px">${x.icon}</div>
+          <div style="font-size:22px;font-weight:800;color:${x.color}">${x.val}</div>
+          <div style="font-size:12px;color:#64748b">${x.label}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
     <div class="stat-cards" style="margin-bottom:20px">
       <div class="sc occ">
         <div class="lbl">Turno actual</div><div class="ttl">OCUPACIÓN</div>
@@ -944,26 +965,6 @@ async function renderDashboard() {
               <span style="float:right;opacity:.8">${fmt(h.precio_total)}</span>
             </div>`).join('')}
         </div>
-      </div>
-    </div>
-
-    <!-- Estado rápido habitaciones -->
-    <div class="section-card" style="margin-bottom:20px">
-      <div class="sc-head" style="margin-bottom:12px"><h2 style="font-size:15px">Estado de habitaciones</h2>
-        <button class="btn-secondary" onclick="setActiveNav('nav-habitaciones');goTo('habitaciones')">Ver mapa →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
-        ${[
-          {label:'Ocupadas',   val:occ,   color:'#dc2626', bg:'#fee2e2', icon:'🔴'},
-          {label:'Libres',     val:lib,   color:'#16a34a', bg:'#dcfce7', icon:'🟢'},
-          {label:'Reservadas', val:reserv,color:'#7c3aed', bg:'#ede9fe', icon:'📅'},
-          {label:'Limpieza',   val:limp,  color:'#d97706', bg:'#fef3c7', icon:'🧹'},
-          {label:'Mantenimiento',val:mant,color:'#4b5563', bg:'#f3f4f6', icon:'🔧'},
-        ].map(x=>`<div style="background:${x.bg};border-radius:12px;padding:12px 14px;border:1px solid ${x.color}22">
-          <div style="font-size:20px;margin-bottom:4px">${x.icon}</div>
-          <div style="font-size:22px;font-weight:800;color:${x.color}">${x.val}</div>
-          <div style="font-size:12px;color:#64748b">${x.label}</div>
-        </div>`).join('')}
       </div>
     </div>
 
