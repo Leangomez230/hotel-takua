@@ -1965,10 +1965,10 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
     // Resumen por día
     const porDia = await db.getAll(`
       SELECT dia, SUM(total) as total, fuente FROM (
-        SELECT DATE(cerrada_at) as dia, SUM(total_final) as total, 'restaurante' as fuente
+        SELECT DATE(cerrada_at)::text as dia, SUM(total_final) as total, 'restaurante' as fuente
         FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2 GROUP BY DATE(cerrada_at)
         UNION ALL
-        SELECT DATE(created_at), SUM(monto), 'habitaciones'
+        SELECT DATE(created_at)::text, SUM(monto), 'habitaciones'
         FROM movimientos_habitaciones WHERE tipo='ingreso' AND created_at BETWEEN $1 AND $2 GROUP BY DATE(created_at)
       ) t GROUP BY dia, fuente ORDER BY dia DESC
     `, [d,h]);
