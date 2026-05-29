@@ -341,6 +341,7 @@ function renderTabProductos(el) {
     +'<div style="display:flex;gap:8px;align-items:center">'
     +'<button class="btn-primary" onclick="modalNuevoProducto()">+ Nuevo producto</button>'
     +'<button class="btn-secondary" onclick="imprimirInventario()" style="background:#1e293b;color:#fff;border-color:#1e293b">🖨️ Imprimir</button>'
+    +'<button class="btn-secondary" onclick="descargarPDFInventario()" style="background:#dc2626;color:#fff;border-color:#dc2626">⬇️ PDF</button>'
     +'</div></div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
     +MODULOS.map(m=>'<button class="filtro-pill '+(G.filtroModulo===m.id?'active':'')+'" onclick="setFiltroModulo(\''+m.id+'\',this)">'+m.icon+' '+m.label+'</button>').join('')
@@ -737,6 +738,137 @@ function imprimirInventario() {
   }
   frame.srcdoc = html;
   frame.onload = () => { frame.contentWindow.focus(); frame.contentWindow.print(); };
+}
+
+// ── DESCARGAR PDF ─────────────────────────────────────
+async function descargarPDFInventario() {
+  const rows = document.querySelectorAll('#inv-tbody tr[data-nombre]:not([style*="display: none"]):not([style*="display:none"])');
+  if (!rows.length) { toast('No hay productos para exportar', false); return; }
+
+  toast('Generando PDF...', true);
+
+  // Cargar jsPDF dinámicamente si no está cargado
+  if (!window.jspdf) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const fecha = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
+  const hora  = new Date().toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+  const filtroMod = G.filtroModulo !== 'todos' ? ` | Módulo: ${G.filtroModulo}` : '';
+  const filtroCat = G.filtroCat   !== 'todas'  ? ` | Cat: ${G.filtroCat}` : '';
+  const MOD_ICON_TXT = {bebidas:'Bebidas',frigobar:'Frigobar',cocina:'Cocina',limpieza:'Limpieza',general:'General'};
+
+  // Agrupar por módulo
+  const grupos = {};
+  rows.forEach(tr => {
+    const mod = tr.dataset.mod || 'general';
+    if (!grupos[mod]) grupos[mod] = [];
+    const celdas = tr.querySelectorAll('td');
+    grupos[mod].push({
+      nombre:    celdas[0]?.querySelector('div')?.textContent?.trim() || '',
+      proveedor: celdas[0]?.querySelectorAll('div')[1]?.textContent?.trim() || '',
+      categoria: celdas[2]?.textContent?.trim() || '',
+      stock:     celdas[3]?.textContent?.replace(/[⛔⚠️✅]/g,'').trim() || '',
+      stockRaw:  celdas[3]?.textContent || '',
+      minimo:    celdas[4]?.textContent?.trim() || '',
+    });
+  });
+
+  let y = 15;
+  const margenL = 14;
+  const ancho   = 182;
+
+  // Encabezado
+  doc.setFillColor(26, 32, 53);
+  doc.rect(0, 0, 210, 22, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.text('Hotel Takua - Inventario', margenL, 10);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.text(`${fecha} ${hora}${filtroMod}${filtroCat}  |  ${rows.length} productos`, margenL, 17);
+  y = 28;
+
+  // Por cada grupo/módulo
+  for (const [mod, prods] of Object.entries(grupos)) {
+    // Verificar si entra en la página
+    if (y > 265) { doc.addPage(); y = 15; }
+
+    // Encabezado de módulo
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margenL, y-4, ancho, 8, 'F');
+    doc.setTextColor(26,32,53);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.text(`${MOD_ICON_TXT[mod]||mod.toUpperCase()} (${prods.length})`, margenL+2, y+1);
+    y += 7;
+
+    // Encabezado de columnas
+    doc.setFillColor(226, 232, 240);
+    doc.rect(margenL, y-3, ancho, 6, 'F');
+    doc.setTextColor(100,116,139);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8);
+    doc.text('PRODUCTO', margenL+2, y+1);
+    doc.text('CATEGORÍA', margenL+82, y+1);
+    doc.text('STOCK', margenL+122, y+1);
+    doc.text('MÍNIMO', margenL+152, y+1);
+    y += 7;
+
+    // Filas
+    prods.forEach((p, i) => {
+      if (y > 270) { doc.addPage(); y = 15; }
+      if (i % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margenL, y-3.5, ancho, 7, 'F');
+      }
+      // Color stock
+      const sinStock = p.stockRaw.includes('⛔');
+      const stockBajo = p.stockRaw.includes('⚠️');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(26,32,53);
+      // Truncar nombre largo
+      const nombre = p.nombre.length > 45 ? p.nombre.substring(0,43)+'...' : p.nombre;
+      doc.text(nombre, margenL+2, y+1);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100,116,139);
+      doc.text(p.categoria, margenL+82, y+1);
+      // Stock con color
+      doc.setTextColor(sinStock?220:stockBajo?217:22, sinStock?38:stockBajo?119:197, sinStock?38:stockBajo?6:94);
+      doc.setFont('helvetica','bold');
+      doc.text(p.stock, margenL+122, y+1);
+      doc.setFont('helvetica','normal');
+      doc.setTextColor(148,163,184);
+      doc.text(p.minimo, margenL+152, y+1);
+      y += 7;
+    });
+    y += 3;
+  }
+
+  // Pie de página
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setTextColor(148,163,184);
+    doc.setFontSize(8);
+    doc.setFont('helvetica','normal');
+    doc.text(`Hotel Takua | ${fecha}`, margenL, 290);
+    doc.text(`Pag. ${i}/${totalPages}`, 196, 290, { align:'right' });
+  }
+
+  doc.save(`inventario_${fecha.replace(/\//g,'-')}.pdf`);
+  toast('PDF descargado ✓');
 }
 
 // ── INIT ──────────────────────────────────────────────
