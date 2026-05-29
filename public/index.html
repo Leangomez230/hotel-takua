@@ -899,7 +899,7 @@ async function renderDashboard() {
   const [dash, habs, turnoRest, alertasStock] = await Promise.all([
     apiFetch('GET','/dashboard'),
     apiFetch('GET','/habitaciones'),
-    apiFetch('GET','/restaurante/turno/ultimo').catch(()=>null),
+    apiFetch('GET','/restaurante/turno/activo').catch(()=>null),
     apiFetch('GET','/inventario/alertas').catch(()=>[]),
   ]);
   habitaciones = habs||[];
