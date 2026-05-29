@@ -444,7 +444,6 @@ async function renderHoy(el) {
   clearTimeout(G._refreshTimer);
   G._refreshTimer = setTimeout(() => { if(G.tab==='hoy') renderHoy(document.getElementById('tab-content')); }, 30000);
 }
-}
 
 // ── TAB TURNOS ────────────────────────────────────────
 async function renderTurnos(el) {
