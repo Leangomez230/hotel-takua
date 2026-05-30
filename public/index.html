@@ -750,6 +750,8 @@ function buildCard(h) {
   let cardBg = '';
   if (h.status === 'limpia')       cardBg = ' limpia-occ';
   if (h.status === 'libre_limpia') cardBg = ' libre'; // mismo verde
+  // Reservada con check-in lejano → verde (disponible); próximo/hoy → violeta
+  if (h.status === 'reservada' && proximidadCheckin === 'futuro') cardBg = ' libre';
  
   // ── Helpers de formato ──
   const fmtFecha = s => {
