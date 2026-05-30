@@ -714,6 +714,7 @@ function buildCard(h) {
         <span class="sbadge sb-reservada">RESERVADA</span>
       </div>`;
     } else {
+      // futuro o null → mostrar como libre con reserva
       badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
         <span class="sbadge sb-libre">LIBRE</span>
         <span class="sbadge sb-reservada">RESERVADA</span>
@@ -750,8 +751,8 @@ function buildCard(h) {
   let cardBg = '';
   if (h.status === 'limpia')       cardBg = ' limpia-occ';
   if (h.status === 'libre_limpia') cardBg = ' libre'; // mismo verde
-  // Reservada con check-in lejano → verde (disponible); próximo/hoy → violeta
-  if (h.status === 'reservada' && proximidadCheckin === 'futuro') cardBg = ' libre';
+  // Reservada con check-in lejano o sin fecha → verde (disponible); próximo/hoy → violeta
+  if (h.status === 'reservada' && proximidadCheckin !== 'hoy' && proximidadCheckin !== 'proximo') cardBg = ' libre';
  
   // ── Helpers de formato ──
   const fmtFecha = s => {
@@ -796,8 +797,8 @@ function buildCard(h) {
     // Reservada y lista: mostrar siempre nombre + fechas aunque r sea null
     const esReservada = ['reservada','lista'].includes(h.status);
 
-    // Para reservadas con check-in lejano, mostrar como disponible con info de reserva
-    if (h.status === 'reservada' && proximidadCheckin === 'futuro') {
+    // Para reservadas con check-in lejano o sin fecha, mostrar como disponible con info de reserva
+    if (h.status === 'reservada' && proximidadCheckin !== 'hoy' && proximidadCheckin !== 'proximo') {
       const fechaEnt = r?.entrada ? new Date(r.entrada).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) : '—';
       const nombreCorto = nombre.split(' ').slice(0,2).join(' ');
       body = `
