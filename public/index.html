@@ -492,6 +492,11 @@ function parseMonto(val) {
   return parseFloat(str) || 0;
 }
 function fmt(n) { return '$ '+Math.round(n||0).toLocaleString('es-AR'); }
+function fmtExacto(n) {
+  if (!n && n !== 0) return '$ 0';
+  // Mostrar hasta 2 decimales solo si los tiene, sin trailing zeros
+  return '$ ' + Number(n).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
 function fmtDate(d) {
   if (!d) return '';
   const dt = new Date(d);
@@ -1905,9 +1910,9 @@ async function showCheckinModal(habId) {
     const total = n*tar;
     const saldo = Math.max(0, total - senia0);
     document.getElementById('ci-n').textContent   = n;
-    document.getElementById('ci-tot').textContent = fmt(total);
+    document.getElementById('ci-tot').textContent = fmtExacto(total);
     if (document.getElementById('ci-saldo'))
-      document.getElementById('ci-saldo').textContent = fmt(saldo);
+      document.getElementById('ci-saldo').textContent = fmtExacto(saldo);
   };
   ['ci-in','ci-out','ci-tarifa'].forEach(id => document.getElementById(id)?.addEventListener('input',recalc));
 
@@ -2005,7 +2010,7 @@ function showReservaModal(habId) {
     if (!inn||!out) return;
     const n=Math.max(1,Math.ceil((new Date(out)-new Date(inn))/86400000));
     document.getElementById('res-n').textContent=n;
-    document.getElementById('res-tot').textContent=fmt(n*tar);
+    document.getElementById('res-tot').textContent=fmtExacto(n*tar);
   };
   ['res-in','res-out','res-tarifa'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalc));
   document.getElementById('res-close').addEventListener('click',closeModal);
@@ -2148,7 +2153,7 @@ async function editarReserva(id) {
     const senia = parseMonto(document.getElementById('er-senia').value);
     const saldo = Math.max(0, total - senia);
     const el = document.getElementById('er-saldo');
-    if (el) el.textContent = fmt(saldo);
+    if (el) el.textContent = fmtExacto(saldo);
   };
 
   document.getElementById('er-close').addEventListener('click', closeModal);
