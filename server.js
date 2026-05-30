@@ -549,8 +549,26 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
     if (!salida)         return res.status(400).json({ error: 'Falta fecha de salida' });
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
-    if (!['libre','lista'].includes(hab.status))
-      return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
+
+    // Bloquear si está ocupada o en mantenimiento (no se puede reservar)
+    if (['ocupada','mantenimiento'].includes(hab.status))
+      return res.status(400).json({ error: `La habitación está actualmente ${hab.status} y no se puede reservar.` });
+
+    // Verificar solapamiento de fechas con reservas existentes
+    const solapamiento = await db.getOne(
+      `SELECT id, nombre_huesped, entrada, salida FROM reservas
+       WHERE habitacion_id=$1
+       AND estado IN ('futura','activa')
+       AND entrada < $3 AND salida > $2`,
+      [habitacion_id, entrada, salida]
+    );
+    if (solapamiento) {
+      const entStr = new Date(solapamiento.entrada).toLocaleDateString('es-AR');
+      const salStr = new Date(solapamiento.salida).toLocaleDateString('es-AR');
+      return res.status(400).json({
+        error: `La habitación ya tiene una reserva de ${solapamiento.nombre_huesped} del ${entStr} al ${salStr}.`
+      });
+    }
     const senia = Number(monto_senia)||0;
     const saldo = Number(precio_total||0) - senia;
     const r = await db.query(
@@ -559,7 +577,10 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
       [habitacion_id, nombre_huesped, documento||'', entrada, salida, noches||1,
        precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo]
     );
-    await db.query("UPDATE habitaciones SET status='reservada',nota=$1,updated_at=NOW() WHERE id=$2", [nombre_huesped, habitacion_id]);
+    // Solo marcar como reservada si estaba libre/lista — si ya era reservada, dejarla
+    if (['libre','lista','limpieza'].includes(hab.status)) {
+      await db.query("UPDATE habitaciones SET status='reservada',nota=$1,updated_at=NOW() WHERE id=$2", [nombre_huesped, habitacion_id]);
+    }
     // Si hay seña, registrarla en caja habitaciones
     if (senia > 0) {
       const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
