@@ -2120,6 +2120,44 @@ app.get('/api/caja-global/turnos', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Turno completo con comandas y retiros (para reimprimir arqueo)
+app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
+  try {
+    const { id, fuente } = req.query;
+    if (fuente === 'restaurante') {
+      const turno = await db.getOne('SELECT * FROM turnos_restaurante WHERE id=$1', [id]);
+      if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
+      const cerradas = await db.getAll(
+        `SELECT * FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1
+         AND ($2::timestamp IS NULL OR cerrada_at <= $2) ORDER BY cerrada_at DESC`,
+        [turno.abierto_at, turno.cerrado_at||null]
+      );
+      const retiros = await db.getAll(
+        'SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at',
+        [id]
+      );
+      // Por método de pago
+      const porMetodo = {};
+      cerradas.forEach(c => {
+        porMetodo[c.metodo_pago] = (porMetodo[c.metodo_pago]||0) + Number(c.total_final||0);
+      });
+      res.json({ ...turno, cerradas, retiros, porMetodo });
+    } else {
+      const turno = await db.getOne('SELECT * FROM turnos_habitaciones WHERE id=$1', [id]);
+      if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
+      const movimientos = await db.getAll(
+        'SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at',
+        [id]
+      );
+      const porMetodo = {};
+      movimientos.filter(m=>m.tipo==='ingreso').forEach(m => {
+        porMetodo[m.metodo_pago] = (porMetodo[m.metodo_pago]||0) + Number(m.monto||0);
+      });
+      res.json({ ...turno, movimientos, porMetodo });
+    }
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Editar fondo inicial de un turno (solo admin)
 app.put('/api/caja-global/turno-fondo', auth, adminOnly, async (req, res) => {
   try {
