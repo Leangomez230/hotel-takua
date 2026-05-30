@@ -565,32 +565,33 @@ async function reimprimirArqueo(turnoId, fuente) {
     const totalCaja   = fondo + totalNeto - totalRet;
 
     cuerpo = `
-      <div class="row"><span>Cajero:</span><span class="bold">${data.cajero_nombre||'—'}</span></div>
-      <div class="row"><span>Apertura:</span><span>${apertura}</span></div>
-      <div class="row"><span>Cierre:</span><span>${cierre}</span></div>
-      <div class="sep"></div>
-      <div class="section">RESUMEN</div>
-      <div class="row"><span>Fondo inicial:</span><span>${fmt(fondo)}</span></div>
-      <div class="row"><span>Comandas cobradas:</span><span>${cerradas.length}</span></div>
-      <div class="row"><span>Total bruto:</span><span>${fmt(totalBruto)}</span></div>
-      ${totalDesc>0?`<div class="row"><span>Descuentos:</span><span>- ${fmt(totalDesc)}</span></div>`:''}
-      <div class="row bold"><span>Total neto cobrado:</span><span>${fmt(totalNeto)}</span></div>
-      ${totalRet>0?`<div class="row" style="color:red"><span>Retiros de caja:</span><span>- ${fmt(totalRet)}</span></div>`:''}
-      ${totalVueltos>0?`<div class="row"><span>Vuelto entregado:</span><span>${fmt(totalVueltos)}</span></div>`:''}
-      <div class="sep"></div>
-      <div class="row big"><span>TOTAL EN CAJA:</span><span>${fmt(totalCaja)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Cajero:</span><span style="font-weight:bold">${data.cajero_nombre||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Apertura:</span><span style="font-weight:bold">${apertura}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Cierre:</span><span style="font-weight:bold">${cierre}</span></div>
+      <div style="border-top:2px solid #000;margin:8px 0"></div>
+      <div style="font-weight:bold;margin-bottom:6px;font-size:15px">RESUMEN</div>
+      ${[
+        ['Fondo inicial',     fmt(fondo)],
+        ['Comandas cobradas', cerradas.length+''],
+        ['Total bruto',       fmt(totalBruto)],
+        ...(totalDesc>0?[['Descuentos','- '+fmt(totalDesc)]]:[] ),
+        ['Total neto cobrado',fmt(totalNeto)],
+        ...(totalRet>0?[['Retiros de caja','- '+fmt(totalRet)]]:[] ),
+        ...(totalVueltos>0?[['Vuelto entregado',fmt(totalVueltos)]]:[] ),
+        ['TOTAL EN CAJA',     fmt(totalCaja)],
+      ].map(([l,v],i,arr)=>`<div style="display:flex;justify-content:space-between${i===arr.length-1?';font-weight:bold;font-size:15px;border-top:2px solid #000;padding-top:4px;margin-top:4px':''}"><span>${l}</span><span>${v}</span></div>`).join('')}
       ${Object.keys(porMetodo).length?`
-      <div class="sep"></div>
-      <div class="section">POR MÉTODO DE PAGO</div>
-      ${Object.entries(porMetodo).map(([m,v])=>`<div class="row"><span>${METODO_ICONS[m]||''} ${m}:</span><span>${fmt(v)}</span></div>`).join('')}`:''}
+      <div style="border-top:2px solid #000;margin:8px 0"></div>
+      <div style="font-weight:bold;margin-bottom:6px;font-size:15px">POR MÉTODO DE PAGO</div>
+      ${Object.entries(porMetodo).map(([m,v])=>`<div style="display:flex;justify-content:space-between"><span>${METODO_ICONS[m]||''} ${m}:</span><span>${fmt(v)}</span></div>`).join('')}`:''}
       ${retiros.length?`
-      <div class="sep"></div>
-      <div class="section">RETIROS DE CAJA</div>
-      ${retiros.map(r=>`<div class="row"><span>${r.motivo||'—'}</span><span>- ${fmt(r.monto)}</span></div>`).join('')}`:''}
+      <div style="border-top:2px solid #000;margin:8px 0"></div>
+      <div style="font-weight:bold;margin-bottom:6px;font-size:15px">RETIROS DE CAJA</div>
+      ${retiros.map(r=>`<div style="display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:4px 0"><span>${r.motivo||'—'}</span><span style="font-weight:bold">- ${fmt(r.monto)}</span></div>`).join('')}`:''}
       ${cerradas.length?`
-      <div class="sep"></div>
-      <div class="section">COMANDAS CERRADAS (${cerradas.length})</div>
-      ${cerradas.map(c=>`<div class="row"><span>Mesa ${c.mesa_id} ${c.cajero_nombre?'· '+c.cajero_nombre:''}</span><span>${fmt(c.total_final||0)}</span></div>`).join('')}`:''}`;
+      <div style="border-top:2px solid #000;margin:8px 0"></div>
+      <div style="font-weight:bold;margin-bottom:6px;font-size:15px">COMANDAS CERRADAS (${cerradas.length})</div>
+      ${cerradas.map(c=>`<div style="display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:4px 0"><span>Mesa ${c.mesa_id}${c.cajero_nombre?' · '+c.cajero_nombre:''}</span><span style="font-weight:bold">${fmt(c.total_final||0)}</span></div>`).join('')}`:''}`;
 
   } else {
     const movs       = data.movimientos || [];
@@ -600,24 +601,25 @@ async function reimprimirArqueo(turnoId, fuente) {
     const totalCaja  = fondo + ingresos - egresos;
 
     cuerpo = `
-      <div class="row"><span>Cajero:</span><span class="bold">${data.cajero_nombre||'—'}</span></div>
-      <div class="row"><span>Apertura:</span><span>${apertura}</span></div>
-      <div class="row"><span>Cierre:</span><span>${cierre}</span></div>
-      <div class="sep"></div>
-      <div class="section">RESUMEN</div>
-      <div class="row"><span>Fondo inicial:</span><span>${fmt(fondo)}</span></div>
-      <div class="row"><span>Total ingresos:</span><span>${fmt(ingresos)}</span></div>
-      ${egresos>0?`<div class="row" style="color:red"><span>Total egresos:</span><span>- ${fmt(egresos)}</span></div>`:''}
-      <div class="sep"></div>
-      <div class="row big"><span>TOTAL EN CAJA:</span><span>${fmt(totalCaja)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Cajero:</span><span style="font-weight:bold">${data.cajero_nombre||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Apertura:</span><span style="font-weight:bold">${apertura}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Cierre:</span><span style="font-weight:bold">${cierre}</span></div>
+      <div style="border-top:2px solid #000;margin:8px 0"></div>
+      <div style="font-weight:bold;margin-bottom:6px;font-size:15px">RESUMEN</div>
+      ${[
+        ['Fondo inicial',  fmt(fondo)],
+        ['Total ingresos', fmt(ingresos)],
+        ...(egresos>0?[['Total egresos','- '+fmt(egresos)]]:[] ),
+        ['TOTAL EN CAJA',  fmt(totalCaja)],
+      ].map(([l,v],i,arr)=>`<div style="display:flex;justify-content:space-between${i===arr.length-1?';font-weight:bold;font-size:15px;border-top:2px solid #000;padding-top:4px;margin-top:4px':''}"><span>${l}</span><span>${v}</span></div>`).join('')}
       ${Object.keys(porMetodo).length?`
-      <div class="sep"></div>
-      <div class="section">POR MÉTODO DE PAGO</div>
-      ${Object.entries(porMetodo).map(([m,v])=>`<div class="row"><span>${METODO_ICONS[m]||''} ${m}:</span><span>${fmt(v)}</span></div>`).join('')}`:''}
+      <div style="border-top:2px solid #000;margin:8px 0"></div>
+      <div style="font-weight:bold;margin-bottom:6px;font-size:15px">POR MÉTODO DE PAGO</div>
+      ${Object.entries(porMetodo).map(([m,v])=>`<div style="display:flex;justify-content:space-between"><span>${METODO_ICONS[m]||''} ${m}:</span><span>${fmt(v)}</span></div>`).join('')}`:''}
       ${movs.length?`
-      <div class="sep"></div>
-      <div class="section">MOVIMIENTOS (${movs.length})</div>
-      ${movs.map(m=>`<div class="row"><span>${m.concepto||'—'} (${m.tipo})</span><span style="color:${m.tipo==='egreso'?'red':'inherit'}">${m.tipo==='egreso'?'- ':''}${fmt(m.monto)}</span></div>`).join('')}`:''}`;
+      <div style="border-top:2px solid #000;margin:8px 0"></div>
+      <div style="font-weight:bold;margin-bottom:6px;font-size:15px">MOVIMIENTOS (${movs.length})</div>
+      ${movs.map(m=>`<div style="display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:4px 0"><span>${m.concepto||'—'} (${m.tipo})</span><span style="font-weight:bold${m.tipo==='egreso'?';color:red':''}">${m.tipo==='egreso'?'- ':''}${fmt(m.monto)}</span></div>`).join('')}`:''}`;
   }
 
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
@@ -625,25 +627,18 @@ async function reimprimirArqueo(turnoId, fuente) {
   <style>
     @page { size: 80mm auto; margin: 0mm; }
     @media print { html, body { margin: 0; padding: 0; } }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Courier New',Courier,monospace;font-size:13px;color:#000;
-         width:72mm;margin:0 auto;padding:3mm 0;line-height:1.6}
-    .center{text-align:center}
-    .bold{font-weight:bold}
-    .sep{border-top:2px solid #000;margin:8px 0}
-    .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #ddd;gap:8px}
-    .row span:last-child{text-align:right;font-weight:600}
-    .big{font-size:15px;font-weight:900;border-top:2px solid #000;border-bottom:2px solid #000;padding:6px 0!important}
-    .section{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:4px 0;margin-top:4px}
+    body { margin: 0; padding: 0; background: #fff; }
   </style></head><body>
-  <div class="center bold" style="font-size:16px">🏨 Hotel Takuá</div>
-  <div class="center">${icono}</div>
-  <div class="center" style="font-size:12px">Arqueo de Caja</div>
-  <div class="center" style="font-size:11px;margin-bottom:4px">⚠️ REIMPRESIÓN</div>
-  <div class="sep"></div>
-  ${cuerpo}
-  <div class="sep"></div>
-  <div class="center" style="font-size:11px;margin-top:6px">Hotel Takuá · Impreso: ${new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+  <div style="font-family:monospace;font-size:14px;width:280px;margin:0 auto;padding:8px;line-height:1.4;color:#000;font-weight:500">
+    <div style="text-align:center;font-weight:bold;font-size:18px">🏨 Hotel Takuá</div>
+    <div style="text-align:center;font-size:13px">${icono} — Arqueo de Caja</div>
+    <div style="text-align:center;font-size:12px;color:#000">⚠️ REIMPRESIÓN</div>
+    <div style="border-top:2px solid #000;margin:8px 0"></div>
+    ${cuerpo}
+    <div style="border-top:2px solid #000;margin:8px 0"></div>
+    <div style="text-align:center;font-size:13px;margin-top:6px">— Fin del arqueo —</div>
+    <div style="text-align:center;font-size:11px;margin-top:4px">Impreso: ${new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+  </div>
   </body></html>`;
 
   const frameId = 'caja-arqueo-frame';
