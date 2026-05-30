@@ -287,7 +287,8 @@ app.post('/api/huespedes', auth, async (req, res) => {
 // ── CHECK-IN ─────────────────────────────────────────────────────────
 app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
   try {
-    const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches, precio_total, metodo_pago, notas } = req.body;
+    const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches,
+            precio_total, metodo_pago, notas, reserva_id, saldo_cobrado } = req.body;
     if (!habitacion_id) return res.status(400).json({ error: 'Falta habitacion_id' });
     if (!nombre)        return res.status(400).json({ error: 'Falta el nombre del huésped' });
     if (!entrada)       return res.status(400).json({ error: 'Falta la fecha de entrada' });
@@ -297,6 +298,8 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
     const statusesPermitidos = ['libre','lista','reservada','libre_limpia'];
     if (!statusesPermitidos.includes(hab.status))
       return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
+
+    // Registrar/actualizar huésped
     let huespedId = null;
     if (documento) {
       try {
@@ -308,32 +311,70 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
         if (h2) { huespedId = h2.id; await db.query('UPDATE huespedes SET visitas=visitas+1 WHERE id=$1', [huespedId]); }
       }
     }
-    const reserva = await db.query(
-      'INSERT INTO reservas (habitacion_id,huesped_id,nombre_huesped,documento,entrada,salida,noches,precio_total,metodo_pago,notas,estado) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id',
-      [habitacion_id, huespedId, nombre, documento||'', entrada, salida, noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', 'activa']
-    );
-    await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', ['ocupada', nombre, habitacion_id]);
-    if (precio_total > 0) {
-      const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-      if (caja) {
-        await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-          [caja.id,'ingreso','hospedaje',`Check-in hab.${hab.numero} - ${nombre}`,precio_total,metodo_pago||'Efectivo',habitacion_id,req.user.id]);
+
+    let finalReservaId;
+
+    if (reserva_id) {
+      // ── Checkin desde reserva existente ──────────────────
+      // Actualizar la reserva existente a estado 'activa'
+      const saldo = Number(saldo_cobrado)||0;
+      await db.query(
+        `UPDATE reservas SET estado='activa', nombre_huesped=$1, documento=$2, entrada=$3, salida=$4,
+         noches=$5, precio_total=$6, metodo_pago=$7, notas=$8, huesped_id=$9,
+         saldo_pendiente=GREATEST(0, saldo_pendiente-$10)
+         WHERE id=$11`,
+        [nombre, documento||'', entrada, salida, noches||1, precio_total||0,
+         metodo_pago||'Efectivo', notas||'', huespedId, saldo, reserva_id]
+      );
+      finalReservaId = reserva_id;
+      // Registrar saldo cobrado en caja si corresponde
+      if (saldo > 0) {
+        const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+        if (turnoHab) {
+          await db.query(
+            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [turnoHab.id, `Saldo Check-in Hab. ${hab.numero} — ${nombre}`, saldo,
+             metodo_pago||'Efectivo', `Reserva #${reserva_id}`,
+             req.user.id, req.user.nombre, habitacion_id, hab.numero]
+          );
+        }
       }
-      // Registrar en caja habitaciones (nuevo sistema)
-      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-      if (turnoHab) {
-        await db.query(
-          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [turnoHab.id, `Check-in Hab. ${hab.numero} — ${nombre}`, precio_total,
-           metodo_pago||'Efectivo', `Reserva #${reserva.rows[0].id}`,
-           req.user.id, req.user.nombre, habitacion_id, hab.numero]
-        );
+    } else {
+      // ── Checkin directo sin reserva previa ───────────────
+      const reserva = await db.query(
+        `INSERT INTO reservas (habitacion_id,huesped_id,nombre_huesped,documento,entrada,salida,noches,
+          precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activa',0,0) RETURNING id`,
+        [habitacion_id, huespedId, nombre, documento||'', entrada, salida,
+         noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'']
+      );
+      finalReservaId = reserva.rows[0].id;
+      // Registrar cobro total en caja
+      if ((precio_total||0) > 0) {
+        const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+        if (turnoHab) {
+          await db.query(
+            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [turnoHab.id, `Check-in Hab. ${hab.numero} — ${nombre}`, precio_total||0,
+             metodo_pago||'Efectivo', `Reserva #${finalReservaId}`,
+             req.user.id, req.user.nombre, habitacion_id, hab.numero]
+          );
+        }
+        // Sistema legacy de caja
+        const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
+        if (caja) {
+          await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+            [caja.id,'ingreso','hospedaje',`Check-in hab.${hab.numero} - ${nombre}`,precio_total,metodo_pago||'Efectivo',habitacion_id,req.user.id]);
+        }
       }
     }
+
+    await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', ['ocupada', nombre, habitacion_id]);
     await logAction(req.user.id, req.user.nombre, 'CHECKIN', `Hab ${hab.numero} - ${nombre}`);
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habId, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
-    res.json({ ok: true, reserva_id: reserva.rows[0].id });
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
+    res.json({ ok: true, reserva_id: finalReservaId });
   } catch(e) { console.error('CHECKIN ERROR:', e); res.status(500).json({ error: 'Error en check-in: ' + e.message }); }
 });
 
@@ -344,23 +385,50 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
     const { monto_extra, metodo_pago_extra, concepto_extra } = req.body;
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + id });
-    await db.query("UPDATE habitaciones SET status='limpieza',nota='',updated_at=NOW() WHERE id=$1", [id]);
-    await db.query("UPDATE reservas SET estado='finalizada' WHERE habitacion_id=$1 AND estado='activa'", [id]);
-    // Si hay cobro extra al checkout, registrarlo en movimientos_habitaciones
-    if (monto_extra && Number(monto_extra) > 0) {
+
+    // Obtener reserva activa con su saldo
+    const reserva = await db.getOne(
+      "SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [id]
+    );
+
+    // Cobrar saldo pendiente si existe
+    const saldo = Number(reserva?.saldo_pendiente||0);
+    const extra = Number(monto_extra||0);
+    const totalCobrar = saldo + extra;
+
+    if (totalCobrar > 0) {
       const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
       if (turnoHab) {
-        await db.query(
-          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
-          [turnoHab.id, concepto_extra||`Checkout Hab. ${hab.numero}`, Number(monto_extra),
-           metodo_pago_extra||'Efectivo', req.user.id, req.user.nombre, id, hab.numero]
-        );
+        if (saldo > 0) {
+          await db.query(
+            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [turnoHab.id, `Saldo Checkout Hab. ${hab.numero} — ${reserva.nombre_huesped||''}`,
+             saldo, metodo_pago_extra||'Efectivo', reserva?`Reserva #${reserva.id}`:'',
+             req.user.id, req.user.nombre, id, hab.numero]
+          );
+        }
+        if (extra > 0) {
+          await db.query(
+            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
+            [turnoHab.id, concepto_extra||`Extra Checkout Hab. ${hab.numero}`,
+             extra, metodo_pago_extra||'Efectivo',
+             req.user.id, req.user.nombre, id, hab.numero]
+          );
+        }
       }
     }
-    await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}`);
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, id, `🚪 Check-out — Hab. ${hab.numero} (${hab.nota||''})`);
-    res.json({ ok: true });
+
+    // Marcar reserva como finalizada y saldo en 0
+    if (reserva) {
+      await db.query("UPDATE reservas SET estado='finalizada', saldo_pendiente=0 WHERE id=$1", [reserva.id]);
+    }
+
+    await db.query("UPDATE habitaciones SET status='limpieza',nota='',updated_at=NOW() WHERE id=$1", [id]);
+    await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}${totalCobrar>0?` · Cobrado $${totalCobrar}`:''}`);
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, id, `🚪 Check-out — Hab. ${hab.numero} (${reserva?.nombre_huesped||''})`);
+    res.json({ ok: true, cobrado: totalCobrar });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -405,6 +473,18 @@ app.post('/api/habitaciones/:id/cambiar', auth, adminOrRecep, async (req, res) =
     await logAction(req.user.id, req.user.nombre, 'CAMBIO_HAB',
       `Hab ${habOrigen.numero} → ${habDestino.numero} (${reserva.nombre_huesped}) → origen: ${statusOrigen}`);
     res.json({ ok: true, nombre_huesped: reserva.nombre_huesped });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Obtener reserva vigente de una habitación (para precarga en checkin)
+app.get('/api/habitaciones/:id/reserva', auth, adminOrRecep, async (req, res) => {
+  try {
+    const reserva = await db.getOne(
+      `SELECT * FROM reservas WHERE habitacion_id=$1
+       AND estado IN ('futura','activa') ORDER BY created_at DESC LIMIT 1`,
+      [req.params.id]
+    );
+    res.json(reserva || null);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -462,7 +542,7 @@ app.delete('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
 
 app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
   try {
-    const { habitacion_id, nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas } = req.body;
+    const { habitacion_id, nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia } = req.body;
     if (!habitacion_id)  return res.status(400).json({ error: 'Falta habitacion_id' });
     if (!nombre_huesped) return res.status(400).json({ error: 'Falta el nombre del huésped' });
     if (!entrada)        return res.status(400).json({ error: 'Falta fecha de entrada' });
@@ -471,12 +551,30 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
     if (!['libre','lista'].includes(hab.status))
       return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
-    await db.query(`INSERT INTO reservas (habitacion_id,nombre_huesped,documento,entrada,salida,noches,precio_total,metodo_pago,notas,estado)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'futura')`,
-      [habitacion_id, nombre_huesped, documento||'', entrada, salida, noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'']);
+    const senia = Number(monto_senia)||0;
+    const saldo = Number(precio_total||0) - senia;
+    const r = await db.query(
+      `INSERT INTO reservas (habitacion_id,nombre_huesped,documento,entrada,salida,noches,precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'futura',$10,$11) RETURNING id`,
+      [habitacion_id, nombre_huesped, documento||'', entrada, salida, noches||1,
+       precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo]
+    );
     await db.query("UPDATE habitaciones SET status='reservada',nota=$1,updated_at=NOW() WHERE id=$2", [nombre_huesped, habitacion_id]);
-    await logAction(req.user.id, req.user.nombre, 'RESERVA', `Hab ${hab.numero} - ${nombre_huesped}`);
-    res.json({ ok: true });
+    // Si hay seña, registrarla en caja habitaciones
+    if (senia > 0) {
+      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+      if (turnoHab) {
+        await db.query(
+          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [turnoHab.id, `Seña Reserva Hab. ${hab.numero} — ${nombre_huesped}`, senia,
+           metodo_pago||'Efectivo', `Reserva #${r.rows[0].id}`,
+           req.user.id, req.user.nombre, habitacion_id, hab.numero]
+        );
+      }
+    }
+    await logAction(req.user.id, req.user.nombre, 'RESERVA', `Hab ${hab.numero} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
+    res.json({ ok: true, id: r.rows[0].id });
   } catch(e) { console.error('RESERVA ERROR:', e); res.status(500).json({ error: 'Error al guardar reserva: ' + e.message }); }
 });
 
@@ -1986,9 +2084,38 @@ app.get('/api/caja-global/turnos', auth, adminOnly, async (req, res) => {
   try {
     const { fuente } = req.query;
     if (fuente === 'restaurante') {
-      res.json(await db.getAll('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 50'));
+      const turnos = await db.getAll('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 50');
+      // Calcular total cobrado y retiros por turno
+      for (const t of turnos) {
+        const cobrado = await db.getOne(
+          "SELECT COALESCE(SUM(total_final),0) as total FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 AND ($2::timestamp IS NULL OR cerrada_at <= $2)",
+          [t.abierto_at, t.cerrado_at||null]
+        );
+        const retiros = await db.getOne(
+          "SELECT COALESCE(SUM(monto),0) as total FROM caja_retiros WHERE turno_id=$1",
+          [t.id]
+        );
+        t.total_cobrado = Number(cobrado?.total||0);
+        t.total_retiros = Number(retiros?.total||0);
+        t.total_final   = t.total_cobrado + Number(t.fondo_inicial||0) - t.total_retiros;
+      }
+      res.json(turnos);
     } else {
-      res.json(await db.getAll('SELECT * FROM turnos_habitaciones ORDER BY id DESC LIMIT 50'));
+      const turnos = await db.getAll('SELECT * FROM turnos_habitaciones ORDER BY id DESC LIMIT 50');
+      for (const t of turnos) {
+        const ingresos = await db.getOne(
+          "SELECT COALESCE(SUM(monto),0) as total FROM movimientos_habitaciones WHERE turno_id=$1 AND tipo='ingreso'",
+          [t.id]
+        );
+        const egresos = await db.getOne(
+          "SELECT COALESCE(SUM(monto),0) as total FROM movimientos_habitaciones WHERE turno_id=$1 AND tipo='egreso'",
+          [t.id]
+        );
+        t.total_cobrado = Number(ingresos?.total||0);
+        t.total_retiros = Number(egresos?.total||0);
+        t.total_final   = Number(t.fondo_inicial||0) + t.total_cobrado - t.total_retiros;
+      }
+      res.json(turnos);
     }
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
