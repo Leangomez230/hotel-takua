@@ -738,8 +738,10 @@ async function loadAll(silencioso=false){
         api('GET','/api/restaurante/turno/ultimo').catch(()=>null),
         api('GET','/api/restaurante/comandas').catch(()=>[]),
       ]);
-      // Si hay turno activo usarlo, sino mostrar el último (cerrado)
-      S.turno=turno||turnoUltimo;
+      // S.turno: solo el turno realmente ABIERTO (null si está cerrado)
+      // S.turnoUltimo: último turno para mostrar resumen aunque esté cerrado
+      S.turno = turno; // null si no hay turno abierto
+      S.turnoUltimo = turnoUltimo;
       S.comandas=cmds;
     }
     if(ME.rol==='admin'){
@@ -834,39 +836,37 @@ function renderMozo(el){
 // ── VISTA CAJERO ─────────────────────────────────────
 function renderCajero(el){
   const turno=S.turno;
-  const cerradas=turno?((turno.cerradas||[])):[];
+  const turnoMostrar=S.turno || S.turnoUltimo; // para resumen/métricas
+  const cerradas=turnoMostrar?((turnoMostrar.cerradas||[])):[];
   const abiertas=S.comandas.filter(c=>c.estado==='abierta');
   const enCuenta=S.comandas.filter(c=>c.estado==='cuenta');
   const totalNeto=cerradas.reduce((s,c)=>s+(Number(c.total_final)||0),0);
   const totalDesc=cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)),0);
   const totalComen=cerradas.reduce((s,c)=>s+(c.comensales||0),0);
   const porMetodo=METODOS.reduce((acc,m)=>{acc[m]=cerradas.filter(c=>c.metodo_pago===m).reduce((s,c)=>s+(Number(c.total_final)||0),0);return acc;},{});
-  const hayTurno=turno?(turno.estado==='abierto'?'🟢 Turno abierto':'⚪ Último turno'):'Sin turno';
+  const hayTurno=turno?'🟢 Turno abierto':(turnoMostrar?'⚪ Último turno':'Sin turno');
 
   // Panel caja
   let cajaHTML = '';
   if(!turno){
+    // Mostrar resumen del último turno cerrado + botón abrir nuevo
+    const resumenUltimo = turnoMostrar ? `
+      <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:14px;border:1px solid #e2e8f0">
+        <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:6px">ÚLTIMO TURNO CERRADO</div>
+        ${renderResumenCaja(turnoMostrar.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas,turnoMostrar.retiros||[])}
+        <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff;margin-top:10px;width:100%">🖨️ Imprimir arqueo</button>
+      </div>` : '';
     cajaHTML=`<div class="card">
       <div class="card-title" style="margin-bottom:4px">💰 Caja cerrada</div>
       <div style="font-size:13px;color:#64748b;margin-bottom:16px">Ingresá el fondo inicial para abrir el turno</div>
       <div class="turno-form">
         <input type="number" id="fondo-inp" placeholder="Fondo inicial ($)" min="0"/>
         <button class="btn-green" onclick="abrirTurno()">Abrir turno</button>
-      </div></div>`;
-  } else if(turno.estado==='cerrado'){
-    cajaHTML=`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div>
-          <div class="card-title">📊 Resumen del turno</div>
-          <div style="font-size:12px;color:#64748b">${turno.abierto_at?new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
-          <button class="btn-ghost-light" onclick="nuevoTurno()">+ Nuevo turno</button>
-        </div>
       </div>
-      ${renderResumenCaja(turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas,turno.retiros||[])}</div>`;
+      ${resumenUltimo}
+    </div>`;
   } else {
+    // Turno ABIERTO
     cajaHTML=`<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
@@ -1085,17 +1085,24 @@ function renderAdmin(el){
   const activas=S.comandas.filter(c=>c.estado!=='cerrada').length;
   const cats=[...new Set(S.menu.map(m=>m.categoria))];
 
-  // Calcular métricas del turno (igual que cajero)
-  const cerradas   = S.turno?.cerradas || [];
+  // Calcular métricas — usar turno abierto o último turno para métricas
+  const turnoMostrar = S.turno || S.turnoUltimo;
+  const cerradas   = turnoMostrar?.cerradas || [];
   const totalNeto  = cerradas.reduce((s,c)=>s+(Number(c.total_final)||0), 0);
   const totalDesc  = cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)), 0);
   const totalComen = cerradas.reduce((s,c)=>s+(c.comensales||0), 0);
-  const hayTurno   = S.turno ? (S.turno.estado==='abierto' ? '🟢 Turno abierto' : '⚪ Último turno') : 'Sin turno';
+  const hayTurno   = S.turno ? '🟢 Turno abierto' : (S.turnoUltimo ? '⚪ Último turno' : 'Sin turno');
   const porMetodo  = METODOS.reduce((acc,m)=>{acc[m]=cerradas.filter(c=>c.metodo_pago===m).reduce((s,c)=>s+(Number(c.total_final)||0),0);return acc;},{});
 
-  // Panel de caja (igual que cajero)
+  // Panel de caja
   let cajaPanelHTML = '';
   if(!S.turno){
+    const resumenUltimo = turnoMostrar ? `
+      <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-top:12px;border:1px solid #e2e8f0">
+        <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">ÚLTIMO TURNO CERRADO</div>
+        ${renderResumenCaja(turnoMostrar.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas,turnoMostrar.retiros||[])}
+        <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff;margin-top:10px;width:100%">🖨️ Imprimir arqueo</button>
+      </div>` : '';
     cajaPanelHTML=`<div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div><div class="card-title">💰 Caja cerrada</div>
@@ -1104,19 +1111,7 @@ function renderAdmin(el){
       <div class="turno-form">
         <input type="number" id="fondo-inp" placeholder="Fondo inicial ($)" min="0"/>
         <button class="btn-green" onclick="abrirTurno()">Abrir turno</button>
-      </div></div>`;
-  } else if(S.turno.estado==='cerrado'){
-    cajaPanelHTML=`<div class="card" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-        <div><div class="card-title">📊 Resumen del turno</div>
-          <div style="font-size:12px;color:#64748b">${S.turno.abierto_at?new Date(S.turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-ghost-light" onclick="imprimirArqueo()" style="background:#1e293b;color:#fff">🖨️ Imprimir arqueo</button>
-          <button class="btn-ghost-light" onclick="nuevoTurno()">+ Nuevo turno</button>
-        </div>
-      </div>
-      ${renderResumenCaja(S.turno.fondo_inicial||0,totalNeto,totalDesc,porMetodo,cerradas,S.turno.retiros||[])}</div>`;
+      </div>${resumenUltimo}</div>`;
   } else {
     cajaPanelHTML=`<div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
@@ -1913,22 +1908,28 @@ async function abrirTurno(){
   finally{loading(false);}
 }
 async function cerrarTurno(){
-  if(!confirm('¿Cerrar el turno de caja?')) return;
-  // Ofrecer imprimir antes de cerrar
+  // Verificar si hay comandas abiertas
+  const abiertas = S.comandas.filter(c=>c.estado==='abierta'||c.estado==='cuenta');
+  if (abiertas.length > 0) {
+    const confirmar = confirm(`⚠️ Hay ${abiertas.length} comanda${abiertas.length>1?'s':''} abierta${abiertas.length>1?'s':''} sin cobrar.\n\n¿Cerrar el turno de todas formas?`);
+    if (!confirmar) return;
+  } else {
+    if (!confirm('¿Cerrar el turno de caja?')) return;
+  }
   const querImprimir = confirm('¿Querés imprimir el arqueo antes de cerrar?');
-  if(querImprimir) imprimirArqueo();
+  if (querImprimir) imprimirArqueo();
   loading(true);
   try{
     await api('POST','/api/restaurante/turno/cerrar');
-    toast('Turno cerrado','ok');
+    toast('Turno cerrado ✓','ok');
     await loadAll(); renderMain();
   }catch(e){toast(e.message,'err');}
   finally{loading(false);}
 }
 
 function imprimirArqueo(){
-  const turno=S.turno;
-  if(!turno) { toast('No hay turno activo','err'); return; }
+  const turno=S.turno || S.turnoUltimo;
+  if(!turno) { toast('No hay turno para imprimir','err'); return; }
   const cerradas=turno.cerradas||[];
   const retiros =turno.retiros||[];
   const totalNeto=cerradas.reduce((s,c)=>s+(Number(c.total_final)||0),0);
@@ -2007,25 +2008,30 @@ function imprimirArqueo(){
       <div style="text-align:center;font-size:13px;margin-top:6px">— Fin del arqueo —</div>
     </div>`;
 
-  // Usar el mismo mecanismo que imprimirComanda
-  const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:80mm;border:none';
-  document.body.appendChild(iframe);
-  const doc=iframe.contentDocument||iframe.contentWindow.document;
-  doc.open();
-  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><style>
+  // Imprimir con iframe srcdoc (más robusto en mobile)
+  const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><style>
     @page { size: 80mm auto; margin: 0mm; }
     @media print { html, body { margin: 0; padding: 0; } }
     body { font-family: 'Courier New', Courier, monospace; font-size: 13px;
            width: 72mm; margin: 0 auto; padding: 3mm 0; line-height: 1.6; color: #000; }
     div { margin: 0; padding: 0; }
-  </style></head><body>${html}</body></html>`);
-  doc.close();
-  setTimeout(()=>{
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    setTimeout(()=>document.body.removeChild(iframe),1500);
-  },400);
+  </style></head><body>${html}</body></html>`;
+
+  const id = 'arqueo-print-frame';
+  let iframe = document.getElementById(id);
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = id;
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none';
+    document.body.appendChild(iframe);
+  }
+  iframe.srcdoc = fullHtml;
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    } catch(e) { console.error('Error imprimiendo arqueo:', e); }
+  };
 }
 function nuevoTurno(){
   S.turno = null;
