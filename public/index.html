@@ -104,6 +104,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rcard.libre{background:#f0fdf4;border-color:#bbf7d0}
 .rcard.ocupada{background:#fff5f5;border-color:#fca5a5}
 .rcard.reservada{background:#ede9fe;border-color:#7c3aed}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .rcard.limpieza{background:#fffbeb;border-color:#fde68a}
 .rcard.mantenimiento{background:#f3f4f6;border-color:#d1d5db}
 .rcard.lista{background:#ede9fe;border-color:#7c3aed}
@@ -679,29 +680,56 @@ const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏🛏 Twin', d
 function buildCard(h) {
   const s=SCFG[h.status]||{label:h.status,badge:'sb-reservada',icon:'⚪',color:'#b45309',bg:'#fef9c3'};
   const tipoLabel=TIPOS[h.tipo]||h.tipo;
- 
+
+  // ── Calcular proximidad de check-in para habitaciones reservadas ──
+  let diasParaCheckin = null;
+  let proximidadCheckin = null; // 'hoy' | 'proximo' | 'futuro'
+  if (h.status === 'reservada') {
+    const r = h.reserva_activa;
+    if (r?.entrada) {
+      const ahora = new Date();
+      const entrada = new Date(r.entrada);
+      diasParaCheckin = Math.ceil((entrada - ahora) / (1000*60*60*24));
+      if (diasParaCheckin <= 0)       proximidadCheckin = 'hoy';
+      else if (diasParaCheckin <= 2)  proximidadCheckin = 'proximo';
+      else                            proximidadCheckin = 'futuro';
+    }
+  }
+
   // ── Badge(s) arriba a la derecha ──
   let badgeHTML;
   if (h.status === 'lista') {
-    // Reservada + Lista: ambos en amarillo
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
       <span class="sbadge sb-reservada">RESERVADA</span>
       <span class="sbadge sb-reservada">LISTA</span>
     </div>`;
+  } else if (h.status === 'reservada') {
+    if (proximidadCheckin === 'hoy') {
+      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <span class="sbadge" style="background:#7c3aed;color:#fff;animation:pulse 1.5s infinite">🔔 HOY CHECK-IN</span>
+      </div>`;
+    } else if (proximidadCheckin === 'proximo') {
+      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <span class="sbadge" style="background:#a78bfa;color:#fff">⏰ PRÓXIMO</span>
+        <span class="sbadge sb-reservada">RESERVADA</span>
+      </div>`;
+    } else {
+      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <span class="sbadge sb-libre">LIBRE</span>
+        <span class="sbadge sb-reservada">RESERVADA</span>
+      </div>`;
+    }
   } else if (h.status === 'en_limpieza') {
-    // En limpieza: OCUPADA en rojo arriba + EN LIMPIEZA en amarillo abajo
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
       <span class="sbadge sb-ocupada">OCUPADA</span>
       <span class="sbadge sb-limpieza">EN LIMPIEZA</span>
     </div>`;
   } else if (h.status === 'limpia') {
-    // Limpia: OCUPADA en rojo arriba + LIMPIA en verde abajo
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
       <span class="sbadge sb-ocupada">OCUPADA</span>
       <span class="sbadge sb-limpia">LIMPIA</span>
     </div>`;
   } else if (h.status === 'libre_limpia') {
-    // Libre limpia: LIBRE en verde arriba + LIMPIA en verde abajo
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
       <span class="sbadge sb-libre">LIBRE</span>
       <span class="sbadge sb-limpia">LIMPIA</span>
@@ -766,17 +794,28 @@ function buildCard(h) {
     // Reservada y lista: mostrar siempre nombre + fechas aunque r sea null
     const esReservada = ['reservada','lista'].includes(h.status);
 
-    body = `
-      ${nombre ? `<div class="rguest" style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${nombre}</div>` : ''}
-      ${(r || esReservada) ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:4px;font-size:10px">
-        <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">ENTRADA</div>
-        <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">SALIDA</div>
-        <div style="color:#1e293b;font-weight:700;font-size:10px">${entrada}</div>
-        <div style="color:#1e293b;font-weight:700;font-size:10px">${salida}</div>
-      </div>` : ''}
-      ${patente ? `<div style="margin-top:5px;background:#f1f5f9;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:4px">🚗 ${patente}</div>` : ''}
-      ${!r && !nombre && !esReservada ? `<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>` : ''}
-    `;
+    // Para reservadas con check-in lejano, mostrar como disponible con info de reserva
+    if (h.status === 'reservada' && proximidadCheckin === 'futuro') {
+      const fechaEnt = r?.entrada ? new Date(r.entrada).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) : '—';
+      const nombreCorto = nombre.split(' ').slice(0,2).join(' ');
+      body = `
+        <div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>
+        <div style="margin-top:6px;background:#ede9fe;border-radius:7px;padding:5px 8px;font-size:10px;color:#6d28d9;font-weight:700;display:flex;align-items:center;gap:4px">
+          📅 ${fechaEnt}${nombreCorto?' · '+nombreCorto:''}
+        </div>`;
+    } else {
+      body = `
+        ${nombre ? `<div class="rguest" style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${nombre}</div>` : ''}
+        ${(r || esReservada) ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:4px;font-size:10px">
+          <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">ENTRADA</div>
+          <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">SALIDA</div>
+          <div style="color:#1e293b;font-weight:700;font-size:10px">${entrada}</div>
+          <div style="color:#1e293b;font-weight:700;font-size:10px">${salida}</div>
+        </div>` : ''}
+        ${patente ? `<div style="margin-top:5px;background:#f1f5f9;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:4px">🚗 ${patente}</div>` : ''}
+        ${!r && !nombre && !esReservada ? `<div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>` : ''}
+      `;
+    }
   }
  
   const isAdminOrRecep = currentUser && ['admin','recepcionista'].includes(currentUser.rol);
