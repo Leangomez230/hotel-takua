@@ -502,20 +502,22 @@ app.get('/api/reservas', auth, async (req, res) => {
 
 app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
   try {
-    const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas } = req.body;
+    const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia, saldo_pendiente } = req.body;
     const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
     if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
+    const senia = Number(monto_senia??reserva.monto_senia??0);
+    const saldo  = Number(saldo_pendiente??Math.max(0,(precio_total||0)-senia));
     await db.query(
       `UPDATE reservas SET nombre_huesped=$1,documento=$2,entrada=$3,salida=$4,
-       noches=$5,precio_total=$6,metodo_pago=$7,notas=$8 WHERE id=$9`,
+       noches=$5,precio_total=$6,metodo_pago=$7,notas=$8,monto_senia=$9,saldo_pendiente=$10 WHERE id=$11`,
       [nombre_huesped, documento||'', entrada, salida,
-       noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', req.params.id]
+       noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo, req.params.id]
     );
     await db.query(
       "UPDATE habitaciones SET nota=$1,updated_at=NOW() WHERE id=$2 AND status IN ('reservada','lista')",
       [nombre_huesped, reserva.habitacion_id]
     );
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_RESERVA', `Reserva #${req.params.id} - ${nombre_huesped}`);
+    await logAction(req.user.id, req.user.nombre, 'EDITAR_RESERVA', `Reserva #${req.params.id} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
