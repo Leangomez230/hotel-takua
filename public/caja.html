@@ -480,7 +480,7 @@ async function renderTurnos(el) {
         <span class="pill ${t.estado==='abierto'?'pg':'pgr'}">${t.estado==='abierto'?'● Abierto':'Cerrado'}</span>
       </td>
       <td style="padding:10px 12px">
-        ${t.estado==='cerrado'?`<button onclick="reimprimirArqueo(${JSON.stringify(t).replace(/"/g,'&quot;')},'${fuente}')"
+        ${t.estado==='cerrado'?`<button onclick="reimprimirArqueo(${t.id},'${fuente}')"
           style="background:#1e293b;color:#fff;border:none;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
           🖨️ Arqueo
         </button>`:'—'}
@@ -541,39 +541,106 @@ function modalEditarFondo(turnoId, fuente, fondoActual) {
 }
 
 // ── REIMPRIMIR ARQUEO ─────────────────────────────────
-async function reimprimirArqueo(turno, fuente) {
+async function reimprimirArqueo(turnoId, fuente) {
+  const data = await api('GET', `/caja-global/turno-detalle?id=${turnoId}&fuente=${fuente}`);
+  if (data?.error) { toast(data.error, false); return; }
+
+  const fondo      = Number(data.fondo_inicial||0);
+  const apertura   = data.abierto_at ? new Date(data.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const cierre     = data.cerrado_at ? new Date(data.cerrado_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const METODO_ICONS = {Efectivo:'💵',Tarjeta:'💳',Transferencia:'🏦','Tarjeta débito':'💳','Tarjeta crédito':'💳',Débito:'💳',Otro:'📋'};
   const icono = fuente==='restaurante' ? '🍽️ Restaurante' : '🛏️ Habitaciones';
-  const fondo = Number(turno.fondo_inicial||0);
-  const cobrado = Number(turno.total_cobrado||0);
-  const retiros = Number(turno.total_retiros||0);
-  const totalFinal = Number(turno.total_final ?? (fondo+cobrado-retiros));
-  const apertura = turno.abierto_at ? new Date(turno.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-  const cierre   = turno.cerrado_at ? new Date(turno.cerrado_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+
+  let cuerpo = '';
+
+  if (fuente === 'restaurante') {
+    const cerradas    = data.cerradas || [];
+    const retiros     = data.retiros  || [];
+    const porMetodo   = data.porMetodo || {};
+    const totalNeto   = cerradas.reduce((s,c)=>s+Number(c.total_final||0),0);
+    const totalDesc   = cerradas.reduce((s,c)=>s+(Number(c.total||0)-Number(c.total_final||c.total||0)),0);
+    const totalBruto  = totalNeto + totalDesc;
+    const totalRet    = retiros.reduce((s,r)=>s+Number(r.monto||0),0);
+    const totalVueltos= cerradas.reduce((s,c)=>s+Number(c.vuelto||0),0);
+    const totalCaja   = fondo + totalNeto - totalRet;
+
+    cuerpo = `
+      <div class="row"><span>Cajero:</span><span class="bold">${data.cajero_nombre||'—'}</span></div>
+      <div class="row"><span>Apertura:</span><span>${apertura}</span></div>
+      <div class="row"><span>Cierre:</span><span>${cierre}</span></div>
+      <div class="sep"></div>
+      <div class="section">RESUMEN</div>
+      <div class="row"><span>Fondo inicial:</span><span>${fmt(fondo)}</span></div>
+      <div class="row"><span>Comandas cobradas:</span><span>${cerradas.length}</span></div>
+      <div class="row"><span>Total bruto:</span><span>${fmt(totalBruto)}</span></div>
+      ${totalDesc>0?`<div class="row"><span>Descuentos:</span><span>- ${fmt(totalDesc)}</span></div>`:''}
+      <div class="row bold"><span>Total neto cobrado:</span><span>${fmt(totalNeto)}</span></div>
+      ${totalRet>0?`<div class="row" style="color:red"><span>Retiros de caja:</span><span>- ${fmt(totalRet)}</span></div>`:''}
+      ${totalVueltos>0?`<div class="row"><span>Vuelto entregado:</span><span>${fmt(totalVueltos)}</span></div>`:''}
+      <div class="sep"></div>
+      <div class="row big"><span>TOTAL EN CAJA:</span><span>${fmt(totalCaja)}</span></div>
+      ${Object.keys(porMetodo).length?`
+      <div class="sep"></div>
+      <div class="section">POR MÉTODO DE PAGO</div>
+      ${Object.entries(porMetodo).map(([m,v])=>`<div class="row"><span>${METODO_ICONS[m]||''} ${m}:</span><span>${fmt(v)}</span></div>`).join('')}`:''}
+      ${retiros.length?`
+      <div class="sep"></div>
+      <div class="section">RETIROS DE CAJA</div>
+      ${retiros.map(r=>`<div class="row"><span>${r.motivo||'—'}</span><span>- ${fmt(r.monto)}</span></div>`).join('')}`:''}
+      ${cerradas.length?`
+      <div class="sep"></div>
+      <div class="section">COMANDAS CERRADAS (${cerradas.length})</div>
+      ${cerradas.map(c=>`<div class="row"><span>Mesa ${c.mesa_id} ${c.cajero_nombre?'· '+c.cajero_nombre:''}</span><span>${fmt(c.total_final||0)}</span></div>`).join('')}`:''}`;
+
+  } else {
+    const movs       = data.movimientos || [];
+    const porMetodo  = data.porMetodo || {};
+    const ingresos   = movs.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto||0),0);
+    const egresos    = movs.filter(m=>m.tipo==='egreso').reduce((s,m)=>s+Number(m.monto||0),0);
+    const totalCaja  = fondo + ingresos - egresos;
+
+    cuerpo = `
+      <div class="row"><span>Cajero:</span><span class="bold">${data.cajero_nombre||'—'}</span></div>
+      <div class="row"><span>Apertura:</span><span>${apertura}</span></div>
+      <div class="row"><span>Cierre:</span><span>${cierre}</span></div>
+      <div class="sep"></div>
+      <div class="section">RESUMEN</div>
+      <div class="row"><span>Fondo inicial:</span><span>${fmt(fondo)}</span></div>
+      <div class="row"><span>Total ingresos:</span><span>${fmt(ingresos)}</span></div>
+      ${egresos>0?`<div class="row" style="color:red"><span>Total egresos:</span><span>- ${fmt(egresos)}</span></div>`:''}
+      <div class="sep"></div>
+      <div class="row big"><span>TOTAL EN CAJA:</span><span>${fmt(totalCaja)}</span></div>
+      ${Object.keys(porMetodo).length?`
+      <div class="sep"></div>
+      <div class="section">POR MÉTODO DE PAGO</div>
+      ${Object.entries(porMetodo).map(([m,v])=>`<div class="row"><span>${METODO_ICONS[m]||''} ${m}:</span><span>${fmt(v)}</span></div>`).join('')}`:''}
+      ${movs.length?`
+      <div class="sep"></div>
+      <div class="section">MOVIMIENTOS (${movs.length})</div>
+      ${movs.map(m=>`<div class="row"><span>${m.concepto||'—'} (${m.tipo})</span><span style="color:${m.tipo==='egreso'?'red':'inherit'}">${m.tipo==='egreso'?'- ':''}${fmt(m.monto)}</span></div>`).join('')}`:''}`;
+  }
 
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
   <title>Arqueo — Hotel Takuá</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Courier New',monospace;font-size:13px;padding:16px;color:#000;width:300px;margin:0 auto}
-    .center{text-align:center} .bold{font-weight:bold} .sep{border-top:2px solid #000;margin:8px 0}
-    .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #ddd}
-    .big{font-size:16px;font-weight:900} @page{margin:8mm}
+    body{font-family:'Courier New',monospace;font-size:13px;padding:16px;color:#000;width:300px;margin:0 auto;line-height:1.5}
+    .center{text-align:center} .bold{font-weight:bold}
+    .sep{border-top:2px solid #000;margin:8px 0}
+    .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee;gap:8px}
+    .row span:last-child{text-align:right;font-weight:600}
+    .big{font-size:15px;font-weight:900;border-top:2px solid #000;border-bottom:2px solid #000;padding:6px 0!important}
+    .section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;padding:4px 0;margin-top:4px}
+    @page{margin:8mm}
   </style></head><body>
   <div class="center bold" style="font-size:16px">🏨 Hotel Takuá</div>
-  <div class="center" style="font-size:12px">${icono} — Arqueo de Caja</div>
-  <div class="center" style="font-size:11px;color:#666">REIMPRESIÓN</div>
+  <div class="center">${icono}</div>
+  <div class="center" style="font-size:12px">Arqueo de Caja</div>
+  <div class="center" style="font-size:10px;color:#666;margin-bottom:4px">⚠️ REIMPRESIÓN</div>
   <div class="sep"></div>
-  <div class="row"><span>Cajero:</span><span class="bold">${turno.cajero_nombre||'—'}</span></div>
-  <div class="row"><span>Apertura:</span><span>${apertura}</span></div>
-  <div class="row"><span>Cierre:</span><span>${cierre}</span></div>
+  ${cuerpo}
   <div class="sep"></div>
-  <div class="row"><span>Fondo inicial:</span><span>${fmt(fondo)}</span></div>
-  <div class="row"><span>Total cobrado:</span><span class="bold">${fmt(cobrado)}</span></div>
-  ${retiros>0?`<div class="row"><span>Retiros/Egresos:</span><span style="color:red">- ${fmt(retiros)}</span></div>`:''}
-  <div class="sep"></div>
-  <div class="row big"><span>TOTAL EN CAJA:</span><span>${fmt(totalFinal)}</span></div>
-  <div class="sep"></div>
-  <div class="center" style="font-size:11px;margin-top:8px">Hotel Takuá · ${new Date().toLocaleString('es-AR')}</div>
+  <div class="center" style="font-size:11px;margin-top:6px">Hotel Takuá · Impreso: ${new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
   <scr'+'ipt>window.onload=()=>window.print();</scr'+'ipt>
   </body></html>`;
 
