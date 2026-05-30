@@ -688,9 +688,9 @@ function buildCard(h) {
   if (h.status === 'reservada') {
     const r = h.reserva_activa;
     if (r?.entrada) {
-      const ahora = new Date();
-      const entrada = new Date(r.entrada);
-      diasParaCheckin = Math.ceil((entrada - ahora) / (1000*60*60*24));
+      const hoyDate  = new Date(); hoyDate.setHours(0,0,0,0);
+      const entDate  = new Date(r.entrada); entDate.setHours(0,0,0,0);
+      diasParaCheckin = Math.round((entDate - hoyDate) / (1000*60*60*24));
       if (diasParaCheckin <= 0)       proximidadCheckin = 'hoy';
       else if (diasParaCheckin <= 2)  proximidadCheckin = 'proximo';
       else                            proximidadCheckin = 'futuro';
@@ -744,8 +744,14 @@ function buildCard(h) {
   let icon = s.icon;
   if (h.status === 'lista')       icon = '🟡';
   if (h.status === 'en_limpieza') icon = '🟡';
-  if (h.status === 'limpia')      icon = '🔴';  // sigue siendo ocupada
+  if (h.status === 'limpia')      icon = '🔴';
   if (h.status === 'libre_limpia') icon = '🟢';
+  // Reservada: verde si lejana, amarilla si próxima, violeta si hoy
+  if (h.status === 'reservada') {
+    if (proximidadCheckin === 'hoy')      icon = '🟣';
+    else if (proximidadCheckin === 'proximo') icon = '🟡';
+    else                                      icon = '🟢';
+  }
  
   // ── Fondo de la tarjeta ──
   // en_limpieza → amarillo, limpia → rojo (sigue siendo hab. ocupada)
