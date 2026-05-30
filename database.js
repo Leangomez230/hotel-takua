@@ -356,6 +356,15 @@ await query(`
 `);
 console.log('✅ Tablas caja habitaciones listas');
 
+// Migración: seña y saldo en reservas
+try {
+  await query('ALTER TABLE reservas ADD COLUMN IF NOT EXISTS monto_senia REAL DEFAULT 0');
+  await query('ALTER TABLE reservas ADD COLUMN IF NOT EXISTS saldo_pendiente REAL DEFAULT 0');
+  // Inicializar saldo_pendiente = precio_total para reservas existentes sin seña
+  await query(`UPDATE reservas SET saldo_pendiente=precio_total WHERE saldo_pendiente=0 AND precio_total>0`);
+  console.log('✅ Columnas seña y saldo listas');
+} catch(e) { console.log('columnas seña ya existen'); }
+
 // Migración: sincronizar bebidas del menú → inventario
 try {
   const bebidasMenu = await getAll(
