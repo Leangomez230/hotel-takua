@@ -1747,88 +1747,146 @@ function showCambiarHabModal(hab) {
 // ══════════════════════════════════════
 // CHECK-IN
 // ══════════════════════════════════════
-function showCheckinModal(habId) {
-  const hab=habitaciones.find(h=>h.id===habId);
-  const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
-  const iso=d=>d.toISOString().slice(0,16);
-  const pn=hab?.precio_noche||50000;
- 
+async function showCheckinModal(habId) {
+  const hab = habitaciones.find(h=>h.id===habId);
+  const now = new Date(), tom = new Date(now); tom.setDate(tom.getDate()+1);
+  const iso = d => d.toISOString().slice(0,16);
+  const pn  = hab?.precio_noche||50000;
+
+  // Buscar reserva existente
+  const reserva = await apiFetch('GET', `/habitaciones/${habId}/reserva`);
+
+  // Prellenar con datos de la reserva si existe
+  const nombre0  = reserva?.nombre_huesped || '';
+  const doc0     = reserva?.documento || '';
+  const entrada0 = reserva ? new Date(reserva.entrada).toISOString().slice(0,16) : iso(now);
+  const salida0  = reserva ? new Date(reserva.salida).toISOString().slice(0,16)  : iso(tom);
+  const noches0  = reserva?.noches || 1;
+  const total0   = reserva?.precio_total || pn;
+  const senia0   = reserva?.monto_senia || 0;
+  const saldo0   = reserva?.saldo_pendiente ?? total0;
+  const metodo0  = reserva?.metodo_pago || 'Efectivo';
+
+  const bannerReserva = reserva ? `
+    <div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+      📋 <strong>Reserva existente vinculada</strong>
+      <div style="margin-top:4px;color:#1d4ed8">
+        Total: <strong>${fmt(total0)}</strong>
+        ${senia0>0?` · Seña cobrada: <strong style="color:#16a34a">${fmt(senia0)}</strong>`:''}
+        · <strong style="color:${saldo0>0?'#dc2626':'#16a34a'}">Saldo: ${fmt(saldo0)}</strong>
+      </div>
+    </div>` : '';
+
   openModal(`
-    <div class="modal-hd"><h3>Check-in — Hab. ${hab?.numero} Ala ${hab?.ala}</h3><button class="modal-close" id="ci-close">✕</button></div>
+    <div class="modal-hd"><h3>Check-in — Hab. ${hab?.numero} Ala ${hab?.ala}</h3>
+      <button class="modal-close" id="ci-close">✕</button>
+    </div>
+    ${bannerReserva}
     <div class="form-row">
       <div class="form-col"><label>Tipo doc.</label>
         <select id="ci-tdoc"><option>DNI</option><option>Pasaporte</option><option>Carnet</option></select>
       </div>
-      <div class="form-col"><label>N° Documento</label><input type="text" id="ci-doc" placeholder="12345678"></div>
+      <div class="form-col"><label>N° Documento</label>
+        <input type="text" id="ci-doc" placeholder="12345678" value="${doc0}">
+      </div>
     </div>
     <div id="ci-ginfo" style="display:none" class="info-box"></div>
     <div class="form-row">
-      <div class="form-col"><label>Nombre completo</label><input type="text" id="ci-nombre" placeholder="Juan García"></div>
-      <div class="form-col"><label>Teléfono</label><input type="text" id="ci-tel" placeholder="+54 9 11..."></div>
-    </div>
-    <div class="form-row">
-      <div class="form-col"><label>Entrada</label><input type="datetime-local" id="ci-in" value="${iso(now)}"></div>
-      <div class="form-col"><label>Salida</label><input type="datetime-local" id="ci-out" value="${iso(tom)}"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-col"><label>Tarifa / noche ($)</label><input type="number" id="ci-tarifa" value="${pn}"></div>
-      <div class="form-col"><label>Método de pago</label>
-        <select id="ci-pago"><option>Efectivo</option><option>Tarjeta débito</option><option>Tarjeta crédito</option><option>Transferencia</option></select>
+      <div class="form-col"><label>Nombre completo</label>
+        <input type="text" id="ci-nombre" placeholder="Juan García" value="${nombre0}">
+      </div>
+      <div class="form-col"><label>Teléfono</label>
+        <input type="text" id="ci-tel" placeholder="+54 9 11...">
       </div>
     </div>
-    <div class="form-col" style="margin-bottom:12px"><label>Notas (patente, etc.)</label><input type="text" id="ci-notas" placeholder="ART-158, solicitudes..."></div>
+    <div class="form-row">
+      <div class="form-col"><label>Entrada</label>
+        <input type="datetime-local" id="ci-in" value="${entrada0}">
+      </div>
+      <div class="form-col"><label>Salida</label>
+        <input type="datetime-local" id="ci-out" value="${salida0}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Tarifa / noche ($)</label>
+        <input type="number" id="ci-tarifa" value="${reserva ? Math.round(total0/noches0) : pn}">
+      </div>
+      <div class="form-col"><label>Método de pago</label>
+        <select id="ci-pago">
+          ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia']
+            .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:12px"><label>Notas (patente, etc.)</label>
+      <input type="text" id="ci-notas" placeholder="ART-158, solicitudes...">
+    </div>
     <div class="total-box">
-      <div class="total-row"><span>Noches:</span><span id="ci-n">1</span></div>
-      <div class="total-row"><span>Tarifa/noche:</span><span id="ci-ts">${fmt(pn)}</span></div>
-      <div class="total-row big"><span>Total a cobrar:</span><span id="ci-tot">${fmt(pn)}</span></div>
+      <div class="total-row"><span>Noches:</span><span id="ci-n">${noches0}</span></div>
+      <div class="total-row"><span>Total estadía:</span><span id="ci-tot">${fmt(total0)}</span></div>
+      ${senia0>0?`<div class="total-row"><span style="color:#16a34a">Seña cobrada:</span><span style="color:#16a34a">- ${fmt(senia0)}</span></div>`:''}
+      <div class="total-row big"><span>A cobrar ahora:</span><span id="ci-saldo">${fmt(saldo0)}</span></div>
     </div>
     <button class="confirm-btn" id="ci-confirm">✅ Confirmar Check-in</button>
   `);
- 
-  const recalc=()=>{
-    const inn=document.getElementById('ci-in')?.value;
-    const out=document.getElementById('ci-out')?.value;
-    const tar=parseFloat(document.getElementById('ci-tarifa')?.value)||0;
+
+  const recalc = () => {
+    const inn = document.getElementById('ci-in')?.value;
+    const out = document.getElementById('ci-out')?.value;
+    const tar = parseFloat(document.getElementById('ci-tarifa')?.value)||0;
     if (!inn||!out) return;
-    const n=Math.max(1,Math.ceil((new Date(out)-new Date(inn))/86400000));
-    document.getElementById('ci-n').textContent=n;
-    document.getElementById('ci-ts').textContent=fmt(tar);
-    document.getElementById('ci-tot').textContent=fmt(n*tar);
+    const n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
+    const total = n*tar;
+    const saldo = Math.max(0, total - senia0);
+    document.getElementById('ci-n').textContent   = n;
+    document.getElementById('ci-tot').textContent = fmt(total);
+    if (document.getElementById('ci-saldo'))
+      document.getElementById('ci-saldo').textContent = fmt(saldo);
   };
-  ['ci-in','ci-out','ci-tarifa'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalc));
- 
-  document.getElementById('ci-doc').addEventListener('input', async ()=>{
-    const doc=document.getElementById('ci-doc').value;
+  ['ci-in','ci-out','ci-tarifa'].forEach(id => document.getElementById(id)?.addEventListener('input',recalc));
+
+  document.getElementById('ci-doc').addEventListener('input', async () => {
+    const doc = document.getElementById('ci-doc').value;
     if (doc.length<6) return;
-    const h=await apiFetch('GET',`/huespedes/doc/${doc}`);
+    const h = await apiFetch('GET',`/huespedes/doc/${doc}`);
     if (h) {
-      document.getElementById('ci-nombre').value=h.nombre;
-      document.getElementById('ci-tel').value=h.telefono||'';
-      const gi=document.getElementById('ci-ginfo');
-      gi.style.display='block'; gi.textContent=`✅ Huésped encontrado — ${h.visitas} visitas previas`;
+      document.getElementById('ci-nombre').value = h.nombre;
+      document.getElementById('ci-tel').value    = h.telefono||'';
+      const gi = document.getElementById('ci-ginfo');
+      gi.style.display='block';
+      gi.textContent=`✅ Huésped encontrado — ${h.visitas} visitas previas`;
     }
   });
- 
-  document.getElementById('ci-close').addEventListener('click',closeModal);
- 
-  document.getElementById('ci-confirm').addEventListener('click', async ()=>{
-    const nombre=document.getElementById('ci-nombre').value.trim();
-    if (!nombre) { toast('Ingresá el nombre del huésped',false); return; }
-    const noches=parseInt(document.getElementById('ci-n').textContent)||1;
-    const tarifa=parseFloat(document.getElementById('ci-tarifa').value)||0;
-    const r=await apiFetch('POST','/checkin',{
-      habitacion_id:habId,
-      documento:document.getElementById('ci-doc').value,
-      tipo_doc:document.getElementById('ci-tdoc').value,
-      nombre, telefono:document.getElementById('ci-tel').value,
-      entrada:document.getElementById('ci-in').value,
-      salida:document.getElementById('ci-out').value,
-      noches, precio_total:noches*tarifa,
-      metodo_pago:document.getElementById('ci-pago').value,
-      notas:document.getElementById('ci-notas').value,
-    });
+
+  document.getElementById('ci-close').addEventListener('click', closeModal);
+
+  document.getElementById('ci-confirm').addEventListener('click', async () => {
+    const nombre = document.getElementById('ci-nombre').value.trim();
+    if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
+    const noches = parseInt(document.getElementById('ci-n').textContent)||1;
+    const tarifa = parseFloat(document.getElementById('ci-tarifa').value)||0;
+    const total  = noches * tarifa;
+    const saldo  = Math.max(0, total - senia0);
+    const body = {
+      habitacion_id: habId,
+      documento:     document.getElementById('ci-doc').value,
+      tipo_doc:      document.getElementById('ci-tdoc').value,
+      nombre,
+      telefono:      document.getElementById('ci-tel').value,
+      entrada:       document.getElementById('ci-in').value,
+      salida:        document.getElementById('ci-out').value,
+      noches, precio_total: total,
+      metodo_pago:   document.getElementById('ci-pago').value,
+      notas:         document.getElementById('ci-notas').value,
+    };
+    // Si viene de reserva existente, vincular y cobrar saldo
+    if (reserva) {
+      body.reserva_id    = reserva.id;
+      body.saldo_cobrado = saldo;
+    }
+    const r = await apiFetch('POST', '/checkin', body);
     if (r?.ok) { toast('Check-in realizado'); closeModal(); await refreshHabs(); }
-    else toast(r?.error||'Error en check-in',false);
+    else toast(r?.error||'Error en check-in', false);
   });
 }
  
@@ -1862,6 +1920,15 @@ function showReservaModal(habId) {
       <div class="total-row"><span>Noches:</span><span id="res-n">1</span></div>
       <div class="total-row big"><span>Total estimado:</span><span id="res-tot">${fmt(pn)}</span></div>
     </div>
+    <div class="stitle">Seña (opcional)</div>
+    <div class="form-row" style="margin-bottom:14px">
+      <div class="form-col"><label>Monto de seña ($)</label>
+        <input type="number" id="res-senia" value="0" min="0" placeholder="0 = sin seña">
+      </div>
+      <div class="form-col"><label>Método seña</label>
+        <select id="res-pago-senia"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>
+      </div>
+    </div>
     <button class="confirm-btn" id="res-confirm" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">📋 Confirmar Reserva</button>
   `);
  
@@ -1889,6 +1956,7 @@ function showReservaModal(habId) {
       noches:n, precio_total:n*tar,
       metodo_pago:document.getElementById('res-pago').value,
       notas:document.getElementById('res-notas').value,
+      monto_senia:parseFloat(document.getElementById('res-senia').value)||0,
     });
     if (r?.ok) { toast('Reserva creada'); closeModal(); await refreshHabs(); }
     else toast(r?.error||'Error',false);
@@ -1904,11 +1972,15 @@ async function renderReservas() {
 
   const rows = reservas.length
     ? reservas.map(r=>`<tr>
-        <td><strong>Hab. ${r.habitacion_id}</strong><br><small style="color:#94a3b8">Ala ${r.ala||''}</small></td>
+        <td><strong>Hab. ${r.hab_numero||r.habitacion_id}</strong><br><small style="color:#94a3b8">Ala ${r.ala||''}</small></td>
         <td>${r.nombre_huesped}<br><small style="color:#94a3b8">${r.documento||''}</small></td>
         <td>${fmtDate(r.entrada)}</td>
         <td>${fmtDate(r.salida)}</td>
-        <td><strong>${fmt(r.precio_total)}</strong></td>
+        <td>
+          <strong>${fmt(r.precio_total)}</strong>
+          ${r.monto_senia>0?`<br><small style="color:#16a34a">Seña: ${fmt(r.monto_senia)}</small>`:''}
+          ${r.saldo_pendiente>0?`<br><small style="color:#dc2626">Saldo: ${fmt(r.saldo_pendiente)}</small>`:''}
+        </td>
         <td>${r.metodo_pago}</td>
         <td><span class="pill ${r.estado==='activa'?'pg':r.estado==='futura'?'pb':'pgr'}">${r.estado}</span></td>
         ${isAdminOrRecep?`<td style="white-space:nowrap">
