@@ -34,9 +34,10 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .section-card{background:#fff;border-radius:18px;padding:22px 24px;box-shadow:0 1px 8px rgba(0,0,0,.07);margin-bottom:20px}
 .sc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
 .card-title{font-size:16px;font-weight:800;color:#1a2035}
-.tabs{display:flex;gap:4px;background:#f1f5f9;border-radius:12px;padding:4px;margin-bottom:20px;flex-wrap:wrap}
-.tab{flex:1;min-width:80px;padding:8px 14px;border-radius:9px;border:none;background:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap}
-.tab.active{background:#fff;color:#1a2035;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.tabs{display:flex;gap:6px;background:transparent;border-radius:12px;padding:0;margin-bottom:20px;flex-wrap:wrap}
+.tab{flex:1;min-width:80px;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.tab:hover{background:#f8fafc;color:#1a2035;border-color:#cbd5e1}
+.tab.active{background:linear-gradient(135deg,#1a2035,#2d3a5c);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(26,32,53,.25)}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .stat-card{border-radius:14px;padding:16px 18px;color:#fff;position:relative;overflow:hidden}
 .stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.08)}
@@ -416,24 +417,20 @@ async function renderHoy(el) {
         <div class="stat-sub">retiros + egresos</div>
       </div>
     </div>
-
-    <!-- Cajas en tiempo real -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
       <div class="section-card" style="border-top:3px solid #1d4ed8">
         ${panelRest}
-        <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+        <div style="margin-top:12px;display:flex;justify-content:flex-end">
           <button class="btn-secondary" onclick="renderHoy(document.getElementById('tab-content'))" style="font-size:12px;padding:6px 12px">↻ Actualizar</button>
         </div>
       </div>
       <div class="section-card" style="border-top:3px solid #0f766e">
         ${panelHab}
-        <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+        <div style="margin-top:12px;display:flex;justify-content:flex-end">
           <button class="btn-secondary" onclick="renderHoy(document.getElementById('tab-content'))" style="font-size:12px;padding:6px 12px">↻ Actualizar</button>
         </div>
       </div>
     </div>
-
-    <!-- Por método consolidado -->
     <div class="section-card">
       <div class="card-title" style="margin-bottom:14px">💳 Consolidado por método de pago</div>
       ${Object.keys(metodos).length ? Object.entries(metodos).sort((a,b)=>b[1]-a[1]).map(([m,v])=>`
@@ -444,10 +441,10 @@ async function renderHoy(el) {
         :'<div style="color:#94a3b8;text-align:center;padding:20px">Sin movimientos hoy</div>'}
     </div>`;
 
-  // Auto-refresh cada 30 segundos si estamos en la pestaña hoy
   clearTimeout(G._refreshTimer);
   G._refreshTimer = setTimeout(() => { if(G.tab==='hoy') renderHoy(document.getElementById('tab-content')); }, 30000);
 }
+
 
 // ── TAB TURNOS ────────────────────────────────────────
 async function renderTurnos(el) {
