@@ -2175,7 +2175,7 @@ app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
         `SELECT ci.nombre,
                 COALESCE(m.categoria, 'Sin categoría') as categoria,
                 SUM(ci.cantidad) as cantidad,
-                SUM(ci.subtotal) as total
+                SUM(ci.precio_unitario * ci.cantidad) as total
          FROM comanda_items ci
          JOIN comandas c ON ci.comanda_id = c.id
          LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
