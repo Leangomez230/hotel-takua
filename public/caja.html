@@ -755,7 +755,7 @@ async function renderHistorial(el) {
         const esEgreso = m.tipo==='egreso';
         const esComanda = m.fuente==='restaurante' && m.comanda_id;
         return `<div class="mov-item" id="mov-${idx}"
-          ${esComanda ? `onclick="toggleDetalleComanda(${m.comanda_id}, ${idx})" style="cursor:pointer"` : ''}
+          ${esComanda ? `onclick="toggleDetalleComanda(${m.comanda_id}, ${idx})"` : ''}
           style="cursor:${esComanda?'pointer':'default'};transition:background .15s">
           <div class="mov-icon ${esEgreso?'egr':'ing'}">${esEgreso?'⬇️':'⬆️'}</div>
           <div class="mov-body">
@@ -768,14 +768,8 @@ async function renderHistorial(el) {
             </div>
             <div id="detalle-${idx}" style="display:none;margin-top:10px;border-top:1px solid #f1f5f9;padding-top:8px"></div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-            <div class="mov-monto" style="color:${esEgreso?'#dc2626':'#16a34a'}">
-              ${esEgreso?'-':'+'} ${fmt(Math.abs(Number(m.monto||0)))}
-            </div>
-            ${esComanda?`<button onclick="event.stopPropagation();imprimirTicketComanda(${m.comanda_id})"
-              style="background:#1e293b;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
-              🖨️ Ticket
-            </button>`:''}
+          <div class="mov-monto" style="color:${esEgreso?'#dc2626':'#16a34a'}">
+            ${esEgreso?'-':'+'} ${fmt(Math.abs(Number(m.monto||0)))}
           </div>
         </div>`;
       }).join('') : '<div style="text-align:center;color:#94a3b8;padding:32px">Sin movimientos</div>'}
@@ -808,13 +802,17 @@ async function toggleDetalleComanda(comandaId, idx) {
     </div>
     ${items.map(i=>`
       <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
-        <span style="color:#1e293b">
-          <strong>${i.cantidad}x</strong> ${i.nombre}
-          
-        </span>
+        <span style="color:#1e293b"><strong>${i.cantidad}x</strong> ${i.nombre}</span>
         <span style="font-weight:700;color:#1e293b;margin-left:12px">${fmt(i.total)}</span>
       </div>`).join('')}
-    ${items.length===0?'<div style="color:#94a3b8;font-size:12px">Sin ítems registrados</div>':''}`;
+    ${items.length===0?'<div style="color:#94a3b8;font-size:12px">Sin ítems registrados</div>':''}
+    <div style="margin-top:10px;display:flex;justify-content:flex-end">
+      <button onclick="event.stopPropagation();imprimirTicketComanda(${comandaId})"
+        style="background:#1e293b;color:#fff;border:none;border-radius:7px;padding:6px 14px;
+               font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
+        🖨️ Imprimir ticket
+      </button>
+    </div>`;
 }
 
 // Imprimir ticket de una comanda desde el historial
