@@ -2170,12 +2170,24 @@ app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
         'SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at',
         [id]
       );
+      // Ítems vendidos agrupados por nombre
+      const itemsVendidos = await db.getAll(
+        `SELECT ci.nombre, ci.categoria, SUM(ci.cantidad) as cantidad,
+                SUM(ci.precio * ci.cantidad) as total
+         FROM comanda_items ci
+         JOIN comandas c ON ci.comanda_id = c.id
+         WHERE c.estado='cerrada' AND c.cerrada_at >= $1
+         AND ($2::timestamp IS NULL OR c.cerrada_at <= $2)
+         GROUP BY ci.nombre, ci.categoria
+         ORDER BY total DESC`,
+        [turno.abierto_at, turno.cerrado_at||null]
+      );
       // Por método de pago
       const porMetodo = {};
       cerradas.forEach(c => {
         porMetodo[c.metodo_pago] = (porMetodo[c.metodo_pago]||0) + Number(c.total_final||0);
       });
-      res.json({ ...turno, cerradas, retiros, porMetodo });
+      res.json({ ...turno, cerradas, retiros, porMetodo, itemsVendidos });
     } else {
       const turno = await db.getOne('SELECT * FROM turnos_habitaciones WHERE id=$1', [id]);
       if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
