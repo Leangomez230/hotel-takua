@@ -147,13 +147,15 @@ app.put('/api/usuarios/:id', auth, adminOnly, async (req, res) => {
 app.get('/api/habitaciones', auth, async (req, res) => {
   try {
     const habs = await db.getAll('SELECT * FROM habitaciones ORDER BY ala, numero');
-    // Agregar datos de la reserva activa a cada habitación
-    const reservasActivas = await db.getAll(
-      `SELECT * FROM reservas
-       WHERE estado IN ('activa','futura','checkin','ocupada','confirmada','reservada')
-       AND entrada >= CURRENT_DATE
-       ORDER BY entrada ASC`
-    );
+    let reservasActivas = [];
+    try {
+      reservasActivas = await db.getAll(
+        `SELECT * FROM reservas
+         WHERE estado IN ('activa','futura','checkin','ocupada','confirmada','reservada')
+         AND DATE(entrada) >= CURRENT_DATE
+         ORDER BY entrada ASC`
+      );
+    } catch(e2) { console.error('Error reservas activas:', e2.message); }
     const habsEnriquecidas = habs.map(h => {
       const reserva = reservasActivas.find(r => r.habitacion_id == h.id);
       return {
