@@ -2172,13 +2172,16 @@ app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
       );
       // Ítems vendidos agrupados por nombre
       const itemsVendidos = await db.getAll(
-        `SELECT ci.nombre, ci.categoria, SUM(ci.cantidad) as cantidad,
-                SUM(ci.precio * ci.cantidad) as total
+        `SELECT ci.nombre,
+                COALESCE(m.categoria, 'Sin categoría') as categoria,
+                SUM(ci.cantidad) as cantidad,
+                SUM(ci.subtotal) as total
          FROM comanda_items ci
          JOIN comandas c ON ci.comanda_id = c.id
+         LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
          WHERE c.estado='cerrada' AND c.cerrada_at >= $1
          AND ($2::timestamp IS NULL OR c.cerrada_at <= $2)
-         GROUP BY ci.nombre, ci.categoria
+         GROUP BY ci.nombre, COALESCE(m.categoria, 'Sin categoría')
          ORDER BY total DESC`,
         [turno.abierto_at, turno.cerrado_at||null]
       );
