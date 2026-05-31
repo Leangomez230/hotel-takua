@@ -2006,23 +2006,29 @@ app.post('/api/caja-hab/movimiento', auth, adminOrRecep, async (req, res) => {
 app.get('/api/caja-global/resumen-dia', auth, adminOnly, async (req, res) => {
   try {
     const hoy = req.query.fecha || new Date().toISOString().split('T')[0];
-    const desde = hoy + ' 00:00:00';
-    const hasta  = hoy + ' 23:59:59';
 
-    // Restaurante — comandas cerradas hoy
+    // Restaurante — comandas cerradas hoy (usando fecha en zona Argentina)
     const cmdHoy = await db.getAll(
-      "SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2 GROUP BY metodo_pago",
-      [desde, hasta]
+      `SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant
+       FROM comandas
+       WHERE estado='cerrada'
+       AND DATE(cerrada_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1
+       GROUP BY metodo_pago`,
+      [hoy]
     );
     // Restaurante — retiros hoy
     const retirosRest = await db.getAll(
-      "SELECT SUM(monto) as total FROM caja_retiros WHERE created_at BETWEEN $1 AND $2",
-      [desde, hasta]
+      `SELECT SUM(monto) as total FROM caja_retiros
+       WHERE DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1`,
+      [hoy]
     );
     // Habitaciones — movimientos hoy
     const movHab = await db.getAll(
-      "SELECT tipo, metodo_pago, SUM(monto) as total FROM movimientos_habitaciones WHERE created_at BETWEEN $1 AND $2 GROUP BY tipo, metodo_pago",
-      [desde, hasta]
+      `SELECT tipo, metodo_pago, SUM(monto) as total
+       FROM movimientos_habitaciones
+       WHERE DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1
+       GROUP BY tipo, metodo_pago`,
+      [hoy]
     );
 
     res.json({
@@ -2079,25 +2085,25 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
   try {
     const { desde, hasta } = req.query;
     if (!desde||!hasta) return res.status(400).json({ error: 'Falta rango de fechas' });
-    const d = desde+' 00:00:00', h = hasta+' 23:59:59';
+    const TZ = `AT TIME ZONE 'America/Argentina/Buenos_Aires'`;
 
     const [cmdTotal, retTotal, habIngresos, habEgresos] = await Promise.all([
-      db.getAll("SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2 GROUP BY metodo_pago", [d,h]),
-      db.getAll("SELECT SUM(monto) as total, COUNT(*) as cant FROM caja_retiros WHERE created_at BETWEEN $1 AND $2", [d,h]),
-      db.getAll("SELECT metodo_pago, SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='ingreso' AND created_at BETWEEN $1 AND $2 GROUP BY metodo_pago", [d,h]),
-      db.getAll("SELECT SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='egreso' AND created_at BETWEEN $1 AND $2", [d,h]),
+      db.getAll(`SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
+      db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM caja_retiros WHERE DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
+      db.getAll(`SELECT metodo_pago, SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
+      db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='egreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
     ]);
 
     // Resumen por día
     const porDia = await db.getAll(`
       SELECT dia, SUM(total) as total, fuente FROM (
-        SELECT DATE(cerrada_at)::text as dia, SUM(total_final) as total, 'restaurante' as fuente
-        FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2 GROUP BY DATE(cerrada_at)
+        SELECT DATE(cerrada_at ${TZ})::text as dia, SUM(total_final) as total, 'restaurante' as fuente
+        FROM comandas WHERE estado='cerrada' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(cerrada_at ${TZ})
         UNION ALL
-        SELECT DATE(created_at)::text, SUM(monto), 'habitaciones'
-        FROM movimientos_habitaciones WHERE tipo='ingreso' AND created_at BETWEEN $1 AND $2 GROUP BY DATE(created_at)
+        SELECT DATE(created_at ${TZ})::text, SUM(monto), 'habitaciones'
+        FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(created_at ${TZ})
       ) t GROUP BY dia, fuente ORDER BY dia DESC
-    `, [d,h]);
+    `, [desde,hasta]);
 
     res.json({
       restaurante: { por_metodo: cmdTotal, retiros: Number(retTotal[0]?.total||0) },
