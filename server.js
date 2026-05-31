@@ -2244,7 +2244,7 @@ app.get('/api/caja-global/comanda-items/:id', auth, adminOnly, async (req, res) 
                     : '0';
     const items = await db.getAll(
       `SELECT nombre, cantidad, ${precioCol} as precio_unit,
-              cantidad * ${precioCol} as total, notas
+              cantidad * ${precioCol} as total
        FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
       [req.params.id]
     );
