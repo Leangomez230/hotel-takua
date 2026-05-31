@@ -151,7 +151,7 @@ app.get('/api/habitaciones', auth, async (req, res) => {
     const reservasActivas = await db.getAll(
       `SELECT * FROM reservas
        WHERE estado IN ('activa','futura','checkin','ocupada','confirmada','reservada')
-       ORDER BY created_at DESC`
+       ORDER BY entrada ASC`
     );
     const habsEnriquecidas = habs.map(h => {
       const reserva = reservasActivas.find(r => r.habitacion_id == h.id);
