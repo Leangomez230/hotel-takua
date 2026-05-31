@@ -810,7 +810,7 @@ async function toggleDetalleComanda(comandaId, idx) {
       <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
         <span style="color:#1e293b">
           <strong>${i.cantidad}x</strong> ${i.nombre}
-          ${i.notas?`<span style="color:#94a3b8;font-size:11px"> · ${i.notas}</span>`:''}
+          
         </span>
         <span style="font-weight:700;color:#1e293b;margin-left:12px">${fmt(i.total)}</span>
       </div>`).join('')}
@@ -849,7 +849,7 @@ async function imprimirTicketComanda(comandaId) {
       <span>${i.cantidad}x ${i.nombre}</span>
       <span>${fmt(i.total)}</span>
     </div>
-    ${i.notas?`<div style="font-size:11px;color:#666;padding-left:12px">${i.notas}</div>`:''}`).join('')}
+    `).join('')}
   <div style="border-top:2px solid #000;margin:8px 0"></div>
   ${descuento>0?`<div style="display:flex;justify-content:space-between;font-size:13px">
     <span>Subtotal</span><span>${fmt(Number(data.total||0))}</span>
