@@ -2170,12 +2170,23 @@ app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
         'SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at',
         [id]
       );
+      // Detectar columna de precio disponible en comanda_items
+      const cols = await db.getAll(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_name='comanda_items'`
+      );
+      const colNames = cols.map(c=>c.column_name);
+      const precioCol = colNames.includes('precio_unitario') ? 'ci.precio_unitario'
+                      : colNames.includes('precio')          ? 'ci.precio'
+                      : colNames.includes('subtotal')        ? 'ci.subtotal/NULLIF(ci.cantidad,0)'
+                      : '0';
+
       // Ítems vendidos agrupados por nombre
       const itemsVendidos = await db.getAll(
         `SELECT ci.nombre,
                 COALESCE(m.categoria, 'Sin categoría') as categoria,
                 SUM(ci.cantidad) as cantidad,
-                SUM(ci.precio_unitario * ci.cantidad) as total
+                SUM(${precioCol} * ci.cantidad) as total
          FROM comanda_items ci
          JOIN comandas c ON ci.comanda_id = c.id
          LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
