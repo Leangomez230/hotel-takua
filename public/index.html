@@ -993,42 +993,36 @@ async function renderDashboard() {
     <!-- HABITACIONES -->
     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🏨 Habitaciones</div>
 
-    <!-- Tarjeta unificada de estado -->
-    <div class="section-card" style="margin-bottom:20px;padding:0;overflow:hidden">
-      <!-- Header -->
-      <div style="background:linear-gradient(135deg,#1a2035,#2d3a5c);padding:18px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Estado del hotel</div>
-          <div style="font-size:28px;font-weight:900;color:#fff">${pct}% <span style="font-size:14px;font-weight:400;opacity:.7">ocupación</span></div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <div style="text-align:center;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 16px">
-            <div style="font-size:22px;font-weight:900;color:#fff">${fmt(dash?.hospedaje)}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">HOSPEDAJE HOY</div>
+    <!-- Tarjeta única ancha -->
+    <div class="sc occ" style="margin-bottom:20px;display:flex;align-items:center;gap:0;padding:0;overflow:hidden;min-height:unset">
+      <!-- Bloque izquierdo: ocupación -->
+      <div style="padding:18px 22px;flex:1;min-width:0;border-right:1px solid rgba(255,255,255,.1)">
+        <div class="lbl">Turno actual</div>
+        <div class="ttl">OCUPACIÓN</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+          <div style="font-size:32px;font-weight:900;color:var(--accent)">${pct}%</div>
+          <div class="occ-pills" style="margin-top:0;flex-wrap:nowrap">
+            <div class="op">${occ}<span>Ocup.</span></div>
+            <div class="op">${lib}<span>Libres</span></div>
+            <div class="op">${limp}<span>Limp.</span></div>
+            <div class="op">${reserv}<span>Reserv.</span></div>
+            <div class="op">${mant}<span>Mant.</span></div>
           </div>
-          ${(dash?.reservas_activas||0)>0?`<div style="text-align:center;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 16px">
-            <div style="font-size:22px;font-weight:900;color:#00c9b1">${dash.reservas_activas}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">HUÉSPEDES</div>
-          </div>`:''}
-          <button class="btn-secondary" onclick="setActiveNav('nav-habitaciones');goTo('habitaciones')"
-            style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:12px;padding:8px 14px">
-            Ver mapa →
-          </button>
         </div>
       </div>
-      <!-- Grid de estados -->
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #f1f5f9">
-        ${[
-          {label:'Ocupadas',     val:occ,   color:'#dc2626', bg:'#fff5f5', icon:'🔴', border:'#fca5a5'},
-          {label:'Libres',       val:lib,   color:'#16a34a', bg:'#f0fdf4', icon:'🟢', border:'#86efac'},
-          {label:'Reservadas',   val:reserv,color:'#7c3aed', bg:'#faf5ff', icon:'📅', border:'#c4b5fd'},
-          {label:'Limpieza',     val:limp,  color:'#d97706', bg:'#fffbeb', icon:'🧹', border:'#fcd34d'},
-          {label:'Mantenimiento',val:mant,  color:'#4b5563', bg:'#f9fafb', icon:'🔧', border:'#d1d5db'},
-        ].map((x,i)=>`<div style="padding:16px 14px;text-align:center;border-right:${i<4?'1px solid #f1f5f9':'none'};background:${x.bg}">
-          <div style="font-size:24px;margin-bottom:6px">${x.icon}</div>
-          <div style="font-size:26px;font-weight:900;color:${x.color};line-height:1">${x.val}</div>
-          <div style="font-size:11px;color:#64748b;margin-top:4px;font-weight:600">${x.label}</div>
-        </div>`).join('')}
+      <!-- Bloque derecho: hospedaje -->
+      <div style="padding:18px 22px;background:linear-gradient(135deg,#2563eb,#3b82f6);flex:1;min-width:0;cursor:pointer" onclick="toggleHuespedes(this)">
+        <div class="lbl">Turno actual</div>
+        <div class="ttl">HOSPEDAJE</div>
+        <div class="val" style="font-size:24px">${fmt(dash?.hospedaje)}</div>
+        ${(dash?.reservas_activas||0)>0?`<div style="font-size:11px;opacity:.8;margin-top:4px">👥 ${dash.reservas_activas} huéspedes</div>`:''}
+        <div class="huespedes-detalle" style="display:none;margin-top:8px;text-align:left">
+          ${(dash?.huespedes_actuales||[]).map(h=>`
+            <div style="font-size:11px;padding:3px 0;border-top:1px solid rgba(255,255,255,.15)">
+              <strong>Hab.${h.numero}</strong> ${h.nombre||'—'}
+              <span style="float:right;opacity:.8">${fmt(h.precio_total)}</span>
+            </div>`).join('')}
+        </div>
       </div>
     </div>
 
