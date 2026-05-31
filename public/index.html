@@ -995,23 +995,24 @@ async function renderDashboard() {
 
     <div class="stat-cards" style="margin-bottom:20px">
       <!-- Tarjeta OCUPACIÓN -->
-      <div class="sc occ" style="grid-column:span 3">
-        <div class="lbl">Turno actual</div>
-        <div class="ttl">OCUPACIÓN</div>
-        <div style="display:flex;align-items:center;gap:16px;margin-top:8px;flex-wrap:wrap">
-          <div style="font-size:36px;font-weight:900;color:var(--accent)">${pct}%</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${[
-              {val:occ,   label:'Ocupadas',     color:'#fca5a5', bg:'rgba(220,38,38,.25)'},
-              {val:lib,   label:'Libres',       color:'#86efac', bg:'rgba(22,163,74,.25)'},
-              {val:limp,  label:'Limpieza',     color:'#fcd34d', bg:'rgba(217,119,6,.25)'},
-              {val:reserv,label:'Reservadas',   color:'#c4b5fd', bg:'rgba(124,58,237,.25)'},
-              {val:mant,  label:'Mantenimiento',color:'#d1d5db', bg:'rgba(75,85,99,.25)'},
-            ].map(x=>`<div style="background:${x.bg};border:1px solid ${x.color}55;border-radius:10px;padding:7px 12px;text-align:center;min-width:64px">
-              <div style="font-size:20px;font-weight:900;color:${x.color}">${x.val}</div>
-              <div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:2px;font-weight:600">${x.label}</div>
-            </div>`).join('')}
-          </div>
+      <div class="sc occ" style="grid-column:span 3;display:flex;align-items:center;gap:20px">
+        <div style="flex-shrink:0">
+          <div class="lbl">Turno actual</div>
+          <div class="ttl">OCUPACIÓN</div>
+          <div style="font-size:36px;font-weight:900;color:var(--accent);line-height:1;margin-top:4px">${pct}%</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;justify-content:center">
+          ${[
+            {val:occ,   label:'Ocupadas',     grad:'linear-gradient(135deg,#991b1b,#dc2626)'},
+            {val:lib,   label:'Libres',       grad:'linear-gradient(135deg,#15803d,#22c55e)'},
+            {val:limp,  label:'Limpieza',     grad:'linear-gradient(135deg,#b45309,#f59e0b)'},
+            {val:reserv,label:'Reservadas',   grad:'linear-gradient(135deg,#6d28d9,#a78bfa)'},
+            {val:mant,  label:'Mantenimiento',grad:'linear-gradient(135deg,#374151,#6b7280)'},
+          ].map(x=>`<div style="background:${x.grad};border-radius:12px;padding:10px 14px;text-align:center;min-width:68px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.25)">
+            <div style="position:absolute;right:-8px;bottom:-8px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08)"></div>
+            <div style="font-size:22px;font-weight:900;color:#fff;line-height:1">${x.val}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.8);margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px">${x.label}</div>
+          </div>`).join('')}
         </div>
       </div>
       <!-- Tarjeta HOSPEDAJE -->
