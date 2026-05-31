@@ -2050,7 +2050,8 @@ app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
     const cmds = await db.getAll(
       `SELECT 'restaurante' as fuente, 'ingreso' as tipo, total_final as monto,
               metodo_pago, concat('Mesa ', mesa_id) as concepto,
-              cajero_nombre as usuario, cerrada_at as fecha
+              cajero_nombre as usuario, cerrada_at as fecha,
+              id as comanda_id, mesa_id
        FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2
        ORDER BY cerrada_at DESC LIMIT $3`,
       [d+' 00:00:00', h+' 23:59:59', lim]
@@ -2226,6 +2227,28 @@ app.put('/api/caja-global/turno-fondo', auth, adminOnly, async (req, res) => {
     await db.query(`UPDATE ${tabla} SET fondo_inicial=$1 WHERE id=$2`, [fondo_inicial, turno_id]);
     await logAction(req.user.id, req.user.nombre, 'EDITAR_FONDO', `${fuente} turno #${turno_id}: $${fondo_inicial}`);
     res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Ítems de una comanda específica (para historial caja)
+app.get('/api/caja-global/comanda-items/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
+    const cols = await db.getAll(
+      `SELECT column_name FROM information_schema.columns WHERE table_name='comanda_items'`
+    );
+    const colNames = cols.map(c=>c.column_name);
+    const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
+                    : colNames.includes('precio')          ? 'precio'
+                    : '0';
+    const items = await db.getAll(
+      `SELECT nombre, cantidad, ${precioCol} as precio_unit,
+              cantidad * ${precioCol} as total, notas
+       FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
+      [req.params.id]
+    );
+    res.json({ ...cmd, items });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
