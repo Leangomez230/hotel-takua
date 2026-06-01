@@ -328,12 +328,17 @@ function renderGantt() {
 
   // Agrupar habitaciones ordenadas
   const habs = [...G.habitaciones].sort((a,b)=>
-    a.ala.localeCompare(b.ala)||String(a.numero).localeCompare(String(b.numero))
+    String(a.ala||'').localeCompare(String(b.ala||''))||String(a.numero||'').localeCompare(String(b.numero||''), undefined, {numeric:true})
   );
+
+  if (habs.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Sin habitaciones cargadas</div>';
+    return;
+  }
 
   // Filas por habitación
   const filas = habs.map(hab => {
-    const resHab = G.reservas.filter(r=>r.habitacion_id===hab.id);
+    const resHab = G.reservas.filter(r=>String(r.habitacion_id)===String(hab.id));
 
     // Celdas de días (grid)
     const celdas = Array.from({length:diasEnMes},(_,i)=>{
@@ -637,11 +642,8 @@ async function eliminarReserva(id, nombre) {
   else toast(r?.error||'Error', false);
 }
 
-// ── INIT ──────────────────────────────────────────────
-async function init() {
-  G.habitaciones = await api('GET', '/habitaciones') || [];
-  await cargarYRenderizar();
-}
+// ── INICIO ────────────────────────────────────────────
+init();
 </script>
 </body>
 </html>
