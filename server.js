@@ -1418,6 +1418,23 @@ app.post('/api/restaurante/comandas', auth, authRestaurante, async (req, res) =>
 });
 
 // Agregar ítem a comanda (acumula cantidad si el producto ya existe)
+app.get('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
+  try {
+    const cols = await db.getAll(
+      `SELECT column_name FROM information_schema.columns WHERE table_name='comanda_items'`
+    );
+    const colNames = cols.map(c=>c.column_name);
+    const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
+                    : colNames.includes('precio')          ? 'precio' : '0';
+    const items = await db.getAll(
+      `SELECT nombre, cantidad, ${precioCol} as precio_unitario
+       FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
+      [req.params.id]
+    );
+    res.json(items);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
   try {
     const { producto_id, cantidad, nota } = req.body;
