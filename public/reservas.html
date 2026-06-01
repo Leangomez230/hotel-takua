@@ -351,11 +351,10 @@ function renderGantt() {
     const barras = resHab.map(r => {
       const entFecha  = new Date(r.entrada);
       const salFecha  = new Date(r.salida);
-      // Calcular día inicio y fin dentro del mes
       const primerDia = new Date(G.anio, G.mes, 1);
       const ultimoDia = new Date(G.anio, G.mes, diasEnMes, 23, 59, 59);
-      const dStart = Math.max(entFecha, primerDia);
-      const dEnd   = Math.min(salFecha, ultimoDia);
+      const dStart = new Date(Math.max(entFecha.getTime(), primerDia.getTime()));
+      const dEnd   = new Date(Math.min(salFecha.getTime(), ultimoDia.getTime()));
       const diaIni = dStart.getDate();
       const diaFin = dEnd.getDate();
       if (diaIni > diasEnMes || diaFin < 1) return '';
