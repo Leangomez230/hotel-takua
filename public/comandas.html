@@ -277,7 +277,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <button class="nav-btn" onclick="irA('huespedes')"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
     <button class="nav-btn" onclick="irA('tienda')"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
     <button class="nav-btn" onclick="irA('inventario')"><span class="ni">📦</span><span class="nl">Inventario</span></button>
-    <button class="nav-btn" onclick="irA('caja')"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn" onclick="window.location.href='/caja.html'"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn" onclick="irA('finanzas')"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
     <button class="nav-btn active" id="snav-salon" onclick="snav('salon')"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
     <button class="nav-btn" id="snav-caja" onclick="snav('caja')" style="display:none"><span class="ni">🧾</span><span class="nl">Res. Caja</span></button>
@@ -310,7 +310,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <button class="nav-btn" onclick="irA('huespedes')"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
     <button class="nav-btn" onclick="irA('tienda')"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
     <button class="nav-btn" onclick="irA('inventario')"><span class="ni">📦</span><span class="nl">Inventario</span></button>
-    <button class="nav-btn" onclick="irA('caja')"><span class="ni">💰</span><span class="nl">Caja</span></button>
+    <button class="nav-btn" onclick="window.location.href='/caja.html'"><span class="ni">💰</span><span class="nl">Caja</span></button>
     <button class="nav-btn" onclick="irA('finanzas')"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
     <button class="nav-btn active" onclick="showScreen('screen-main');renderMain()"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
     <button class="nav-btn bottom" onclick="irA('config')"><span class="ni">⚙️</span><span class="nl">Config</span></button>
@@ -441,6 +441,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 </div>
 
 <!-- Modal Editar Producto -->
+<div class="overlay" id="m-curso">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-handle"><div></div></div>
+    <div class="modal-header">
+      <span class="modal-title">🍳 ¿Qué curso imprimir?</span>
+      <button class="btn-close-modal" onclick="closeModal('m-curso')">×</button>
+    </div>
+    <div style="padding:0 20px 24px" id="m-curso-body"></div>
+  </div>
+</div>
+
 <div class="overlay" id="m-edit-prod">
   <div class="modal" style="max-width:440px">
     <div class="modal-handle"><div></div></div>
@@ -1025,15 +1036,130 @@ async function loadHist(){
   try{
     const hist=await api('GET','/api/restaurante/comandas?estado=cerrada');
     if(!hist.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>Sin comandas cerradas</p></div>';return;}
-    el.innerHTML=`<div style="overflow-x:auto"><table class="hist-table">
-      <thead><tr><th>#</th><th>Mesa</th><th>Mozo</th><th>Cajero</th><th>Total</th><th>Pago</th></tr></thead>
-      <tbody>${hist.slice(0,50).map(c=>{const m=S.mesas.find(x=>x.id===c.mesa_id);return `<tr>
-        <td>#${c.id}</td><td>${m?mesaLabel(m):`Mesa ${c.mesa_id}`}</td>
-        <td>${c.mozo_nombre||'—'}</td><td>${c.cajero_nombre||'—'}</td>
-        <td style="font-weight:700;color:#22c55e">${fmt(c.total_final||0)}</td>
-        <td>${METODO_ICONS[c.metodo_pago]||''} ${c.metodo_pago||'—'}</td>
-      </tr>`;}).join('')}</tbody></table></div>`;
+    window._histComandas = hist.slice(0,100);
+    el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px;padding:4px 0">
+      ${hist.slice(0,100).map((c,idx)=>{
+        const m=S.mesas.find(x=>x.id===c.mesa_id);
+        const mesa=m?mesaLabel(m):`Mesa ${c.mesa_id}`;
+        return `<div style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;overflow:hidden">
+          <div onclick="toggleHistItem(${c.id},'hist-det-${idx}')"
+            style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:14px;color:#1e293b">${mesa}
+                <span style="font-size:10px;color:#94a3b8;margin-left:4px">▼</span>
+              </div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px">
+                ${c.mozo_nombre?`👤 ${c.mozo_nombre}`:''}
+                ${c.cajero_nombre?` · 💰 ${c.cajero_nombre}`:''}
+                ${c.cerrada_at?` · ${new Date(c.cerrada_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`:''}
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-weight:800;font-size:15px;color:#22c55e">${fmt(c.total_final||0)}</div>
+              <div style="font-size:11px;color:#94a3b8">${METODO_ICONS[c.metodo_pago]||''} ${c.metodo_pago||'—'}</div>
+            </div>
+          </div>
+          <div id="hist-det-${idx}" style="display:none;border-top:1px solid #f1f5f9;padding:12px 16px;background:#f8fafc">
+            <div style="color:#94a3b8;font-size:12px;text-align:center">Cargando...</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
   }catch(e){el.innerHTML=`<div class="empty"><p>${e.message}</p></div>`;}
+}
+
+async function toggleHistItem(cmdId, detId) {
+  const el = document.getElementById(detId);
+  if (!el) return;
+  if (el.style.display !== 'none') { el.style.display='none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="color:#94a3b8;font-size:12px;text-align:center">Cargando ítems...</div>';
+
+  let items = [];
+  try {
+    const data = await api('GET', `/api/restaurante/comandas/${cmdId}/items`);
+    items = data || [];
+  } catch(e) {}
+
+  const cmd = window._histComandas?.find(c=>c.id===cmdId);
+  const descuento = cmd ? Number(cmd.total||0)-Number(cmd.total_final||cmd.total||0) : 0;
+
+  el.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px">Ítems</div>
+    ${items.length ? items.map(i=>`
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+        <span style="color:#1e293b"><strong>${i.cantidad}x</strong> ${i.nombre}</span>
+        <span style="font-weight:700">${fmt(Number(i.precio_unitario||i.precio||0)*i.cantidad)}</span>
+      </div>`).join('')
+    : '<div style="color:#94a3b8;font-size:12px">Sin ítems registrados</div>'}
+    ${descuento>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#f97316;padding:4px 0">
+      <span>Descuento</span><span>- ${fmt(descuento)}</span>
+    </div>`:''}
+    <div style="margin-top:10px;display:flex;justify-content:flex-end">
+      <button onclick="imprimirTicketHistorial(${cmdId})"
+        style="background:#1e293b;color:#fff;border:none;border-radius:7px;padding:6px 14px;
+               font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif">
+        🖨️ Reimprimir ticket
+      </button>
+    </div>`;
+}
+
+async function imprimirTicketHistorial(cmdId) {
+  const cmd = window._histComandas?.find(c=>c.id===cmdId);
+  if (!cmd) return;
+  let items = [];
+  try { items = await api('GET', `/api/restaurante/comandas/${cmdId}/items`) || []; } catch(e) {}
+
+  const total    = Number(cmd.total_final||cmd.total||0);
+  const descuento= Number(cmd.total||0) - total;
+  const fecha    = cmd.cerrada_at ? new Date(cmd.cerrada_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const m        = S.mesas.find(x=>x.id===cmd.mesa_id);
+  const mesa     = m ? mesaLabel(m) : `Mesa ${cmd.mesa_id}`;
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <style>
+    @page{size:80mm auto;margin:0} body{font-family:'Courier New',monospace;font-size:13px;
+    width:280px;margin:0 auto;padding:8px;line-height:1.5;color:#000;font-weight:500}
+  </style></head><body>
+  <div style="text-align:center;font-weight:bold;font-size:18px">🏨 Hotel Takuá</div>
+  <div style="text-align:center;font-size:13px">Restaurante</div>
+  <div style="text-align:center;font-size:12px">${fecha}</div>
+  <div style="border-top:2px solid #000;margin:8px 0"></div>
+  <div style="display:flex;justify-content:space-between;font-size:12px">
+    <span>${mesa}</span><span>${cmd.cajero_nombre||''}</span>
+  </div>
+  <div style="border-top:1px solid #000;margin:6px 0"></div>
+  ${items.map(i=>`<div style="display:flex;justify-content:space-between">
+    <span>${i.cantidad}x ${i.nombre}</span>
+    <span>${fmt(Number(i.precio_unitario||i.precio||0)*i.cantidad)}</span>
+  </div>`).join('')}
+  <div style="border-top:2px solid #000;margin:8px 0"></div>
+  ${descuento>0?`<div style="display:flex;justify-content:space-between;font-size:12px">
+    <span>Subtotal</span><span>${fmt(Number(cmd.total||0))}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:12px">
+    <span>Descuento</span><span>- ${fmt(descuento)}</span>
+  </div>`:''}
+  <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold">
+    <span>TOTAL</span><span>${fmt(total)}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px">
+    <span>Método</span><span>${cmd.metodo_pago||'—'}</span>
+  </div>
+  ${Number(cmd.vuelto||0)>0?`<div style="display:flex;justify-content:space-between;font-size:12px">
+    <span>Vuelto</span><span>${fmt(cmd.vuelto)}</span>
+  </div>`:''}
+  <div style="border-top:1px solid #000;margin:8px 0"></div>
+  <div style="text-align:center;font-size:11px">⚠️ REIMPRESIÓN · ${fecha}</div>
+  </body></html>`;
+
+  const id='hist-ticket-frame';
+  let frame=document.getElementById(id);
+  if(!frame){frame=document.createElement('iframe');frame.id=id;
+    frame.style.cssText='position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none';
+    document.body.appendChild(frame);}
+  frame.srcdoc=html;
+  frame.onload=()=>{try{frame.contentWindow.focus();frame.contentWindow.print();}catch(e){}};
 }
 
 function toggleDesp(id){
