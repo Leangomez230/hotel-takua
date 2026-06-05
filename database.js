@@ -238,153 +238,6 @@ await query(`
   );
 `);
 
-// Migración: columnas vuelto en comandas
-try {
-  await query('ALTER TABLE comandas ADD COLUMN IF NOT EXISTS monto_recibido REAL DEFAULT 0');
-  await query('ALTER TABLE comandas ADD COLUMN IF NOT EXISTS vuelto REAL DEFAULT 0');
-  console.log('✅ Columnas monto_recibido y vuelto listas');
-} catch(e) { console.log('columnas vuelto ya existen'); }
-
-// Migración: es_bebida en menu_restaurante
-try {
-  await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS es_bebida INTEGER DEFAULT 0');
-  await query("UPDATE menu_restaurante SET es_bebida=1 WHERE LOWER(categoria) IN ('bebidas','bebida','drinks') AND es_bebida=0");
-  console.log('✅ Columna es_bebida lista');
-} catch(e) { console.log('es_bebida ya existe'); }
-
-// Migración: inventario extendido
-try {
-  await query("ALTER TABLE productos ADD COLUMN IF NOT EXISTS unidad TEXT DEFAULT 'unidad'");
-  await query('ALTER TABLE productos ADD COLUMN IF NOT EXISTS costo REAL DEFAULT 0');
-  await query("ALTER TABLE productos ADD COLUMN IF NOT EXISTS proveedor TEXT DEFAULT ''");
-  await query("ALTER TABLE productos ADD COLUMN IF NOT EXISTS modulo TEXT DEFAULT 'general'");
-  await query('ALTER TABLE productos ADD COLUMN IF NOT EXISTS menu_id INTEGER DEFAULT NULL');
-  console.log('✅ Columnas inventario extendido listas');
-} catch(e) { console.log('columnas inventario ya existen'); }
-
-// Tabla movimientos de inventario
-await query(`
-  CREATE TABLE IF NOT EXISTS inventario_movimientos (
-    id SERIAL PRIMARY KEY,
-    producto_id INTEGER NOT NULL,
-    tipo TEXT NOT NULL DEFAULT 'entrada',
-    cantidad REAL NOT NULL,
-    motivo TEXT DEFAULT '',
-    referencia TEXT DEFAULT '',
-    usuario_id INTEGER,
-    usuario_nombre TEXT,
-    stock_antes REAL DEFAULT 0,
-    stock_despues REAL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`);
-console.log('✅ Tabla inventario_movimientos lista');
-
-// Tabla suscripciones push
-await query(`
-  CREATE TABLE IF NOT EXISTS push_suscripciones (
-    id SERIAL PRIMARY KEY,
-    usuario_id INTEGER NOT NULL,
-    usuario_nombre TEXT,
-    rol TEXT,
-    endpoint TEXT NOT NULL,
-    p256dh TEXT NOT NULL,
-    auth TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(endpoint, usuario_id)
-  );
-`);
-// Migración: cambiar UNIQUE de solo endpoint a (endpoint, usuario_id)
-// para soportar múltiples usuarios en el mismo dispositivo
-try {
-  await query(`
-    DO $$ BEGIN
-      IF EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'push_suscripciones_endpoint_key'
-      ) THEN
-        ALTER TABLE push_suscripciones DROP CONSTRAINT push_suscripciones_endpoint_key;
-        ALTER TABLE push_suscripciones ADD CONSTRAINT push_suscripciones_endpoint_usuario_unique UNIQUE (endpoint, usuario_id);
-      END IF;
-    END $$;
-  `);
-} catch(e) { console.log('Constraint push ya migrado'); }
-console.log('✅ Tabla push_suscripciones lista');
-
-// Tabla retiros de caja restaurante
-await query(`
-  CREATE TABLE IF NOT EXISTS caja_retiros (
-    id SERIAL PRIMARY KEY,
-    turno_id INTEGER NOT NULL,
-    monto REAL NOT NULL,
-    motivo TEXT DEFAULT '',
-    usuario_id INTEGER,
-    usuario_nombre TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`);
-console.log('✅ Tabla caja_retiros lista');
-
-// Caja habitaciones — turnos
-await query(`
-  CREATE TABLE IF NOT EXISTS turnos_habitaciones (
-    id SERIAL PRIMARY KEY,
-    cajero_id INTEGER,
-    cajero_nombre TEXT,
-    fondo_inicial REAL DEFAULT 0,
-    estado TEXT DEFAULT 'abierto',
-    abierto_at TIMESTAMP DEFAULT NOW(),
-    cerrado_at TIMESTAMP
-  );
-`);
-// Caja habitaciones — movimientos
-await query(`
-  CREATE TABLE IF NOT EXISTS movimientos_habitaciones (
-    id SERIAL PRIMARY KEY,
-    turno_id INTEGER,
-    tipo TEXT NOT NULL DEFAULT 'ingreso',
-    concepto TEXT NOT NULL DEFAULT '',
-    monto REAL NOT NULL DEFAULT 0,
-    metodo_pago TEXT DEFAULT 'Efectivo',
-    referencia TEXT DEFAULT '',
-    usuario_id INTEGER,
-    usuario_nombre TEXT,
-    habitacion_id INTEGER,
-    habitacion_numero TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`);
-console.log('✅ Tablas caja habitaciones listas');
-
-// Migración: seña y saldo en reservas
-try {
-  await query('ALTER TABLE reservas ADD COLUMN IF NOT EXISTS monto_senia REAL DEFAULT 0');
-  await query('ALTER TABLE reservas ADD COLUMN IF NOT EXISTS saldo_pendiente REAL DEFAULT 0');
-  // Inicializar saldo_pendiente = precio_total para reservas existentes sin seña
-  await query(`UPDATE reservas SET saldo_pendiente=precio_total WHERE saldo_pendiente=0 AND precio_total>0`);
-  console.log('✅ Columnas seña y saldo listas');
-} catch(e) { console.log('columnas seña ya existen'); }
-
-// Migración: sincronizar bebidas del menú → inventario
-try {
-  const bebidasMenu = await getAll(
-    "SELECT * FROM menu_restaurante WHERE es_bebida=1 AND disponible=1"
-  );
-  for (const b of bebidasMenu) {
-    // Solo migrar si no existe ya un producto con ese menu_id
-    const existe = await getOne('SELECT id FROM productos WHERE menu_id=$1', [b.id]);
-    if (!existe) {
-      const r = await query(
-        `INSERT INTO productos (nombre,categoria,precio,costo,stock,stock_minimo,unidad,modulo,menu_id,activo)
-         VALUES ($1,$2,$3,0,0,5,'unidad','bebidas',$4,1) RETURNING id`,
-        [b.nombre, b.categoria, b.precio, b.id]
-      );
-      console.log('✅ Bebida migrada al inventario:', b.nombre);
-    }
-  }
-  console.log('✅ Migración bebidas→inventario completada');
-} catch(e) { console.log('Error migrando bebidas:', e.message); }
-
 // Seed habitaciones
   const countH = await getOne('SELECT COUNT(*) as c FROM habitaciones');
   if (parseInt(countH.c) === 0) {
@@ -437,6 +290,14 @@ try {
     }
     console.log('✅ Productos creados');
   }
+
+  // Campos de cursos para menús completos
+  try {
+    await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS curso_entrada TEXT DEFAULT \'\'');
+    await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS curso_principal TEXT DEFAULT \'\'');
+    await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS curso_postre TEXT DEFAULT \'\'');
+    console.log('✅ Columnas de cursos de menú listas');
+  } catch(e) { console.log('columnas cursos ya existen'); }
 
   console.log('✅ Base de datos PostgreSQL lista');
 }
