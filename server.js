@@ -4,39 +4,10 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
 const db = require('./database');
-const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'takua_secret_2024';
-
-// ── VAPID ────────────────────────────────────────────────────────────
-const VAPID_PUBLIC  = process.env.VAPID_PUBLIC  || 'BGgqRVlRquUxbONf-LOZDc9dsvh9mMh-Al37U9B7XM108NA6LteBSzfmCogTbXAVbNuJULyBaymGOHwpqyjgay8';
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE || '5fhOAg_7L6Nnbprwb7JiFcwhMR8qn5Tm80JVDHAn2xo';
-webpush.setVapidDetails('mailto:hotel@takua.com', VAPID_PUBLIC, VAPID_PRIVATE);
-
-// Enviar push a todos los usuarios de ciertos roles
-async function sendPushToRoles(roles, payload) {
-  try {
-    const subs = await db.getAll(
-      `SELECT * FROM push_suscripciones WHERE rol = ANY($1)`,
-      [roles]
-    );
-    for (const s of subs) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify(payload)
-        );
-      } catch(e) {
-        // Suscripción expirada o inválida — eliminar
-        if (e.statusCode === 410 || e.statusCode === 404) {
-          await db.query('DELETE FROM push_suscripciones WHERE endpoint=$1', [s.endpoint]);
-        }
-      }
-    }
-  } catch(e) { console.error('Error enviando push:', e.message); }
-}
 
 app.use(cors());
 app.use(express.json());
@@ -147,17 +118,12 @@ app.put('/api/usuarios/:id', auth, adminOnly, async (req, res) => {
 app.get('/api/habitaciones', auth, async (req, res) => {
   try {
     const habs = await db.getAll('SELECT * FROM habitaciones ORDER BY ala, numero');
-    let reservasActivas = [];
-    try {
-      reservasActivas = await db.getAll(
-        `SELECT * FROM reservas
-         WHERE (
-           estado = 'activa'
-           OR (estado IN ('futura','checkin','ocupada','confirmada','reservada') AND DATE(entrada) >= CURRENT_DATE)
-         )
-         ORDER BY entrada ASC`
-      );
-    } catch(e2) { console.error('Error reservas activas:', e2.message); }
+    // Agregar datos de la reserva activa a cada habitación
+    const reservasActivas = await db.getAll(
+      `SELECT * FROM reservas
+       WHERE estado IN ('activa','checkin','ocupada','confirmada','reservada')
+       ORDER BY created_at DESC`
+    );
     const habsEnriquecidas = habs.map(h => {
       const reserva = reservasActivas.find(r => r.habitacion_id == h.id);
       return {
@@ -292,8 +258,7 @@ app.post('/api/huespedes', auth, async (req, res) => {
 // ── CHECK-IN ─────────────────────────────────────────────────────────
 app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
   try {
-    const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches,
-            precio_total, metodo_pago, notas, reserva_id, saldo_cobrado } = req.body;
+    const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches, precio_total, metodo_pago, notas } = req.body;
     if (!habitacion_id) return res.status(400).json({ error: 'Falta habitacion_id' });
     if (!nombre)        return res.status(400).json({ error: 'Falta el nombre del huésped' });
     if (!entrada)       return res.status(400).json({ error: 'Falta la fecha de entrada' });
@@ -303,8 +268,6 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
     const statusesPermitidos = ['libre','lista','reservada','libre_limpia'];
     if (!statusesPermitidos.includes(hab.status))
       return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
-
-    // Registrar/actualizar huésped
     let huespedId = null;
     if (documento) {
       try {
@@ -316,70 +279,21 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
         if (h2) { huespedId = h2.id; await db.query('UPDATE huespedes SET visitas=visitas+1 WHERE id=$1', [huespedId]); }
       }
     }
-
-    let finalReservaId;
-
-    if (reserva_id) {
-      // ── Checkin desde reserva existente ──────────────────
-      // Actualizar la reserva existente a estado 'activa'
-      const saldo = Number(saldo_cobrado)||0;
-      await db.query(
-        `UPDATE reservas SET estado='activa', nombre_huesped=$1, documento=$2, entrada=$3, salida=$4,
-         noches=$5, precio_total=$6, metodo_pago=$7, notas=$8, huesped_id=$9,
-         saldo_pendiente=GREATEST(0, saldo_pendiente-$10)
-         WHERE id=$11`,
-        [nombre, documento||'', entrada, salida, noches||1, precio_total||0,
-         metodo_pago||'Efectivo', notas||'', huespedId, saldo, reserva_id]
-      );
-      finalReservaId = reserva_id;
-      // Registrar saldo cobrado en caja si corresponde
-      if (saldo > 0) {
-        const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-        if (turnoHab) {
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [turnoHab.id, `Saldo Check-in Hab. ${hab.numero} — ${nombre}`, saldo,
-             metodo_pago||'Efectivo', `Reserva #${reserva_id}`,
-             req.user.id, req.user.nombre, habitacion_id, hab.numero]
-          );
-        }
-      }
-    } else {
-      // ── Checkin directo sin reserva previa ───────────────
-      const reserva = await db.query(
-        `INSERT INTO reservas (habitacion_id,huesped_id,nombre_huesped,documento,entrada,salida,noches,
-          precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activa',0,0) RETURNING id`,
-        [habitacion_id, huespedId, nombre, documento||'', entrada, salida,
-         noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'']
-      );
-      finalReservaId = reserva.rows[0].id;
-      // Registrar cobro total en caja
-      if ((precio_total||0) > 0) {
-        const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-        if (turnoHab) {
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [turnoHab.id, `Check-in Hab. ${hab.numero} — ${nombre}`, precio_total||0,
-             metodo_pago||'Efectivo', `Reserva #${finalReservaId}`,
-             req.user.id, req.user.nombre, habitacion_id, hab.numero]
-          );
-        }
-        // Sistema legacy de caja
-        const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-        if (caja) {
-          await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-            [caja.id,'ingreso','hospedaje',`Check-in hab.${hab.numero} - ${nombre}`,precio_total,metodo_pago||'Efectivo',habitacion_id,req.user.id]);
-        }
+    const reserva = await db.query(
+      'INSERT INTO reservas (habitacion_id,huesped_id,nombre_huesped,documento,entrada,salida,noches,precio_total,metodo_pago,notas,estado) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id',
+      [habitacion_id, huespedId, nombre, documento||'', entrada, salida, noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', 'activa']
+    );
+    await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', ['ocupada', nombre, habitacion_id]);
+    if (precio_total > 0) {
+      const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
+      if (caja) {
+        await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          [caja.id,'ingreso','hospedaje',`Check-in hab.${hab.numero} - ${nombre}`,precio_total,metodo_pago||'Efectivo',habitacion_id,req.user.id]);
       }
     }
-
-    await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', ['ocupada', nombre, habitacion_id]);
     await logAction(req.user.id, req.user.nombre, 'CHECKIN', `Hab ${hab.numero} - ${nombre}`);
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
-    res.json({ ok: true, reserva_id: finalReservaId });
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habId, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
+    res.json({ ok: true, reserva_id: reserva.rows[0].id });
   } catch(e) { console.error('CHECKIN ERROR:', e); res.status(500).json({ error: 'Error en check-in: ' + e.message }); }
 });
 
@@ -387,53 +301,13 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
 app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) => {
   try {
     const id = req.params.habitacion_id;
-    const { monto_extra, metodo_pago_extra, concepto_extra } = req.body;
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + id });
-
-    // Obtener reserva activa con su saldo
-    const reserva = await db.getOne(
-      "SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [id]
-    );
-
-    // Cobrar saldo pendiente si existe
-    const saldo = Number(reserva?.saldo_pendiente||0);
-    const extra = Number(monto_extra||0);
-    const totalCobrar = saldo + extra;
-
-    if (totalCobrar > 0) {
-      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-      if (turnoHab) {
-        if (saldo > 0) {
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [turnoHab.id, `Saldo Checkout Hab. ${hab.numero} — ${reserva.nombre_huesped||''}`,
-             saldo, metodo_pago_extra||'Efectivo', reserva?`Reserva #${reserva.id}`:'',
-             req.user.id, req.user.nombre, id, hab.numero]
-          );
-        }
-        if (extra > 0) {
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
-            [turnoHab.id, concepto_extra||`Extra Checkout Hab. ${hab.numero}`,
-             extra, metodo_pago_extra||'Efectivo',
-             req.user.id, req.user.nombre, id, hab.numero]
-          );
-        }
-      }
-    }
-
-    // Marcar reserva como finalizada y saldo en 0
-    if (reserva) {
-      await db.query("UPDATE reservas SET estado='finalizada', saldo_pendiente=0 WHERE id=$1", [reserva.id]);
-    }
-
     await db.query("UPDATE habitaciones SET status='limpieza',nota='',updated_at=NOW() WHERE id=$1", [id]);
-    await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}${totalCobrar>0?` · Cobrado $${totalCobrar}`:''}`);
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, id, `🚪 Check-out — Hab. ${hab.numero} (${reserva?.nombre_huesped||''})`);
-    res.json({ ok: true, cobrado: totalCobrar });
+    await db.query("UPDATE reservas SET estado='finalizada' WHERE habitacion_id=$1 AND estado='activa'", [id]);
+    await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}`);
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, `🚪 Check-out — Hab. ${hab.numero} (${hab.nota||''})`);
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -481,143 +355,33 @@ app.post('/api/habitaciones/:id/cambiar', auth, adminOrRecep, async (req, res) =
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Obtener reserva vigente de una habitación (para precarga en checkin)
-app.get('/api/habitaciones/:id/reserva', auth, adminOrRecep, async (req, res) => {
-  try {
-    const reserva = await db.getOne(
-      `SELECT * FROM reservas WHERE habitacion_id=$1
-       AND estado IN ('futura','activa') ORDER BY created_at DESC LIMIT 1`,
-      [req.params.id]
-    );
-    res.json(reserva || null);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
 // ── RESERVAS HOTEL ───────────────────────────────────────────────────
 app.get('/api/reservas', auth, async (req, res) => {
   try {
     res.json(await db.getAll(`
       SELECT r.*,h.nombre as hab_nombre,h.numero as hab_numero,h.ala,h.tipo
       FROM reservas r LEFT JOIN habitaciones h ON r.habitacion_id=h.id
-      WHERE r.estado IN ('activa','futura')
-      ORDER BY r.entrada ASC
+      ORDER BY r.created_at DESC LIMIT 100
     `));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-
-// Reservas para el calendario (por rango de fechas, todos los estados)
-app.get('/api/reservas/calendario', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { desde, hasta } = req.query;
-    res.json(await db.getAll(`
-      SELECT r.*, h.numero as hab_numero, h.ala, h.tipo
-      FROM reservas r
-      LEFT JOIN habitaciones h ON r.habitacion_id = h.id
-      WHERE r.estado IN ('activa','futura','finalizada')
-      AND r.entrada <= $2 AND r.salida >= $1
-      ORDER BY h.ala, h.numero, r.entrada
-    `, [desde, hasta]));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia, saldo_pendiente } = req.body;
-    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
-    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-    const senia = Number(monto_senia??reserva.monto_senia??0);
-    const saldo  = Number(saldo_pendiente??Math.max(0,(precio_total||0)-senia));
-    await db.query(
-      `UPDATE reservas SET nombre_huesped=$1,documento=$2,entrada=$3,salida=$4,
-       noches=$5,precio_total=$6,metodo_pago=$7,notas=$8,monto_senia=$9,saldo_pendiente=$10 WHERE id=$11`,
-      [nombre_huesped, documento||'', entrada, salida,
-       noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo, req.params.id]
-    );
-    await db.query(
-      "UPDATE habitaciones SET nota=$1,updated_at=NOW() WHERE id=$2 AND status IN ('reservada','lista')",
-      [nombre_huesped, reserva.habitacion_id]
-    );
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_RESERVA', `Reserva #${req.params.id} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
-  try {
-    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
-    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-    await db.query('DELETE FROM reservas WHERE id=$1', [req.params.id]);
-    const otraReserva = await db.getOne(
-      "SELECT id FROM reservas WHERE habitacion_id=$1 AND estado IN ('activa','futura')",
-      [reserva.habitacion_id]
-    );
-    if (!otraReserva) {
-      await db.query(
-        "UPDATE habitaciones SET status='libre',nota='',updated_at=NOW() WHERE id=$1 AND status IN ('reservada','lista')",
-        [reserva.habitacion_id]
-      );
-    }
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_RESERVA', `Reserva #${req.params.id} - ${reserva.nombre_huesped}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
 app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
   try {
-    const { habitacion_id, nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia } = req.body;
+    const { habitacion_id, nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas } = req.body;
     if (!habitacion_id)  return res.status(400).json({ error: 'Falta habitacion_id' });
     if (!nombre_huesped) return res.status(400).json({ error: 'Falta el nombre del huésped' });
     if (!entrada)        return res.status(400).json({ error: 'Falta fecha de entrada' });
     if (!salida)         return res.status(400).json({ error: 'Falta fecha de salida' });
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
-
-    // Bloquear si está ocupada o en mantenimiento (no se puede reservar)
-    if (['ocupada','mantenimiento'].includes(hab.status))
-      return res.status(400).json({ error: `La habitación está actualmente ${hab.status} y no se puede reservar.` });
-
-    // Verificar solapamiento de fechas con reservas existentes
-    const solapamiento = await db.getOne(
-      `SELECT id, nombre_huesped, entrada, salida FROM reservas
-       WHERE habitacion_id=$1
-       AND estado IN ('futura','activa')
-       AND entrada < $3 AND salida > $2`,
-      [habitacion_id, entrada, salida]
-    );
-    if (solapamiento) {
-      const entStr = new Date(solapamiento.entrada).toLocaleDateString('es-AR');
-      const salStr = new Date(solapamiento.salida).toLocaleDateString('es-AR');
-      return res.status(400).json({
-        error: `La habitación ya tiene una reserva de ${solapamiento.nombre_huesped} del ${entStr} al ${salStr}.`
-      });
-    }
-    const senia = Number(monto_senia)||0;
-    const saldo = Number(precio_total||0) - senia;
-    const r = await db.query(
-      `INSERT INTO reservas (habitacion_id,nombre_huesped,documento,entrada,salida,noches,precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'futura',$10,$11) RETURNING id`,
-      [habitacion_id, nombre_huesped, documento||'', entrada, salida, noches||1,
-       precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo]
-    );
-    // Solo marcar como reservada si estaba libre/lista — si ya era reservada, dejarla
-    if (['libre','lista','limpieza'].includes(hab.status)) {
-      await db.query("UPDATE habitaciones SET status='reservada',nota=$1,updated_at=NOW() WHERE id=$2", [nombre_huesped, habitacion_id]);
-    }
-    // Si hay seña, registrarla en caja habitaciones
-    if (senia > 0) {
-      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-      if (turnoHab) {
-        await db.query(
-          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [turnoHab.id, `Seña Reserva Hab. ${hab.numero} — ${nombre_huesped}`, senia,
-           metodo_pago||'Efectivo', `Reserva #${r.rows[0].id}`,
-           req.user.id, req.user.nombre, habitacion_id, hab.numero]
-        );
-      }
-    }
-    await logAction(req.user.id, req.user.nombre, 'RESERVA', `Hab ${hab.numero} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
-    res.json({ ok: true, id: r.rows[0].id });
+    if (!['libre','lista'].includes(hab.status))
+      return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
+    await db.query(`INSERT INTO reservas (habitacion_id,nombre_huesped,documento,entrada,salida,noches,precio_total,metodo_pago,notas,estado)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'futura')`,
+      [habitacion_id, nombre_huesped, documento||'', entrada, salida, noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'']);
+    await db.query("UPDATE habitaciones SET status='reservada',nota=$1,updated_at=NOW() WHERE id=$2", [nombre_huesped, habitacion_id]);
+    await logAction(req.user.id, req.user.nombre, 'RESERVA', `Hab ${hab.numero} - ${nombre_huesped}`);
+    res.json({ ok: true });
   } catch(e) { console.error('RESERVA ERROR:', e); res.status(500).json({ error: 'Error al guardar reserva: ' + e.message }); }
 });
 
@@ -738,241 +502,15 @@ app.post('/api/tienda/venta', auth, async (req, res) => {
   } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
-// ── INVENTARIO COMPLETO ──────────────────────────────────────────────
-app.get('/api/inventario/productos', auth, async (req, res) => {
-  try {
-    const { modulo } = req.query;
-    let q = 'SELECT * FROM productos WHERE activo=1';
-    const params = [];
-    if (modulo) { q += ` AND modulo=$1`; params.push(modulo); }
-    q += ' ORDER BY modulo,categoria,nombre';
-    res.json(await db.getAll(q, params));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/inventario/productos', auth, adminOnly, async (req, res) => {
-  try {
-    const { nombre, categoria, precio, costo, stock, stock_minimo, unidad, proveedor, modulo } = req.body;
-    if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
-    const esBebida = modulo === 'bebidas';
-    let menu_id = null;
-
-    // Si es bebida, crear también en menu_restaurante
-    if (esBebida) {
-      const menuExistente = await db.getOne(
-        'SELECT id FROM menu_restaurante WHERE LOWER(nombre)=LOWER($1)', [nombre]
-      );
-      if (menuExistente) {
-        menu_id = menuExistente.id;
-        // Actualizar precio y marcar como bebida
-        await db.query(
-          'UPDATE menu_restaurante SET precio=$1,categoria=$2,es_bebida=1,disponible=1 WHERE id=$3',
-          [precio||0, categoria||'Bebidas', menu_id]
-        );
-      } else {
-        const rm = await db.query(
-          'INSERT INTO menu_restaurante (nombre,categoria,precio,disponible,es_bebida) VALUES ($1,$2,$3,1,1) RETURNING id',
-          [nombre, categoria||'Bebidas', precio||0]
-        );
-        menu_id = rm.rows[0].id;
-      }
-    }
-
-    const r = await db.query(
-      `INSERT INTO productos (nombre,categoria,precio,costo,stock,stock_minimo,unidad,proveedor,modulo,menu_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-      [nombre, categoria||'General', precio||0, costo||0, stock||0, stock_minimo||5,
-       unidad||'unidad', proveedor||'', modulo||'general', menu_id]
-    );
-    await logAction(req.user.id, req.user.nombre, 'CREAR_PRODUCTO', nombre);
-
-    if ((stock||0) > 0) {
-      await db.query(
-        `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
-         VALUES ($1,'entrada',$2,'Stock inicial',$3,$4,0,$2)`,
-        [r.rows[0].id, stock||0, req.user.id, req.user.nombre]
-      );
-    }
-    res.json({ id: r.rows[0].id, menu_id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/inventario/productos/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [req.params.id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const { nombre, categoria, precio, costo, stock_minimo, unidad, proveedor, modulo, activo } = req.body;
-    const nuevoModulo = modulo ?? prod.modulo;
-    const esBebida = nuevoModulo === 'bebidas';
-    let menu_id = prod.menu_id;
-
-    // Sincronizar con menú si es bebida
-    if (esBebida) {
-      if (menu_id) {
-        // Actualizar el registro existente en el menú
-        await db.query(
-          'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,es_bebida=1 WHERE id=$4',
-          [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio, menu_id]
-        );
-      } else {
-        // Crear en el menú si no existe
-        const rm = await db.query(
-          'INSERT INTO menu_restaurante (nombre,categoria,precio,disponible,es_bebida) VALUES ($1,$2,$3,1,1) RETURNING id',
-          [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio]
-        );
-        menu_id = rm.rows[0].id;
-      }
-      // Si se desactiva el producto, deshabilitar en el menú también
-      if (activo === 0 && menu_id) {
-        await db.query('UPDATE menu_restaurante SET disponible=0 WHERE id=$1', [menu_id]);
-      }
-    } else if (prod.modulo === 'bebidas' && nuevoModulo !== 'bebidas' && menu_id) {
-      // Si cambió de bebidas a otro módulo, deshabilitar del menú
-      await db.query('UPDATE menu_restaurante SET disponible=0,es_bebida=0 WHERE id=$1', [menu_id]);
-      menu_id = null;
-    }
-
-    await db.query(
-      `UPDATE productos SET nombre=$1,categoria=$2,precio=$3,costo=$4,stock_minimo=$5,
-       unidad=$6,proveedor=$7,modulo=$8,menu_id=$9,activo=$10 WHERE id=$11`,
-      [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio, costo??prod.costo,
-       stock_minimo??prod.stock_minimo, unidad??prod.unidad, proveedor??prod.proveedor,
-       nuevoModulo, menu_id, activo??prod.activo, req.params.id]
-    );
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_PRODUCTO', nombre??prod.nombre);
-    res.json({ ok: true, menu_id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/inventario/productos/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [req.params.id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    // Soft delete en inventario
-    await db.query('UPDATE productos SET activo=0 WHERE id=$1', [req.params.id]);
-    // Si tiene vinculo con el menú, deshabilitar también
-    if (prod.menu_id) {
-      await db.query('UPDATE menu_restaurante SET disponible=0 WHERE id=$1', [prod.menu_id]);
-    }
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_PRODUCTO', prod.nombre);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Entrada de stock
-app.post('/api/inventario/entrada', auth, async (req, res) => {
-  try {
-    const { producto_id, cantidad, motivo } = req.body;
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const stockAntes = Number(prod.stock)||0;
-    const stockDespues = stockAntes + (Number(cantidad)||0);
-    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, producto_id]);
-    await db.query(
-      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
-       VALUES ($1,'entrada',$2,$3,$4,$5,$6,$7)`,
-      [producto_id, cantidad, motivo||'Entrada manual', req.user.id, req.user.nombre, stockAntes, stockDespues]
-    );
-    await logAction(req.user.id, req.user.nombre, 'ENTRADA_STOCK', `${prod.nombre}: +${cantidad}`);
-    res.json({ ok: true, stock: stockDespues });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Salida manual de stock
-app.post('/api/inventario/salida', auth, adminOnly, async (req, res) => {
-  try {
-    const { producto_id, cantidad, motivo } = req.body;
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const stockAntes = Number(prod.stock)||0;
-    if (stockAntes < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
-    const stockDespues = stockAntes - (Number(cantidad)||0);
-    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, producto_id]);
-    await db.query(
-      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
-       VALUES ($1,'salida',$2,$3,$4,$5,$6,$7)`,
-      [producto_id, cantidad, motivo||'Salida manual', req.user.id, req.user.nombre, stockAntes, stockDespues]
-    );
-    await logAction(req.user.id, req.user.nombre, 'SALIDA_STOCK', `${prod.nombre}: -${cantidad}`);
-    res.json({ ok: true, stock: stockDespues });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Ajuste de stock (corrección)
-app.post('/api/inventario/ajuste', auth, adminOnly, async (req, res) => {
-  try {
-    const { producto_id, stock_nuevo, motivo } = req.body;
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const stockAntes = Number(prod.stock)||0;
-    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stock_nuevo, producto_id]);
-    await db.query(
-      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
-       VALUES ($1,'ajuste',$2,$3,$4,$5,$6,$7)`,
-      [producto_id, Math.abs(stock_nuevo-stockAntes), motivo||'Ajuste manual', req.user.id, req.user.nombre, stockAntes, stock_nuevo]
-    );
-    res.json({ ok: true, stock: stock_nuevo });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Historial de movimientos de un producto
-app.get('/api/inventario/movimientos/:producto_id', auth, async (req, res) => {
-  try {
-    res.json(await db.getAll(
-      'SELECT * FROM inventario_movimientos WHERE producto_id=$1 ORDER BY created_at DESC LIMIT 100',
-      [req.params.producto_id]
-    ));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Alertas de stock bajo
+// ── INVENTARIO ───────────────────────────────────────────────────────
 app.get('/api/inventario/alertas', auth, async (req, res) => {
-  try {
-    res.json(await db.getAll('SELECT * FROM productos WHERE stock<=stock_minimo AND activo=1 ORDER BY modulo,nombre'));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Reporte de inventario
-app.get('/api/inventario/reporte', auth, async (req, res) => {
-  try {
-    const { desde, hasta } = req.query;
-    const productos = await db.getAll('SELECT * FROM productos WHERE activo=1 ORDER BY modulo,categoria,nombre');
-    let movimientos;
-    if (desde && hasta) {
-      movimientos = await db.getAll(
-        `SELECT im.*, p.nombre as producto_nombre, p.modulo, p.categoria
-         FROM inventario_movimientos im JOIN productos p ON im.producto_id=p.id
-         WHERE im.created_at BETWEEN $1 AND $2 ORDER BY im.created_at DESC`,
-        [desde, hasta+' 23:59:59']
-      );
-    } else {
-      movimientos = await db.getAll(
-        `SELECT im.*, p.nombre as producto_nombre, p.modulo, p.categoria
-         FROM inventario_movimientos im JOIN productos p ON im.producto_id=p.id
-         ORDER BY im.created_at DESC LIMIT 200`
-      );
-    }
-    const valorTotal = productos.reduce((s,p)=>s+(Number(p.stock)*Number(p.costo||0)),0);
-    res.json({ productos, movimientos, valorTotal });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── INVENTARIO LEGACY ────────────────────────────────────────────────
-app.get('/api/productos', auth, async (req, res) => {
-  try { res.json(await db.getAll("SELECT * FROM productos WHERE activo=1 ORDER BY categoria,nombre")); }
+  try { res.json(await db.getAll("SELECT * FROM productos WHERE stock<=stock_minimo AND activo=1")); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/productos', auth, adminOnly, async (req, res) => {
+app.post('/api/inventario/entrada', auth, async (req, res) => {
   try {
-    const r = await db.query('INSERT INTO productos (nombre,categoria,precio,stock,stock_minimo) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [req.body.nombre, req.body.categoria||'general', req.body.precio, req.body.stock||0, req.body.stock_minimo||5]);
-    res.json({ id: r.rows[0].id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.put('/api/productos/:id', auth, adminOnly, async (req, res) => {
-  try {
-    await db.query('UPDATE productos SET nombre=$1,categoria=$2,precio=$3,stock=$4,stock_minimo=$5,activo=$6 WHERE id=$7',
-      [req.body.nombre, req.body.categoria, req.body.precio, req.body.stock, req.body.stock_minimo, req.body.activo!==undefined?req.body.activo:1, req.params.id]);
+    await db.query('UPDATE productos SET stock=stock+$1 WHERE id=$2', [req.body.cantidad, req.body.producto_id]);
+    await logAction(req.user.id, req.user.nombre, 'ENTRADA_STOCK', `Prod ${req.body.producto_id}: +${req.body.cantidad}`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1118,22 +656,6 @@ app.post('/api/huesped/solicitud', authHuesped, async (req, res) => {
     }
     await db.query('INSERT INTO solicitudes_huesped (habitacion_id,tipo,detalle,consumos,estado) VALUES ($1,$2,$3,$4,$5)',
       [req.huesped.hab_id, tipo||'servicio', detalle||'', JSON.stringify(consumosCompletos), 'pendiente']);
-
-    // Push notification a recepcionistas y mucamas
-    const hab = await db.getOne('SELECT numero FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
-    const esLimpieza = (tipo||'servicio') === 'servicio';
-    const titulo = esLimpieza ? '🧹 Solicitud de Mucama' : '🛎️ Solicitud de huésped';
-    const cuerpo  = `Habitación ${hab?.numero||req.huesped.hab_id}${detalle ? ': ' + detalle : ''}`;
-    const rolesDestino = esLimpieza ? ['recepcionista','mucama','admin'] : ['recepcionista','admin'];
-    sendPushToRoles(rolesDestino, {
-      title: titulo,
-      body:  cuerpo,
-      icon:  '/icon-192.png',
-      badge: '/icon-192.png',
-      tag:   'solicitud-huesped',
-      data:  { url: '/index.html#huespedes' }
-    });
-
     res.json({ ok: true, total });
   } catch(e) { console.error('Solicitud huesped:', e); res.status(500).json({ error: e.message }); }
 });
@@ -1145,64 +667,6 @@ app.get('/api/habitaciones/:id/password', auth, adminOnly, async (req, res) => {
     res.json({ password: hab.password_puerta });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-app.put('/api/habitaciones/:id/mantenimiento', auth, async (req, res) => {
-  try {
-    const { accion, nota } = req.body;
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [req.params.id]);
-    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada' });
-
-    if (accion === 'iniciar') {
-      // Guardar estado previo en la nota para poder restaurarlo al finalizar
-      const prevStatus = hab.status || 'libre';
-      const notaFinal  = `[prev:${prevStatus}] ${nota || ''}`.trim();
-      await db.query(
-        "UPDATE habitaciones SET status='mantenimiento', nota=$1, updated_at=NOW() WHERE id=$2",
-        [notaFinal, req.params.id]
-      );
-      await logAction(req.user.id, req.user.nombre, 'INICIAR_MANT', `Hab ${hab.numero}: ${nota||'sin detalle'}`);
-      await db.query(
-        "INSERT INTO log_acciones (usuario_nombre, accion, detalle) VALUES ($1,$2,$3)",
-        [req.user.nombre, 'MANTENIMIENTO', `Hab ${hab.numero} — iniciado: ${nota||'sin detalle'}`]
-      );
-
-      // Push a admin, mantenimiento y recepcionista
-      sendPushToRoles(['admin', 'mantenimiento', 'recepcionista'], {
-        title: `🔧 Hab. ${hab.numero} en mantenimiento`,
-        body:  nota || 'Habitación puesta en mantenimiento',
-        icon:  '/icon-192.png',
-        tag:   `mant-${hab.id}`,
-        data:  { url: '/index.html#habitaciones' }
-      });
-
-    } else if (accion === 'finalizar') {
-      // Restaurar estado previo desde la nota
-      const matchPrev = (hab.nota || '').match(/\[prev:(\w+)\]/);
-      const statusFinal = matchPrev ? matchPrev[1] : 'libre';
-      const notaLimpia  = (hab.nota || '').replace(/\[prev:\w+\]\s*/, '').trim();
-      await db.query(
-        'UPDATE habitaciones SET status=$1, nota=$2, updated_at=NOW() WHERE id=$3',
-        [statusFinal, notaLimpia, req.params.id]
-      );
-      await logAction(req.user.id, req.user.nombre, 'FINALIZAR_MANT', `Hab ${hab.numero} → ${statusFinal}`);
-      await db.query(
-        "INSERT INTO log_acciones (usuario_nombre, accion, detalle) VALUES ($1,$2,$3)",
-        [req.user.nombre, 'MANTENIMIENTO', `Hab ${hab.numero} — finalizado → ${statusFinal}`]
-      );
-
-      // Push a admin y recepcionista informando finalización
-      sendPushToRoles(['admin', 'recepcionista'], {
-        title: `✅ Hab. ${hab.numero} — mantenimiento finalizado`,
-        body:  `Volvió a estado: ${statusFinal}`,
-        icon:  '/icon-192.png',
-        tag:   `mant-fin-${hab.id}`,
-        data:  { url: '/index.html#habitaciones' }
-      });
-    }
-
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
 app.put('/api/habitaciones/:id/password', auth, adminOnly, async (req, res) => {
   try {
     const { password } = req.body;
@@ -1304,58 +768,38 @@ app.put('/api/restaurante/salon', auth, adminOnly, async (req, res) => {
 // ── MENÚ RESTAURANTE ─────────────────────────────────────────────────
 app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
   try {
-    const menu = await db.getAll('SELECT * FROM menu_restaurante ORDER BY categoria,nombre');
-    // Para cada producto, verificar si tiene stock vinculado
-    for (const item of menu) {
-      if (item.es_bebida) {
-        const invProd = await db.getOne('SELECT stock FROM productos WHERE menu_id=$1 AND activo=1', [item.id]);
-        if (invProd) {
-          item.stock_inv = Number(invProd.stock)||0;
-          item.sin_stock = item.stock_inv <= 0;
-        }
-      }
-    }
-    res.json(menu);
+    res.json(await db.getAll('SELECT * FROM menu_restaurante ORDER BY categoria,nombre'));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/restaurante/menu', auth, async (req, res) => {
+app.post('/api/restaurante/menu', auth, adminOnly, async (req, res) => {
   try {
-    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, es_bebida } = req.body;
+    const { nombre, categoria, precio, curso_entrada, curso_principal, curso_postre } = req.body;
     if (!nombre || !precio) return res.status(400).json({ error: 'Nombre y precio requeridos' });
     const r = await db.query(
-      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida) VALUES ($1,$2,$3,$4) RETURNING *',
-      [nombre, categoria||'General', precio, es_bebida?1:0]
+      `INSERT INTO menu_restaurante (nombre,categoria,precio,curso_entrada,curso_principal,curso_postre)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [nombre, categoria||'General', precio, curso_entrada||'', curso_principal||'', curso_postre||'']
     );
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
+app.put('/api/restaurante/menu/:id', auth, adminOnly, async (req, res) => {
   try {
-    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, disponible, es_bebida } = req.body;
-    const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [req.params.id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    const { nombre, categoria, precio, disponible, curso_entrada, curso_principal, curso_postre } = req.body;
     await db.query(
-      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5 WHERE id=$6',
-      [
-        nombre     !== undefined ? nombre     : prod.nombre,
-        categoria  !== undefined ? categoria  : prod.categoria,
-        precio     !== undefined ? precio     : prod.precio,
-        disponible !== undefined ? disponible : prod.disponible,
-        es_bebida  !== undefined ? (es_bebida?1:0) : prod.es_bebida,
-        req.params.id
-      ]
+      `UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,
+       curso_entrada=$5,curso_principal=$6,curso_postre=$7 WHERE id=$8`,
+      [nombre, categoria, precio, disponible!==undefined?disponible:1,
+       curso_entrada||'', curso_principal||'', curso_postre||'', req.params.id]
     );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/restaurante/menu/:id', auth, async (req, res) => {
+app.delete('/api/restaurante/menu/:id', auth, adminOnly, async (req, res) => {
   try {
-    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
     await db.query('DELETE FROM menu_restaurante WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1433,23 +877,6 @@ app.post('/api/restaurante/comandas', auth, authRestaurante, async (req, res) =>
 });
 
 // Agregar ítem a comanda (acumula cantidad si el producto ya existe)
-app.get('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
-  try {
-    const cols = await db.getAll(
-      `SELECT column_name FROM information_schema.columns WHERE table_name='comanda_items'`
-    );
-    const colNames = cols.map(c=>c.column_name);
-    const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
-                    : colNames.includes('precio')          ? 'precio' : '0';
-    const items = await db.getAll(
-      `SELECT nombre, cantidad, ${precioCol} as precio_unitario
-       FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
-      [req.params.id]
-    );
-    res.json(items);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
 app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
   try {
     const { producto_id, cantidad, nota } = req.body;
@@ -1484,23 +911,6 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
     // Recalcular total
     const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
     await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, cmd.id]);
-
-    // Descontar stock si el producto tiene vinculo con inventario
-    if (prod.es_bebida && prod.id) {
-      const invProd = await db.getOne('SELECT * FROM productos WHERE menu_id=$1 AND activo=1', [prod.id]);
-      if (invProd) {
-        const cant = (itemExistente ? cantidad||1 : cantidad||1);
-        const stockAntes = Number(invProd.stock)||0;
-        const stockDespues = Math.max(0, stockAntes - cant);
-        await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, invProd.id]);
-        await db.query(
-          `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,referencia,usuario_id,usuario_nombre,stock_antes,stock_despues)
-           VALUES ($1,'consumo',$2,'Consumo comanda','Comanda #'||$3,$4,$5,$6,$7)`,
-          [invProd.id, cant, cmd.id, req.user.id, req.user.nombre, stockAntes, stockDespues]
-        );
-      }
-    }
-
     res.json(item);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1565,23 +975,20 @@ app.put('/api/restaurante/comandas/:id/cuenta', auth, authRestaurante, async (re
 // Cerrar/cobrar comanda
 app.put('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (req, res) => {
   try {
-    const { metodo_pago, descuento, monto_recibido } = req.body;
+    const { metodo_pago, descuento } = req.body;
     const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
     if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
     if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'Ya está cerrada' });
     const desc = descuento || 0;
     const totalFinal = cmd.total * (1 - desc / 100);
-    const esEfectivo = (metodo_pago || 'Efectivo') === 'Efectivo';
-    const montoRec = esEfectivo ? (Number(monto_recibido) || totalFinal) : totalFinal;
-    const vuelto = esEfectivo ? Math.max(0, montoRec - totalFinal) : 0;
     await db.query(
       `UPDATE comandas SET estado='cerrada',metodo_pago=$1,descuento=$2,total_final=$3,
-       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW(),monto_recibido=$6,vuelto=$7 WHERE id=$8`,
-      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, montoRec, vuelto, cmd.id]
+       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW() WHERE id=$6`,
+      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, cmd.id]
     );
     await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
     await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
-    res.json({ ok: true, total_final: totalFinal, vuelto });
+    res.json({ ok: true, total_final: totalFinal });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1609,6 +1016,7 @@ app.get('/api/restaurante/turno/activo', auth, authRestaurante, async (req, res)
   try {
     const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
     if (!turno) return res.json(null);
+    // Comandas cerradas en este turno
     const cerradas = await db.getAll(
       "SELECT * FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 ORDER BY cerrada_at DESC",
       [turno.abierto_at]
@@ -1616,14 +1024,11 @@ app.get('/api/restaurante/turno/activo', auth, authRestaurante, async (req, res)
     for (const c of cerradas) {
       c.items = await db.getAll('SELECT * FROM comanda_items WHERE comanda_id=$1', [c.id]);
     }
-    const retiros = await db.getAll(
-      "SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at DESC",
-      [turno.id]
-    );
-    res.json({ ...turno, cerradas, retiros });
+    res.json({ ...turno, cerradas });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Último turno (abierto o cerrado) — para mostrar resumen aunque esté cerrado
 app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res) => {
   try {
     const turno = await db.getOne('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 1');
@@ -1632,28 +1037,7 @@ app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res)
       "SELECT c.*, u.nombre as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
       [turno.abierto_at]
     );
-    const retiros = await db.getAll(
-      "SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at DESC",
-      [turno.id]
-    );
-    res.json({ ...turno, cerradas, retiros });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Registrar retiro de caja
-app.post('/api/restaurante/turno/retiro', auth, authRestaurante, async (req, res) => {
-  try {
-    const { monto, motivo } = req.body;
-    if (!monto || monto <= 0) return res.status(400).json({ error: 'Monto inválido' });
-    const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!turno) return res.status(400).json({ error: 'No hay turno abierto' });
-    await db.query(
-      `INSERT INTO caja_retiros (turno_id, monto, motivo, usuario_id, usuario_nombre)
-       VALUES ($1,$2,$3,$4,$5)`,
-      [turno.id, monto, motivo||'Sin motivo', req.user.id, req.user.nombre]
-    );
-    await logAction(req.user.id, req.user.nombre, 'RETIRO_CAJA', `$${monto} — ${motivo||'Sin motivo'}`);
-    res.json({ ok: true });
+    res.json({ ...turno, cerradas });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1977,350 +1361,11 @@ app.post('/api/libro-novedades', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── CAJA HABITACIONES ────────────────────────────────────────────────
-app.get('/api/caja-hab/turno/activo', auth, async (req, res) => {
-  try {
-    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!t) return res.json(null);
-    const movs = await db.getAll("SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at DESC", [t.id]);
-    res.json({ ...t, movimientos: movs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/caja-hab/turno/ultimo', auth, async (req, res) => {
-  try {
-    const t = await db.getOne('SELECT * FROM turnos_habitaciones ORDER BY id DESC LIMIT 1');
-    if (!t) return res.json(null);
-    const movs = await db.getAll("SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at DESC", [t.id]);
-    res.json({ ...t, movimientos: movs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/caja-hab/turno/abrir', auth, adminOrRecep, async (req, res) => {
-  try {
-    const ya = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto'");
-    if (ya) return res.status(400).json({ error: 'Ya hay un turno abierto' });
-    const r = await db.query(
-      "INSERT INTO turnos_habitaciones (cajero_id,cajero_nombre,fondo_inicial) VALUES ($1,$2,$3) RETURNING *",
-      [req.user.id, req.user.nombre, req.body.fondo_inicial||0]
-    );
-    await logAction(req.user.id, req.user.nombre, 'ABRIR_TURNO_HAB', `Fondo: $${req.body.fondo_inicial||0}`);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/caja-hab/turno/cerrar', auth, adminOrRecep, async (req, res) => {
-  try {
-    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!t) return res.status(400).json({ error: 'No hay turno abierto' });
-    await db.query("UPDATE turnos_habitaciones SET estado='cerrado',cerrado_at=NOW() WHERE id=$1", [t.id]);
-    await logAction(req.user.id, req.user.nombre, 'CERRAR_TURNO_HAB', `Turno #${t.id}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/caja-hab/movimiento', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { tipo, concepto, monto, metodo_pago, referencia, habitacion_id, habitacion_numero } = req.body;
-    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!t) return res.status(400).json({ error: 'No hay turno abierto en habitaciones' });
-    await db.query(
-      `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [t.id, tipo||'ingreso', concepto||'', monto||0, metodo_pago||'Efectivo',
-       referencia||'', req.user.id, req.user.nombre, habitacion_id||null, habitacion_numero||'']
-    );
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── CAJA GLOBAL (admin) ──────────────────────────────────────────────
-app.get('/api/caja-global/resumen-dia', auth, adminOnly, async (req, res) => {
-  try {
-    const hoy = req.query.fecha || new Date().toISOString().split('T')[0];
-
-    // Restaurante — comandas cerradas hoy (usando fecha en zona Argentina)
-    const cmdHoy = await db.getAll(
-      `SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant
-       FROM comandas
-       WHERE estado='cerrada'
-       AND DATE(cerrada_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1
-       GROUP BY metodo_pago`,
-      [hoy]
-    );
-    // Restaurante — retiros hoy
-    const retirosRest = await db.getAll(
-      `SELECT SUM(monto) as total FROM caja_retiros
-       WHERE DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1`,
-      [hoy]
-    );
-    // Habitaciones — movimientos hoy
-    const movHab = await db.getAll(
-      `SELECT tipo, metodo_pago, SUM(monto) as total
-       FROM movimientos_habitaciones
-       WHERE DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1
-       GROUP BY tipo, metodo_pago`,
-      [hoy]
-    );
-
-    res.json({
-      fecha: hoy,
-      restaurante: { por_metodo: cmdHoy, retiros: Number(retirosRest[0]?.total||0) },
-      habitaciones: { movimientos: movHab }
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
-  try {
-    const { desde, hasta, limit } = req.query;
-    const lim = parseInt(limit)||200;
-    const d = desde || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
-    const h = hasta  || new Date().toISOString().split('T')[0];
-
-    // Comandas restaurante
-    const cmds = await db.getAll(
-      `SELECT 'restaurante' as fuente, 'ingreso' as tipo, total_final as monto,
-              metodo_pago, concat('Mesa ', mesa_id) as concepto,
-              cajero_nombre as usuario, cerrada_at as fecha,
-              id as comanda_id, mesa_id
-       FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2
-       ORDER BY cerrada_at DESC LIMIT $3`,
-      [d+' 00:00:00', h+' 23:59:59', lim]
-    );
-    // Retiros restaurante
-    const retRest = await db.getAll(
-      `SELECT 'restaurante' as fuente, 'egreso' as tipo, monto,
-              'Efectivo' as metodo_pago, motivo as concepto,
-              usuario_nombre as usuario, created_at as fecha
-       FROM caja_retiros WHERE created_at BETWEEN $1 AND $2
-       ORDER BY created_at DESC`,
-      [d+' 00:00:00', h+' 23:59:59']
-    );
-    // Movimientos habitaciones
-    const movHab = await db.getAll(
-      `SELECT 'habitaciones' as fuente, tipo, monto, metodo_pago, concepto,
-              usuario_nombre as usuario, created_at as fecha
-       FROM movimientos_habitaciones WHERE created_at BETWEEN $1 AND $2
-       ORDER BY created_at DESC`,
-      [d+' 00:00:00', h+' 23:59:59']
-    );
-
-    // Unir y ordenar por fecha desc
-    const todo = [...cmds, ...retRest, ...movHab]
-      .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
-
-    res.json({ desde: d, hasta: h, movimientos: todo });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) => {
-  try {
-    const { desde, hasta } = req.query;
-    if (!desde||!hasta) return res.status(400).json({ error: 'Falta rango de fechas' });
-    const TZ = `AT TIME ZONE 'America/Argentina/Buenos_Aires'`;
-
-    const [cmdTotal, retTotal, habIngresos, habEgresos] = await Promise.all([
-      db.getAll(`SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
-      db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM caja_retiros WHERE DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
-      db.getAll(`SELECT metodo_pago, SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
-      db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='egreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
-    ]);
-
-    // Resumen por día
-    const porDia = await db.getAll(`
-      SELECT dia, SUM(total) as total, fuente FROM (
-        SELECT DATE(cerrada_at ${TZ})::text as dia, SUM(total_final) as total, 'restaurante' as fuente
-        FROM comandas WHERE estado='cerrada' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(cerrada_at ${TZ})
-        UNION ALL
-        SELECT DATE(created_at ${TZ})::text, SUM(monto), 'habitaciones'
-        FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(created_at ${TZ})
-      ) t GROUP BY dia, fuente ORDER BY dia DESC
-    `, [desde,hasta]);
-
-    res.json({
-      restaurante: { por_metodo: cmdTotal, retiros: Number(retTotal[0]?.total||0) },
-      habitaciones: { ingresos: habIngresos, egresos: Number(habEgresos[0]?.total||0) },
-      por_dia: porDia
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Historial de turnos (restaurante + habitaciones)
-app.get('/api/caja-global/turnos', auth, adminOnly, async (req, res) => {
-  try {
-    const { fuente } = req.query;
-    if (fuente === 'restaurante') {
-      const turnos = await db.getAll('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 50');
-      // Calcular total cobrado y retiros por turno
-      for (const t of turnos) {
-        const cobrado = await db.getOne(
-          "SELECT COALESCE(SUM(total_final),0) as total FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 AND ($2::timestamp IS NULL OR cerrada_at <= $2)",
-          [t.abierto_at, t.cerrado_at||null]
-        );
-        const retiros = await db.getOne(
-          "SELECT COALESCE(SUM(monto),0) as total FROM caja_retiros WHERE turno_id=$1",
-          [t.id]
-        );
-        t.total_cobrado = Number(cobrado?.total||0);
-        t.total_retiros = Number(retiros?.total||0);
-        t.total_final   = t.total_cobrado + Number(t.fondo_inicial||0) - t.total_retiros;
-      }
-      res.json(turnos);
-    } else {
-      const turnos = await db.getAll('SELECT * FROM turnos_habitaciones ORDER BY id DESC LIMIT 50');
-      for (const t of turnos) {
-        const ingresos = await db.getOne(
-          "SELECT COALESCE(SUM(monto),0) as total FROM movimientos_habitaciones WHERE turno_id=$1 AND tipo='ingreso'",
-          [t.id]
-        );
-        const egresos = await db.getOne(
-          "SELECT COALESCE(SUM(monto),0) as total FROM movimientos_habitaciones WHERE turno_id=$1 AND tipo='egreso'",
-          [t.id]
-        );
-        t.total_cobrado = Number(ingresos?.total||0);
-        t.total_retiros = Number(egresos?.total||0);
-        t.total_final   = Number(t.fondo_inicial||0) + t.total_cobrado - t.total_retiros;
-      }
-      res.json(turnos);
-    }
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Turno completo con comandas y retiros (para reimprimir arqueo)
-app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
-  try {
-    const { id, fuente } = req.query;
-    if (fuente === 'restaurante') {
-      const turno = await db.getOne('SELECT * FROM turnos_restaurante WHERE id=$1', [id]);
-      if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-      const cerradas = await db.getAll(
-        `SELECT * FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1
-         AND ($2::timestamp IS NULL OR cerrada_at <= $2) ORDER BY cerrada_at DESC`,
-        [turno.abierto_at, turno.cerrado_at||null]
-      );
-      const retiros = await db.getAll(
-        'SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at',
-        [id]
-      );
-      // Detectar columna de precio disponible en comanda_items
-      const cols = await db.getAll(
-        `SELECT column_name FROM information_schema.columns
-         WHERE table_name='comanda_items'`
-      );
-      const colNames = cols.map(c=>c.column_name);
-      const precioCol = colNames.includes('precio_unitario') ? 'ci.precio_unitario'
-                      : colNames.includes('precio')          ? 'ci.precio'
-                      : colNames.includes('subtotal')        ? 'ci.subtotal/NULLIF(ci.cantidad,0)'
-                      : '0';
-
-      // Ítems vendidos agrupados por nombre
-      const itemsVendidos = await db.getAll(
-        `SELECT ci.nombre,
-                COALESCE(m.categoria, 'Sin categoría') as categoria,
-                SUM(ci.cantidad) as cantidad,
-                SUM(${precioCol} * ci.cantidad) as total
-         FROM comanda_items ci
-         JOIN comandas c ON ci.comanda_id = c.id
-         LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
-         WHERE c.estado='cerrada' AND c.cerrada_at >= $1
-         AND ($2::timestamp IS NULL OR c.cerrada_at <= $2)
-         GROUP BY ci.nombre, COALESCE(m.categoria, 'Sin categoría')
-         ORDER BY total DESC`,
-        [turno.abierto_at, turno.cerrado_at||null]
-      );
-      // Por método de pago
-      const porMetodo = {};
-      cerradas.forEach(c => {
-        porMetodo[c.metodo_pago] = (porMetodo[c.metodo_pago]||0) + Number(c.total_final||0);
-      });
-      res.json({ ...turno, cerradas, retiros, porMetodo, itemsVendidos });
-    } else {
-      const turno = await db.getOne('SELECT * FROM turnos_habitaciones WHERE id=$1', [id]);
-      if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-      const movimientos = await db.getAll(
-        'SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at',
-        [id]
-      );
-      const porMetodo = {};
-      movimientos.filter(m=>m.tipo==='ingreso').forEach(m => {
-        porMetodo[m.metodo_pago] = (porMetodo[m.metodo_pago]||0) + Number(m.monto||0);
-      });
-      res.json({ ...turno, movimientos, porMetodo });
-    }
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Editar fondo inicial de un turno (solo admin)
-app.put('/api/caja-global/turno-fondo', auth, adminOnly, async (req, res) => {
-  try {
-    const { turno_id, fuente, fondo_inicial } = req.body;
-    const tabla = fuente === 'restaurante' ? 'turnos_restaurante' : 'turnos_habitaciones';
-    await db.query(`UPDATE ${tabla} SET fondo_inicial=$1 WHERE id=$2`, [fondo_inicial, turno_id]);
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_FONDO', `${fuente} turno #${turno_id}: $${fondo_inicial}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Ítems de una comanda específica (para historial caja)
-app.get('/api/caja-global/comanda-items/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    const cols = await db.getAll(
-      `SELECT column_name FROM information_schema.columns WHERE table_name='comanda_items'`
-    );
-    const colNames = cols.map(c=>c.column_name);
-    const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
-                    : colNames.includes('precio')          ? 'precio'
-                    : '0';
-    const items = await db.getAll(
-      `SELECT nombre, cantidad, ${precioCol} as precio_unit,
-              cantidad * ${precioCol} as total
-       FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
-      [req.params.id]
-    );
-    res.json({ ...cmd, items });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── PUSH NOTIFICATIONS ───────────────────────────────────────────────
-
-// Devolver la VAPID public key al frontend
-app.get('/api/push/vapid-public', (req, res) => {
-  res.json({ publicKey: VAPID_PUBLIC });
-});
-
-// Suscribir dispositivo
-app.post('/api/push/suscribir', auth, async (req, res) => {
-  try {
-    const { endpoint, keys } = req.body;
-    if (!endpoint || !keys?.p256dh || !keys?.auth)
-      return res.status(400).json({ error: 'Datos de suscripción incompletos' });
-    // Usar endpoint+usuario_id como clave única — mismo celular, distintos usuarios
-    await db.query(
-      `INSERT INTO push_suscripciones (usuario_id, usuario_nombre, rol, endpoint, p256dh, auth)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (endpoint, usuario_id) DO UPDATE SET
-         usuario_nombre=$2, rol=$3, p256dh=$5, auth=$6`,
-      [req.user.id, req.user.nombre, req.user.rol, endpoint, keys.p256dh, keys.auth]
-    );
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Desuscribir dispositivo
-app.post('/api/push/desuscribir', auth, async (req, res) => {
-  try {
-    await db.query('DELETE FROM push_suscripciones WHERE usuario_id=$1', [req.user.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── CATCH-ALL ────────────────────────────────────────
+// ── CATCH-ALL & ARRANQUE ─────────────────────────────────────════════
+// ════════════════════════════════════════════════════════════════════
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-// ── RESET DIARIO 8 AM ────────────────────────────────
+// Reset diario 8 AM
 function scheduleReset() {
   const now = new Date();
   const next8am = new Date();
