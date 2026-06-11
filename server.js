@@ -367,12 +367,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
              req.user.id, req.user.nombre, habitacion_id, hab.numero]
           );
         }
-        // Sistema legacy de caja
-        const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-        if (caja) {
-          await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-            [caja.id,'ingreso','hospedaje',`Check-in hab.${hab.numero} - ${nombre}`,precio_total,metodo_pago||'Efectivo',habitacion_id,req.user.id]);
-        }
+        // (registro en caja habitaciones arriba)
       }
     }
 
