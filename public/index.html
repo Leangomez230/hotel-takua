@@ -1309,12 +1309,8 @@ function showHabModal(hab) {
       if (t.s==='check-in')   { closeModal(); showCheckinModal(hab.id); return; }
       if (t.s==='reservada')  { closeModal(); showReservaModal(hab.id); return; }
       if (t.s==='cambiar-hab'){ closeModal(); showCambiarHabModal(hab); return; }
-      if (t.s==='checkout')   {
-        if (!confirm('¿Confirmar check-out? La habitación pasará a "A Limpiar".')) return;
-        const r = await apiFetch('POST', `/checkout/${hab.id}`);
-        if (r?.ok) toast('Check-out realizado. Habitación a limpiar.');
-        else { toast(r?.error||'Error',false); return; }
-      } else {
+      if (t.s==='checkout')   { closeModal(); showCheckoutModal(hab); return; }
+      {
         const nota = document.getElementById('hab-nota')?.value || hab.nota || '';
         // Guardar tipo de cama si cambió
         if (tipoCamaSeleccionada !== (esTwin?'twin':'queen')) {
@@ -1745,6 +1741,100 @@ function showCambiarHabModal(hab) {
     } else {
       toast(r?.error || 'Error al cambiar habitación', false);
     }
+  });
+}
+
+// ══════════════════════════════════════
+// CHECK-OUT
+// ══════════════════════════════════════
+async function showCheckoutModal(hab) {
+  // Obtener reserva activa con saldo
+  const reserva = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
+  const saldo   = Number(reserva?.saldo_pendiente || 0);
+  const nombre  = reserva?.nombre_huesped || hab.nota || '—';
+  const metodo0 = reserva?.metodo_pago || 'Efectivo';
+  const total0  = Number(reserva?.precio_total || 0);
+  const senia0  = Number(reserva?.monto_senia || 0);
+
+  const bannerSaldo = saldo > 0
+    ? `<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:12px;color:#64748b">Saldo pendiente de la reserva</div>
+        <div style="font-size:22px;font-weight:900;color:#dc2626">${fmt(saldo)}</div>
+       </div>`
+    : `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:13px;color:#16a34a;font-weight:700">✅ Reserva ya saldada</div>
+       </div>`;
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>Check-out — Hab. ${hab.numero} Ala ${hab.ala}</h3>
+      <button class="modal-close" id="co-close">✕</button>
+    </div>
+    <div style="background:#f8fafc;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+      👤 <strong>${nombre}</strong>
+      ${total0>0 ? `<span style="color:#64748b"> · Total estadía: ${fmt(total0)}</span>` : ''}
+      ${senia0>0 ? `<span style="color:#16a34a"> · Seña cobrada: ${fmt(senia0)}</span>` : ''}
+    </div>
+    ${bannerSaldo}
+    <div class="form-row" id="co-metodo-row" style="${saldo===0?'display:none':''}">
+      <div class="form-col"><label>Método de pago del saldo</label>
+        <select id="co-pago">
+          ${['Efectivo','Débito','Crédito','Transferencia','QR','Otro']
+            .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div style="border-top:1.5px solid #e2e8f0;margin:14px 0;padding-top:14px">
+      <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">Consumos extras (opcional)</div>
+      <div class="form-row">
+        <div class="form-col"><label>Concepto extra</label>
+          <input type="text" id="co-concepto" placeholder="Ej: Minibar, lavandería...">
+        </div>
+        <div class="form-col"><label>Monto extra</label>
+          <input type="number" id="co-extra" value="0" min="0">
+        </div>
+      </div>
+      <div class="form-col"><label>Método pago extra</label>
+        <select id="co-pago-extra">
+          ${['Efectivo','Débito','Crédito','Transferencia','QR','Otro']
+            .map(m=>`<option>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="total-box">
+      ${saldo>0?`<div class="total-row"><span>Saldo pendiente:</span><span>${fmt(saldo)}</span></div>`:''}
+      <div class="total-row"><span>Extra:</span><span id="co-tot-extra">${fmt(0)}</span></div>
+      <div class="total-row big"><span>Total a cobrar:</span><span id="co-tot-cobrar">${fmt(saldo)}</span></div>
+    </div>
+    <button class="confirm-btn" id="co-confirm">🚪 Confirmar Check-out</button>
+  `);
+
+  const recalc = () => {
+    const extra = parseMonto(document.getElementById('co-extra')?.value||'0');
+    document.getElementById('co-tot-extra').textContent   = fmtExacto(extra);
+    document.getElementById('co-tot-cobrar').textContent  = fmtExacto(saldo + extra);
+  };
+  document.getElementById('co-extra')?.addEventListener('input', recalc);
+  document.getElementById('co-close')?.addEventListener('click', closeModal);
+
+  document.getElementById('co-confirm')?.addEventListener('click', async () => {
+    const extra    = parseMonto(document.getElementById('co-extra')?.value||'0');
+    const concepto = document.getElementById('co-concepto')?.value.trim();
+    const body = {
+      metodo_pago_extra:  document.getElementById('co-pago')?.value,
+      monto_extra:        extra,
+      concepto_extra:     concepto,
+    };
+    // Si hay extra con método diferente, usar el del extra
+    if (extra > 0) body.metodo_pago_extra = document.getElementById('co-pago-extra')?.value;
+
+    const r = await apiFetch('POST', `/checkout/${hab.id}`, body);
+    if (r?.ok) {
+      const cobrado = Number(r.cobrado||0);
+      toast(cobrado > 0 ? `Check-out realizado · Cobrado ${fmt(cobrado)}` : 'Check-out realizado');
+      closeModal();
+      await refreshHabs();
+    } else toast(r?.error||'Error en check-out', false);
   });
 }
 
