@@ -2164,7 +2164,13 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
       db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='egreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
     ]);
 
-    // Resumen por día
+    // Movimientos manuales del período
+    const manuales = await db.getAll(
+      `SELECT * FROM movimientos_manuales WHERE fecha BETWEEN $1 AND $2 ORDER BY fecha`,
+      [desde, hasta]
+    );
+
+    // Resumen por día incluyendo manuales
     const porDia = await db.getAll(`
       SELECT dia, SUM(total) as total, fuente FROM (
         SELECT DATE(cerrada_at ${TZ})::text as dia, SUM(total_final) as total, 'restaurante' as fuente
@@ -2198,7 +2204,8 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
     res.json({
       restaurante: { por_metodo: cmdTotal, retiros: Number(retTotal[0]?.total||0), detalle_turnos: turnosRest },
       habitaciones: { ingresos: habIngresos, egresos: Number(habEgresos[0]?.total||0), detalle_turnos: turnosHab },
-      por_dia: porDia
+      por_dia: porDia,
+      manuales
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -2395,6 +2402,45 @@ function scheduleReset() {
     scheduleReset();
   }, msUntil);
 }
+
+// ── MOVIMIENTOS MANUALES ─────────────────────────────────────────────
+app.get('/api/movimientos-manuales', auth, adminOrRecep, async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+    const rows = await db.getAll(
+      `SELECT * FROM movimientos_manuales
+       WHERE ($1::date IS NULL OR fecha >= $1) AND ($2::date IS NULL OR fecha <= $2)
+       ORDER BY fecha DESC, id DESC`,
+      [desde||null, hasta||null]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/movimientos-manuales', auth, adminOrRecep, async (req, res) => {
+  try {
+    const { fecha, concepto, monto, tipo, metodo_pago, rubro } = req.body;
+    if (!fecha)    return res.status(400).json({ error: 'Falta la fecha' });
+    if (!concepto) return res.status(400).json({ error: 'Falta el concepto' });
+    if (!monto)    return res.status(400).json({ error: 'Falta el monto' });
+    const r = await db.query(
+      `INSERT INTO movimientos_manuales (fecha,concepto,monto,tipo,metodo_pago,rubro,usuario_id,usuario_nombre)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [fecha, concepto, Number(monto), tipo||'ingreso', metodo_pago||'Efectivo',
+       rubro||'habitaciones', req.user.id, req.user.nombre]
+    );
+    await logAction(req.user.id, req.user.nombre, 'MOV_MANUAL',
+      `${tipo||'ingreso'} $${monto} — ${concepto} (${rubro||'habitaciones'})`);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/movimientos-manuales/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await db.query('DELETE FROM movimientos_manuales WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 db.initDB().then(() => {
   app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT}`));
