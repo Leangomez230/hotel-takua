@@ -111,32 +111,32 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 <div class="sb-overlay" id="sb-overlay"></div>
 <nav class="sidebar" id="sidebar">
   <div class="s-logo" id="s-logo"></div>
-  <a href="/index.html" style="text-decoration:none">
+  <a href="/index.html" id="sb-inicio" style="text-decoration:none">
     <button class="nav-btn" title="Inicio"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
   </a>
-  <a href="/index.html#habitaciones" style="text-decoration:none">
+  <a href="/index.html#habitaciones" id="sb-habitaciones" style="text-decoration:none">
     <button class="nav-btn" title="Habitaciones"><span class="ni">🛏️</span><span class="nl">Habitaciones</span></button>
   </a>
-  <button class="nav-btn active" title="Reservas"><span class="ni">📅</span><span class="nl">Reservas</span></button>
-  <a href="/index.html#huespedes" style="text-decoration:none">
+  <button class="nav-btn active" id="sb-reservas" title="Reservas"><span class="ni">📅</span><span class="nl">Reservas</span></button>
+  <a href="/index.html#huespedes" id="sb-huespedes" style="text-decoration:none">
     <button class="nav-btn" title="Huéspedes"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
   </a>
-  <a href="/index.html#tienda" style="text-decoration:none">
+  <a href="/index.html#tienda" id="sb-tienda" style="text-decoration:none">
     <button class="nav-btn" title="Tienda POS"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
   </a>
-  <a href="/inventario.html" style="text-decoration:none">
+  <a href="/inventario.html" id="sb-inventario" style="text-decoration:none">
     <button class="nav-btn" title="Inventario"><span class="ni">📦</span><span class="nl">Inventario</span></button>
   </a>
-  <a href="/caja.html" style="text-decoration:none">
+  <a href="/caja.html" id="sb-caja" style="text-decoration:none">
     <button class="nav-btn" title="Caja"><span class="ni">💰</span><span class="nl">Caja</span></button>
   </a>
-  <a href="/index.html#finanzas" style="text-decoration:none">
+  <a href="/index.html#finanzas" id="sb-finanzas" style="text-decoration:none">
     <button class="nav-btn" title="Finanzas"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
   </a>
-  <a href="/comandas.html" style="text-decoration:none">
+  <a href="/comandas.html" id="sb-restaurante" style="text-decoration:none">
     <button class="nav-btn" title="Restaurante"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
   </a>
-  <a href="/index.html#config" style="text-decoration:none">
+  <a href="/index.html#config" id="sb-config" style="text-decoration:none">
     <button class="nav-btn" style="margin-top:auto" title="Configuración"><span class="ni">⚙️</span><span class="nl">Configuración</span></button>
   </a>
 </nav>
@@ -213,6 +213,22 @@ if (!TOKEN || !ME) window.location.href = '/portal.html';
 
 // Mucamas y cajeros solo pueden ver el calendario, no la lista
 const esMucama = ['mucama','cajero'].includes(ME?.rol);
+
+// Sidebar según rol:
+// mucama → Inicio + Habitaciones + Reservas
+// cajero → Inicio + Restaurante + Reservas
+// otros  → todo visible
+(function setupSidebar() {
+  const rol = ME?.rol;
+  const hide = id => { const el=document.getElementById(id); if(el) el.style.display='none'; };
+  if (rol === 'mucama') {
+    ['sb-huespedes','sb-tienda','sb-inventario','sb-caja','sb-finanzas','sb-restaurante','sb-config'].forEach(hide);
+  } else if (rol === 'cajero') {
+    ['sb-habitaciones','sb-huespedes','sb-tienda','sb-inventario','sb-caja','sb-finanzas','sb-config'].forEach(hide);
+    const ini = document.getElementById('sb-inicio');
+    if (ini) ini.href = '/comandas.html';
+  }
+})();
 document.getElementById('user-av').textContent = (ME?.nombre||'A')[0].toUpperCase();
 function doLogout() {
   localStorage.removeItem('takua_token');
