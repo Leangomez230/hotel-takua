@@ -688,9 +688,16 @@ async function initApp(){
   }
 
   // Configurar sidebar según rol — snav-menu y snav-editor ya no se muestran
-  // (gestión de productos está dentro del desplegable en la pantalla principal)
   const btnConfig = document.getElementById('nav-config');
   if(btnConfig && ME.rol==='admin') btnConfig.style.display='';
+
+  // Cajeros: sidebar reducido — solo Inicio y Reservas
+  if (ME.rol === 'cajero') {
+    sidebar.querySelectorAll('.nav-btn').forEach(btn => {
+      const nl = btn.querySelector('.nl')?.textContent?.trim();
+      if (nl !== 'Inicio' && nl !== 'Reservas') btn.style.display = 'none';
+    });
+  }
 
   showScreen('screen-main');
   await loadAll();
