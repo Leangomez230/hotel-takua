@@ -2027,13 +2027,13 @@ app.post('/api/caja-hab/movimiento', auth, adminOrRecep, async (req, res) => {
     const { tipo, concepto, monto, metodo_pago, referencia, habitacion_id, habitacion_numero } = req.body;
     const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
     if (!t) return res.status(400).json({ error: 'No hay turno abierto en habitaciones' });
-    await db.query(
+    const r = await db.query(
       `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
       [t.id, tipo||'ingreso', concepto||'', monto||0, metodo_pago||'Efectivo',
        referencia||'', req.user.id, req.user.nombre, habitacion_id||null, habitacion_numero||'']
     );
-    res.json({ ok: true });
+    res.json({ ok: true, id: r.rows[0].id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
