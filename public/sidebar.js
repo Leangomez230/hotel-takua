@@ -10,22 +10,30 @@
   const path = location.pathname;
   const on   = (s) => path.endsWith(s);
 
+  // ¿Estamos en index.html?
+  const enIndex = path === '/' || path === '' || on('index.html');
+
+  // Helper: si estamos en index, usar goTo(); si no, navegar al hash
+  const indexHref = (seccion) => enIndex ? null : '/index.html#' + seccion;
+  const indexClick = (seccion) => enIndex ? `goTo('${seccion}')` : null;
+
   const ITEMS = [
     { id:'sb-inicio',       icon:'🏠', label:'Inicio',
-      href: on('comandas.html') ? '/comandas.html' : '/index.html',
+      href: on('comandas.html') ? '/comandas.html' : (enIndex ? null : '/index.html'),
+      click: enIndex ? "goTo('dashboard')" : null,
       show: ['admin','recepcionista','mucama','mantenimiento','cajero','mozo'] },
     { id:'sb-habitaciones', icon:'🛏️', label:'Habitaciones',
-      href: '/index.html',
+      href: indexHref('habitaciones'), click: indexClick('habitaciones'),
       show: ['admin','recepcionista','mucama','mantenimiento'] },
     { id:'sb-reservas',     icon:'📅', label:'Reservas',
       href: '/reservas.html',
       show: ['admin','recepcionista','mucama','cajero'],
       active: on('reservas.html') },
     { id:'sb-huespedes',    icon:'👤', label:'Huéspedes',
-      href: '/index.html',
+      href: indexHref('huespedes'), click: indexClick('huespedes'),
       show: ['admin','recepcionista'] },
     { id:'sb-tienda',       icon:'🛒', label:'Tienda POS',
-      href: '/index.html',
+      href: indexHref('tienda'), click: indexClick('tienda'),
       show: ['admin','recepcionista'] },
     { id:'sb-inventario',   icon:'📦', label:'Inventario',
       href: '/inventario.html',
@@ -36,14 +44,14 @@
       show: ['admin','recepcionista'],
       active: on('caja.html') },
     { id:'sb-finanzas',     icon:'📊', label:'Finanzas',
-      href: '/index.html',
+      href: indexHref('finanzas'), click: indexClick('finanzas'),
       show: ['admin'] },
     { id:'sb-restaurante',  icon:'🍽️', label:'Restaurante',
       href: '/comandas.html',
       show: ['admin','cajero','mozo'],
       active: on('comandas.html') },
     { id:'sb-config',       icon:'⚙️', label:'Config',
-      href: '/index.html',
+      href: indexHref('config'), click: indexClick('config'),
       show: ['admin'],
       bottom: true },
   ];
@@ -91,9 +99,14 @@
   ITEMS.forEach(item => {
     if (!item.show.includes(rol)) return;
     const a   = document.createElement('a');
-    a.href    = item.href;
     a.id      = item.id;
     a.style.textDecoration = 'none';
+    if (item.click) {
+      a.href = '#';
+      a.addEventListener('click', (e) => { e.preventDefault(); eval(item.click); });
+    } else {
+      a.href = item.href || '#';
+    }
     const btn = document.createElement('button');
     btn.className = 'sb-btn' + (item.active?' active':'') + (item.bottom?' bottom':'');
     btn.title     = item.label;
