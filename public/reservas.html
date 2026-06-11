@@ -160,7 +160,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
           📅 Calendario
         </button>
         <button id="btn-vista-lista" onclick="setVista('lista')"
-          style="padding:6px 14px;border-radius:8px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:none;color:#64748b">
+          style="padding:6px 14px;border-radius:8px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:none;color:#64748b;display:none">
           📋 Lista
         </button>
       </div>
@@ -210,6 +210,9 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 const TOKEN = localStorage.getItem('takua_token');
 const ME    = JSON.parse(localStorage.getItem('takua_user') || 'null');
 if (!TOKEN || !ME) window.location.href = '/portal.html';
+
+// Mucamas solo pueden ver el calendario, no la lista
+const esMucama = ME?.rol === 'mucama';
 document.getElementById('user-av').textContent = (ME?.nombre||'A')[0].toUpperCase();
 function doLogout() {
   localStorage.removeItem('takua_token');
@@ -281,6 +284,10 @@ const G = {
 
 // ── INIT ──────────────────────────────────────────────
 async function init() {
+  // Mostrar botón Lista solo si no es mucama
+  if (!esMucama) {
+    document.getElementById('btn-vista-lista').style.display = 'inline-block';
+  }
   G.habitaciones = await api('GET', '/habitaciones') || [];
   await cargarYRenderizar();
 }
