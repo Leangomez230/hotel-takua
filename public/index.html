@@ -1756,6 +1756,32 @@ async function showCheckoutModal(hab) {
   const total0  = Number(reserva?.precio_total || 0);
   const senia0  = Number(reserva?.monto_senia || 0);
 
+  // Si hay saldo a cobrar, verificar que haya turno abierto
+  if (saldo > 0) {
+    const turnoHab = await apiFetch('GET', '/caja-hab/turno/activo').catch(()=>null);
+    if (!turnoHab) {
+      openModal(`
+        <div class="modal-hd">
+          <h3>Check-out — Hab. ${hab.numero}</h3>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+          <div style="font-weight:800;font-size:15px;color:#dc2626;margin-bottom:6px">Sin turno de caja abierto</div>
+          <div style="font-size:13px;color:#64748b;margin-bottom:12px">
+            Hay un saldo pendiente de <strong>${fmt(saldo)}</strong> para cobrar.<br>
+            Abrí el turno de habitaciones en Caja antes de continuar.
+          </div>
+          <a href="/caja.html" style="display:inline-block;background:#dc2626;color:#fff;border-radius:8px;
+             padding:10px 20px;font-size:13px;font-weight:700;text-decoration:none">
+            💰 Ir a Caja
+          </a>
+        </div>
+      `);
+      return;
+    }
+  }
+
   const bannerSaldo = saldo > 0
     ? `<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:14px">
         <div style="font-size:12px;color:#64748b">Saldo pendiente de la reserva</div>
