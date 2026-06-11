@@ -955,6 +955,18 @@ async function renderPeriodo(el) {
         <label style="font-weight:700;font-size:13px;color:#475569">Hasta</label>
         <input type="date" id="per-hasta" value="${hasta}" max="${hoyStr}">
         <button class="btn-primary" onclick="buscarPeriodo()">Buscar</button>
+        <div style="margin-left:auto;display:flex;gap:8px" id="per-btns-reporte" style="display:none">
+          <button onclick="imprimirReporte('periodo',document.getElementById('per-desde').value,document.getElementById('per-hasta').value)"
+            style="background:#1a2035;color:#fff;border:none;border-radius:9px;padding:8px 14px;
+                   font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;white-space:nowrap">
+            🖨️ Imprimir
+          </button>
+          <button onclick="exportarPDFReporte('periodo',document.getElementById('per-desde').value,document.getElementById('per-hasta').value)"
+            style="background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:9px;padding:8px 14px;
+                   font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;white-space:nowrap">
+            📄 PDF
+          </button>
+        </div>
       </div>
       <div id="per-result"><div style="text-align:center;color:#94a3b8;padding:20px">Seleccioná un período y buscá</div></div>
     </div>`;
@@ -979,6 +991,11 @@ async function buscarPeriodo() {
   const habTotal = (hab.ingresos||[]).reduce((s,m)=>s+Number(m.total||0),0);
   const habEgresos = Number(hab.egresos||0);
   const total = restTotal - restRetiros + habTotal - habEgresos;
+
+  // Mostrar botones de reporte en la barra superior
+  const btns = document.getElementById('per-btns-reporte');
+  if (btns) btns.style.display = 'flex';
+  window._reporteData = { data, desde, hasta, label: `Período ${desde} al ${hasta}` };
 
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
@@ -1011,20 +1028,6 @@ async function buscarPeriodo() {
         <div style="font-size:28px;font-weight:900;margin-top:4px">${fmt(total)}</div>
       </div>
       <div style="font-size:40px;opacity:.3">💰</div>
-    </div>
-
-    <!-- Botones reporte -->
-    <div style="display:flex;gap:10px;margin-bottom:18px">
-      <button onclick="imprimirReporte('periodo','${desde}','${hasta}')"
-        style="flex:1;background:#1a2035;color:#fff;border:none;border-radius:10px;padding:10px 16px;
-               font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
-        🖨️ Imprimir reporte
-      </button>
-      <button onclick="exportarPDFReporte('periodo','${desde}','${hasta}')"
-        style="flex:1;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:10px;padding:10px 16px;
-               font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
-        📄 Exportar PDF
-      </button>
     </div>
 
     <!-- Por día -->
@@ -1068,7 +1071,21 @@ async function renderMensual(el) {
 
   el.innerHTML = `
     <div class="section-card">
-      <div class="card-title" style="margin-bottom:4px;text-transform:capitalize">${mesNombre}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="card-title" style="text-transform:capitalize;margin-bottom:0">${mesNombre}</div>
+        <div style="display:flex;gap:8px">
+          <button onclick="imprimirReporte('mensual','${desde}','${hasta}')"
+            style="background:#1a2035;color:#fff;border:none;border-radius:9px;padding:8px 14px;
+                   font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;white-space:nowrap">
+            🖨️ Imprimir
+          </button>
+          <button onclick="exportarPDFReporte('mensual','${desde}','${hasta}')"
+            style="background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:9px;padding:8px 14px;
+                   font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;white-space:nowrap">
+            📄 PDF
+          </button>
+        </div>
+      </div>
       <div style="font-size:12px;color:#94a3b8;margin-bottom:18px">${desde} al ${hasta}</div>
 
       <div class="stats-grid" style="margin-bottom:20px">
@@ -1124,22 +1141,7 @@ async function renderMensual(el) {
             <strong style="min-width:90px;text-align:right">${fmt(v.rest+v.hab)}</strong>
           </div>`).join('');
       })() : '<div style="color:#94a3b8;text-align:center;padding:20px">Sin datos este mes</div>'}
-
-      <!-- Botones reporte mensual -->
-      <div style="display:flex;gap:10px;margin-top:18px">
-        <button onclick="imprimirReporte('mensual','${desde}','${hasta}')"
-          style="flex:1;background:#1a2035;color:#fff;border:none;border-radius:10px;padding:10px 16px;
-                 font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
-          🖨️ Imprimir reporte
-        </button>
-        <button onclick="exportarPDFReporte('mensual','${desde}','${hasta}')"
-          style="flex:1;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:10px;padding:10px 16px;
-                 font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
-          📄 Exportar PDF
-        </button>
-      </div>
     </div>`;
-  // Guardar data para los reportes
   window._reporteData = { data, desde, hasta, label: mesNombre };
 }
 
