@@ -523,6 +523,7 @@ app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
     const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia, saldo_pendiente } = req.body;
     const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
     if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
+    const seniaAnterior = Number(reserva.monto_senia||0);
     const senia = Number(monto_senia??reserva.monto_senia??0);
     const saldo  = Number(saldo_pendiente??Math.max(0,(precio_total||0)-senia));
     await db.query(
@@ -535,6 +536,35 @@ app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
       "UPDATE habitaciones SET nota=$1,updated_at=NOW() WHERE id=$2 AND status IN ('reservada','lista')",
       [nombre_huesped, reserva.habitacion_id]
     );
+
+    // #3 — Si cambió la seña, registrar ajuste en caja habitaciones
+    const difSenia = senia - seniaAnterior;
+    if (difSenia !== 0) {
+      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+      if (turnoHab) {
+        const hab = await db.getOne('SELECT numero FROM habitaciones WHERE id=$1', [reserva.habitacion_id]);
+        if (difSenia > 0) {
+          // Seña aumentó → ingreso adicional
+          await db.query(
+            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [turnoHab.id, `Ajuste seña Reserva #${req.params.id} — ${nombre_huesped}`, difSenia,
+             metodo_pago||'Efectivo', `Reserva #${req.params.id}`,
+             req.user.id, req.user.nombre, reserva.habitacion_id, hab?.numero||'']
+          );
+        } else {
+          // Seña disminuyó → egreso/devolución
+          await db.query(
+            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+             VALUES ($1,'egreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [turnoHab.id, `Devolución seña Reserva #${req.params.id} — ${nombre_huesped}`, Math.abs(difSenia),
+             metodo_pago||'Efectivo', `Reserva #${req.params.id}`,
+             req.user.id, req.user.nombre, reserva.habitacion_id, hab?.numero||'']
+          );
+        }
+      }
+    }
+
     await logAction(req.user.id, req.user.nombre, 'EDITAR_RESERVA', `Reserva #${req.params.id} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -612,6 +642,12 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
            metodo_pago||'Efectivo', `Reserva #${r.rows[0].id}`,
            req.user.id, req.user.nombre, habitacion_id, hab.numero]
         );
+      } else {
+        // Sin turno abierto: la reserva se guarda igual pero se advierte
+        await logAction(req.user.id, req.user.nombre, 'AVISO',
+          `Seña $${senia} de Reserva #${r.rows[0].id} (Hab. ${hab.numero}) NO registrada en caja — sin turno abierto`);
+        res.json({ ok: true, id: r.rows[0].id, aviso: `⚠️ Seña de $${senia} guardada en la reserva pero NO registrada en caja — no hay turno de habitaciones abierto.` });
+        return;
       }
     }
     await logAction(req.user.id, req.user.nombre, 'RESERVA', `Hab ${hab.numero} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
