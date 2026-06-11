@@ -73,16 +73,15 @@
     .sb-btn .ni{font-size:18px;line-height:1}
     .sb-btn .nl{font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:inherit}
     .sb-btn.bottom{margin-top:auto}
-    .sb-wrap{display:flex;flex-direction:column;min-height:100vh}
-    .sb-content{margin-left:72px;flex:1;display:flex;flex-direction:column;min-width:0}
     .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199}
     .sb-overlay.open{display:block}
     @media(max-width:900px){
-      .sb-sidebar{transform:translateX(-100%);width:220px;align-items:flex-start;padding:14px 10px}
-      .sb-sidebar.open{transform:translateX(0)}
-      .sb-sidebar .sb-btn{width:100%;justify-content:flex-start;gap:10px;padding:0 10px;height:48px}
-      .sb-sidebar .sb-btn .nl{font-size:13px;letter-spacing:0;text-transform:none}
-      .sb-content{margin-left:0}
+      .sb-sidebar{transform:translateX(-100%);width:240px;align-items:flex-start;padding:14px 10px}
+      .sb-sidebar.open{transform:translateX(0);box-shadow:4px 0 24px rgba(0,0,0,.3)}
+      .sb-sidebar .sb-btn{width:100%;justify-content:flex-start;gap:12px;padding:0 14px;height:50px;border-radius:10px}
+      .sb-sidebar .sb-btn .ni{font-size:20px}
+      .sb-sidebar .sb-btn .nl{font-size:14px;letter-spacing:0;text-transform:none;font-weight:600}
+      .sb-sidebar .sb-logo{width:44px;height:44px;margin-bottom:14px}
     }
   `;
   document.head.appendChild(css);
