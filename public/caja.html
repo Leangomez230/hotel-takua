@@ -337,7 +337,8 @@ async function renderHoy(el) {
         <span style="color:#dc2626">- ${fmt(m.monto)}</span>
       </div>`).join('')}
     </div>`:''}
-  ` : `<div style="text-align:center;padding:20px;color:#94a3b8">Sin turno abierto en habitaciones</div>`;
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button onclick="modalEgresoHab()" style="flex:1;background:#fff5f5;border:1.5px solid #fecaca;color:#dc2626;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">💸 Egreso</button><button onclick="modalCerrarTurnoHab(${turnoHab.id},${habEnCaja})" style="flex:1;background:#fef9ec;border:1.5px solid #fde68a;color:#92400e;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">🔒 Cerrar turno</button></div>
+  ` : `<div style="text-align:center;padding:28px 20px"><div style="font-size:32px;margin-bottom:10px">🛏️</div><div style="color:#94a3b8;font-size:14px;margin-bottom:16px">Sin turno abierto en habitaciones</div><button onclick="modalAbrirTurnoHab()" style="background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">+ Abrir turno</button></div>`;
 
   // Por método consolidado
   const metodos = {};
@@ -467,6 +468,111 @@ async function renderTurnos(el) {
 }
 
 // ── MODAL EDITAR FONDO ────────────────────────────────
+// ── CAJA HABITACIONES ─────────────────────────────────
+
+function _ovHab(html) {
+  const ov = document.createElement('div');
+  ov.id = 'ov-hab';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:#fff;border-radius:18px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    ${html}
+    <button onclick="document.getElementById('ov-hab')?.remove()"
+      style="width:100%;margin-top:10px;background:#f1f5f9;border:none;border-radius:10px;padding:10px;
+             font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;color:#64748b">
+      Cancelar
+    </button>
+  </div>`;
+  ov.addEventListener('click', e => { if(e.target===ov) ov.remove(); });
+  document.getElementById('ov-hab')?.remove();
+  document.body.appendChild(ov);
+}
+
+function modalAbrirTurnoHab() {
+  _ovHab(`
+    <div style="font-weight:800;font-size:17px;color:#1a2035;margin-bottom:4px">🛏️ Abrir turno habitaciones</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:16px">Ingresá el fondo inicial de caja</div>
+    <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px">Fondo inicial</label>
+    <input type="number" id="at-fondo" value="0" min="0"
+      style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:16px;font-weight:700;margin-bottom:16px"/>
+    <button onclick="confirmarAbrirTurnoHab()"
+      style="width:100%;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;border:none;border-radius:10px;
+             padding:12px;font-size:15px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif">
+      Abrir turno
+    </button>
+  `);
+  setTimeout(()=>document.getElementById('at-fondo')?.focus(),100);
+}
+
+async function confirmarAbrirTurnoHab() {
+  const fondo = parseFloat(document.getElementById('at-fondo')?.value||'0') || 0;
+  const r = await api('POST', '/caja-hab/turno/abrir', { fondo_inicial: fondo });
+  if (r?.id) { toast('Turno de habitaciones abierto ✓'); document.getElementById('ov-hab')?.remove(); renderTab(); }
+  else toast(r?.error||'Error al abrir turno', false);
+}
+
+function modalEgresoHab() {
+  _ovHab(`
+    <div style="font-weight:800;font-size:17px;color:#1a2035;margin-bottom:4px">💸 Registrar egreso</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:16px">Retiro o egreso de caja habitaciones</div>
+    <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px">Concepto</label>
+    <input type="text" id="eg-concepto" placeholder="Ej: Retiro, Gasto limpieza..."
+      style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;margin-bottom:12px"/>
+    <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px">Monto</label>
+    <input type="number" id="eg-monto" placeholder="0" min="0"
+      style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:16px;font-weight:700;margin-bottom:12px"/>
+    <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px">Método</label>
+    <select id="eg-metodo" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;margin-bottom:16px">
+      <option>Efectivo</option><option>Transferencia</option><option>Débito</option><option>QR</option><option>Otro</option>
+    </select>
+    <button onclick="confirmarEgresoHab()"
+      style="width:100%;background:#dc2626;color:#fff;border:none;border-radius:10px;
+             padding:12px;font-size:15px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif">
+      Registrar egreso
+    </button>
+  `);
+}
+
+async function confirmarEgresoHab() {
+  const concepto = document.getElementById('eg-concepto')?.value.trim();
+  const monto    = parseFloat(document.getElementById('eg-monto')?.value||'0') || 0;
+  const metodo   = document.getElementById('eg-metodo')?.value;
+  if (!concepto) { toast('Ingresá un concepto', false); return; }
+  if (!monto)    { toast('Ingresá un monto', false); return; }
+  const r = await api('POST', '/caja-hab/movimiento', { tipo:'egreso', concepto, monto, metodo_pago:metodo });
+  if (r?.id) { toast('Egreso registrado ✓'); document.getElementById('ov-hab')?.remove(); renderTab(); }
+  else toast(r?.error||'Error', false);
+}
+
+function modalCerrarTurnoHab(turnoId, totalEnCaja) {
+  _ovHab(`
+    <div style="font-weight:800;font-size:17px;color:#1a2035;margin-bottom:4px">🔒 Cerrar turno habitaciones</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:16px">Confirmá el cierre del turno actual</div>
+    <div style="background:#f0fdf9;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;color:#64748b">Total en caja</span>
+        <span style="font-size:20px;font-weight:900;color:#0f766e">${fmt(totalEnCaja)}</span>
+      </div>
+    </div>
+    <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px">Observaciones (opcional)</label>
+    <input type="text" id="ct-obs" placeholder="Notas del cierre..."
+      style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;margin-bottom:16px"/>
+    <button onclick="confirmarCerrarTurnoHab()"
+      style="width:100%;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;border:none;border-radius:10px;
+             padding:12px;font-size:15px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif">
+      Cerrar turno
+    </button>
+  `);
+}
+
+async function confirmarCerrarTurnoHab() {
+  const obs = document.getElementById('ct-obs')?.value.trim();
+  const r = await api('POST', '/caja-hab/turno/cerrar', { observaciones: obs });
+  if (r?.ok) { toast('Turno cerrado ✓'); document.getElementById('ov-hab')?.remove(); renderTab(); }
+  else toast(r?.error||'Error al cerrar turno', false);
+}
+
+
+
 function modalEditarFondo(turnoId, fuente, fondoActual) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center';
