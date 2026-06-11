@@ -992,6 +992,12 @@ async function buscarPeriodo() {
   const habEgresos = Number(hab.egresos||0);
   const total = restTotal - restRetiros + habTotal - habEgresos;
 
+  // Movimientos manuales del período
+  const manuales = data.manuales || [];
+  const manIngresos = manuales.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0);
+  const manEgresos  = manuales.filter(m=>m.tipo==='egreso').reduce((s,m)=>s+Number(m.monto),0);
+  const totalConManuales = total + manIngresos - manEgresos;
+
   // Mostrar botones de reporte en la barra superior
   const btns = document.getElementById('per-btns-reporte');
   if (btns) btns.style.display = 'flex';
@@ -1046,9 +1052,93 @@ async function buscarPeriodo() {
           <span class="fuente-hab">🛏️ ${fmt(v.hab)}</span>
           <strong>${fmt(v.rest+v.hab)}</strong>
         </div>`).join('');
-    })() : '<div style="color:#94a3b8;text-align:center;padding:20px">Sin datos para este período</div>'}`;
-  // Guardar data para los reportes
-  window._reporteData = { data, desde, hasta, label: `Período ${desde} al ${hasta}` };
+    })() : '<div style="color:#94a3b8;text-align:center;padding:20px">Sin datos para este período</div>'}
+
+    <!-- Movimientos manuales -->
+    <div style="border-top:2px solid #e2e8f0;margin-top:20px;padding-top:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">📝 Carga manual de movimientos</div>
+        <span style="font-size:11px;color:#94a3b8">Solo admin y recepcionista</span>
+      </div>
+
+      <!-- Formulario de carga -->
+      <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Fecha</label>
+            <input type="date" id="mm-fecha" value="${desde}" max="${hoy()}"
+              style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;font-family:Nunito,sans-serif">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Rubro</label>
+            <select id="mm-rubro" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;font-family:Nunito,sans-serif">
+              <option value="habitaciones">🛏️ Habitaciones</option>
+              <option value="restaurante">🍽️ Restaurante</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Tipo</label>
+            <select id="mm-tipo" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;font-family:Nunito,sans-serif">
+              <option value="ingreso">⬆️ Ingreso</option>
+              <option value="egreso">⬇️ Egreso</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Concepto</label>
+            <input type="text" id="mm-concepto" placeholder="Ej: Hospedaje hab.101 — Juan García"
+              style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;font-family:Nunito,sans-serif">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Monto</label>
+            <input type="number" id="mm-monto" placeholder="0" min="0"
+              style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;font-family:Nunito,sans-serif">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Método</label>
+            <select id="mm-metodo" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;font-family:Nunito,sans-serif">
+              <option>Efectivo</option><option>Transferencia</option><option>Débito</option><option>QR</option><option>Otro</option>
+            </select>
+          </div>
+          <button onclick="guardarMovimientoManual()"
+            style="background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;border:none;border-radius:8px;
+                   padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;white-space:nowrap;height:36px">
+            + Agregar
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de manuales cargados -->
+      <div id="mm-lista">
+        ${manuales.length ? `
+          <div style="font-size:11px;font-weight:700;color:#64748b;display:grid;grid-template-columns:80px 1fr 80px 90px 80px 60px 32px;gap:6px;padding:6px 8px;border-bottom:2px solid #e2e8f0;text-transform:uppercase;letter-spacing:.3px">
+            <span>Fecha</span><span>Concepto</span><span>Rubro</span><span>Método</span><span>Tipo</span><span>Monto</span><span></span>
+          </div>
+          ${manuales.map(m=>`
+            <div style="display:grid;grid-template-columns:80px 1fr 80px 90px 80px 60px 32px;gap:6px;padding:7px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;align-items:center">
+              <span style="color:#64748b">${m.fecha?.slice(0,10)||''}</span>
+              <span style="font-weight:600">${m.concepto}</span>
+              <span style="color:${m.rubro==='restaurante'?'#1d4ed8':'#0f766e'}">${m.rubro==='restaurante'?'🍽️':'🛏️'}</span>
+              <span>${m.metodo_pago}</span>
+              <span style="color:${m.tipo==='ingreso'?'#16a34a':'#dc2626'};font-weight:700">${m.tipo==='ingreso'?'⬆️ Ingreso':'⬇️ Egreso'}</span>
+              <span style="font-weight:800;color:${m.tipo==='ingreso'?'#16a34a':'#dc2626'}">${m.tipo==='egreso'?'-':''}${fmt(m.monto)}</span>
+              <button onclick="eliminarMovimientoManual(${m.id})"
+                style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">
+                🗑
+              </button>
+            </div>`).join('')}
+          <div style="display:flex;justify-content:space-between;padding:10px 8px;font-weight:800;font-size:13px;border-top:2px solid #e2e8f0;margin-top:4px">
+            <span>Total movimientos manuales</span>
+            <span style="color:${manIngresos-manEgresos>=0?'#16a34a':'#dc2626'}">${manIngresos-manEgresos>=0?'+':''}${fmt(manIngresos-manEgresos)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px;font-weight:900;font-size:15px;background:#f8fafc;border-radius:8px;margin-top:6px">
+            <span>Total período consolidado (con manuales)</span>
+            <span style="color:#7c3aed">${fmt(totalConManuales)}</span>
+          </div>
+        ` : '<div style="text-align:center;color:#94a3b8;padding:16px;font-size:13px">Sin movimientos manuales en este período</div>'}
+      </div>
+    </div>`;
 }
 
 // ── TAB MENSUAL ───────────────────────────────────────
@@ -1145,6 +1235,40 @@ async function renderMensual(el) {
   window._reporteData = { data, desde, hasta, label: mesNombre };
 }
 
+// ── MOVIMIENTOS MANUALES ──────────────────────────────
+
+async function guardarMovimientoManual() {
+  const fecha    = document.getElementById('mm-fecha')?.value;
+  const concepto = document.getElementById('mm-concepto')?.value.trim();
+  const monto    = parseFloat(document.getElementById('mm-monto')?.value||'0');
+  const tipo     = document.getElementById('mm-tipo')?.value;
+  const metodo   = document.getElementById('mm-metodo')?.value;
+  const rubro    = document.getElementById('mm-rubro')?.value;
+
+  if (!fecha)    { toast('Ingresá la fecha', false); return; }
+  if (!concepto) { toast('Ingresá el concepto', false); return; }
+  if (!monto)    { toast('Ingresá el monto', false); return; }
+
+  const r = await api('POST', '/movimientos-manuales', { fecha, concepto, monto, tipo, metodo_pago: metodo, rubro });
+  if (r?.id) {
+    toast('Movimiento registrado ✓');
+    // Limpiar campos
+    document.getElementById('mm-concepto').value = '';
+    document.getElementById('mm-monto').value = '';
+    // Recargar el período
+    buscarPeriodo();
+  } else {
+    toast(r?.error || 'Error al guardar', false);
+  }
+}
+
+async function eliminarMovimientoManual(id) {
+  if (!confirm('¿Eliminar este movimiento?')) return;
+  const r = await api('DELETE', `/movimientos-manuales/${id}`);
+  if (r?.ok) { toast('Eliminado'); buscarPeriodo(); }
+  else toast(r?.error || 'Error', false);
+}
+
 // ── REPORTES ──────────────────────────────────────────
 
 function generarHTMLReporte(tipo, desde, hasta) {
@@ -1174,6 +1298,10 @@ function generarHTMLReporte(tipo, desde, hasta) {
     if(d.fuente==='restaurante') dias[d.dia].rest=Number(d.total||0);
     else dias[d.dia].hab=Number(d.total||0);
   });
+  const manuales     = data.manuales || [];
+  const manIngresos  = manuales.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0);
+  const manEgresos   = manuales.filter(m=>m.tipo==='egreso').reduce((s,m)=>s+Number(m.monto),0);
+  const totalConMan  = total + manIngresos - manEgresos;
   const diasArr = Object.entries(dias).sort((a,b)=>a[0]>b[0]?1:-1);
 
   // ── Gráfico de torta (SVG) — distribución por rubro ──
@@ -1382,6 +1510,25 @@ ${(hab.detalle_turnos||[]).length ? `
   </tr>`).join('')}
   </tbody>
 </table>` : ''}
+
+${manuales.length ? `
+<div class="section-title">📝 Movimientos manuales</div>
+<table class="movs">
+  <thead><tr><th>Fecha</th><th>Concepto</th><th>Rubro</th><th>Método</th><th>Tipo</th><th>Monto</th></tr></thead>
+  <tbody>
+  ${manuales.map(m=>`<tr>
+    <td>${m.fecha?.slice(0,10)||''}</td>
+    <td>${m.concepto}</td>
+    <td>${m.rubro==='restaurante'?'Restaurante':'Habitaciones'}</td>
+    <td>${m.metodo_pago}</td>
+    <td style="color:${m.tipo==='ingreso'?'#16a34a':'#dc2626'}">${m.tipo}</td>
+    <td style="font-weight:700;color:${m.tipo==='ingreso'?'#16a34a':'#dc2626'}">${m.tipo==='egreso'?'-':''}${fmt(m.monto)}</td>
+  </tr>`).join('')}
+  </tbody>
+</table>
+<div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;padding:8px;background:#f8fafc;border-radius:6px;margin-top:6px">
+  <span>Total con movimientos manuales</span><span style="color:#7c3aed">${fmt(totalConMan)}</span>
+</div>` : ''}
 
 <div class="footer">
   <span>Hotel TK Serrano — Sistema de Gestión Hotel Takuá</span>
