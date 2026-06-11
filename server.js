@@ -2175,9 +2175,29 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
       ) t GROUP BY dia, fuente ORDER BY dia DESC
     `, [desde,hasta]);
 
+    // Detalle de turnos en el período
+    const turnosRest = await db.getAll(`
+      SELECT t.*, 
+        COALESCE((SELECT SUM(c.total_final) FROM comandas c WHERE c.estado='cerrada' AND c.cerrada_at >= t.abierto_at AND (t.cerrado_at IS NULL OR c.cerrada_at <= t.cerrado_at)),0) as total_cobrado,
+        COALESCE((SELECT SUM(r.monto) FROM caja_retiros r WHERE r.turno_id=t.id),0) as retiros,
+        COALESCE((SELECT COUNT(*) FROM comandas c WHERE c.estado='cerrada' AND c.cerrada_at >= t.abierto_at AND (t.cerrado_at IS NULL OR c.cerrada_at <= t.cerrado_at)),0) as cant_comandas
+      FROM turnos_restaurante t
+      WHERE DATE(t.abierto_at ${TZ}) BETWEEN $1 AND $2
+      ORDER BY t.id DESC
+    `, [desde, hasta]);
+
+    const turnosHab = await db.getAll(`
+      SELECT t.*,
+        COALESCE((SELECT SUM(m.monto) FROM movimientos_habitaciones m WHERE m.turno_id=t.id AND m.tipo='ingreso'),0) as total_ingresos,
+        COALESCE((SELECT SUM(m.monto) FROM movimientos_habitaciones m WHERE m.turno_id=t.id AND m.tipo='egreso'),0) as total_egresos
+      FROM turnos_habitaciones t
+      WHERE DATE(t.abierto_at ${TZ}) BETWEEN $1 AND $2
+      ORDER BY t.id DESC
+    `, [desde, hasta]);
+
     res.json({
-      restaurante: { por_metodo: cmdTotal, retiros: Number(retTotal[0]?.total||0) },
-      habitaciones: { ingresos: habIngresos, egresos: Number(habEgresos[0]?.total||0) },
+      restaurante: { por_metodo: cmdTotal, retiros: Number(retTotal[0]?.total||0), detalle_turnos: turnosRest },
+      habitaciones: { ingresos: habIngresos, egresos: Number(habEgresos[0]?.total||0), detalle_turnos: turnosHab },
       por_dia: porDia
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
