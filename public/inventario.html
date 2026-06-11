@@ -146,14 +146,7 @@ function doLogout() {
   window.location.href = '/portal.html';
 }
 
-// Hamburger
 
-// Cargar logo desde index.html
-fetch('/index.html').then(r=>r.text()).then(txt => {
-  const m = txt.match(/class="s-logo"><img src="(data:image[^"]+)"/);
-  if (m) document.getElementById('s-logo-inv').innerHTML =
-    '<img src="'+m[1]+'" style="width:100%;height:100%;object-fit:cover">';
-}).catch(()=>{});
 
 // ── API ───────────────────────────────────────────────
 async function api(method, path, body) {
