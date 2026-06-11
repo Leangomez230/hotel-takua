@@ -10,18 +10,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1}
+:root{--sidebar:#1a2035;--accent:#00c9b1}
 body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px;overflow-x:hidden}
-.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
-.sb-overlay.open{display:block}
-.sidebar{width:var(--sw);background:var(--sidebar);position:fixed;top:0;left:0;bottom:0;z-index:200;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:2px;transition:transform .25s ease}
-.s-logo{width:50px;height:50px;border-radius:50%;overflow:hidden;margin-bottom:18px;flex-shrink:0;border:2px solid rgba(196,149,106,.4);background:#1a2035;display:flex;align-items:center;justify-content:center}
-.nav-btn{width:58px;height:52px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:#64748b;border:none;background:none;font-family:'Nunito',sans-serif;transition:all .15s;flex-shrink:0;text-decoration:none}
-.nav-btn:hover{background:rgba(255,255,255,.07);color:#fff}
-.nav-btn.active{background:rgba(0,201,177,.18);color:var(--accent)}
-.nav-btn .ni{font-size:18px;line-height:1}
-.nav-btn .nl{font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:inherit}
-.hamburger{display:none;background:none;border:none;cursor:pointer;font-size:22px;color:#1a2035;padding:2px 6px}
+
+
+
+
+
+
+
+
+
+
 .main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
 .topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
 .tb-left{flex:1;min-width:0}
@@ -77,14 +77,14 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 /* RESUMEN BLOQUES */
 .resumen-bloque{border-radius:14px;padding:16px 18px;border:1.5px solid #e2e8f0;margin-bottom:12px}
 @media(max-width:900px){
-  :root{--sw:0px}
-  .sidebar{transform:translateX(-100%);width:220px;align-items:flex-start;padding:14px 10px}
-  .sidebar .nav-btn{width:100%;justify-content:flex-start;gap:10px;padding:0 10px;height:48px}
-  .sidebar .nav-btn .nl{font-size:13px;letter-spacing:0;text-transform:none}
-  .sidebar.open{transform:translateX(0)}
-  .sb-overlay.open{display:block}
+  :root{}
+  
+  .sidebar 
+  .sidebar 
+
+  
   .main{margin-left:0!important}
-  .hamburger{display:flex!important;align-items:center;justify-content:center}
+  
   .stats-grid{grid-template-columns:1fr 1fr;gap:8px}
   .content{padding:12px 10px}
 }
@@ -97,42 +97,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 </head>
 <body>
 
-<div class="sb-overlay" id="sb-overlay"></div>
-<nav class="sidebar" id="sidebar">
-  <div class="s-logo" id="s-logo-caja">
-    <span style="font-size:18px;font-weight:900;color:var(--accent)">TK</span>
-  </div>
-  <a href="/index.html" style="text-decoration:none">
-    <button class="nav-btn" title="Inicio"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
-  </a>
-  <a href="/index.html#habitaciones" style="text-decoration:none">
-    <button class="nav-btn" title="Habitaciones"><span class="ni">🛏️</span><span class="nl">Habitaciones</span></button>
-  </a>
-  <a href="/index.html#reservas" style="text-decoration:none">
-    <button class="nav-btn" title="Reservas"><span class="ni">📅</span><span class="nl">Reservas</span></button>
-  </a>
-  <a href="/index.html#huespedes" style="text-decoration:none">
-    <button class="nav-btn" title="Huéspedes"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
-  </a>
-  <a href="/index.html#tienda" style="text-decoration:none">
-    <button class="nav-btn" title="Tienda POS"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
-  </a>
-  <a href="/inventario.html" style="text-decoration:none">
-    <button class="nav-btn" title="Inventario"><span class="ni">📦</span><span class="nl">Inventario</span></button>
-  </a>
-  <button class="nav-btn active" title="Caja">
-    <span class="ni">💰</span><span class="nl">Caja</span>
-  </button>
-  <a href="/index.html#finanzas" style="text-decoration:none">
-    <button class="nav-btn" title="Finanzas"><span class="ni">📊</span><span class="nl">Finanzas</span></button>
-  </a>
-  <a href="/comandas.html" style="text-decoration:none">
-    <button class="nav-btn" title="Restaurante"><span class="ni">🍽️</span><span class="nl">Restaurante</span></button>
-  </a>
-  <a href="/index.html#config" style="text-decoration:none">
-    <button class="nav-btn" style="margin-top:auto" title="Configuración"><span class="ni">⚙️</span><span class="nl">Configuración</span></button>
-  </a>
-</nav>
 
 <div class="main">
   <div class="topbar">
@@ -167,21 +131,7 @@ function doLogout() {
   window.location.href = '/portal.html';
 }
 
-document.getElementById('hamburger').addEventListener('click', () => {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sb-overlay').classList.toggle('open');
-});
-document.getElementById('sb-overlay').addEventListener('click', () => {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sb-overlay').classList.remove('open');
-});
 
-// Cargar logo
-fetch('/index.html').then(r=>r.text()).then(txt => {
-  const m = txt.match(/class="s-logo"><img src="(data:image[^"]+)"/);
-  if (m) document.getElementById('s-logo-caja').innerHTML =
-    '<img src="'+m[1]+'" style="width:100%;height:100%;object-fit:cover">';
-}).catch(()=>{});
 
 // ── API ───────────────────────────────────────────────
 async function api(method, path, body) {
@@ -1058,5 +1008,6 @@ async function renderMensual(el) {
 // ── INIT ──────────────────────────────────────────────
 render();
 </script>
+<script src="/sidebar.js"></script>
 </body>
 </html>
