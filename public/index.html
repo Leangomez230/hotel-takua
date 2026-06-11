@@ -301,7 +301,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
     <div class="s-logo">T</div>
     <button class="nav-btn active" id="nav-dashboard"><span class="ni">🏠</span><span class="nl">Inicio</span></button>
     <button class="nav-btn" id="nav-habitaciones"><span class="ni">🛏</span><span class="nl">Habitaciones</span></button>
-    <button class="nav-btn nav-admin" id="nav-reservas"><span class="ni">📅</span><span class="nl">Reservas</span></button>
+    <button class="nav-btn nav-admin" id="nav-reservas" onclick="window.location.href='/reservas.html'"><span class="ni">📅</span><span class="nl">Reservas</span></button>
     <button class="nav-btn nav-admin" id="nav-huespedes"><span class="ni">👤</span><span class="nl">Huéspedes</span></button>
     <button class="nav-btn nav-admin" id="nav-tienda"><span class="ni">🛒</span><span class="nl">Tienda POS</span></button>
     <button class="nav-btn nav-admin" id="nav-inventario"><span class="ni">📦</span><span class="nl">Inventario</span></button>
@@ -443,11 +443,13 @@ function closeSidebar() {
 }
  
 // Nav wiring
-['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].forEach(p=>{
+['dashboard','habitaciones','huespedes','tienda','inventario','caja','finanzas','config'].forEach(p=>{
   document.getElementById('nav-'+p)?.addEventListener('click',()=>{
     setActiveNav('nav-'+p); closeSidebar(); goTo(p);
   });
 });
+// Reservas siempre va a reservas.html
+document.getElementById('nav-reservas')?.addEventListener('click',()=>{ window.location.href='/reservas.html'; });
 document.getElementById('tb-caja')?.addEventListener('click',()=>{ setActiveNav('nav-caja'); goTo('caja'); });
  
 function setActiveNav(id) {
