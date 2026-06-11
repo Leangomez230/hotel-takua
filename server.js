@@ -398,25 +398,28 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
 
     if (totalCobrar > 0) {
       const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-      if (turnoHab) {
-        if (saldo > 0) {
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [turnoHab.id, `Saldo Checkout Hab. ${hab.numero} — ${reserva.nombre_huesped||''}`,
-             saldo, metodo_pago_extra||'Efectivo', reserva?`Reserva #${reserva.id}`:'',
-             req.user.id, req.user.nombre, id, hab.numero]
-          );
-        }
-        if (extra > 0) {
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
-            [turnoHab.id, concepto_extra||`Extra Checkout Hab. ${hab.numero}`,
-             extra, metodo_pago_extra||'Efectivo',
-             req.user.id, req.user.nombre, id, hab.numero]
-          );
-        }
+      if (!turnoHab) {
+        return res.status(400).json({
+          error: `No hay turno de habitaciones abierto. Abrí el turno en Caja antes de realizar el check-out con cobro pendiente de ${new Intl.NumberFormat('es-AR').format(totalCobrar)}.`
+        });
+      }
+      if (saldo > 0) {
+        await db.query(
+          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [turnoHab.id, `Saldo Checkout Hab. ${hab.numero} — ${reserva.nombre_huesped||''}`,
+           saldo, metodo_pago_extra||'Efectivo', reserva?`Reserva #${reserva.id}`:'',
+           req.user.id, req.user.nombre, id, hab.numero]
+        );
+      }
+      if (extra > 0) {
+        await db.query(
+          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
+          [turnoHab.id, concepto_extra||`Extra Checkout Hab. ${hab.numero}`,
+           extra, metodo_pago_extra||'Efectivo',
+           req.user.id, req.user.nombre, id, hab.numero]
+        );
       }
     }
 
