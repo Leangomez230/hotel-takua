@@ -438,6 +438,23 @@ try {
     console.log('✅ Productos creados');
   }
 
+  // Movimientos manuales (carga retroactiva)
+  await query(`
+    CREATE TABLE IF NOT EXISTS movimientos_manuales (
+      id SERIAL PRIMARY KEY,
+      fecha DATE NOT NULL,
+      concepto TEXT NOT NULL DEFAULT '',
+      monto REAL NOT NULL DEFAULT 0,
+      tipo TEXT NOT NULL DEFAULT 'ingreso',
+      metodo_pago TEXT DEFAULT 'Efectivo',
+      rubro TEXT NOT NULL DEFAULT 'habitaciones',
+      usuario_id INTEGER,
+      usuario_nombre TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('✅ Tabla movimientos_manuales lista');
+
   console.log('✅ Base de datos PostgreSQL lista');
 }
 
