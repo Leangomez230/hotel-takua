@@ -1013,6 +1013,20 @@ async function buscarPeriodo() {
       <div style="font-size:40px;opacity:.3">💰</div>
     </div>
 
+    <!-- Botones reporte -->
+    <div style="display:flex;gap:10px;margin-bottom:18px">
+      <button onclick="imprimirReporte('periodo','${desde}','${hasta}')"
+        style="flex:1;background:#1a2035;color:#fff;border:none;border-radius:10px;padding:10px 16px;
+               font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
+        🖨️ Imprimir reporte
+      </button>
+      <button onclick="exportarPDFReporte('periodo','${desde}','${hasta}')"
+        style="flex:1;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:10px;padding:10px 16px;
+               font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
+        📄 Exportar PDF
+      </button>
+    </div>
+
     <!-- Por día -->
     <div class="card-title" style="margin-bottom:12px">📅 Por día</div>
     ${(data.por_dia||[]).length ? (() => {
@@ -1030,6 +1044,8 @@ async function buscarPeriodo() {
           <strong>${fmt(v.rest+v.hab)}</strong>
         </div>`).join('');
     })() : '<div style="color:#94a3b8;text-align:center;padding:20px">Sin datos para este período</div>'}`;
+  // Guardar data para los reportes
+  window._reporteData = { data, desde, hasta, label: `Período ${desde} al ${hasta}` };
 }
 
 // ── TAB MENSUAL ───────────────────────────────────────
@@ -1108,7 +1124,297 @@ async function renderMensual(el) {
             <strong style="min-width:90px;text-align:right">${fmt(v.rest+v.hab)}</strong>
           </div>`).join('');
       })() : '<div style="color:#94a3b8;text-align:center;padding:20px">Sin datos este mes</div>'}
+
+      <!-- Botones reporte mensual -->
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button onclick="imprimirReporte('mensual','${desde}','${hasta}')"
+          style="flex:1;background:#1a2035;color:#fff;border:none;border-radius:10px;padding:10px 16px;
+                 font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
+          🖨️ Imprimir reporte
+        </button>
+        <button onclick="exportarPDFReporte('mensual','${desde}','${hasta}')"
+          style="flex:1;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:10px;padding:10px 16px;
+                 font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">
+          📄 Exportar PDF
+        </button>
+      </div>
     </div>`;
+  // Guardar data para los reportes
+  window._reporteData = { data, desde, hasta, label: mesNombre };
+}
+
+// ── REPORTES ──────────────────────────────────────────
+
+function generarHTMLReporte(tipo, desde, hasta) {
+  const { data, label } = window._reporteData || {};
+  if (!data) return null;
+
+  const rest = data.restaurante || {};
+  const hab  = data.habitaciones || {};
+  const restTotal   = (rest.por_metodo||[]).reduce((s,m)=>s+Number(m.total||0),0);
+  const restRetiros = Number(rest.retiros||0);
+  const habTotal    = (hab.ingresos||[]).reduce((s,m)=>s+Number(m.total||0),0);
+  const habEgresos  = Number(hab.egresos||0);
+  const netoRest    = restTotal - restRetiros;
+  const netoHab     = habTotal - habEgresos;
+  const total       = netoRest + netoHab;
+  const egresos     = restRetiros + habEgresos;
+
+  // Consolidado por método de pago
+  const metodos = {};
+  (rest.por_metodo||[]).forEach(m=>{ metodos[m.metodo_pago]=(metodos[m.metodo_pago]||0)+Number(m.total||0); });
+  (hab.ingresos||[]).forEach(m=>{ metodos[m.metodo_pago]=(metodos[m.metodo_pago]||0)+Number(m.total||0); });
+
+  // Datos por día
+  const dias = {};
+  (data.por_dia||[]).forEach(d=>{
+    if(!dias[d.dia]) dias[d.dia]={rest:0,hab:0};
+    if(d.fuente==='restaurante') dias[d.dia].rest=Number(d.total||0);
+    else dias[d.dia].hab=Number(d.total||0);
+  });
+  const diasArr = Object.entries(dias).sort((a,b)=>a[0]>b[0]?1:-1);
+
+  // ── Gráfico de torta (SVG) — distribución por rubro ──
+  const tortaData = [
+    { label:'Restaurante', val: netoRest, color:'#3b82f6' },
+    { label:'Habitaciones', val: netoHab, color:'#14b8a6' },
+  ].filter(d=>d.val>0);
+  const tortaTotal = tortaData.reduce((s,d)=>s+d.val,0);
+  let tortaSVG = '';
+  if (tortaTotal > 0) {
+    let angle = -Math.PI/2;
+    const cx=120, cy=100, r=80;
+    const paths = tortaData.map(d => {
+      const slice = (d.val/tortaTotal)*2*Math.PI;
+      const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+      angle += slice;
+      const x2=cx+r*Math.cos(angle), y2=cy+r*Math.sin(angle);
+      const large = slice>Math.PI?1:0;
+      return `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${d.color}" stroke="#fff" stroke-width="2"/>`;
+    }).join('');
+    const leyenda = tortaData.map((d,i)=>`
+      <rect x="250" y="${30+i*30}" width="14" height="14" fill="${d.color}" rx="3"/>
+      <text x="270" y="${42+i*30}" font-size="12" fill="#374151">${d.label}: ${fmt(d.val)} (${Math.round(d.val/tortaTotal*100)}%)</text>
+    `).join('');
+    tortaSVG = `<svg width="420" height="220" viewBox="0 0 420 220">
+      ${paths}
+      <text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="11" fill="#6b7280">${fmt(tortaTotal)}</text>
+      ${leyenda}
+    </svg>`;
+  }
+
+  // ── Gráfico de barras por día (SVG) ──
+  let barrasSVG = '';
+  if (diasArr.length > 0) {
+    const maxVal = Math.max(...diasArr.map(([,v])=>v.rest+v.hab), 1);
+    const W=600, H=160, padL=10, padR=10, padB=30, barW=Math.max(8, Math.floor((W-padL-padR)/diasArr.length)-2);
+    const escala = (H-padB) / maxVal;
+    const bars = diasArr.map(([dia,v],i)=>{
+      const x = padL + i*((W-padL-padR)/diasArr.length);
+      const hRest = v.rest*escala, hHab = v.hab*escala;
+      const label = dia.slice(5); // MM-DD
+      return `
+        <rect x="${x+1}" y="${H-padB-hRest-hHab}" width="${barW-2}" height="${hRest}" fill="#3b82f6" rx="2"/>
+        <rect x="${x+1}" y="${H-padB-hHab}" width="${barW-2}" height="${hHab}" fill="#14b8a6" rx="2"/>
+        <text x="${x+barW/2}" y="${H-2}" text-anchor="middle" font-size="8" fill="#9ca3af">${label}</text>
+      `;
+    }).join('');
+    barrasSVG = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+      <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#e5e7eb" stroke-width="1"/>
+      ${bars}
+      <rect x="10" y="5" width="10" height="10" fill="#3b82f6" rx="2"/><text x="24" y="14" font-size="10" fill="#374151">Restaurante</text>
+      <rect x="100" y="5" width="10" height="10" fill="#14b8a6" rx="2"/><text x="114" y="14" font-size="10" fill="#374151">Habitaciones</text>
+    </svg>`;
+  }
+
+  // ── Gráfico torta métodos de pago ──
+  const metodosArr = Object.entries(metodos).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const coloresMetodos = ['#8b5cf6','#f59e0b','#10b981','#ef4444','#3b82f6','#64748b'];
+  let tortaMetodosSVG = '';
+  if (metodosArr.length > 0) {
+    const totalM = metodosArr.reduce((s,[,v])=>s+v,0);
+    let ang = -Math.PI/2;
+    const cx=100,cy=100,r=75;
+    const pathsM = metodosArr.map(([ ,v],i)=>{
+      const color=coloresMetodos[i%coloresMetodos.length];
+      const slice=(v/totalM)*2*Math.PI;
+      const x1=cx+r*Math.cos(ang), y1=cy+r*Math.sin(ang);
+      ang+=slice;
+      const x2=cx+r*Math.cos(ang), y2=cy+r*Math.sin(ang);
+      return `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${slice>Math.PI?1:0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${color}" stroke="#fff" stroke-width="2"/>`;
+    }).join('');
+    const leyM = metodosArr.map(([m,v],i)=>`
+      <rect x="210" y="${15+i*22}" width="12" height="12" fill="${coloresMetodos[i%coloresMetodos.length]}" rx="2"/>
+      <text x="226" y="${25+i*22}" font-size="11" fill="#374151">${m}: ${fmt(v)}</text>
+    `).join('');
+    tortaMetodosSVG = `<svg width="420" height="210" viewBox="0 0 420 210">
+      ${pathsM}${leyM}
+    </svg>`;
+  }
+
+  const ahora = new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<style>
+  @page{size:A4;margin:15mm 12mm}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#111;background:#fff}
+  .header{background:#1a2035;color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:16px}
+  .header h1{font-size:20px;font-weight:800}
+  .header p{font-size:11px;opacity:.7;margin-top:3px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+  .card{border:1.5px solid #e5e7eb;border-radius:8px;padding:12px 14px}
+  .card h2{font-size:13px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f3f4f6}
+  .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f9fafb;font-size:11px}
+  .row.total{border-top:2px solid #e5e7eb;border-bottom:none;margin-top:4px;padding-top:6px;font-weight:800;font-size:13px}
+  .badge-total{background:#7c3aed;color:#fff;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .badge-total .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.8}
+  .badge-total .val{font-size:24px;font-weight:900}
+  .section-title{font-size:13px;font-weight:800;color:#374151;margin:14px 0 8px;padding-bottom:4px;border-bottom:2px solid #e5e7eb}
+  .dia-row{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #f9fafb;font-size:11px}
+  .dia-row .dia{min-width:80px;font-weight:600}
+  .dia-row .rest{color:#1d4ed8;min-width:90px}
+  .dia-row .hab{color:#0f766e;min-width:90px}
+  .dia-row .tot{font-weight:700;margin-left:auto}
+  .grafico{margin-bottom:16px;text-align:center}
+  .grafico h3{font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-align:left}
+  .footer{margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af;display:flex;justify-content:space-between}
+  table.movs{width:100%;border-collapse:collapse;font-size:10px;margin-top:6px}
+  table.movs th{background:#f8fafc;padding:5px 6px;text-align:left;font-weight:700;border-bottom:2px solid #e5e7eb}
+  table.movs td{padding:4px 6px;border-bottom:1px solid #f1f5f9}
+  .neg{color:#dc2626}
+  @media print{.no-print{display:none}}
+</style></head><body>
+
+<div class="header">
+  <h1>🏨 Hotel TK Serrano — Reporte Contable</h1>
+  <p>${label} &nbsp;·&nbsp; Generado: ${ahora}</p>
+</div>
+
+<!-- Resumen ejecutivo -->
+<div class="grid2">
+  <div class="card" style="border-color:#bfdbfe;background:#eff6ff">
+    <h2 style="color:#1d4ed8">🍽️ Restaurante</h2>
+    ${(rest.por_metodo||[]).map(m=>`<div class="row"><span>${m.metodo_pago} (${m.cant} cmd.)</span><span>${fmt(Number(m.total))}</span></div>`).join('')}
+    ${restRetiros?`<div class="row neg"><span>Retiros / egresos</span><span>- ${fmt(restRetiros)}</span></div>`:''}
+    <div class="row total"><span>NETO RESTAURANTE</span><span style="color:#1d4ed8">${fmt(netoRest)}</span></div>
+  </div>
+  <div class="card" style="border-color:#a7f3d0;background:#f0fdf9">
+    <h2 style="color:#0f766e">🛏️ Habitaciones</h2>
+    ${(hab.ingresos||[]).map(m=>`<div class="row"><span>${m.metodo_pago} (${m.cant})</span><span>${fmt(Number(m.total))}</span></div>`).join('')}
+    ${habEgresos?`<div class="row neg"><span>Egresos</span><span>- ${fmt(habEgresos)}</span></div>`:''}
+    <div class="row total"><span>NETO HABITACIONES</span><span style="color:#0f766e">${fmt(netoHab)}</span></div>
+  </div>
+</div>
+
+<div class="badge-total">
+  <div><div class="lbl">Total consolidado · ${label}</div><div class="val">${fmt(total)}</div></div>
+  <div style="text-align:right;font-size:11px;opacity:.8">
+    Ingresos brutos: ${fmt(restTotal+habTotal)}<br>
+    Egresos/retiros: - ${fmt(egresos)}<br>
+    Neto: ${fmt(total)}
+  </div>
+</div>
+
+<!-- Gráfico distribución por rubro -->
+${tortaSVG ? `<div class="grafico"><h3>Distribución por rubro</h3>${tortaSVG}</div>` : ''}
+
+<!-- Gráfico distribución por método de pago -->
+${tortaMetodosSVG ? `<div class="grafico"><h3>Métodos de pago (consolidado)</h3>${tortaMetodosSVG}</div>` : ''}
+
+<!-- Gráfico barras por día -->
+${barrasSVG ? `<div class="grafico"><h3>Ingresos por día</h3>${barrasSVG}</div>` : ''}
+
+<!-- Consolidado por método de pago -->
+<div class="section-title">💳 Consolidado por método de pago</div>
+<div class="card">
+  ${metodosArr.map(([m,v])=>`<div class="row"><span>${m}</span><span>${fmt(v)}</span></div>`).join('')}
+  <div class="row total"><span>TOTAL INGRESOS BRUTOS</span><span>${fmt(restTotal+habTotal)}</span></div>
+</div>
+
+<!-- Detalle por día -->
+<div class="section-title">📅 Detalle por día</div>
+<div style="font-size:10px;font-weight:700;display:flex;gap:8px;padding:4px 0;color:#6b7280;border-bottom:1px solid #e5e7eb">
+  <span style="min-width:80px">Fecha</span>
+  <span style="min-width:90px;color:#1d4ed8">Restaurante</span>
+  <span style="min-width:90px;color:#0f766e">Habitaciones</span>
+  <span style="margin-left:auto">Total día</span>
+</div>
+${diasArr.map(([dia,v])=>`
+  <div class="dia-row">
+    <span class="dia">${fmtDay(dia)}</span>
+    <span class="rest">${fmt(v.rest)}</span>
+    <span class="hab">${fmt(v.hab)}</span>
+    <span class="tot">${fmt(v.rest+v.hab)}</span>
+  </div>`).join('')}
+
+${(rest.detalle_turnos||[]).length ? `
+<div class="section-title">📋 Turnos de restaurante</div>
+<table class="movs">
+  <thead><tr><th>Turno</th><th>Cajero</th><th>Apertura</th><th>Cierre</th><th>Comandas</th><th>Cobrado</th><th>Retiros</th><th>Neto</th></tr></thead>
+  <tbody>
+  ${(rest.detalle_turnos||[]).map(t=>`<tr>
+    <td>#${t.id}</td><td>${t.cajero_nombre||'—'}</td>
+    <td>${t.abierto_at?new Date(t.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</td>
+    <td>${t.cerrado_at?new Date(t.cerrado_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Abierto'}</td>
+    <td>${t.cant_comandas||0}</td>
+    <td>${fmt(t.total_cobrado||0)}</td>
+    <td class="neg">${t.retiros>0?'- '+fmt(t.retiros):'-'}</td>
+    <td><strong>${fmt((t.total_cobrado||0)-(t.retiros||0))}</strong></td>
+  </tr>`).join('')}
+  </tbody>
+</table>` : ''}
+
+${(hab.detalle_turnos||[]).length ? `
+<div class="section-title">📋 Turnos de habitaciones</div>
+<table class="movs">
+  <thead><tr><th>Turno</th><th>Cajero</th><th>Apertura</th><th>Cierre</th><th>Ingresos</th><th>Egresos</th><th>Neto</th></tr></thead>
+  <tbody>
+  ${(hab.detalle_turnos||[]).map(t=>`<tr>
+    <td>#${t.id}</td><td>${t.cajero_nombre||'—'}</td>
+    <td>${t.abierto_at?new Date(t.abierto_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</td>
+    <td>${t.cerrado_at?new Date(t.cerrado_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Abierto'}</td>
+    <td>${fmt(t.total_ingresos||0)}</td>
+    <td class="neg">${t.total_egresos>0?'- '+fmt(t.total_egresos):'-'}</td>
+    <td><strong>${fmt((t.total_ingresos||0)-(t.total_egresos||0))}</strong></td>
+  </tr>`).join('')}
+  </tbody>
+</table>` : ''}
+
+<div class="footer">
+  <span>Hotel TK Serrano — Sistema de Gestión Hotel Takuá</span>
+  <span>Reporte generado: ${ahora}</span>
+</div>
+</body></html>`;
+}
+
+function imprimirReporte(tipo, desde, hasta) {
+  const html = generarHTMLReporte(tipo, desde, hasta);
+  if (!html) { toast('No hay datos para imprimir', false); return; }
+  const id = 'reporte-frame';
+  let frame = document.getElementById(id);
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.id = id;
+    frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none';
+    document.body.appendChild(frame);
+  }
+  frame.srcdoc = html;
+  frame.onload = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch(e) {} };
+}
+
+function exportarPDFReporte(tipo, desde, hasta) {
+  const html = generarHTMLReporte(tipo, desde, hasta);
+  if (!html) { toast('No hay datos para exportar', false); return; }
+  // Abrir en nueva ventana para imprimir como PDF
+  const win = window.open('', '_blank');
+  if (!win) { toast('Permitir popups para exportar PDF', false); return; }
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => {
+    win.print();
+    // El usuario elige "Guardar como PDF" en el diálogo de impresión
+  };
 }
 
 // ── INIT ──────────────────────────────────────────────
