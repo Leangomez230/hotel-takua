@@ -2052,7 +2052,11 @@ function showReservaModal(habId) {
       notas:document.getElementById('res-notas').value,
       monto_senia:parseMonto(document.getElementById('res-senia').value),
     });
-    if (r?.ok) { toast('Reserva creada'); closeModal(); await refreshHabs(); }
+    if (r?.ok) {
+      closeModal(); await refreshHabs();
+      if (r.aviso) setTimeout(() => alert(r.aviso), 300);
+      else toast('Reserva creada');
+    }
     else toast(r?.error||'Error',false);
   });
 }
