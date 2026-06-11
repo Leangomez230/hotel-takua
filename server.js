@@ -508,7 +508,7 @@ app.get('/api/reservas', auth, async (req, res) => {
 // Reservas para el calendario Gantt (por rango de fechas)
 app.get('/api/reservas/calendario', auth, async (req, res) => {
   try {
-    if (!['admin','recepcionista','mucama'].includes(req.user.rol))
+    if (!['admin','recepcionista','mucama','cajero'].includes(req.user.rol))
       return res.status(403).json({ error: 'Sin permisos' });
     const { desde, hasta } = req.query;
     if (!desde || !hasta) return res.status(400).json({ error: 'Falta rango de fechas' });
