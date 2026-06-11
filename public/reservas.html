@@ -211,8 +211,8 @@ const TOKEN = localStorage.getItem('takua_token');
 const ME    = JSON.parse(localStorage.getItem('takua_user') || 'null');
 if (!TOKEN || !ME) window.location.href = '/portal.html';
 
-// Mucamas solo pueden ver el calendario, no la lista
-const esMucama = ME?.rol === 'mucama';
+// Mucamas y cajeros solo pueden ver el calendario, no la lista
+const esMucama = ['mucama','cajero'].includes(ME?.rol);
 document.getElementById('user-av').textContent = (ME?.nombre||'A')[0].toUpperCase();
 function doLogout() {
   localStorage.removeItem('takua_token');
