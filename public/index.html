@@ -443,14 +443,16 @@ function closeSidebar() {
 }
  
 // Nav wiring
-['dashboard','habitaciones','huespedes','tienda','inventario','caja','finanzas','config'].forEach(p=>{
+['dashboard','habitaciones','huespedes','tienda','finanzas','config'].forEach(p=>{
   document.getElementById('nav-'+p)?.addEventListener('click',()=>{
     setActiveNav('nav-'+p); closeSidebar(); goTo(p);
   });
 });
-// Reservas siempre va a reservas.html
+// Páginas separadas
 document.getElementById('nav-reservas')?.addEventListener('click',()=>{ window.location.href='/reservas.html'; });
-document.getElementById('tb-caja')?.addEventListener('click',()=>{ setActiveNav('nav-caja'); goTo('caja'); });
+document.getElementById('nav-caja')?.addEventListener('click',()=>{ window.location.href='/caja.html'; });
+document.getElementById('nav-inventario')?.addEventListener('click',()=>{ window.location.href='/inventario.html'; });
+document.getElementById('tb-caja')?.addEventListener('click',()=>{ window.location.href='/caja.html'; });
  
 function setActiveNav(id) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
