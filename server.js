@@ -505,6 +505,22 @@ app.get('/api/reservas', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Reservas para el calendario Gantt (por rango de fechas)
+app.get('/api/reservas/calendario', auth, adminOrRecep, async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+    if (!desde || !hasta) return res.status(400).json({ error: 'Falta rango de fechas' });
+    res.json(await db.getAll(`
+      SELECT r.*, h.numero as hab_numero, h.ala, h.tipo
+      FROM reservas r
+      LEFT JOIN habitaciones h ON r.habitacion_id = h.id
+      WHERE r.estado IN ('activa','futura','finalizada')
+      AND r.entrada <= $2 AND r.salida >= $1
+      ORDER BY h.ala, h.numero, r.entrada
+    `, [desde, hasta]));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
   try {
     const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia, saldo_pendiente } = req.body;
