@@ -812,7 +812,7 @@ function renderMap(container, habs) {
     card.addEventListener('click', e=>{
       // Si tocaron el botón QR, no abrir modal de hab
       if (e.target.closest('.qr-btn')) return;
-      const hab=habitaciones.find(h=>h.id===card.dataset.hid);
+      const hab=habitaciones.find(h=>String(h.id)===String(card.dataset.hid));
       if (hab) showHabModal(hab);
     });
   });
@@ -820,7 +820,7 @@ function renderMap(container, habs) {
   container.querySelectorAll('.qr-btn[data-hid]').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
-      const hab = habitaciones.find(h=>h.id===btn.dataset.hid);
+      const hab = habitaciones.find(h=>String(h.id)===String(btn.dataset.hid));
       if (hab) showQRModal(hab);
     });
   });
@@ -1444,7 +1444,7 @@ function applyMantMapAlerts() {
   if (currentUser?.rol !== 'mantenimiento') return;
   document.querySelectorAll('.rcard[data-hid]').forEach(card => {
     const hid = card.dataset.hid;
-    const hab = (habitaciones||[]).find(h => h.id === hid);
+    const hab = (habitaciones||[]).find(h => String(h.id) === String(hid));
     if (hab?.status === 'mantenimiento') {
       card.classList.add('necesita-mantenimiento');
       if (!card.querySelector('.mant-badge-card')) {
@@ -1731,7 +1731,7 @@ function showCambiarHabModal(hab) {
       nueva_habitacion_id: habDestinoId, motivo, estado_origen: estadoOrigen
     });
     if (r?.ok) {
-      const destino = habitaciones.find(h => h.id === habDestinoId);
+      const destino = habitaciones.find(h => String(h.id) === String(habDestinoId));
       toast(`✅ ${r.nombre_huesped} trasladado/a a Hab. ${destino?.numero}`);
       closeModal();
       await refreshHabs();
@@ -1865,7 +1865,7 @@ async function showCheckoutModal(hab) {
 // CHECK-IN
 // ══════════════════════════════════════
 async function showCheckinModal(habId) {
-  const hab = habitaciones.find(h=>h.id===habId);
+  const hab = habitaciones.find(h=>String(h.id)===String(habId));
   const now = new Date(), tom = new Date(now); tom.setDate(tom.getDate()+1);
   const iso = d => d.toISOString().slice(0,16);
   const pn  = hab?.precio_noche||50000;
@@ -2011,7 +2011,7 @@ async function showCheckinModal(habId) {
 // RESERVA
 // ══════════════════════════════════════
 function showReservaModal(habId) {
-  const hab=habitaciones.find(h=>h.id===habId);
+  const hab=habitaciones.find(h=>String(h.id)===String(habId));
   const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
   const iso=d=>d.toISOString().slice(0,16);
   const pn=hab?.precio_noche||50000;
