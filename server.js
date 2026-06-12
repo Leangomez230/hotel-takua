@@ -300,9 +300,9 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
     if (!salida)        return res.status(400).json({ error: 'Falta la fecha de salida' });
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
-    const statusesPermitidos = ['libre','lista','reservada','libre_limpia'];
+    const statusesPermitidos = ['libre','lista','reservada','libre_limpia','limpieza','mantenimiento'];
     if (!statusesPermitidos.includes(hab.status))
-      return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
+      return res.status(400).json({ error: `La habitación está en estado "${hab.status}" y no se puede hacer check-in.` });
 
     // Registrar/actualizar huésped
     let huespedId = null;
