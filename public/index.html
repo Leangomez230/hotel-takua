@@ -71,7 +71,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .sc .val{font-size:20px;font-weight:900;line-height:1.1}
 .sc.occ{background:linear-gradient(135deg,#1a2035,#2d3a5a)}
 .sc.hosp{background:linear-gradient(135deg,#2563eb,#3b82f6)}
-.sc.tienda{background:linear-gradient(135deg,#f59e0b,#fbbf24)}
 .sc.gastos{background:linear-gradient(135deg,#ec4899,#f43f5e)}
 .sc.balance{background:linear-gradient(135deg,#059669,#10b981)}
 .occ-big{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:900;color:var(--accent)}
@@ -617,8 +616,8 @@ function goTo(page) {
   const isMantenimiento=currentUser?.rol==='mantenimiento';
   if (isMantenimiento && !['dashboard','habitaciones'].includes(page)) { goTo('dashboard'); return; }
   const pages={dashboard:renderDashboard, habitaciones:renderHabitaciones, reservas:renderReservas,
-    huespedes:renderHuespedes, tienda:renderTienda, inventario:renderInventario,
-    caja:renderCaja, finanzas:renderFinanzas, config:renderConfig};
+    inventario:renderInventario,
+    caja:renderCaja, config:renderConfig};
   if (pages[page]) pages[page]();
 }
  
@@ -2242,102 +2241,6 @@ async function eliminarReserva(id, nombre) {
 // ══════════════════════════════════════
 // HUÉSPEDES
 // ══════════════════════════════════════
-async function renderHuespedes() {
-  const data=await apiFetch('GET','/huespedes?q=')||[];
-  const buildRows=arr=>arr.map(h=>`<tr>
-    <td><strong>${h.nombre}</strong></td><td>${h.tipo_doc}: ${h.documento}</td>
-    <td>${h.telefono||'—'}</td><td>${h.email||'—'}</td><td>${h.nacionalidad}</td>
-    <td><span class="pill pb">${h.visitas} visitas</span></td>
-  </tr>`).join('');
-  document.getElementById('content').innerHTML=`
-    <div class="section-card">
-      <div class="sc-head"><h2>👤 Huéspedes</h2>
-        <input type="text" id="h-search" placeholder="Buscar nombre o DNI..."
-          style="border:1.5px solid #e0e6ef;border-radius:10px;padding:8px 14px;font-size:13px;font-family:'Nunito',sans-serif;width:220px">
-      </div>
-      <div style="overflow-x:auto"><table class="data-table" id="h-tbl">
-        <thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Nac.</th><th>Historial</th></tr></thead>
-        <tbody>${buildRows(data)}</tbody>
-      </table></div>
-    </div>`;
-  document.getElementById('h-search').addEventListener('input', async e=>{
-    const res=await apiFetch('GET',`/huespedes?q=${encodeURIComponent(e.target.value)}`)||[];
-    document.querySelector('#h-tbl tbody').innerHTML=buildRows(res)||'<tr><td colspan="6" style="text-align:center;color:#94a3b8">Sin resultados</td></tr>';
-  });
-}
- 
-// ══════════════════════════════════════
-// TIENDA
-// ══════════════════════════════════════
-async function renderTienda() {
-  const productos=await apiFetch('GET','/productos')||[];
-  cart=[];
-  document.getElementById('content').innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
-      <div class="section-card">
-        <div class="sc-head"><h2>🛒 Tienda</h2></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
-          ${productos.map(p=>`<div class="prod-card" data-pid="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio}"
-            style="background:#f8fafc;border:1.5px solid #e0e6ef;border-radius:12px;padding:14px;cursor:pointer;text-align:center">
-            <div style="font-size:13px;font-weight:700;margin-bottom:4px">${p.nombre}</div>
-            <div style="font-size:12px;color:var(--accent);font-weight:800">${fmt(p.precio)}</div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:2px">Stock: ${p.stock}</div>
-          </div>`).join('')}
-        </div>
-      </div>
-      <div class="section-card">
-        <h2 style="font-size:16px;margin-bottom:14px">🧾 Ticket</h2>
-        <div id="cart-items"><div style="text-align:center;color:#94a3b8;padding:20px">Sin productos</div></div>
-        <hr style="border:none;border-top:1px solid #f1f5f9;margin:12px 0">
-        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;margin-bottom:14px">
-          <span>Total</span><span id="cart-total" style="color:var(--accent)">$ 0</span>
-        </div>
-        <button class="confirm-btn" id="btn-cobrar">💳 Cobrar</button>
-        <button class="save-btn" id="btn-limpiar">🗑 Limpiar</button>
-      </div>
-    </div>`;
-  document.querySelectorAll('.prod-card').forEach(card=>{
-    card.addEventListener('click',()=>{
-      const id=parseInt(card.dataset.pid),nombre=card.dataset.nombre,precio=parseFloat(card.dataset.precio);
-      const ex=cart.find(i=>i.id===id);
-      if (ex) ex.qty++; else cart.push({id,nombre,precio,qty:1});
-      renderCart();
-    });
-  });
-  document.getElementById('btn-cobrar').addEventListener('click',cobrar);
-  document.getElementById('btn-limpiar').addEventListener('click',()=>{cart=[];renderCart();});
-}
-function renderCart() {
-  const el=document.getElementById('cart-items'); if(!el) return;
-  if (!cart.length){el.innerHTML='<div style="text-align:center;color:#94a3b8;padding:20px">Sin productos</div>';document.getElementById('cart-total').textContent='$ 0';return;}
-  el.innerHTML=cart.map(i=>`<div class="cart-item">
-    <div><div style="font-size:12px;font-weight:700">${i.nombre}</div><div style="font-size:11px;color:#94a3b8">${fmt(i.precio)} c/u</div></div>
-    <div class="qty-ctrl">
-      <button class="qty-btn" data-id="${i.id}" data-d="-1">−</button>
-      <span style="font-weight:700">${i.qty}</span>
-      <button class="qty-btn" data-id="${i.id}" data-d="1">+</button>
-    </div>
-  </div>`).join('');
-  document.querySelectorAll('.qty-btn').forEach(b=>{
-    b.addEventListener('click',()=>{
-      const id=parseInt(b.dataset.id),d=parseInt(b.dataset.d);
-      const it=cart.find(i=>i.id===id);
-      if(it){it.qty+=d;if(it.qty<=0)cart=cart.filter(i=>i.id!==id);}
-      renderCart();
-    });
-  });
-  document.getElementById('cart-total').textContent=fmt(cart.reduce((a,i)=>a+i.precio*i.qty,0));
-}
-async function cobrar() {
-  if(!cart.length){toast('Agregá productos',false);return;}
-  const r=await apiFetch('POST','/tienda/venta',{items:cart.map(i=>({producto_id:i.id,cantidad:i.qty}))});
-  if(r?.ok){toast(`Venta: ${fmt(r.total)}`);cart=[];renderCart();}
-  else toast(r?.error||'Error',false);
-}
- 
-// ══════════════════════════════════════
-// INVENTARIO
-// ══════════════════════════════════════
 async function renderInventario() {
   const [prods,alertas]=await Promise.all([apiFetch('GET','/productos'),apiFetch('GET','/inventario/alertas')]);
   const alertHTML=(alertas||[]).length?`
@@ -2497,64 +2400,6 @@ function showMov(tipo) {
 // ══════════════════════════════════════
 // FINANZAS
 // ══════════════════════════════════════
-async function renderFinanzas() {
-  const today=new Date().toISOString().slice(0,10);
-  await loadFin(today.slice(0,7)+'-01',today);
-}
-async function loadFin(desde,hasta) {
-  const [data,movs]=await Promise.all([
-    apiFetch('GET',`/finanzas/resumen?desde=${desde}&hasta=${hasta}`),
-    apiFetch('GET',`/finanzas/movimientos?desde=${desde}&hasta=${hasta}`)
-  ]);
-  const today=new Date().toISOString().slice(0,10);
-  const rows=(movs||[]).map(m=>`<tr>
-    <td>${fmtDate(m.created_at)}</td><td>${m.descripcion}</td>
-    <td><span class="pill pgr">${m.categoria}</span></td>
-    <td><span class="pill ${m.tipo==='ingreso'?'pg':'pr'}">${m.tipo}</span></td>
-    <td><strong style="color:${m.tipo==='ingreso'?'#059669':'#dc2626'}">${fmt(m.monto)}</strong></td>
-    <td>${m.metodo_pago}</td>
-  </tr>`).join('');
-  document.getElementById('content').innerHTML=`
-    <div class="section-card">
-      <div class="sc-head"><h2>📊 Finanzas</h2>
-        <div class="filters-row">
-          <input type="date" id="fin-d" value="${desde}" style="border:1.5px solid #e0e6ef;border-radius:8px;padding:6px 10px;font-size:12px;font-family:'Nunito',sans-serif">
-          <input type="date" id="fin-h" value="${hasta}" style="border:1.5px solid #e0e6ef;border-radius:8px;padding:6px 10px;font-size:12px;font-family:'Nunito',sans-serif">
-          <button class="btn-primary" id="fin-filter">Filtrar</button>
-        </div>
-      </div>
-      <div class="caja-summary" style="margin-bottom:20px">
-        <div class="caja-box ing"><div class="cb-label">Ingresos</div><div class="cb-val">${fmt(data?.ingresos)}</div></div>
-        <div class="caja-box eg"><div class="cb-label">Egresos</div><div class="cb-val">${fmt(data?.egresos)}</div></div>
-        <div class="caja-box bal"><div class="cb-label">Balance</div><div class="cb-val">${fmt(data?.balance)}</div></div>
-      </div>
-      <div style="overflow-x:auto"><table class="data-table">
-        <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Tipo</th><th>Monto</th><th>Pago</th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Sin movimientos</td></tr>'}</tbody>
-      </table></div>
-    </div>`;
-  document.getElementById('fin-filter').addEventListener('click',()=>{
-    loadFin(document.getElementById('fin-d').value,document.getElementById('fin-h').value);
-  });
-}
- 
-// ══════════════════════════════════════
-// CONFIG
-// ══════════════════════════════════════
-const ROL_OPTS = `
-  <optgroup label="— Habitaciones —">
-    <option value="recepcionista">Recepcionista</option>
-    <option value="mucama">Mucama / Limpieza</option>
-    <option value="mantenimiento">Mantenimiento</option>
-  </optgroup>
-  <optgroup label="— Restaurante —">
-    <option value="mozo">Mozo</option>
-    <option value="cajero">Cajero</option>
-  </optgroup>
-  <optgroup label="— Sistema —">
-    <option value="admin">Administrador</option>
-  </optgroup>`;
-
 async function renderConfig() {
   let usuarios = await apiFetch('GET','/portal/usuarios');
   if (!usuarios) usuarios = await apiFetch('GET','/usuarios') || [];
@@ -3056,7 +2901,7 @@ if (token && currentUser) {
   startApp();
   // Si viene con hash (desde comandas), navegar a esa sección
   const hash = window.location.hash.replace('#','');
-  if (hash && ['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].includes(hash)) {
+  if (hash && ['dashboard','habitaciones','reservas','inventario','caja','config'].includes(hash)) {
     setTimeout(() => { setActiveNav('nav-'+hash); goTo(hash); }, 100);
   }
 } else { window.location.href = "/portal.html"; }
