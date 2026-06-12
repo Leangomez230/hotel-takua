@@ -278,15 +278,42 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   .main-wrap{margin-left:0!important}
   .topbar{padding:10px 12px;gap:8px}
   #hamburger{display:flex!important}
+
+  /* ── TABS MOBILE ── */
+  .mob-tabs{display:flex!important}
+  .layout-2col{display:block}
+  .col-side,.col-main{width:100%}
+  /* Por defecto ocultar columnas, mostrar solo la activa */
+  .mob-panel{display:none}
+  .mob-panel.mob-active{display:block}
+  /* Métricas arriba siempre visibles */
+  .metricas-grid{margin-bottom:0}
 }
+/* Tabs mobile — ocultos en desktop */
+.mob-tabs{
+  display:none;
+  background:#fff;
+  border-bottom:1px solid #e2e8f0;
+  padding:0 12px;
+  gap:0;
+  position:sticky;top:57px;z-index:90;
+}
+.mob-tab{
+  flex:1;padding:10px 4px;border:none;background:none;
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;
+  color:#94a3b8;cursor:pointer;border-bottom:3px solid transparent;
+  transition:color .15s,border-color .15s;
+}
+.mob-tab.active{color:#00c9b1;border-bottom-color:#00c9b1}
+
 @media(max-width:600px){
   /* Topbar */
   .topbar{padding:8px 10px}
   .tb-left p{display:none}
   /* Contenido principal */
-  .content{padding:10px 8px!important;max-width:100%!important}
+  .content{padding:8px!important;max-width:100%!important}
   /* Métricas más compactas */
-  .metricas-grid{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .metricas-grid{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
   .metrica-card{padding:10px 10px;min-height:65px;border-radius:12px}
   .metrica-card .mc-lbl{font-size:8px;letter-spacing:.5px}
   .metrica-card .mc-ttl{font-size:9px;margin-bottom:1px}
@@ -342,6 +369,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <div class="user-av-tb" id="user-av-tb">A</div>
         <button class="tb-btn salir" onclick="doLogout()">Salir</button>
       </div>
+    </div>
+    <!-- TABS MOBILE -->
+    <div class="mob-tabs" id="mob-tabs-bar">
+      <button class="mob-tab active" id="tab-salon" onclick="setMobTab('salon')">🗺️ Salón</button>
+      <button class="mob-tab" id="tab-caja" onclick="setMobTab('caja')" style="display:none">💰 Caja</button>
+      <button class="mob-tab" id="tab-menu" onclick="setMobTab('menu')" style="display:none">🍽️ Menú</button>
     </div>
     <div id="main-content" class="content"></div>
   </div>
@@ -559,6 +592,36 @@ const mesaDims = (tipo, alias, ancho, alto) => {
   return SZ[tipo]||SZ.cuadrada;
 };
 
+// ── TABS MOBILE ─────────────────────────────────────────────────────
+function setMobTab(tab) {
+  if (window.innerWidth > 900) return;
+  // Actualizar tab activo
+  document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('active'));
+  const btn = document.getElementById('tab-' + tab);
+  if (btn) btn.classList.add('active');
+  // Sincronizar con snav (que renderiza y luego llama applyMobTab)
+  snav(tab);
+}
+function applyMobTab() {
+  if (window.innerWidth > 900) return;
+  // Sincronizar visibilidad de panels con el tab activo
+  const active = document.querySelector('.mob-tab.active');
+  const tab = active ? active.id.replace('tab-','') : 'salon';
+  const panelSalon = document.getElementById('mob-panel-salon');
+  const panelCaja  = document.getElementById('mob-panel-caja');
+  if (!panelSalon && !panelCaja) return;
+  if (tab === 'salon') {
+    if (panelSalon) panelSalon.classList.add('mob-active');
+    if (panelCaja)  panelCaja.classList.remove('mob-active');
+  } else if (tab === 'caja') {
+    if (panelSalon) panelSalon.classList.remove('mob-active');
+    if (panelCaja)  panelCaja.classList.add('mob-active');
+  } else {
+    if (panelSalon) panelSalon.classList.add('mob-active');
+    if (panelCaja)  panelCaja.classList.remove('mob-active');
+  }
+}
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -627,6 +690,18 @@ async function initApp(){
   // (gestión de productos está dentro del desplegable en la pantalla principal)
 
   showScreen('screen-main');
+  // Tabs mobile — visibilidad por rol
+  // Salón: admin, mozo, cajero (siempre visible)
+  // Caja: admin, cajero
+  if (['admin','cajero'].includes(ME.rol)) {
+    const tabCaja = document.getElementById('tab-caja');
+    if (tabCaja) tabCaja.style.display = '';
+  }
+  // Menú: admin, cajero
+  if (['admin','cajero'].includes(ME.rol)) {
+    const tabMenu = document.getElementById('tab-menu');
+    if (tabMenu) tabMenu.style.display = '';
+  }
   await loadAll();
   renderMain();
 
@@ -710,6 +785,8 @@ function snav(id) {
   }
   if (id === 'caja') renderCajero(el);
   if (id === 'menu') renderAdmin(el);
+  // Aplicar tabs mobile tras renderizar
+  setTimeout(applyMobTab, 0);
 }
 
 // ════════════════════════════════════
@@ -863,12 +940,12 @@ function renderCajero(el){
 
     <div class="layout-2col">
       <!-- Columna lateral IZQUIERDA: Caja -->
-      <div class="col-side">
+      <div class="col-side mob-panel mob-active" id="mob-panel-caja">
         ${cajaHTML}
       </div>
 
       <!-- Columna principal DERECHA: Mesas en cuenta + Mapa + Menú -->
-      <div class="col-main">
+      <div class="col-main mob-panel mob-active" id="mob-panel-salon">
         ${cuentaHTML}
 
         <div class="card" style="margin-bottom:16px">
@@ -1091,7 +1168,7 @@ function renderAdmin(el){
 
     <div class="layout-2col">
       <!-- Columna lateral IZQUIERDA: Caja + Historial -->
-      <div class="col-side">
+      <div class="col-side mob-panel" id="mob-panel-caja">
         ${cajaPanelHTML}
 
         <!-- Historial -->
@@ -1107,7 +1184,7 @@ function renderAdmin(el){
       </div>
 
       <!-- COLUMNA PRINCIPAL DERECHA: Mapa + Menú -->
-      <div class="col-main">
+      <div class="col-main mob-panel mob-active" id="mob-panel-salon">
         <div class="card" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div>
