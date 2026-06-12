@@ -272,6 +272,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   .form-grid-2{grid-template-columns:1fr}
 }
 
+.tabs{display:flex;gap:6px;padding:0;margin-bottom:20px;flex-wrap:wrap}
+.tab{flex:1;min-width:80px;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.tab:hover{background:#f8fafc;color:#1a2035;border-color:#cbd5e1}
+.tab.active{background:linear-gradient(135deg,#1a2035,#2d3a5c);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(26,32,53,.25)}
 /* ── RESPONSIVE MOBILE ── */
 @media(max-width:900px){
   :root{--sw:0px}
@@ -279,32 +283,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   .topbar{padding:10px 12px;gap:8px}
   #hamburger{display:flex!important}
 
-  /* ── TABS MOBILE ── */
-  .mob-tabs{display:flex!important}
-  .layout-2col{display:block}
-  .col-side,.col-main{width:100%}
-  /* Por defecto ocultar columnas, mostrar solo la activa */
-  .mob-panel{display:none}
-  .mob-panel.mob-active{display:block}
-  /* Métricas arriba siempre visibles */
-  .metricas-grid{margin-bottom:0}
+
 }
 /* Tabs mobile — ocultos en desktop */
-.mob-tabs{
-  display:none;
-  background:#fff;
-  border-bottom:1px solid #e2e8f0;
-  padding:0 12px;
-  gap:0;
-  position:sticky;top:57px;z-index:90;
-}
-.mob-tab{
-  flex:1;padding:10px 4px;border:none;background:none;
-  font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;
-  color:#94a3b8;cursor:pointer;border-bottom:3px solid transparent;
-  transition:color .15s,border-color .15s;
-}
-.mob-tab.active{color:#00c9b1;border-bottom-color:#00c9b1}
+
 
 @media(max-width:600px){
   /* Topbar */
@@ -369,12 +351,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <div class="user-av-tb" id="user-av-tb">A</div>
         <button class="tb-btn salir" onclick="doLogout()">Salir</button>
       </div>
-    </div>
-    <!-- TABS MOBILE -->
-    <div class="mob-tabs" id="mob-tabs-bar">
-      <button class="mob-tab active" id="tab-salon" onclick="setMobTab('salon')">🗺️ Salón</button>
-      <button class="mob-tab" id="tab-caja" onclick="setMobTab('caja')" style="display:none">💰 Caja</button>
-      <button class="mob-tab" id="tab-menu" onclick="setMobTab('menu')" style="display:none">🍽️ Menú</button>
     </div>
     <div id="main-content" class="content"></div>
   </div>
@@ -592,36 +568,6 @@ const mesaDims = (tipo, alias, ancho, alto) => {
   return SZ[tipo]||SZ.cuadrada;
 };
 
-// ── TABS MOBILE ─────────────────────────────────────────────────────
-function setMobTab(tab) {
-  if (window.innerWidth > 900) return;
-  // Actualizar tab activo
-  document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('active'));
-  const btn = document.getElementById('tab-' + tab);
-  if (btn) btn.classList.add('active');
-  // Sincronizar con snav (que renderiza y luego llama applyMobTab)
-  snav(tab);
-}
-function applyMobTab() {
-  if (window.innerWidth > 900) return;
-  // Sincronizar visibilidad de panels con el tab activo
-  const active = document.querySelector('.mob-tab.active');
-  const tab = active ? active.id.replace('tab-','') : 'salon';
-  const panelSalon = document.getElementById('mob-panel-salon');
-  const panelCaja  = document.getElementById('mob-panel-caja');
-  if (!panelSalon && !panelCaja) return;
-  if (tab === 'salon') {
-    if (panelSalon) panelSalon.classList.add('mob-active');
-    if (panelCaja)  panelCaja.classList.remove('mob-active');
-  } else if (tab === 'caja') {
-    if (panelSalon) panelSalon.classList.remove('mob-active');
-    if (panelCaja)  panelCaja.classList.add('mob-active');
-  } else {
-    if (panelSalon) panelSalon.classList.add('mob-active');
-    if (panelCaja)  panelCaja.classList.remove('mob-active');
-  }
-}
-
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -690,18 +636,7 @@ async function initApp(){
   // (gestión de productos está dentro del desplegable en la pantalla principal)
 
   showScreen('screen-main');
-  // Tabs mobile — visibilidad por rol
-  // Salón: admin, mozo, cajero (siempre visible)
-  // Caja: admin, cajero
-  if (['admin','cajero'].includes(ME.rol)) {
-    const tabCaja = document.getElementById('tab-caja');
-    if (tabCaja) tabCaja.style.display = '';
-  }
-  // Menú: admin, cajero
-  if (['admin','cajero'].includes(ME.rol)) {
-    const tabMenu = document.getElementById('tab-menu');
-    if (tabMenu) tabMenu.style.display = '';
-  }
+  // Tabs generados dinámicamente por buildTabsHTML()
   await loadAll();
   renderMain();
 
@@ -773,20 +708,17 @@ let _snavActual = 'salon';
 
 function snav(id) {
   _snavActual = id;
-  document.querySelectorAll('.nav-btn[id^="snav-"]').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('snav-' + id);
-  if (btn) btn.classList.add('active');
   const el = document.getElementById('main-content');
   if (!el) return;
   if (id === 'salon') {
     if (ME.rol === 'mozo') renderMozo(el);
     else if (ME.rol === 'cajero') renderCajero(el);
     else renderAdmin(el);
+  } else if (id === 'caja') {
+    renderCajero(el);
+  } else if (id === 'menu') {
+    renderMenu(el);
   }
-  if (id === 'caja') renderCajero(el);
-  if (id === 'menu') renderAdmin(el);
-  // Aplicar tabs mobile tras renderizar
-  setTimeout(applyMobTab, 0);
 }
 
 // ════════════════════════════════════
@@ -918,7 +850,7 @@ function renderCajero(el){
 
   const cats=[...new Set((S.menu||[]).map(m=>m.categoria).filter(Boolean))];
 
-  el.innerHTML=`
+  el.innerHTML=buildTabsHTML()+`
     <div class="metricas-grid" style="margin-bottom:16px">
       <div class="metrica-card mc-total">
         <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">TOTAL COBRADO</div>
@@ -940,12 +872,12 @@ function renderCajero(el){
 
     <div class="layout-2col">
       <!-- Columna lateral IZQUIERDA: Caja -->
-      <div class="col-side mob-panel mob-active" id="mob-panel-caja">
+      <div class="col-side">
         ${cajaHTML}
       </div>
 
       <!-- Columna principal DERECHA: Mesas en cuenta + Mapa + Menú -->
-      <div class="col-main mob-panel mob-active" id="mob-panel-salon">
+      <div class="col-main">
         ${cuentaHTML}
 
         <div class="card" style="margin-bottom:16px">
@@ -1092,9 +1024,65 @@ function toggleResumen(){
 }
 
 // ── VISTA ADMIN ──────────────────────────────────────
+// ── VISTA MENÚ (admin/cajero) ─────────────────────────────────────────
+function renderMenu(el){
+  const cats=[...new Set(S.menu.map(m=>m.categoria))];
+  const tabsHTML = buildTabsHTML();
+  el.innerHTML = tabsHTML + `
+    <div class="desplegable" id="desp-menu" style="margin-bottom:0">
+      <div class="desp-body" style="display:block">
+        <div class="desp-content">
+          <div style="margin-bottom:16px">
+            <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:10px">➕ Nuevo producto</div>
+            <div class="form-grid-2">
+              <input id="mp-nombre" placeholder="Nombre"/>
+              <input id="mp-precio" placeholder="Precio" type="number"/>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <select id="mp-cat" style="flex:1">
+                <option value="">-- Categoría --</option>
+                ${cats.map(c=>`<option>${c}</option>`).join('')}
+              </select>
+              <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+              <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+            </div>
+            <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
+          </div>
+          ${cats.map(cat=>{
+            const prods=S.menu.filter(m=>m.categoria===cat);
+            return `<div style="margin-bottom:12px">
+              <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f1f5f9">${cat}</div>
+              ${prods.map(p=>`<div class="prod-row">
+                <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}</span>
+                <span class="prod-precio">${fmt(p.precio)}</span>
+                <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
+                <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+              </div>`).join('')}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// Genera HTML de tabs según rol
+function buildTabsHTML(){
+  const esCajeroAdmin = ['admin','cajero'].includes(ME.rol);
+  let tabs = `<div class="tabs" style="margin-bottom:20px">`;
+  tabs += `<button class="tab ${_snavActual==='salon'?'active':''}" onclick="snav('salon')">🗺️ Salón</button>`;
+  if(esCajeroAdmin) tabs += `<button class="tab ${_snavActual==='caja'?'active':''}" onclick="snav('caja')">💰 Caja</button>`;
+  if(esCajeroAdmin) tabs += `<button class="tab ${_snavActual==='menu'?'active':''}" onclick="snav('menu')">🍽️ Menú</button>`;
+  tabs += `</div>`;
+  return tabs;
+}
+
 function renderAdmin(el){
   const activas=S.comandas.filter(c=>c.estado!=='cerrada').length;
   const cats=[...new Set(S.menu.map(m=>m.categoria))];
+  // En modo tab, delegar según _snavActual
+  if (_snavActual === 'caja') { renderCajero(el); return; }
+  if (_snavActual === 'menu') { renderMenu(el); return; }
+  // _snavActual === 'salon' o default → renderizar salón
 
   // Calcular métricas — usar turno abierto o último turno para métricas
   const turnoMostrar = S.turno || S.turnoUltimo;
@@ -1142,7 +1130,7 @@ function renderAdmin(el){
       </div></div>`;
   }
 
-  el.innerHTML=`
+  el.innerHTML=buildTabsHTML()+`
     <div class="metricas-grid" style="margin-bottom:16px">
       <div class="metrica-card mc-total">
         <div class="mc-lbl">${hayTurno}</div>
@@ -1168,7 +1156,7 @@ function renderAdmin(el){
 
     <div class="layout-2col">
       <!-- Columna lateral IZQUIERDA: Caja + Historial -->
-      <div class="col-side mob-panel" id="mob-panel-caja">
+      <div class="col-side">
         ${cajaPanelHTML}
 
         <!-- Historial -->
@@ -1184,7 +1172,7 @@ function renderAdmin(el){
       </div>
 
       <!-- COLUMNA PRINCIPAL DERECHA: Mapa + Menú -->
-      <div class="col-main mob-panel mob-active" id="mob-panel-salon">
+      <div class="col-main">
         <div class="card" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div>
