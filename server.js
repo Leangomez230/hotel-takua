@@ -315,6 +315,8 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
     if (!entrada)       return res.status(400).json({ error: 'Falta la fecha de entrada' });
     if (!salida)        return res.status(400).json({ error: 'Falta la fecha de salida' });
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
+    // hab_id_int: para columnas INTEGER (movimientos_habitaciones)
+    const hab_id_int = hab ? (isNaN(Number(hab.id)) ? null : Number(hab.id)) : null;
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
     const statusesPermitidos = ['libre','lista','reservada','libre_limpia','limpieza','mantenimiento'];
     if (!statusesPermitidos.includes(hab.status))
@@ -357,7 +359,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Saldo Check-in Hab. ${hab.numero} — ${nombre}`, saldo,
              metodo_pago||'Efectivo', `Reserva #${reserva_id}`,
-             req.user.id, req.user.nombre, habitacion_id, hab.numero]
+             req.user.id, req.user.nombre, hab_id_int, hab.numero]
           );
         }
       }
@@ -380,7 +382,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Check-in Hab. ${hab.numero} — ${nombre}`, precio_total||0,
              metodo_pago||'Efectivo', `Reserva #${finalReservaId}`,
-             req.user.id, req.user.nombre, habitacion_id, hab.numero]
+             req.user.id, req.user.nombre, hab_id_int, hab.numero]
           );
         }
         // (registro en caja habitaciones arriba)
@@ -425,7 +427,7 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
           [turnoHab.id, `Saldo Checkout Hab. ${hab.numero} — ${reserva.nombre_huesped||''}`,
            saldo, metodo_pago_extra||'Efectivo', reserva?`Reserva #${reserva.id}`:'',
-           req.user.id, req.user.nombre, id, hab.numero]
+           req.user.id, req.user.nombre, (isNaN(Number(id)) ? null : Number(id)), hab.numero]
         );
       }
       if (extra > 0) {
@@ -434,7 +436,7 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
           [turnoHab.id, concepto_extra||`Extra Checkout Hab. ${hab.numero}`,
            extra, metodo_pago_extra||'Efectivo',
-           req.user.id, req.user.nombre, id, hab.numero]
+           req.user.id, req.user.nombre, (isNaN(Number(id)) ? null : Number(id)), hab.numero]
         );
       }
     }
@@ -569,7 +571,7 @@ app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Ajuste seña Reserva #${req.params.id} — ${nombre_huesped}`, difSenia,
              metodo_pago||'Efectivo', `Reserva #${req.params.id}`,
-             req.user.id, req.user.nombre, reserva.habitacion_id, hab?.numero||'']
+             req.user.id, req.user.nombre, (isNaN(Number(reserva.habitacion_id)) ? null : Number(reserva.habitacion_id)), hab?.numero||'']
           );
         } else {
           // Seña disminuyó → egreso/devolución
@@ -578,7 +580,7 @@ app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'egreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Devolución seña Reserva #${req.params.id} — ${nombre_huesped}`, Math.abs(difSenia),
              metodo_pago||'Efectivo', `Reserva #${req.params.id}`,
-             req.user.id, req.user.nombre, reserva.habitacion_id, hab?.numero||'']
+             req.user.id, req.user.nombre, (isNaN(Number(reserva.habitacion_id)) ? null : Number(reserva.habitacion_id)), hab?.numero||'']
           );
         }
       }
@@ -659,7 +661,7 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
           [turnoHab.id, `Seña Reserva Hab. ${hab.numero} — ${nombre_huesped}`, senia,
            metodo_pago||'Efectivo', `Reserva #${r.rows[0].id}`,
-           req.user.id, req.user.nombre, habitacion_id, hab.numero]
+           req.user.id, req.user.nombre, (isNaN(Number(hab.id)) ? null : Number(hab.id)), hab.numero]
         );
       } else {
         // Sin turno abierto: la reserva se guarda igual pero se advierte
