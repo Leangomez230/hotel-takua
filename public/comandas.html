@@ -22,7 +22,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 
 
-.main-wrap{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden}
+.main-wrap{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
 
 
 
@@ -108,8 +108,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .mc-desc   {background:linear-gradient(135deg,#ec4899,#f43f5e)}
 
 /* MAPA SALÓN */
-.mapa-wrap{background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:20px}
-.mapa-inner{overflow-x:auto;padding:16px 16px 8px}
+.mapa-wrap{background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:20px;max-width:100%}
+.mapa-inner{overflow-x:auto;padding:16px 16px 8px;max-width:100%}
 .mapa-canvas{position:relative;min-width:600px}
 .barra-ref{border-radius:10px;background:#f1f5f9;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;height:44px;margin-top:8px}
 .barra-ref span{font-weight:700;font-size:13px;color:#94a3b8;letter-spacing:3px}
@@ -156,7 +156,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .cmd-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #f1f5f9;border-radius:10px;margin-bottom:6px}
 
 /* MESAS CAJA - tarjetas de cuenta pendiente */
-.cuenta-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px}
+.cuenta-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr));gap:10px;margin-bottom:20px}
 .cuenta-card{background:#fff;border:1.5px solid #c4b5fd;border-radius:14px;padding:16px;cursor:pointer;transition:box-shadow .15s}
 .cuenta-card:hover{box-shadow:0 4px 16px rgba(124,58,237,.15)}
 
@@ -283,50 +283,59 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 /* ── RESPONSIVE MOBILE ── */
 @media(max-width:900px){
   :root{--sw:0px}
-  .main-wrap{margin-left:0!important;overflow-x:hidden}
+  .main-wrap{margin-left:0!important}
   .topbar{padding:10px 12px;gap:8px}
   #hamburger{display:flex!important}
   .tab{font-size:12px;padding:8px 10px}
-  /* Evitar overflow horizontal */
-  .content{overflow-x:hidden}
-  .card{overflow-x:hidden}
-  /* Tablas con scroll interno */
-  table{width:100%;display:block;overflow-x:auto}
-  /* Formularios */
+  /* Layout: 1 columna */
+  .layout-2col{grid-template-columns:1fr!important;gap:0}
+  .col-side{position:static}
+  /* Métricas: 2 columnas */
+  .metricas-grid{grid-template-columns:1fr 1fr!important;gap:8px}
+  /* Resumen: 1 columna en mobile */
+  .resumen-grid{grid-template-columns:1fr 1fr}
+  /* Formularios: 1 columna */
   .form-grid-2{grid-template-columns:1fr}
-  /* Botones de acción — apilados */
-  .btn-row{flex-direction:column}
+  /* Tablas con scroll interno */
+  .data-table-wrap,table{width:100%;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Item precio no fuerza ancho */
+  .item-precio{min-width:0}
+  /* Botones: apilados */
+  .btn-row{flex-direction:column;gap:8px}
+  /* Contenido: sin padding excesivo */
+  .content{padding:10px 8px!important}
+  /* Mapa: scroll interno, no desborda el layout */
+  .mapa-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+  .mapa-inner{padding:12px}
 }
 @media(max-width:600px){
-  /* Topbar */
   .topbar{padding:8px 10px}
   .tb-left p{display:none}
-  /* Contenido principal */
-  .content{padding:10px 8px!important;max-width:100%!important}
-  /* Métricas más compactas */
-  .metricas-grid{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-  .metrica-card{padding:10px 10px;min-height:65px;border-radius:12px}
+  .content{padding:8px!important;max-width:100%!important}
+  .metricas-grid{grid-template-columns:1fr 1fr!important;gap:8px;margin-bottom:12px}
+  .metrica-card{padding:10px;min-height:65px;border-radius:12px}
   .metrica-card .mc-lbl{font-size:8px;letter-spacing:.5px}
   .metrica-card .mc-ttl{font-size:9px;margin-bottom:1px}
   .metrica-card .mc-val{font-size:15px}
-  /* Modal */
   .modal{max-height:94vh;border-radius:16px 16px 0 0}
   .modal-header{padding:12px 14px}
   .modal-body{padding:12px 14px}
-  /* Inputs — evitar zoom iOS */
   input,select,textarea{font-size:16px!important}
-  /* Grillas formularios */
-  .resumen-grid{grid-template-columns:1fr 1fr}
+  .resumen-grid{grid-template-columns:1fr}
   .form-grid-2{grid-template-columns:1fr}
-  /* Cards */
-  .card{padding:12px 12px}
-  /* Mapa — scroll horizontal */
-  .mapa-salon{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  /* Resumen caja — filas */
+  .card{padding:12px}
   .caja-fila{flex-wrap:wrap}
-  /* Botones de acción */
   .btn-row{flex-direction:column;gap:8px}
   .btn-green,.btn-primary,.btn-ghost-light{padding:13px;font-size:14px}
+  /* Fix anchos fijos en mobile */
+  .item-precio{min-width:0;font-size:12px}
+  .cuenta-cards{grid-template-columns:1fr}
+  .metodo-grid{grid-template-columns:1fr 1fr}
+  /* Botones en fila: apilar en mobile */
+  div[style*="display:flex"][style*="gap:8px"] > button { flex:1 }
+  /* Cards del resumen: texto sin overflow */
+  .cmd-row{flex-wrap:wrap}
+  .desp-content{overflow-x:hidden}
 }
 @media(max-width:400px){
   .metrica-card .mc-val{font-size:14px}
