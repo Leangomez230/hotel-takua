@@ -29,8 +29,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 /* TOPBAR */
 .topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
 .hamburger{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;flex-shrink:0}
-.tb-left{flex:1;min-width:0}
-.tb-left h2{font-size:16px;font-weight:800;color:#1a2035;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-left{flex:1;min-width:0;overflow:hidden}
+.tb-left h2{font-size:16px;font-weight:800;color:#1a2035;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .tb-left p{font-size:12px;color:#64748b;margin:0}
 .tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .tb-btn{background:#f0f4f8;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;color:#1a2035;cursor:pointer;font-family:inherit}
@@ -78,10 +78,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .layout-2col{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start}
 .col-side{position:sticky;top:20px}
 @media(max-width:1100px){.layout-2col{grid-template-columns:320px 1fr}}
-@media(max-width:900px){
-  .layout-2col{grid-template-columns:1fr;gap:0}
-  .col-side{position:static}
-}
+/* layout-2col mobile → ver @media(max-width:900px) abajo */
 
 /* PILLS ESTADO */
 .pills-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -268,7 +265,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 @media(max-width:500px){
   .metricas-grid{grid-template-columns:1fr 1fr}
-  .resumen-grid{grid-template-columns:1fr 1fr}
+  .resumen-grid{grid-template-columns:1fr}
   .form-grid-2{grid-template-columns:1fr}
 }
 
@@ -293,7 +290,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   /* Métricas: 2 columnas */
   .metricas-grid{grid-template-columns:1fr 1fr!important;gap:8px}
   /* Resumen: 1 columna en mobile */
-  .resumen-grid{grid-template-columns:1fr 1fr}
+  .resumen-grid{grid-template-columns:1fr}
   /* Formularios: 1 columna */
   .form-grid-2{grid-template-columns:1fr}
   /* Tablas con scroll interno */
@@ -304,6 +301,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   .btn-row{flex-direction:column;gap:8px}
   /* Contenido: sin padding excesivo */
   .content{padding:10px 8px!important}
+  /* Turno form: apilar en mobile */
+  .turno-form{flex-direction:column}
+  /* Resumen grid: 1 col en mobile */
+  .resumen-grid{grid-template-columns:1fr!important}
+  /* metodo-grid: 2 cols */
+  .metodo-grid{grid-template-columns:1fr 1fr}
   /* Mapa: scroll interno, no desborda el layout */
   .mapa-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch}
   .mapa-inner{padding:12px}
