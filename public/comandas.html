@@ -288,6 +288,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 /* Tabs mobile — ocultos en desktop */
 
 
+/* Contenedor de rotación del mapa */
+.mapa-mob-outer{overflow:auto;-webkit-overflow-scrolling:touch;border-radius:14px;border:1px solid #e2e8f0;background:#f8fafc;padding:12px}
+.mapa-mob-inner{transform-origin:top left;transition:transform .35s ease;display:inline-block}
+.mapa-mob-inner.rotado{transform:rotate(90deg) translateX(0)}
 @media(max-width:600px){
   /* Topbar */
   .topbar{padding:8px 10px}
@@ -706,6 +710,25 @@ function irA(seccion) {
 
 let _snavActual = 'salon';
 
+// ── MAPA MOBILE — grilla táctil de mesas ─────────────────────────────
+function renderMapaMobile(editable=false){
+  if(!S.mesas.length) return `<div class="empty"><div class="ei">🪑</div><p>Sin mesas configuradas</p></div>`;
+  // Agrupar por zona/salon si hubiera, sino mostrar todas
+  const mesasHTML = S.mesas.map(m => {
+    const st  = MESA_STATUS[m.status] || MESA_STATUS.libre;
+    const cmd = S.comandas.find(c => c.mesa_id === m.id && c.estado !== 'cerrada');
+    const ev  = editable ? '' : `onclick="clickMesa(${m.id})"`;
+    const forma = m.tipo === 'redonda' ? 'border-radius:50%' : '';
+    return `<div class="mesa-mob" ${ev}
+      style="background:${st.bg};border-color:${st.border};${forma}">
+      <div class="mm-num" style="color:${st.color}">${mesaLabel(m)}</div>
+      ${cmd && cmd.total ? `<div class="mm-total" style="color:${st.color}">${fmt(cmd.total)}</div>` : ''}
+      <div class="mm-sub" style="color:${st.color}">${st.label}</div>
+    </div>`;
+  }).join('');
+  return `<div class="mesas-grid-mob">${mesasHTML}</div>`;
+}
+
 function snav(id) {
   _snavActual = id;
   const el = document.getElementById('main-content');
@@ -754,6 +777,67 @@ function renderMapa(editable=false){
     <div class="barra-ref" style="position:absolute;bottom:0;left:0;right:0"><span>BARRA</span></div></div>`;
 }
 
+function mapaHTML(editable=false){
+  if (window.innerWidth > 900) {
+    return `<div class="mapa-wrap"><div class="mapa-inner">${renderMapa(editable)}</div></div>`;
+  }
+  // Mobile (mozo): mapa siempre visible con botón rotar
+  const mapaInner = renderMapa(editable);
+  const rotClass  = _mapaRotado ? 'rotado' : '';
+  return `
+    <div class="mapa-wrap">
+      <div style="display:flex;justify-content:flex-end;padding:8px 12px 0">
+        <button id="btn-rotar-mapa" onclick="toggleRotarMapa()"
+          style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;
+                 padding:6px 12px;font-size:12px;font-weight:700;color:#475569;cursor:pointer">
+          ${_mapaRotado ? '↕️ Normal' : '🔄 Rotar'}
+        </button>
+      </div>
+      <div class="mapa-mob-outer">
+        <div id="mapa-mob-wrap" class="mapa-mob-inner ${rotClass}">
+          ${mapaInner}
+        </div>
+      </div>
+    </div>`;
+}
+
+// En mobile: mapa dentro de desplegable. En desktop: mapa normal.
+function mapaHTMLConDesp(editable=false){
+  if (window.innerWidth > 900) {
+    return `<div class="mapa-wrap"><div class="mapa-inner">${renderMapa(editable)}</div></div>`;
+  }
+  const mapaInner = renderMapa(editable);
+  const rotClass  = _mapaRotado ? 'rotado' : '';
+  return `
+    <div class="desplegable" id="desp-mapa-mob" style="margin-bottom:16px">
+      <button class="desp-btn" onclick="toggleDesp('mapa-mob')">
+        <div class="desp-left">
+          <span class="desp-icon">🗺️</span>
+          <div><div class="desp-title">Mapa del salón</div>
+          <div class="desp-sub">${S.mesas.length} mesas · ${S.comandas.filter(c=>c.estado!=='cerrada').length} activas</div></div>
+        </div>
+        <div class="desp-arrow" id="arr-mapa-mob">▼</div>
+      </button>
+      <div class="desp-body" id="body-mapa-mob">
+        <div class="desp-content">
+          <div class="pills-row" style="margin-bottom:10px">${renderPills()}</div>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+            <button id="btn-rotar-mapa" onclick="toggleRotarMapa()"
+              style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;
+                     padding:6px 12px;font-size:12px;font-weight:700;color:#475569;cursor:pointer">
+              ${_mapaRotado ? '↕️ Normal' : '🔄 Rotar'}
+            </button>
+          </div>
+          <div class="mapa-mob-outer">
+            <div id="mapa-mob-wrap" class="mapa-mob-inner ${rotClass}">
+              ${mapaInner}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderPills(){
   const counts={};
   Object.keys(MESA_STATUS).forEach(k=>counts[k]=0);
@@ -771,9 +855,7 @@ function renderMozo(el){
   el.innerHTML=`
     <p style="font-size:13px;color:#64748b;margin-bottom:12px">Tocá una mesa libre para abrir comanda · Tocá una ocupada para ver el pedido</p>
     <div class="pills-row">${renderPills()}</div>
-    <div class="mapa-wrap">
-      <div class="mapa-inner">${renderMapa(false)}</div>
-    </div>`;
+    ${mapaHTML(false)}`;
 }
 
 // ── VISTA CAJERO ─────────────────────────────────────
@@ -888,8 +970,8 @@ function renderCajero(el){
               <button class="btn-ghost-light btn-sm" onclick="loadAll().then(renderMain)">↻</button>
             </div>
           </div>
-          <div class="pills-row">${renderPills()}</div>
-          <div style="overflow-x:auto">${renderMapa(false)}</div>
+          ${window.innerWidth > 900 ? `<div class="pills-row">${renderPills()}</div>` : ''}
+          ${mapaHTMLConDesp(false)}
         </div>
 
         <!-- Menú productos — desplegable -->
@@ -1184,8 +1266,8 @@ function renderAdmin(el){
               <button onclick="loadAll().then(renderMain)" style="padding:7px 10px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;color:#475569;cursor:pointer">↻</button>
             </div>
           </div>
-          <div class="pills-row">${renderPills()}</div>
-          <div style="overflow-x:auto">${renderMapa(false)}</div>
+          ${window.innerWidth > 900 ? `<div class="pills-row">${renderPills()}</div>` : ''}
+          ${mapaHTMLConDesp(false)}
         </div>
 
         <!-- Menú productos — desplegable -->
