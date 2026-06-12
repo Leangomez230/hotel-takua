@@ -22,7 +22,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 
 
-.main-wrap{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
+.main-wrap{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden}
 
 
 
@@ -283,10 +283,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 /* ── RESPONSIVE MOBILE ── */
 @media(max-width:900px){
   :root{--sw:0px}
-  .main-wrap{margin-left:0!important}
+  .main-wrap{margin-left:0!important;overflow-x:hidden}
   .topbar{padding:10px 12px;gap:8px}
   #hamburger{display:flex!important}
   .tab{font-size:12px;padding:8px 10px}
+  /* Evitar overflow horizontal */
+  .content{overflow-x:hidden}
+  .card{overflow-x:hidden}
+  /* Tablas con scroll interno */
+  table{width:100%;display:block;overflow-x:auto}
+  /* Formularios */
+  .form-grid-2{grid-template-columns:1fr}
+  /* Botones de acción — apilados */
+  .btn-row{flex-direction:column}
 }
 @media(max-width:600px){
   /* Topbar */
@@ -937,7 +946,7 @@ function renderCajero(el){
 
   const cats=[...new Set((S.menu||[]).map(m=>m.categoria).filter(Boolean))];
 
-  el.innerHTML=buildTabsHTML(_snavActual)+`
+  el.innerHTML=`
     <div class="metricas-grid" style="margin-bottom:16px">
       <div class="metrica-card mc-total">
         <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">TOTAL COBRADO</div>
@@ -1160,7 +1169,7 @@ function renderAdmin(el){
       </div></div>`;
   }
 
-  el.innerHTML=buildTabsHTML(_snavActual)+`
+  el.innerHTML=`
     <div class="metricas-grid" style="margin-bottom:16px">
       <div class="metrica-card mc-total">
         <div class="mc-lbl">${hayTurno}</div>
@@ -1271,7 +1280,7 @@ function renderAdmin(el){
 // ── TAB MENÚ (admin/cajero) ──────────────────────────────────────────
 function renderMenuTab(el){
   const cats=[...new Set(S.menu.map(m=>m.categoria))];
-  el.innerHTML=buildTabsHTML('menu')+`
+  el.innerHTML=`
     <div class="card">
       <div style="margin-bottom:16px">
         <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:10px">➕ Nuevo producto</div>
