@@ -1866,12 +1866,14 @@ async function showCheckoutModal(hab) {
 // ══════════════════════════════════════
 async function showCheckinModal(habId) {
   const hab = habitaciones.find(h=>String(h.id)===String(habId));
+  // Usar el id numérico real de la BD, no el string del DOM
+  const habIdReal = hab?.id ?? habId;
   const now = new Date(), tom = new Date(now); tom.setDate(tom.getDate()+1);
   const iso = d => d.toISOString().slice(0,16);
   const pn  = hab?.precio_noche||50000;
 
   // Buscar reserva existente
-  const reserva = await apiFetch('GET', `/habitaciones/${habId}/reserva`);
+  const reserva = await apiFetch('GET', `/habitaciones/${habIdReal}/reserva`);
 
   // Prellenar con datos de la reserva si existe
   const nombre0  = reserva?.nombre_huesped || '';
@@ -1985,7 +1987,7 @@ async function showCheckinModal(habId) {
     const total  = noches * tarifa;
     const saldo  = Math.max(0, total - senia0);
     const body = {
-      habitacion_id: habId,
+      habitacion_id: habIdReal,
       documento:     document.getElementById('ci-doc').value,
       tipo_doc:      document.getElementById('ci-tdoc').value,
       nombre,
@@ -2012,6 +2014,7 @@ async function showCheckinModal(habId) {
 // ══════════════════════════════════════
 function showReservaModal(habId) {
   const hab=habitaciones.find(h=>String(h.id)===String(habId));
+  const habIdReal = hab?.id ?? habId;
   const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
   const iso=d=>d.toISOString().slice(0,16);
   const pn=hab?.precio_noche||50000;
@@ -2066,7 +2069,7 @@ function showReservaModal(habId) {
     const n=parseInt(document.getElementById('res-n').textContent)||1;
     const tar=parseMonto(document.getElementById('res-tarifa').value);
     const r=await apiFetch('POST','/reservas',{
-      habitacion_id:habId, nombre_huesped:nombre,
+      habitacion_id:habIdReal, nombre_huesped:nombre,
       documento:document.getElementById('res-doc').value,
       entrada:document.getElementById('res-in').value,
       salida:document.getElementById('res-out').value,
