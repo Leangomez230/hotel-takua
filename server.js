@@ -292,9 +292,25 @@ app.post('/api/huespedes', auth, async (req, res) => {
 // ── CHECK-IN ─────────────────────────────────────────────────────────
 app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
   try {
-    const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches,
+    const { documento, tipo_doc, nombre, telefono, entrada, salida, noches,
             precio_total, metodo_pago, notas, reserva_id, saldo_cobrado } = req.body;
+    // habitacion_id puede venir como número o como string tipo "E110"
+    let habitacion_id = req.body.habitacion_id;
     if (!habitacion_id) return res.status(400).json({ error: 'Falta habitacion_id' });
+    // Si no es numérico puro, intentar encontrar la hab por numero+ala
+    if (isNaN(Number(habitacion_id))) {
+      const match = String(habitacion_id).match(/^([A-Za-z]+)?(\d+)$/);
+      if (match) {
+        const numero = match[2];
+        const ala = match[1] ? (match[1].toLowerCase().startsWith('e') ? 'Este' : 'Oeste') : null;
+        const habBusq = ala
+          ? await db.getOne('SELECT id FROM habitaciones WHERE numero=$1 AND ala=$2', [numero, ala])
+          : await db.getOne('SELECT id FROM habitaciones WHERE numero=$1', [numero]);
+        if (habBusq) habitacion_id = habBusq.id;
+      }
+    } else {
+      habitacion_id = Number(habitacion_id);
+    }
     if (!nombre)        return res.status(400).json({ error: 'Falta el nombre del huésped' });
     if (!entrada)       return res.status(400).json({ error: 'Falta la fecha de entrada' });
     if (!salida)        return res.status(400).json({ error: 'Falta la fecha de salida' });
