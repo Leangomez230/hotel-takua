@@ -19,7 +19,7 @@
 
   const ITEMS = [
     { id:'sb-inicio',       icon:'🏠', label:'Inicio',
-      href: on('comandas.html') ? '/comandas.html' : (enIndex ? null : '/index.html'),
+      href: ['cajero','mozo'].includes(rol) ? '/comandas.html' : (enIndex ? null : '/index.html'),
       click: enIndex ? "goTo('dashboard')" : null,
       show: ['admin','recepcionista','mucama','mantenimiento','cajero','mozo'] },
     { id:'sb-habitaciones', icon:'🛏️', label:'Habitaciones',
