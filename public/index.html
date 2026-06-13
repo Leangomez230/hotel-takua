@@ -526,7 +526,7 @@ function zoomLabel() { return roomCols?roomCols+' col.':'Auto'; }
  
 document.getElementById('tb-caja')?.addEventListener('click',()=>{
   if(currentUser?.rol==='admin') window.location.href='/caja.html';
-  else { setActiveNav('nav-caja'); goTo('caja'); }
+  else { goTo('caja'); }
 });
  
  
@@ -2194,7 +2194,7 @@ async function renderReservas() {
       </table></div>
     </div>`;
 
-  document.getElementById('btn-nueva-res').addEventListener('click',()=>{ setActiveNav('nav-habitaciones'); goTo('habitaciones'); });
+  document.getElementById('btn-nueva-res').addEventListener('click',()=>{ goTo('habitaciones'); });
 }
 
 async function editarReserva(id) {
@@ -3116,7 +3116,7 @@ if (token && currentUser) {
   // Si viene con hash (desde comandas), navegar a esa sección
   const hash = window.location.hash.replace('#','');
   if (hash && ['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].includes(hash)) {
-    setTimeout(() => { setActiveNav('nav-'+hash); goTo(hash); }, 100);
+    setTimeout(() => { goTo(hash); }, 100);
   }
 } else { window.location.href = "/portal.html"; }
  
