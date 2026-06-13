@@ -394,6 +394,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
             width:8px;height:8px;border-radius:50%;background:#dc2626"></span>
         </button>
         <div class="user-av" id="user-av">A</div>
+        <button class="tb-btn nav-admin" id="btn-sync" title="Sincronizar estados habitaciones↔reservas" style="background:#f0fdf9;color:#059669;border-color:#6ee7b7">🔄</button>
         <button class="tb-btn" id="btn-logout" style="color:#dc2626">Salir</button>
       </div>
     </div>
@@ -531,6 +532,12 @@ document.getElementById('tb-caja')?.addEventListener('click',()=>{
  
 // ── AUTH ──
 // Login manejado por portal.html
+document.getElementById('btn-sync')?.addEventListener('click', async () => {
+  document.getElementById('btn-sync').textContent = '⏳';
+  await sincronizarEstados(true);
+  await refreshHabs();
+  document.getElementById('btn-sync').textContent = '🔄';
+});
 document.getElementById('btn-logout').addEventListener('click', doLogout);
  
 function irARestaurante() {
@@ -842,6 +849,20 @@ function bindAlaFilters() {
   });
 }
  
+// Sincronizar estados de habitaciones con reservas (al cargar)
+async function sincronizarEstados(mostrarToast=false) {
+  try {
+    const r = await apiFetch('POST', '/habitaciones/sincronizar');
+    if (mostrarToast && r?.ok) {
+      const msg = [];
+      if (r.actualizadas_a_reservada > 0) msg.push(`${r.actualizadas_a_reservada} marcadas como reservada`);
+      if (r.liberadas > 0) msg.push(`${r.liberadas} liberadas`);
+      toast(msg.length ? '✅ ' + msg.join(' · ') : '✅ Estados sincronizados');
+    }
+    return r;
+  } catch(e) { console.warn('Sincronizar estados:', e); }
+}
+
 async function refreshHabs() {
   habitaciones = await apiFetch('GET','/habitaciones') || [];
   const map=document.getElementById('room-map');
@@ -903,6 +924,8 @@ async function renderDashboard() {
     return;
   }
  
+  // Sincronizar estados antes de cargar (silencioso)
+  await sincronizarEstados(false).catch(()=>{});
   const [dash, habs, turnoRest, alertasStock] = await Promise.all([
     apiFetch('GET','/dashboard'),
     apiFetch('GET','/habitaciones'),
