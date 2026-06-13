@@ -153,13 +153,22 @@ app.get('/api/habitaciones', auth, async (req, res) => {
         `SELECT * FROM reservas
          WHERE (
            estado = 'activa'
-           OR (estado IN ('futura','checkin','ocupada','confirmada','reservada') AND DATE(entrada) >= CURRENT_DATE)
+           OR (
+             estado IN ('futura','checkin','ocupada','confirmada','reservada')
+             AND DATE(salida AT TIME ZONE 'America/Argentina/Buenos_Aires') >= (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
+           )
          )
          ORDER BY entrada ASC`
       );
     } catch(e2) { console.error('Error reservas activas:', e2.message); }
     const habsEnriquecidas = habs.map(h => {
-      const reserva = reservasActivas.find(r => String(r.habitacion_id) === String(h.id));
+      // Buscar por id directo, o por número de hab como fallback
+      const reserva = reservasActivas.find(r => {
+        if (String(r.habitacion_id) === String(h.id)) return true;
+        // Fallback: habitacion_id puede ser el número solo (ej: "102") o con ala ("E102")
+        const num = String(r.habitacion_id).replace(/^[A-Za-z]+/, '');
+        return num === String(h.numero);
+      });
       return {
         ...h,
         reserva_activa: reserva ? {
@@ -315,6 +324,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
     if (!salida)        return res.status(400).json({ error: 'Falta la fecha de salida' });
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
+    const hab_id_int = isNaN(Number(hab.id)) ? null : Number(hab.id);
     const statusesPermitidos = ['libre','lista','reservada','libre_limpia','limpieza','mantenimiento'];
     if (!statusesPermitidos.includes(hab.status))
       return res.status(400).json({ error: `La habitación está en estado "${hab.status}" y no se puede hacer check-in.` });
