@@ -852,6 +852,8 @@ function bindAlaFilters() {
 // Sincronizar estados de habitaciones con reservas (al cargar)
 async function sincronizarEstados(mostrarToast=false) {
   try {
+    // Primero restaurar notas que pudieran haberse borrado
+    await apiFetch('POST', '/habitaciones/restaurar-notas').catch(()=>{});
     const r = await apiFetch('POST', '/habitaciones/sincronizar');
     if (mostrarToast && r?.ok) {
       const msg = [];
@@ -924,8 +926,6 @@ async function renderDashboard() {
     return;
   }
  
-  // Sincronizar estados antes de cargar (silencioso)
-  await sincronizarEstados(false).catch(()=>{});
   const [dash, habs, turnoRest, alertasStock] = await Promise.all([
     apiFetch('GET','/dashboard'),
     apiFetch('GET','/habitaciones'),
