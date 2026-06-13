@@ -300,7 +300,8 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
     if (!salida)        return res.status(400).json({ error: 'Falta la fecha de salida' });
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
-    const statusesPermitidos = ['libre','lista','reservada','libre_limpia'];
+    const hab_id_int = isNaN(Number(hab.id)) ? null : Number(hab.id);
+    const statusesPermitidos = ['libre','lista','reservada','libre_limpia','limpieza','mantenimiento'];
     if (!statusesPermitidos.includes(hab.status))
       return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
 
@@ -341,7 +342,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Saldo Check-in Hab. ${hab.numero} — ${nombre}`, saldo,
              metodo_pago||'Efectivo', `Reserva #${reserva_id}`,
-             req.user.id, req.user.nombre, habitacion_id, hab.numero]
+             req.user.id, req.user.nombre, hab_id_int, hab.numero]
           );
         }
       }
@@ -364,7 +365,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Check-in Hab. ${hab.numero} — ${nombre}`, precio_total||0,
              metodo_pago||'Efectivo', `Reserva #${finalReservaId}`,
-             req.user.id, req.user.nombre, habitacion_id, hab.numero]
+             req.user.id, req.user.nombre, hab_id_int, hab.numero]
           );
         }
         // (registro en caja habitaciones arriba)
