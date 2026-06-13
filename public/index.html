@@ -1195,10 +1195,33 @@ function showHabModal(hab) {
       <button id="tbtn-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
     </div>`;
  
+  const todosLosEstados = [
+    {s:'libre',        label:'🟢 Libre'},
+    {s:'reservada',    label:'📋 Reservada'},
+    {s:'ocupada',      label:'🔴 Ocupada'},
+    {s:'limpieza',     label:'🧹 En limpieza'},
+    {s:'lista',        label:'✨ Lista'},
+    {s:'mantenimiento',label:'🔧 Mantenimiento'},
+  ];
   const adminHTML = isAdmin ? `
     <details style="margin-top:14px;border:1px solid #e0e6ef;border-radius:10px;padding:10px 12px">
-      <summary style="cursor:pointer;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">⚙️ Editar habitación (Admin)</summary>
+      <summary style="cursor:pointer;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">⚙️ Admin</summary>
       <div style="padding-top:12px;display:flex;flex-direction:column;gap:10px">
+
+        <div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:10px;padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🔄 Corregir estado</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="he-status-corr" style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;font-family:inherit">
+              ${todosLosEstados.map(e=>`<option value="${e.s}" ${hab.status===e.s?'selected':''}>${e.label}</option>`).join('')}
+            </select>
+            <button id="btn-corr-estado" style="background:#92400e;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">
+              Aplicar
+            </button>
+          </div>
+          <div style="font-size:11px;color:#92400e;margin-top:6px;opacity:.8">⚠️ Cambia el estado sin registrar movimientos de caja</div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;padding-top:4px">Editar habitación</div>
         <div class="form-col"><label>Nombre personalizado</label>
           <input type="text" id="he-nombre" value="${hab.nombre||''}" placeholder="Ej: Hab. Jardín...">
         </div>
@@ -1335,6 +1358,16 @@ function showHabModal(hab) {
     await refreshHabs();
   });
  
+  // Admin — corregir estado
+  document.getElementById('btn-corr-estado')?.addEventListener('click', async () => {
+    const nuevoStatus = document.getElementById('he-status-corr').value;
+    if (nuevoStatus === hab.status) { toast('El estado ya es ' + nuevoStatus, false); return; }
+    if (!confirm(`¿Cambiar Hab. ${hab.numero} de "${hab.status}" a "${nuevoStatus}"?\nEsto no registra movimientos de caja.`)) return;
+    const r = await apiFetch('PUT', `/habitaciones/${String(hab.id)}/status`, { status: nuevoStatus, nota: hab.nota || '' });
+    if (r?.ok) { toast(`Estado corregido → ${nuevoStatus}`); closeModal(); await refreshHabs(); }
+    else toast(r?.error || 'Error al corregir estado', false);
+  });
+
   // Admin guardar cambios
   document.getElementById('btn-save-hab')?.addEventListener('click', async () => {
     const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
