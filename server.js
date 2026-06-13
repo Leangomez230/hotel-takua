@@ -494,6 +494,30 @@ app.get('/api/habitaciones/:id/reserva', auth, adminOrRecep, async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── RESTAURAR notas de habitaciones desde reservas activas ──────────
+// Emergencia: repara habitaciones cuya nota quedó vacía por bug de sincronización
+app.post('/api/habitaciones/restaurar-notas', auth, adminOrRecep, async (req, res) => {
+  try {
+    const result = await db.query(`
+      UPDATE habitaciones h
+      SET nota = r.nombre_huesped, updated_at = NOW()
+      FROM (
+        SELECT DISTINCT ON (habitacion_id)
+          habitacion_id::text, nombre_huesped
+        FROM reservas
+        WHERE estado IN ('activa','futura')
+          AND nombre_huesped IS NOT NULL AND nombre_huesped != ''
+        ORDER BY habitacion_id, estado DESC, entrada ASC
+      ) r
+      WHERE h.id::text = r.habitacion_id
+        AND (h.nota IS NULL OR h.nota = '')
+        AND h.status IN ('ocupada','reservada','lista')
+      RETURNING h.id, h.numero, h.nota
+    `);
+    res.json({ ok: true, restauradas: result.rowCount, detalle: result.rows });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── SINCRONIZAR estados habitaciones con reservas activas ────────────
 // Corrige habitaciones que tienen reserva futura pero status incorrecto
 app.post('/api/habitaciones/sincronizar', auth, adminOrRecep, async (req, res) => {
@@ -517,7 +541,8 @@ app.post('/api/habitaciones/sincronizar', auth, adminOrRecep, async (req, res) =
       RETURNING h.id, h.numero, h.status
     `);
 
-    // 2. Habitaciones marcadas como reservada pero sin reserva futura activa
+    // 2. Habitaciones marcadas como reservada pero sin reserva vigente
+    // Solo liberar si no hay NINGUNA reserva activa o futura con salida >= hoy
     const result2 = await db.query(`
       UPDATE habitaciones h
       SET status = 'libre', nota = '', updated_at = NOW()
@@ -526,7 +551,10 @@ app.post('/api/habitaciones/sincronizar', auth, adminOrRecep, async (req, res) =
           SELECT 1 FROM reservas r
           WHERE r.habitacion_id::text = h.id::text
             AND r.estado IN ('futura','activa')
-            AND DATE(r.salida AT TIME ZONE 'America/Argentina/Buenos_Aires') >= CURRENT_DATE
+            AND (
+              DATE(r.salida AT TIME ZONE 'America/Argentina/Buenos_Aires') >= CURRENT_DATE AT TIME ZONE 'America/Argentina/Buenos_Aires'
+              OR r.estado = 'activa'
+            )
         )
       RETURNING h.id, h.numero
     `);
