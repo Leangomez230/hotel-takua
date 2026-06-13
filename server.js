@@ -151,9 +151,10 @@ app.get('/api/habitaciones', auth, async (req, res) => {
     try {
       reservasActivas = await db.getAll(
         `SELECT * FROM reservas
-         WHERE estado = 'activa'
-            OR (estado IN ('futura','checkin','ocupada','confirmada','reservada')
-                AND salida >= CURRENT_DATE)
+         WHERE (
+           estado = 'activa'
+           OR (estado IN ('futura','checkin','ocupada','confirmada','reservada') AND DATE(entrada) >= CURRENT_DATE)
+         )
          ORDER BY entrada ASC`
       );
     } catch(e2) { console.error('Error reservas activas:', e2.message); }
