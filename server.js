@@ -151,13 +151,9 @@ app.get('/api/habitaciones', auth, async (req, res) => {
     try {
       reservasActivas = await db.getAll(
         `SELECT * FROM reservas
-         WHERE (
-           estado = 'activa'
-           OR (
-             estado IN ('futura','checkin','ocupada','confirmada','reservada')
-             AND DATE(salida AT TIME ZONE 'America/Argentina/Buenos_Aires') >= CURRENT_DATE AT TIME ZONE 'America/Argentina/Buenos_Aires'
-           )
-         )
+         WHERE estado = 'activa'
+            OR (estado IN ('futura','checkin','ocupada','confirmada','reservada')
+                AND salida >= CURRENT_DATE)
          ORDER BY entrada ASC`
       );
     } catch(e2) { console.error('Error reservas activas:', e2.message); }
@@ -206,6 +202,7 @@ app.post('/api/servicios', auth, async (req, res) => {
     const { habitacion_id, tipo_servicio, tipo_cama, necesita_mantenimiento, nota_mantenimiento, consumos, nuevo_status } = req.body;
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada' });
+    const hab_id_int = hab ? (isNaN(Number(hab.id)) ? null : Number(hab.id)) : null;
     let total_consumos = 0;
     let consumosCompletos = [];
     if (consumos && consumos.length > 0) {
@@ -295,17 +292,31 @@ app.post('/api/huespedes', auth, async (req, res) => {
 // ── CHECK-IN ─────────────────────────────────────────────────────────
 app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
   try {
-    const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches,
+    const { documento, tipo_doc, nombre, telefono, entrada, salida, noches,
             precio_total, metodo_pago, notas, reserva_id, saldo_cobrado } = req.body;
+    let habitacion_id = req.body.habitacion_id;
     if (!habitacion_id) return res.status(400).json({ error: 'Falta habitacion_id' });
+    if (isNaN(Number(habitacion_id))) {
+      const match = String(habitacion_id).match(/^([A-Za-z]+)?(\d+)$/);
+      if (match) {
+        const numero = match[2];
+        const ala = match[1] ? (match[1].toLowerCase().startsWith('e') ? 'Este' : 'Oeste') : null;
+        const habBusq = ala
+          ? await db.getOne('SELECT id FROM habitaciones WHERE numero=$1 AND ala=$2', [numero, ala])
+          : await db.getOne('SELECT id FROM habitaciones WHERE numero=$1', [numero]);
+        if (habBusq) habitacion_id = habBusq.id;
+      }
+    } else {
+      habitacion_id = Number(habitacion_id);
+    }
     if (!nombre)        return res.status(400).json({ error: 'Falta el nombre del huésped' });
     if (!entrada)       return res.status(400).json({ error: 'Falta la fecha de entrada' });
     if (!salida)        return res.status(400).json({ error: 'Falta la fecha de salida' });
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
-    const statusesPermitidos = ['libre','lista','reservada','libre_limpia'];
+    const statusesPermitidos = ['libre','lista','reservada','libre_limpia','limpieza','mantenimiento'];
     if (!statusesPermitidos.includes(hab.status))
-      return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
+      return res.status(400).json({ error: `La habitación está en estado "${hab.status}" y no se puede hacer check-in.` });
 
     // Registrar/actualizar huésped
     let huespedId = null;
@@ -344,7 +355,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Saldo Check-in Hab. ${hab.numero} — ${nombre}`, saldo,
              metodo_pago||'Efectivo', `Reserva #${reserva_id}`,
-             req.user.id, req.user.nombre, habitacion_id, hab.numero]
+             req.user.id, req.user.nombre, hab_id_int, hab.numero]
           );
         }
       }
@@ -367,7 +378,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Check-in Hab. ${hab.numero} — ${nombre}`, precio_total||0,
              metodo_pago||'Efectivo', `Reserva #${finalReservaId}`,
-             req.user.id, req.user.nombre, habitacion_id, hab.numero]
+             req.user.id, req.user.nombre, hab_id_int, hab.numero]
           );
         }
         // (registro en caja habitaciones arriba)
@@ -412,7 +423,7 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
           [turnoHab.id, `Saldo Checkout Hab. ${hab.numero} — ${reserva.nombre_huesped||''}`,
            saldo, metodo_pago_extra||'Efectivo', reserva?`Reserva #${reserva.id}`:'',
-           req.user.id, req.user.nombre, id, hab.numero]
+           req.user.id, req.user.nombre, (isNaN(Number(id)) ? null : Number(id)), hab.numero]
         );
       }
       if (extra > 0) {
@@ -421,7 +432,7 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
           [turnoHab.id, concepto_extra||`Extra Checkout Hab. ${hab.numero}`,
            extra, metodo_pago_extra||'Efectivo',
-           req.user.id, req.user.nombre, id, hab.numero]
+           req.user.id, req.user.nombre, (isNaN(Number(id)) ? null : Number(id)), hab.numero]
         );
       }
     }
@@ -494,73 +505,6 @@ app.get('/api/habitaciones/:id/reserva', auth, adminOrRecep, async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── RESTAURAR notas de habitaciones desde reservas activas ──────────
-app.post('/api/habitaciones/restaurar-notas', auth, adminOrRecep, async (req, res) => {
-  try {
-    // Traer reservas vigentes
-    const reservas = await db.getAll(
-      `SELECT habitacion_id, nombre_huesped FROM reservas
-       WHERE estado IN ('activa','futura') AND nombre_huesped IS NOT NULL AND nombre_huesped != ''`
-    );
-    // Traer habitaciones con nota vacía
-    const habs = await db.getAll(
-      `SELECT id, numero FROM habitaciones WHERE (nota IS NULL OR nota = '') AND status IN ('ocupada','reservada','lista')`
-    );
-    let restauradas = 0;
-    for (const h of habs) {
-      const r = reservas.find(rv => String(rv.habitacion_id) === String(h.id));
-      if (r) {
-        await db.query('UPDATE habitaciones SET nota=$1, updated_at=NOW() WHERE id=$2', [r.nombre_huesped, h.id]);
-        restauradas++;
-      }
-    }
-    res.json({ ok: true, restauradas });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── SINCRONIZAR estados habitaciones con reservas activas ────────────
-app.post('/api/habitaciones/sincronizar', auth, adminOrRecep, async (req, res) => {
-  try {
-    const hoy = new Date().toISOString().slice(0,10);
-
-    // Reservas vigentes (futura o activa, salida >= hoy)
-    const reservas = await db.getAll(
-      `SELECT habitacion_id, nombre_huesped, estado, entrada, salida
-       FROM reservas
-       WHERE estado IN ('activa','futura') AND salida >= $1`, [hoy]
-    );
-
-    // Todas las habitaciones
-    const habs = await db.getAll('SELECT id, numero, status, nota FROM habitaciones');
-
-    let marcadasReservada = 0, liberadas = 0;
-
-    for (const h of habs) {
-      const reserva = reservas.find(r => String(r.habitacion_id) === String(h.id));
-
-      // Tiene reserva vigente pero no está marcada como reservada/ocupada/mantenimiento
-      if (reserva && !['ocupada','reservada','mantenimiento'].includes(h.status)) {
-        await db.query(
-          "UPDATE habitaciones SET status='reservada', nota=$1, updated_at=NOW() WHERE id=$2",
-          [reserva.nombre_huesped, h.id]
-        );
-        marcadasReservada++;
-      }
-
-      // Está marcada como reservada pero no tiene reserva vigente
-      if (!reserva && h.status === 'reservada') {
-        await db.query(
-          "UPDATE habitaciones SET status='libre', nota='', updated_at=NOW() WHERE id=$1",
-          [h.id]
-        );
-        liberadas++;
-      }
-    }
-
-    res.json({ ok: true, actualizadas_a_reservada: marcadasReservada, liberadas });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
 // ── RESERVAS HOTEL ───────────────────────────────────────────────────
 app.get('/api/reservas', auth, async (req, res) => {
   try {
@@ -623,7 +567,7 @@ app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Ajuste seña Reserva #${req.params.id} — ${nombre_huesped}`, difSenia,
              metodo_pago||'Efectivo', `Reserva #${req.params.id}`,
-             req.user.id, req.user.nombre, reserva.habitacion_id, hab?.numero||'']
+             req.user.id, req.user.nombre, (isNaN(Number(reserva.habitacion_id)) ? null : Number(reserva.habitacion_id)), hab?.numero||'']
           );
         } else {
           // Seña disminuyó → egreso/devolución
@@ -632,7 +576,7 @@ app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
              VALUES ($1,'egreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
             [turnoHab.id, `Devolución seña Reserva #${req.params.id} — ${nombre_huesped}`, Math.abs(difSenia),
              metodo_pago||'Efectivo', `Reserva #${req.params.id}`,
-             req.user.id, req.user.nombre, reserva.habitacion_id, hab?.numero||'']
+             req.user.id, req.user.nombre, (isNaN(Number(reserva.habitacion_id)) ? null : Number(reserva.habitacion_id)), hab?.numero||'']
           );
         }
       }
@@ -700,7 +644,7 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
       [habitacion_id, nombre_huesped, documento||'', entrada, salida, noches||1,
        precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo]
     );
-    // Marcar como reservada si no está ocupada ni en mantenimiento
+    // Solo marcar como reservada si estaba libre/lista — si ya era reservada, dejarla
     if (!['ocupada','mantenimiento','reservada'].includes(hab.status)) {
       await db.query("UPDATE habitaciones SET status='reservada',nota=$1,updated_at=NOW() WHERE id=$2", [nombre_huesped, habitacion_id]);
     }
@@ -713,7 +657,7 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
           [turnoHab.id, `Seña Reserva Hab. ${hab.numero} — ${nombre_huesped}`, senia,
            metodo_pago||'Efectivo', `Reserva #${r.rows[0].id}`,
-           req.user.id, req.user.nombre, habitacion_id, hab.numero]
+           req.user.id, req.user.nombre, (isNaN(Number(hab.id)) ? null : Number(hab.id)), hab.numero]
         );
       } else {
         // Sin turno abierto: la reserva se guarda igual pero se advierte
@@ -1169,6 +1113,7 @@ app.post('/api/huesped/login', async (req, res) => {
     if (!habitacion_id || !password) return res.status(400).json({ error: 'Datos incompletos' });
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada' });
+    const hab_id_int = hab ? (isNaN(Number(hab.id)) ? null : Number(hab.id)) : null;
     if (hab.password_puerta !== password) return res.status(401).json({ error: 'Contraseña incorrecta' });
     if (!['ocupada','en_limpieza','limpia'].includes(hab.status))
       return res.status(403).json({ error: 'No hay huésped activo en esta habitación' });
