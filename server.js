@@ -495,76 +495,69 @@ app.get('/api/habitaciones/:id/reserva', auth, adminOrRecep, async (req, res) =>
 });
 
 // ── RESTAURAR notas de habitaciones desde reservas activas ──────────
-// Emergencia: repara habitaciones cuya nota quedó vacía por bug de sincronización
 app.post('/api/habitaciones/restaurar-notas', auth, adminOrRecep, async (req, res) => {
   try {
-    const result = await db.query(`
-      UPDATE habitaciones h
-      SET nota = r.nombre_huesped, updated_at = NOW()
-      FROM (
-        SELECT DISTINCT ON (habitacion_id)
-          habitacion_id::text, nombre_huesped
-        FROM reservas
-        WHERE estado IN ('activa','futura')
-          AND nombre_huesped IS NOT NULL AND nombre_huesped != ''
-        ORDER BY habitacion_id, estado DESC, entrada ASC
-      ) r
-      WHERE h.id::text = r.habitacion_id
-        AND (h.nota IS NULL OR h.nota = '')
-        AND h.status IN ('ocupada','reservada','lista')
-      RETURNING h.id, h.numero, h.nota
-    `);
-    res.json({ ok: true, restauradas: result.rowCount, detalle: result.rows });
+    // Traer reservas vigentes
+    const reservas = await db.getAll(
+      `SELECT habitacion_id, nombre_huesped FROM reservas
+       WHERE estado IN ('activa','futura') AND nombre_huesped IS NOT NULL AND nombre_huesped != ''`
+    );
+    // Traer habitaciones con nota vacía
+    const habs = await db.getAll(
+      `SELECT id, numero FROM habitaciones WHERE (nota IS NULL OR nota = '') AND status IN ('ocupada','reservada','lista')`
+    );
+    let restauradas = 0;
+    for (const h of habs) {
+      const r = reservas.find(rv => String(rv.habitacion_id) === String(h.id));
+      if (r) {
+        await db.query('UPDATE habitaciones SET nota=$1, updated_at=NOW() WHERE id=$2', [r.nombre_huesped, h.id]);
+        restauradas++;
+      }
+    }
+    res.json({ ok: true, restauradas });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── SINCRONIZAR estados habitaciones con reservas activas ────────────
-// Corrige habitaciones que tienen reserva futura pero status incorrecto
 app.post('/api/habitaciones/sincronizar', auth, adminOrRecep, async (req, res) => {
   try {
-    // 1. Habitaciones con reserva futura (hoy o después) que no están como reservada/ocupada
-    const result = await db.query(`
-      UPDATE habitaciones h
-      SET status = 'reservada',
-          nota   = r.nombre_huesped,
-          updated_at = NOW()
-      FROM (
-        SELECT DISTINCT ON (habitacion_id)
-          habitacion_id::text, nombre_huesped
-        FROM reservas
-        WHERE estado = 'futura'
-          AND DATE(entrada AT TIME ZONE 'America/Argentina/Buenos_Aires') >= CURRENT_DATE
-        ORDER BY habitacion_id, entrada ASC
-      ) r
-      WHERE h.id::text = r.habitacion_id
-        AND h.status NOT IN ('ocupada','reservada','mantenimiento')
-      RETURNING h.id, h.numero, h.status
-    `);
+    const hoy = new Date().toISOString().slice(0,10);
 
-    // 2. Habitaciones marcadas como reservada pero sin reserva vigente
-    // Solo liberar si no hay NINGUNA reserva activa o futura con salida >= hoy
-    const result2 = await db.query(`
-      UPDATE habitaciones h
-      SET status = 'libre', nota = '', updated_at = NOW()
-      WHERE h.status = 'reservada'
-        AND NOT EXISTS (
-          SELECT 1 FROM reservas r
-          WHERE r.habitacion_id::text = h.id::text
-            AND r.estado IN ('futura','activa')
-            AND (
-              DATE(r.salida AT TIME ZONE 'America/Argentina/Buenos_Aires') >= CURRENT_DATE AT TIME ZONE 'America/Argentina/Buenos_Aires'
-              OR r.estado = 'activa'
-            )
-        )
-      RETURNING h.id, h.numero
-    `);
+    // Reservas vigentes (futura o activa, salida >= hoy)
+    const reservas = await db.getAll(
+      `SELECT habitacion_id, nombre_huesped, estado, entrada, salida
+       FROM reservas
+       WHERE estado IN ('activa','futura') AND salida >= $1`, [hoy]
+    );
 
-    res.json({
-      ok: true,
-      actualizadas_a_reservada: result.rowCount,
-      liberadas: result2.rowCount,
-      detalle: result.rows
-    });
+    // Todas las habitaciones
+    const habs = await db.getAll('SELECT id, numero, status, nota FROM habitaciones');
+
+    let marcadasReservada = 0, liberadas = 0;
+
+    for (const h of habs) {
+      const reserva = reservas.find(r => String(r.habitacion_id) === String(h.id));
+
+      // Tiene reserva vigente pero no está marcada como reservada/ocupada/mantenimiento
+      if (reserva && !['ocupada','reservada','mantenimiento'].includes(h.status)) {
+        await db.query(
+          "UPDATE habitaciones SET status='reservada', nota=$1, updated_at=NOW() WHERE id=$2",
+          [reserva.nombre_huesped, h.id]
+        );
+        marcadasReservada++;
+      }
+
+      // Está marcada como reservada pero no tiene reserva vigente
+      if (!reserva && h.status === 'reservada') {
+        await db.query(
+          "UPDATE habitaciones SET status='libre', nota='', updated_at=NOW() WHERE id=$1",
+          [h.id]
+        );
+        liberadas++;
+      }
+    }
+
+    res.json({ ok: true, actualizadas_a_reservada: marcadasReservada, liberadas });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
