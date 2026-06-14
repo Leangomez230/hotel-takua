@@ -386,6 +386,7 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
     const { monto_extra, metodo_pago_extra, concepto_extra } = req.body;
     const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [id]);
     if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + id });
+    const id_int = isNaN(Number(hab.id)) ? null : Number(hab.id);
 
     // Obtener reserva activa con su saldo
     const reserva = await db.getOne(
@@ -410,7 +411,7 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
           [turnoHab.id, `Saldo Checkout Hab. ${hab.numero} — ${reserva.nombre_huesped||''}`,
            saldo, metodo_pago_extra||'Efectivo', reserva?`Reserva #${reserva.id}`:'',
-           req.user.id, req.user.nombre, id, hab.numero]
+           req.user.id, req.user.nombre, id_int, hab.numero]
         );
       }
       if (extra > 0) {
@@ -419,7 +420,7 @@ app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) =>
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
           [turnoHab.id, concepto_extra||`Extra Checkout Hab. ${hab.numero}`,
            extra, metodo_pago_extra||'Efectivo',
-           req.user.id, req.user.nombre, id, hab.numero]
+           req.user.id, req.user.nombre, id_int, hab.numero]
         );
       }
     }
