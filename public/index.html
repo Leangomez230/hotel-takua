@@ -1730,7 +1730,7 @@ function showCambiarHabModal(hab) {
       // Seleccionar este
       btn.style.borderColor = '#7c3aed';
       btn.style.background  = '#faf5ff';
-      habDestinoId = parseInt(btn.dataset.hid);
+      habDestinoId = btn.dataset.hid; // mantener como string (ej: 'O101', 'E102')
       const confirmBtn = document.getElementById('ch-confirm');
       confirmBtn.disabled = false;
       confirmBtn.style.opacity = '1';
