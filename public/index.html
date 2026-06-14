@@ -393,7 +393,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
             width:8px;height:8px;border-radius:50%;background:#dc2626"></span>
         </button>
         <div class="user-av" id="user-av">A</div>
-        <button class="tb-btn" id="tb-libro" style="display:none" onclick="abrirLibro()">📋 Libro</button>
         <button class="tb-btn" id="btn-logout" style="color:#dc2626">Salir</button>
       </div>
     </div>
@@ -531,6 +530,12 @@ document.getElementById('tb-caja')?.addEventListener('click',()=>{
  
 // ── AUTH ──
 // Login manejado por portal.html
+// Mostrar botón Libro para admin, recepcionista y mucama
+const _rolLibro = currentUser?.rol;
+if (['admin','recepcionista','mucama'].includes(_rolLibro)) {
+  const _btnLibro = document.getElementById('tb-libro');
+  if (_btnLibro) _btnLibro.style.display = '';
+}
 document.getElementById('btn-logout').addEventListener('click', doLogout);
  
 function irARestaurante() {
