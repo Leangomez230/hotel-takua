@@ -797,18 +797,54 @@ async function reimprimirArqueo(turnoId, fuente) {
 }
 
 // ── TAB HISTORIAL ─────────────────────────────────────
+// Estado del filtro del historial
+let _histFuente = 'todos'; // 'todos' | 'restaurante' | 'habitaciones'
+let _histMovs   = [];      // cache de movimientos
+
 async function renderHistorial(el) {
   el.innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8">Cargando historial...</div>';
   const data = await api('GET', '/caja-global/historial?limit=100');
-  const movs = data?.movimientos || [];
+  _histMovs = data?.movimientos || [];
+  renderHistorialFiltrado(el);
+}
+
+function renderHistorialFiltrado(el) {
+  const movs = _histMovs;
+
+  // Aplicar filtro de fuente
+  const filtrados = _histFuente === 'todos' ? movs
+    : movs.filter(m => m.fuente === _histFuente);
 
   el.innerHTML = `
     <div class="section-card">
-      <div class="sc-head">
-        <span class="card-title">Últimos 30 días (${movs.length} movimientos)</span>
-        <span style="font-size:12px;color:#94a3b8">Tocá una comanda para ver el detalle</span>
+      <div class="sc-head" style="flex-direction:column;align-items:stretch;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span class="card-title">Últimos 30 días (${filtrados.length} de ${movs.length})</span>
+          <span style="font-size:12px;color:#94a3b8">Tocá una comanda para ver el detalle</span>
+        </div>
+        <!-- Filtros -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="setHistFuente('todos', this.closest('.section-card').parentElement)"
+            style="flex:1;min-width:80px;padding:8px 12px;border-radius:8px;border:1.5px solid ${_histFuente==='todos'?'transparent':'#e2e8f0'};
+            background:${_histFuente==='todos'?'linear-gradient(135deg,#1a2035,#2d3a5c)':'#fff'};
+            color:${_histFuente==='todos'?'#fff':'#64748b'};font-family:Nunito,sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+            Todos (${movs.length})
+          </button>
+          <button onclick="setHistFuente('habitaciones', this.closest('.section-card').parentElement)"
+            style="flex:1;min-width:80px;padding:8px 12px;border-radius:8px;border:1.5px solid ${_histFuente==='habitaciones'?'transparent':'#e2e8f0'};
+            background:${_histFuente==='habitaciones'?'linear-gradient(135deg,#1a2035,#2d3a5c)':'#fff'};
+            color:${_histFuente==='habitaciones'?'#fff':'#64748b'};font-family:Nunito,sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+            🛏️ Habitaciones (${movs.filter(m=>m.fuente!=='restaurante').length})
+          </button>
+          <button onclick="setHistFuente('restaurante', this.closest('.section-card').parentElement)"
+            style="flex:1;min-width:80px;padding:8px 12px;border-radius:8px;border:1.5px solid ${_histFuente==='restaurante'?'transparent':'#e2e8f0'};
+            background:${_histFuente==='restaurante'?'linear-gradient(135deg,#1a2035,#2d3a5c)':'#fff'};
+            color:${_histFuente==='restaurante'?'#fff':'#64748b'};font-family:Nunito,sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+            🍽️ Restaurante (${movs.filter(m=>m.fuente==='restaurante').length})
+          </button>
+        </div>
       </div>
-      ${movs.length ? movs.map((m,idx) => {
+      ${filtrados.length ? filtrados.map((m,idx) => {
         const esEgreso = m.tipo==='egreso';
         const esComanda = m.fuente==='restaurante' && m.comanda_id;
         return `<div class="mov-item" id="mov-${idx}"
@@ -829,8 +865,14 @@ async function renderHistorial(el) {
             ${esEgreso?'-':'+'} ${fmt(Math.abs(Number(m.monto||0)))}
           </div>
         </div>`;
-      }).join('') : '<div style="text-align:center;color:#94a3b8;padding:32px">Sin movimientos</div>'}
+      }).join('') : '<div style="text-align:center;color:#94a3b8;padding:32px">Sin movimientos para este filtro</div>'}
     </div>`;
+}
+
+function setHistFuente(fuente, container) {
+  _histFuente = fuente;
+  const el = container || document.getElementById('content');
+  renderHistorialFiltrado(el);
 }
 
 // Toggle detalle de comanda en historial
