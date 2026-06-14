@@ -41,6 +41,10 @@
       href: '/comandas.html',
       show: ['admin','cajero','mozo'],
       active: on('comandas.html') },
+    { id:'sb-mail',         icon:'✉️', label:'Mail',
+      href: 'https://mail.hostinger.com/',
+      show: ['admin'],
+      bottom: true },
     { id:'sb-config',       icon:'⚙️', label:'Config',
       href: indexHref('config'), click: indexClick('config'),
       show: ['admin'],
@@ -167,6 +171,10 @@
       a.addEventListener('click', (e) => { e.preventDefault(); eval(item.click); });
     } else {
       a.href = item.href || '#';
+      if (item.href && item.href.startsWith('http')) {
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+      }
     }
     const btn = document.createElement('button');
     btn.className = 'sb-btn' + (item.active ? ' active' : '') + (item.bottom ? ' bottom' : '');
