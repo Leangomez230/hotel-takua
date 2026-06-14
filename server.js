@@ -481,6 +481,15 @@ app.post('/api/habitaciones/:id/cambiar', auth, adminOrRecep, async (req, res) =
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── DIAGNÓSTICO: ver status real de habitación ───────────────────────
+app.get('/api/habitaciones/:id/debug', auth, adminOrRecep, async (req, res) => {
+  try {
+    const hab = await db.getOne('SELECT id, numero, ala, status, nota FROM habitaciones WHERE id=$1', [req.params.id]);
+    const reservas = await db.getAll('SELECT id, estado, nombre_huesped, entrada, salida FROM reservas WHERE habitacion_id=$1 ORDER BY created_at DESC LIMIT 5', [req.params.id]);
+    res.json({ hab, reservas });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Obtener reserva vigente de una habitación (para precarga en checkin)
 app.get('/api/habitaciones/:id/reserva', auth, adminOrRecep, async (req, res) => {
   try {
