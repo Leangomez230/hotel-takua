@@ -393,7 +393,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
             width:8px;height:8px;border-radius:50%;background:#dc2626"></span>
         </button>
         <div class="user-av" id="user-av">A</div>
-        <button class="tb-btn nav-admin" id="btn-sync" title="Sincronizar estados habitaciones" style="background:#f0fdf9;color:#059669;border-color:#6ee7b7">🔄</button>
+        <button class="tb-btn" id="tb-libro" style="display:none" onclick="abrirLibro()">📋 Libro</button>
         <button class="tb-btn" id="btn-logout" style="color:#dc2626">Salir</button>
       </div>
     </div>
@@ -531,17 +531,6 @@ document.getElementById('tb-caja')?.addEventListener('click',()=>{
  
 // ── AUTH ──
 // Login manejado por portal.html
-document.getElementById('btn-sync')?.addEventListener('click', async () => {
-  const btn = document.getElementById('btn-sync');
-  btn.textContent = '⏳';
-  try {
-    await apiFetch('POST', '/habitaciones/restaurar-notas');
-    await apiFetch('POST', '/habitaciones/sincronizar');
-    await refreshHabs();
-    toast('✅ Estados sincronizados');
-  } catch(e) { toast('Error al sincronizar', false); }
-  btn.textContent = '🔄';
-});
 document.getElementById('btn-logout').addEventListener('click', doLogout);
  
 function irARestaurante() {
