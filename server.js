@@ -445,7 +445,7 @@ app.post('/api/habitaciones/:id/cambiar', auth, adminOrRecep, async (req, res) =
     const habDestino = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [nueva_habitacion_id]);
     if (!habOrigen) return res.status(404).json({ error: 'Habitación origen no encontrada' });
     if (!habDestino) return res.status(404).json({ error: 'Habitación destino no encontrada' });
-    if (!['libre','lista'].includes(habDestino.status))
+    if (!['libre','lista','limpia','libre_limpia'].includes(habDestino.status))
       return res.status(400).json({ error: `La habitación ${habDestino.numero} está ${habDestino.status}` });
 
     // Obtener reserva activa de origen
