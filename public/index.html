@@ -1660,7 +1660,7 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
 function showCambiarHabModal(hab) {
   // Filtrar habitaciones libres o lista como destino
   const libres = habitaciones.filter(h =>
-    ['libre','lista'].includes(h.status) && h.id !== hab.id
+    ['libre','lista','limpia','libre_limpia'].includes(h.status) && h.id !== hab.id
   );
   if (!libres.length) {
     toast('No hay habitaciones disponibles para el traslado', false);
