@@ -57,6 +57,10 @@ function adminOrRecep(req, res, next) {
   if (!['admin','recepcionista'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
   next();
 }
+function adminRecepMucama(req, res, next) {
+  if (!['admin','recepcionista','mucama'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
+  next();
+}
 function authRestaurante(req, res, next) {
   if (!['admin','mozo','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos para restaurante' });
   next();
@@ -389,7 +393,7 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
 });
 
 // ── CHECK-OUT ────────────────────────────────────────────────────────
-app.post('/api/checkout/:habitacion_id', auth, adminOrRecep, async (req, res) => {
+app.post('/api/checkout/:habitacion_id', auth, adminRecepMucama, async (req, res) => {
   try {
     const id = req.params.habitacion_id;
     const { monto_extra, metodo_pago_extra, concepto_extra } = req.body;
