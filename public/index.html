@@ -663,10 +663,14 @@ function buildCard(h) {
   // ── Badge(s) arriba a la derecha ──
   let badgeHTML;
   if (h.status === 'lista') {
-    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-      <span class="sbadge sb-reservada">RESERVADA</span>
-      <span class="sbadge sb-reservada">LISTA</span>
-    </div>`;
+    // Solo mostrar RESERVADA si realmente hay reserva vinculada
+    const tieneReserva = !!(h.reserva_activa?.nombre_huesped);
+    badgeHTML = tieneReserva
+      ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <span class="sbadge sb-reservada">RESERVADA</span>
+          <span class="sbadge sb-reservada">LISTA</span>
+        </div>`
+      : `<span class="sbadge sb-libre">LIBRE</span>`;
   } else if (h.status === 'reservada') {
     if (proximidadCheckin === 'hoy') {
       badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
