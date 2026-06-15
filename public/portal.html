@@ -141,6 +141,28 @@ document.getElementById('inp-usuario').addEventListener('keydown',e=>{if(e.key==
   const token=localStorage.getItem('takua_token');
   if(token&&user) window.location.href=RUTAS[user.rol]||'/';
 })();
+
+ // ── INSTALAR PWA ──
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (window.innerWidth <= 900) {
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'flex';
+  }
+});
+window.addEventListener('appinstalled', () => {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'none';
+  deferredPrompt = null;
+});
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+  }
+}
 </script>
 
 <!-- Banner instalar app -->
