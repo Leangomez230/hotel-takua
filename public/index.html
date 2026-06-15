@@ -2053,7 +2053,8 @@ async function showCheckinModal(habId) {
 // RESERVA
 // ══════════════════════════════════════
 function showReservaModal(habId) {
-  const hab=habitaciones.find(h=>h.id===habId);
+  const hab=habitaciones.find(h=>String(h.id)===String(habId));
+  const habIdReal = hab?.id ?? habId;
   const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
   const iso=d=>d.toISOString().slice(0,16);
   const pn=hab?.precio_noche||50000;
