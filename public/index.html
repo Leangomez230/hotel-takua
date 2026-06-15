@@ -1253,6 +1253,12 @@ function showHabModal(hab) {
         ${mucamaAccion.label}
       </button>
     ` : ''}
+    ${isMucama && hab.status==='ocupada' ? `
+      <button class="confirm-btn" id="btn-mucama-checkout"
+        style="background:linear-gradient(135deg,#dc2626,#b91c1c);margin-bottom:8px">
+        🚪 Check-out
+      </button>
+    ` : ''}
  
     ${canEdit && transitions.length > 0 ? `
       <div class="form-col" style="margin-bottom:12px">
@@ -1301,6 +1307,11 @@ function showHabModal(hab) {
   });
 
   // Botón servicio mucama
+  document.getElementById('btn-mucama-checkout')?.addEventListener('click', () => {
+    closeModal();
+    showCheckoutModal(hab);
+  });
+
   document.getElementById('btn-servicio')?.addEventListener('click', async () => {
     if (mucamaAccion.soloIniciar) {
       // Solo cambiar estado a "en_limpieza" — guardar nombre de mucama en nota
