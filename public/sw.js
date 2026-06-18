@@ -1,4 +1,4 @@
-const CACHE = 'takua-v6.0.3';
+const CACHE = 'takua-v7.0.0';
 const OFFLINE_ASSETS = ['/', '/index.html', '/portal.html', '/comandas.html', '/manifest.json', '/icon-192.png'];
 
 // ── INSTALL ──────────────────────────────────────────
