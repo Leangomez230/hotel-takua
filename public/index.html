@@ -775,11 +775,13 @@ function buildCard(h) {
     if (h.status === 'reservada' && proximidadCheckin !== 'hoy' && proximidadCheckin !== 'proximo') {
       const fechaEnt = r?.entrada ? new Date(r.entrada).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) : '—';
       const nombreCorto = nombre.split(' ').slice(0,2).join(' ');
+      // Pastilla informativa solo si faltan 7 días o menos
+      const mostrarPastilla = diasParaCheckin !== null && diasParaCheckin <= 7;
       body = `
         <div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>
-        <div style="margin-top:6px;background:#ede9fe;border-radius:7px;padding:5px 8px;font-size:10px;color:#6d28d9;font-weight:700;display:flex;align-items:center;gap:4px">
+        ${mostrarPastilla ? `<div style="margin-top:6px;background:#ede9fe;border-radius:7px;padding:5px 8px;font-size:10px;color:#6d28d9;font-weight:700;display:flex;align-items:center;gap:4px">
           📅 ${fechaEnt}${nombreCorto?' · '+nombreCorto:''}
-        </div>`;
+        </div>` : ''}`;
     } else {
       body = `
         ${nombre ? `<div class="rguest" style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${nombre}</div>` : ''}
