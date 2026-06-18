@@ -682,11 +682,13 @@ function buildCard(h) {
         <span class="sbadge sb-reservada">RESERVADA</span>
       </div>`;
     } else {
-      // futuro o null → mostrar como libre con reserva
-      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-        <span class="sbadge sb-libre">LIBRE</span>
-        <span class="sbadge sb-reservada">RESERVADA</span>
-      </div>`;
+      // futuro o null → solo mostrar RESERVADA si faltan ≤7 días
+      badgeHTML = diasParaCheckin !== null && diasParaCheckin <= 7
+        ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span class="sbadge sb-libre">LIBRE</span>
+            <span class="sbadge sb-reservada">RESERVADA</span>
+          </div>`
+        : `<span class="sbadge sb-libre">LIBRE</span>`;
     }
   } else if (h.status === 'en_limpieza') {
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
