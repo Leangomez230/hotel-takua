@@ -247,21 +247,14 @@ app.post('/api/servicios', auth, async (req, res) => {
       statusFinal = reservaActiva ? 'ocupada' : 'libre';
     } else if (tipo_servicio === 'post_checkout') {
       // Post-checkout: si hay reserva futura → lista, si no → libre
-      let reservaFutura = await db.getOne(
+      const habIdNum = isNaN(Number(habitacion_id)) ? null : Number(habitacion_id);
+      let reservaFutura = habIdNum ? await db.getOne(
         `SELECT id FROM reservas WHERE habitacion_id=$1
-         AND estado = 'futura'
+         AND estado IN ('futura','activa','confirmada')
+         AND DATE(entrada) >= CURRENT_DATE
          ORDER BY entrada ASC LIMIT 1`,
-        [habitacion_id]
-      );
-      // Fallback: buscar por número de habitación
-      if (!reservaFutura && hab) {
-        reservaFutura = await db.getOne(
-          `SELECT id FROM reservas WHERE habitacion_id=$1
-           AND estado = 'futura'
-           ORDER BY entrada ASC LIMIT 1`,
-          [String(hab.numero)]
-        );
-      }
+        [habIdNum]
+      ) : null;
       statusFinal = reservaFutura ? 'lista' : 'libre';
     }
 
