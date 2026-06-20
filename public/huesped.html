@@ -53,7 +53,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
 .main-btn .btn-label{font-size:16px;font-weight:800;color:#fff;display:block}
 .main-btn .btn-sub{font-size:12px;color:rgba(255,255,255,.75);display:block;margin-top:2px}
 .btn-servicio{background:linear-gradient(135deg,#166534,#16a34a)}
-.btn-frigobar{background:linear-gradient(135deg,#1d4ed8,#3b82f6)}
 
 /* MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:flex-end;justify-content:center}
@@ -175,19 +174,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
   </div>
 </div>
 
-<!-- MODAL FRIGOBAR -->
-<div class="overlay" id="modal-frig">
-  <div class="modal">
-    <div class="modal-hd">
-      <h3>🍫 Frigobar</h3>
-      <button class="modal-close" id="frig-close">✕</button>
-    </div>
-    <p style="font-size:13px;color:#64748b;margin-bottom:14px">Los productos se cargan a tu cuenta y se cobran al hacer check-out.</p>
-    <div id="frig-productos"></div>
-    <div class="total-bar"><span>Total:</span><span id="frig-total">$ 0</span></div>
-    <button class="confirm-btn" id="frig-confirm">✅ Confirmar pedido</button>
-  </div>
-</div>
+
 
 <div class="toast" id="toast"></div>
 
@@ -195,7 +182,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
 const API = '/api/huesped';
 let gToken = sessionStorage.getItem('g_token');
 let gData = null;
-let frigCants = {};
 
 function fmt(n) { return '$ ' + Math.round(n||0).toLocaleString('es-AR'); }
 function fmtDate(d) {
@@ -257,7 +243,7 @@ function startApp(loginData) {
 
 function renderInfo(data) {
   const hab = data.habitacion || data;
-  const tipos = {twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
+  const tipos = {twin:'🛏🛏 Twin', queen:'🛏 Queen', triple:'🛏🛏🛏 Triple', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
   document.getElementById('g-num').textContent = 'Habitación ' + hab.numero;
   document.getElementById('g-info').textContent = `Ala ${hab.ala} · ${tipos[hab.tipo]||hab.tipo}`;
   if (data.reserva) {
@@ -304,59 +290,6 @@ document.getElementById('srv-confirm').addEventListener('click', async () => {
     document.getElementById('modal-srv').classList.remove('open');
     loadInfo();
   } else toast(r?.error||'Error al enviar', false);
-});
-
-// ── FRIGOBAR ──
-document.getElementById('btn-frigobar').addEventListener('click', () => {
-  frigCants = {};
-  const prods = gData?.productos || [];
-  const cats = [...new Set(prods.map(p=>p.categoria))];
-  document.getElementById('frig-productos').innerHTML = cats.map(cat => `
-    <div class="stitle">${cat}</div>
-    ${prods.filter(p=>p.categoria===cat).map(p=>`
-      <div class="prod-item">
-        <div>
-          <div class="prod-name">${p.nombre}</div>
-          <div class="prod-price">${fmt(p.precio)} · Stock: ${p.stock}</div>
-        </div>
-        <div class="qty-ctrl">
-          <button class="qty-btn" data-id="${p.id}" data-d="-1">−</button>
-          <span class="qty-num" data-id="${p.id}">0</span>
-          <button class="qty-btn" data-id="${p.id}" data-d="1">+</button>
-        </div>
-      </div>`).join('')}
-  `).join('');
-
-  document.querySelectorAll('.qty-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = parseInt(btn.dataset.id);
-      const d = parseInt(btn.dataset.d);
-      const prod = prods.find(p=>p.id===id||parseInt(p.id)===id);
-      frigCants[id] = Math.max(0, (frigCants[id]||0) + d);
-      if (prod && frigCants[id] > prod.stock) frigCants[id] = prod.stock;
-      document.querySelector(`.qty-num[data-id="${id}"]`).textContent = frigCants[id];
-      // Total
-      let tot = 0;
-      prods.forEach(p => { tot += (frigCants[p.id]||0) * p.precio; });
-      document.getElementById('frig-total').textContent = fmt(tot);
-    });
-  });
-
-  document.getElementById('frig-total').textContent = '$ 0';
-  document.getElementById('modal-frig').classList.add('open');
-});
-document.getElementById('frig-close').addEventListener('click', () => document.getElementById('modal-frig').classList.remove('open'));
-document.getElementById('modal-frig').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
-
-document.getElementById('frig-confirm').addEventListener('click', async () => {
-  const consumos = Object.entries(frigCants).filter(([id,qty])=>qty>0).map(([id,qty])=>({producto_id:parseInt(id),cantidad:qty}));
-  if (!consumos.length) { toast('Seleccioná al menos un producto', false); return; }
-  const r = await apiFetch('POST', '/solicitud', { tipo:'frigobar', detalle:'', consumos });
-  if (r?.ok) {
-    toast(r.total>0 ? `Pedido registrado · ${fmt(r.total)}` : 'Pedido registrado');
-    document.getElementById('modal-frig').classList.remove('open');
-    loadInfo();
-  } else toast(r?.error||'Error', false);
 });
 
 // ── LOGOUT ──
