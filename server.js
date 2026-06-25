@@ -2436,6 +2436,12 @@ async function sincronizarReservas() {
 }
 setInterval(sincronizarReservas, 60 * 60 * 1000); // cada hora
 
+// Endpoint manual para forzar sincronización (solo admin)
+app.post('/api/admin/sync-reservas', auth, adminOnly, async (req, res) => {
+  await sincronizarReservas();
+  res.json({ ok: true, mensaje: 'Sincronización ejecutada' });
+});
+
 function scheduleReset() {
   const now = new Date();
   const next8am = new Date();
