@@ -647,7 +647,7 @@ const SCFG = {
   limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
   mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
 };
-const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
+const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', triple:'🛏🛏🛏 Triple', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
  
 function buildCard(h) {
   const s=SCFG[h.status]||{label:h.status,badge:'sb-reservada',icon:'⚪',color:'#b45309',bg:'#fef9c3'};
@@ -690,11 +690,13 @@ function buildCard(h) {
         <span class="sbadge sb-reservada">RESERVADA</span>
       </div>`;
     } else {
-      // futuro o null → mostrar como libre con reserva
-      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-        <span class="sbadge sb-libre">LIBRE</span>
-        <span class="sbadge sb-reservada">RESERVADA</span>
-      </div>`;
+      // futuro o null → solo mostrar RESERVADA si faltan ≤7 días
+      badgeHTML = diasParaCheckin !== null && diasParaCheckin <= 7
+        ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span class="sbadge sb-libre">LIBRE</span>
+            <span class="sbadge sb-reservada">RESERVADA</span>
+          </div>`
+        : `<span class="sbadge sb-libre">LIBRE</span>`;
     }
   } else if (h.status === 'en_limpieza') {
     badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
@@ -783,11 +785,12 @@ function buildCard(h) {
     if (h.status === 'reservada' && proximidadCheckin !== 'hoy' && proximidadCheckin !== 'proximo') {
       const fechaEnt = r?.entrada ? new Date(r.entrada).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) : '—';
       const nombreCorto = nombre.split(' ').slice(0,2).join(' ');
+      const mostrarPastilla = diasParaCheckin !== null && diasParaCheckin <= 7;
       body = `
         <div class="ravail"><div class="ravail-circle">✅</div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>
-        <div style="margin-top:6px;background:#ede9fe;border-radius:7px;padding:5px 8px;font-size:10px;color:#6d28d9;font-weight:700;display:flex;align-items:center;gap:4px">
+        ${mostrarPastilla ? `<div style="margin-top:6px;background:#ede9fe;border-radius:7px;padding:5px 8px;font-size:10px;color:#6d28d9;font-weight:700;display:flex;align-items:center;gap:4px">
           📅 ${fechaEnt}${nombreCorto?' · '+nombreCorto:''}
-        </div>`;
+        </div>` : ''}`;
     } else {
       body = `
         ${nombre ? `<div class="rguest" style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${nombre}</div>` : ''}
@@ -1204,12 +1207,14 @@ function showHabModal(hab) {
   ).join('');
  
   // Selector tipo cama (visible para todos)
-  const esTwin  = !['queen','suite'].includes(hab.tipo);
+  const esTriple = hab.tipo === 'triple';
+  const esTwin  = !['queen','suite','triple'].includes(hab.tipo);
   const tipoCamaHTML = `
     <div class="stitle">Tipo de cama</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button id="tbtn-twin"  style="flex:1;padding:10px;border:2px solid ${esTwin ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
-      <button id="tbtn-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
+      <button id="tbtn-twin"   style="flex:1;padding:10px;border:2px solid ${esTwin   ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin   ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏 Twin</button>
+      <button id="tbtn-queen"  style="flex:1;padding:10px;border:2px solid ${!esTwin && !esTriple?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin && !esTriple?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
+      <button id="tbtn-triple" style="flex:1;padding:10px;border:2px solid ${esTriple ?'#f59e0b':'#e0e6ef'};border-radius:10px;background:${esTriple ?'#fffbeb':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏🛏 Triple</button>
     </div>`;
  
   const todosLosEstados = [
@@ -1295,18 +1300,21 @@ function showHabModal(hab) {
   document.getElementById('hab-close').addEventListener('click', closeModal);
  
   // Selector tipo cama
-  let tipoCamaSeleccionada = esTwin ? 'twin' : 'queen';
-  const btnTwin  = document.getElementById('tbtn-twin');
-  const btnQueen = document.getElementById('tbtn-queen');
+  let tipoCamaSeleccionada = esTriple ? 'triple' : esTwin ? 'twin' : 'queen';
+  const btnTwin   = document.getElementById('tbtn-twin');
+  const btnQueen  = document.getElementById('tbtn-queen');
+  const btnTriple = document.getElementById('tbtn-triple');
   function selectTipo(tipo) {
     tipoCamaSeleccionada = tipo;
-    btnTwin.style.borderColor  = tipo==='twin' ?'#00c9b1':'#e0e6ef';
-    btnTwin.style.background   = tipo==='twin' ?'#f0fdf9':'#f8fafc';
-    btnQueen.style.borderColor = tipo==='queen'?'#7c3aed':'#e0e6ef';
-    btnQueen.style.background  = tipo==='queen'?'#faf5ff':'#f8fafc';
+    btnTwin.style.borderColor    = tipo==='twin'  ?'#00c9b1':'#e0e6ef';
+    btnTwin.style.background     = tipo==='twin'  ?'#f0fdf9':'#f8fafc';
+    btnQueen.style.borderColor   = tipo==='queen' ?'#7c3aed':'#e0e6ef';
+    btnQueen.style.background    = tipo==='queen' ?'#faf5ff':'#f8fafc';
+    if(btnTriple){btnTriple.style.borderColor = tipo==='triple'?'#f59e0b':'#e0e6ef'; btnTriple.style.background = tipo==='triple'?'#fffbeb':'#f8fafc';}
   }
-  btnTwin?.addEventListener('click',  () => selectTipo('twin'));
-  btnQueen?.addEventListener('click', () => selectTipo('queen'));
+  btnTwin?.addEventListener('click',   () => selectTipo('twin'));
+  btnQueen?.addEventListener('click',  () => selectTipo('queen'));
+  btnTriple?.addEventListener('click', () => selectTipo('triple'));
 
   // Mucama: guardar tipo de cama
   document.getElementById('btn-save-tipo')?.addEventListener('click', async () => {
@@ -1354,7 +1362,7 @@ function showHabModal(hab) {
       {
         const nota = document.getElementById('hab-nota')?.value || hab.nota || '';
         // Guardar tipo de cama si cambió
-        if (tipoCamaSeleccionada !== (esTwin?'twin':'queen')) {
+        if (tipoCamaSeleccionada !== (esTriple?'triple':esTwin?'twin':'queen')) {
           await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
         }
         const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:t.s, nota });
@@ -1369,7 +1377,7 @@ function showHabModal(hab) {
   // Guardar nota
   document.getElementById('hab-save-nota')?.addEventListener('click', async () => {
     const nota = document.getElementById('hab-nota').value;
-    if (tipoCamaSeleccionada !== (esTwin?'twin':'queen')) {
+    if (tipoCamaSeleccionada !== (esTriple?'triple':esTwin?'twin':'queen')) {
       await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
     }
     const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:hab.status, nota });
@@ -1542,7 +1550,8 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
       </div>
     </div>`).join('');
  
-  const esTwin = tipoCamaInicial !== 'queen';
+  const esTripleSrv = tipoCamaInicial === 'triple';
+  const esTwinSrv = !['queen','triple'].includes(tipoCamaInicial);
  
   openModal(`
     <div class="modal-hd">
@@ -1559,8 +1568,9 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
  
     <div class="stitle">Tipo de cama preparada</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button id="srv-twin"  style="flex:1;padding:10px;border:2px solid ${esTwin ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Twin</button>
-      <button id="srv-queen" style="flex:1;padding:10px;border:2px solid ${!esTwin?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
+      <button id="srv-twin"   style="flex:1;padding:10px;border:2px solid ${esTwinSrv   ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwinSrv   ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏 Twin</button>
+      <button id="srv-queen"  style="flex:1;padding:10px;border:2px solid ${!esTwinSrv && !esTripleSrv?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwinSrv && !esTripleSrv?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
+      <button id="srv-triple" style="flex:1;padding:10px;border:2px solid ${esTripleSrv ?'#f59e0b':'#e0e6ef'};border-radius:10px;background:${esTripleSrv ?'#fffbeb':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏🛏 Triple</button>
     </div>
  
     ${esDiario || accion.servicio==='post_checkout' ? `
@@ -1588,16 +1598,19 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
   `);
  
   // Tipo cama
-  let tipoCama = esTwin ? 'twin' : 'queen';
-  const btnT = document.getElementById('srv-twin');
-  const btnQ = document.getElementById('srv-queen');
+  let tipoCama = esTripleSrv ? 'triple' : esTwinSrv ? 'twin' : 'queen';
+  const btnT  = document.getElementById('srv-twin');
+  const btnQ  = document.getElementById('srv-queen');
+  const btnTr = document.getElementById('srv-triple');
   function selTipo(t) {
     tipoCama = t;
-    btnT.style.borderColor = t==='twin' ?'#00c9b1':'#e0e6ef'; btnT.style.background = t==='twin' ?'#f0fdf9':'#f8fafc';
-    btnQ.style.borderColor = t==='queen'?'#7c3aed':'#e0e6ef'; btnQ.style.background = t==='queen'?'#faf5ff':'#f8fafc';
+    btnT.style.borderColor  = t==='twin'  ?'#00c9b1':'#e0e6ef'; btnT.style.background  = t==='twin'  ?'#f0fdf9':'#f8fafc';
+    btnQ.style.borderColor  = t==='queen' ?'#7c3aed':'#e0e6ef'; btnQ.style.background  = t==='queen' ?'#faf5ff':'#f8fafc';
+    if(btnTr){btnTr.style.borderColor = t==='triple'?'#f59e0b':'#e0e6ef'; btnTr.style.background = t==='triple'?'#fffbeb':'#f8fafc';}
   }
-  btnT.addEventListener('click', () => selTipo('twin'));
-  btnQ.addEventListener('click', () => selTipo('queen'));
+  btnT.addEventListener('click',  () => selTipo('twin'));
+  btnQ.addEventListener('click',  () => selTipo('queen'));
+  btnTr?.addEventListener('click', () => selTipo('triple'));
  
   // Cantidades frigobar
   const cantidades = {};
@@ -2913,12 +2926,10 @@ function _libroStartPolling() {
 
 function abrirLibro() {
   document.getElementById('libro-overlay').classList.add('open');
-  // Mostrar input solo para mucamas
   const footer = document.getElementById('libro-footer');
   if (footer) footer.style.display = isMucama ? '' : 'none';
   _libroMarcarLeido();
   cargarLibro();
-  // Refrescar cada 15s mientras está abierto
   _libroInterval = setInterval(cargarLibro, 15000);
 }
 
