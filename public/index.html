@@ -1275,17 +1275,17 @@ function showHabModal(hab) {
       </button>
     ` : ''}
  
-    ${canEdit && transitions.length > 0 ? `
+    ${(canEdit || (isMucama && transitions.length > 0)) && transitions.length > 0 ? `
       <div class="form-col" style="margin-bottom:12px">
         <label>Nota / Observación</label>
         <input type="text" id="hab-nota" value="${hab.nota||''}" placeholder="Huésped, patente, solicitud...">
       </div>
       <div class="stitle">Acciones</div>
       <div class="act-grid">${actHTML}</div>
-      <button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>
+      ${canEdit ? `<button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>` : ''}
     ` : ''}
  
-    ${isMucama && !mucamaAccion ? `
+    ${isMucama && !mucamaAccion && transitions.length === 0 ? `
       <div style="background:#f8fafc;border-radius:8px;padding:12px;font-size:13px;color:#64748b;text-align:center">
         Esta habitación no requiere acción en este momento.
       </div>
