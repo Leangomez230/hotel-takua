@@ -2424,7 +2424,7 @@ async function sincronizarReservas() {
       FROM reservas r
       WHERE r.habitacion_id::text = h.id
         AND r.estado IN ('futura','confirmada')
-        AND r.salida >= CURRENT_DATE
+        AND DATE(r.salida) >= CURRENT_DATE
         AND h.status IN ('libre','lista','libre_limpia')
     `);
     if (result.rowCount > 0) {
@@ -2447,7 +2447,7 @@ app.post('/api/admin/sync-reservas', auth, adminOnly, async (req, res) => {
       FROM reservas r
       WHERE r.habitacion_id::text = h.id
         AND r.estado IN ('futura','confirmada')
-        AND r.salida >= CURRENT_DATE
+        AND DATE(r.salida) >= CURRENT_DATE
         AND h.status IN ('libre','lista','libre_limpia')
     `);
     res.json({ ok: true, filas: result.rowCount, mensaje: `${result.rowCount} habitaciones actualizadas` });
