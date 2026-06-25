@@ -1195,7 +1195,11 @@ function showHabModal(hab) {
   };
  
   const mucamaAccion  = mucamaAcciones[hab.status] || null;
-  const transitions   = canEdit ? (recepTransitions[hab.status] || []) : [];
+  const transitions   = canEdit
+    ? (recepTransitions[hab.status] || [])
+    : isMucama
+      ? (recepTransitions[hab.status] || []).filter(t => t.s === 'check-in' || t.s === 'checkout')
+      : [];
   const actHTML = transitions.map((t,i) =>
     `<button class="act-btn" id="hab-act-${i}" style="background:${t.color}">${t.label}</button>`
   ).join('');
