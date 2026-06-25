@@ -38,8 +38,9 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .gh-day:hover{background:rgba(255,255,255,.05)}
 .gh-day-num{font-size:13px;font-weight:800;color:#fff}
 .gh-day-label{font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600}
-.gh-day.today .gh-day-num{color:var(--accent)}
-.gh-day.today{background:rgba(0,201,177,.08)}
+.gh-day.today{background:rgba(0,201,177,.25);border-left:2px solid var(--accent);border-right:2px solid var(--accent)}
+.gh-day.today .gh-day-num{color:var(--accent);font-size:18px;font-weight:900;text-shadow:0 0 10px rgba(0,201,177,.5)}
+.gh-day.today .gh-day-label{color:var(--accent);font-weight:800}
 
 .gantt-row{display:flex;border-bottom:1px solid #f1f5f9;min-height:48px;background:#fff}
 .gantt-row:hover{background:#fafbfc}
@@ -49,7 +50,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .gr-room-ala{font-size:10px;color:#94a3b8;font-weight:600}
 .gr-days{flex:1;display:grid;position:relative}
 .gr-day-cell{border-right:1px solid #f1f5f9;position:relative}
-.gr-day-cell.today{background:rgba(0,201,177,.05)}
+.gr-day-cell.today{background:rgba(0,201,177,.13);border-left:2px solid rgba(0,201,177,.4);border-right:2px solid rgba(0,201,177,.4)}
 .gr-day-cell.weekend{background:#fafbff}
 
 /* Barras de reserva */
