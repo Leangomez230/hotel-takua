@@ -39,8 +39,8 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .gh-day-num{font-size:13px;font-weight:800;color:#fff}
 .gh-day-label{font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600}
 .gh-day.today{background:rgba(0,201,177,.25);border-left:2px solid var(--accent);border-right:2px solid var(--accent)}
-.gh-day.today .gh-day-num{color:var(--accent);font-size:18px;font-weight:900;text-shadow:0 0 10px rgba(0,201,177,.5)}
-.gh-day.today .gh-day-label{color:var(--accent);font-weight:800}
+.gh-day.today .gh-day-num{color:#fff;font-size:18px;font-weight:900;text-shadow:0 0 10px rgba(0,201,177,.7)}
+.gh-day.today .gh-day-label{color:#fff;font-weight:800}
 
 .gantt-row{display:flex;border-bottom:1px solid #f1f5f9;min-height:48px;background:#fff}
 .gantt-row:hover{background:#fafbfc}
@@ -85,7 +85,11 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .total-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
 .total-row.big{font-size:15px;font-weight:800;color:#15803d}
 
-/* Toast */
+/* Botones de vista (Calendario / Lista) */
+.vista-switcher{display:flex;gap:4px;background:#e2e8f0;border-radius:10px;padding:3px}
+.btn-vista{padding:6px 14px;border-radius:8px;border:1.5px solid transparent;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:none;color:#64748b}
+.btn-vista.activo{background:#1a2035;color:#fff;border-color:#1a2035;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.btn-vista:not(.activo):hover{background:#fff;border-color:#cbd5e1;color:#1a2035}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2035;color:#fff;padding:12px 22px;border-radius:12px;font-weight:700;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);pointer-events:none}
 
 @media(max-width:900px){
@@ -117,15 +121,9 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
   <div class="cal-wrap">
     <!-- Nav del mes -->
     <div class="cal-nav">
-      <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:10px;padding:3px">
-        <button id="btn-vista-cal" onclick="setVista('calendario')"
-          style="padding:6px 14px;border-radius:8px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:#1a2035;color:#fff">
-          📅 Calendario
-        </button>
-        <button id="btn-vista-lista" onclick="setVista('lista')"
-          style="padding:6px 14px;border-radius:8px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:none;color:#64748b;display:none">
-          📋 Lista
-        </button>
+      <div class="vista-switcher">
+        <button id="btn-vista-cal" class="btn-vista activo" onclick="setVista('calendario')">📅 Calendario</button>
+        <button id="btn-vista-lista" class="btn-vista" onclick="setVista('lista')" style="display:none">📋 Lista</button>
       </div>
       <button class="cal-today-btn" id="btn-hoy" onclick="irHoy()">Hoy</button>
       <button class="cal-nav-btn" id="btn-prev" onclick="cambiarMes(-1)">‹</button>
@@ -515,10 +513,8 @@ G.vista = 'calendario';
 function setVista(v) {
   G.vista = v;
   const esCal = v === 'calendario';
-  document.getElementById('btn-vista-cal').style.background   = esCal ? '#1a2035' : 'none';
-  document.getElementById('btn-vista-cal').style.color        = esCal ? '#fff' : '#64748b';
-  document.getElementById('btn-vista-lista').style.background = !esCal ? '#1a2035' : 'none';
-  document.getElementById('btn-vista-lista').style.color      = !esCal ? '#fff' : '#64748b';
+  document.getElementById('btn-vista-cal').classList.toggle('activo', esCal);
+  document.getElementById('btn-vista-lista').classList.toggle('activo', !esCal);
   document.getElementById('gantt-container').style.display    = esCal ? 'block' : 'none';
   document.getElementById('lista-container').style.display    = !esCal ? 'block' : 'none';
   document.getElementById('btn-hoy').style.display   = esCal ? 'inline-block' : 'none';
