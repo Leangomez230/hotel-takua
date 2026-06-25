@@ -157,7 +157,7 @@ app.get('/api/habitaciones', auth, async (req, res) => {
         `SELECT * FROM reservas
          WHERE (
            estado = 'activa'
-           OR (estado IN ('futura','checkin','ocupada','confirmada','reservada') AND DATE(entrada) >= CURRENT_DATE)
+           OR (estado IN ('futura','checkin','ocupada','confirmada','reservada') AND DATE(salida) >= CURRENT_DATE)
          )
          ORDER BY entrada ASC`
       );
