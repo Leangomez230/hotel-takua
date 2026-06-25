@@ -390,12 +390,6 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
     await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', ['ocupada', nombre, habitacion_id]);
     await logAction(req.user.id, req.user.nombre, 'CHECKIN', `Hab ${hab.numero} - ${nombre}`);
     await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
-    sendPushToRoles(['admin','recepcionista','mucama'], {
-      title: `✅ Check-in — Hab. ${hab.numero}`,
-      body:  nombre,
-      icon:  '/icon-192.png', tag: `checkin-${habitacion_id}`,
-      data:  { url: '/index.html' }
-    });
     res.json({ ok: true, reserva_id: finalReservaId });
   } catch(e) { console.error('CHECKIN ERROR:', e); res.status(500).json({ error: 'Error en check-in: ' + e.message }); }
 });
@@ -454,12 +448,6 @@ app.post('/api/checkout/:habitacion_id', auth, adminRecepMucama, async (req, res
     await db.query("UPDATE habitaciones SET status='limpieza',nota='',updated_at=NOW() WHERE id=$1", [id]);
     await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}${totalCobrar>0?` · Cobrado $${totalCobrar}`:''}`);
     await registrarLibro(req.user.id, req.user.nombre, req.user.rol, id, `🚪 Check-out — Hab. ${hab.numero} (${reserva?.nombre_huesped||''})`);
-    sendPushToRoles(['admin','recepcionista','mucama'], {
-      title: `🚪 Check-out — Hab. ${hab.numero}`,
-      body:  `${reserva?.nombre_huesped||''} — Lista para limpiar`,
-      icon:  '/icon-192.png', tag: `checkout-${id}`,
-      data:  { url: '/index.html' }
-    });
     res.json({ ok: true, cobrado: totalCobrar });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -692,18 +680,6 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
       }
     }
     await logAction(req.user.id, req.user.nombre, 'RESERVA', `Hab ${hab.numero} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
-    const hoyR = new Date(); hoyR.setHours(0,0,0,0);
-    const entR  = new Date(entrada); entR.setHours(0,0,0,0);
-    const diasR = Math.round((entR - hoyR) / (1000*60*60*24));
-    if (diasR <= 7) {
-      const labelDias = diasR <= 0 ? 'HOY' : diasR === 1 ? 'mañana' : `en ${diasR} días`;
-      sendPushToRoles(['admin','recepcionista','mucama'], {
-        title: diasR <= 0 ? `🔔 Check-in HOY — Hab. ${hab.numero}` : `📅 Reserva próxima — Hab. ${hab.numero}`,
-        body:  `${nombre_huesped} · ${labelDias}`,
-        icon:  '/icon-192.png', tag: `reserva-prox-${r.rows[0].id}`,
-        data:  { url: '/index.html' }
-      });
-    }
     res.json({ ok: true, id: r.rows[0].id });
   } catch(e) { console.error('RESERVA ERROR:', e); res.status(500).json({ error: 'Error al guardar reserva: ' + e.message }); }
 });
@@ -1253,12 +1229,12 @@ app.put('/api/habitaciones/:id/mantenimiento', auth, async (req, res) => {
       );
 
       // Push a admin, mantenimiento y recepcionista
-      sendPushToRoles(['admin','mantenimiento','recepcionista','mucama'], {
+      sendPushToRoles(['admin', 'mantenimiento', 'recepcionista'], {
         title: `🔧 Hab. ${hab.numero} en mantenimiento`,
         body:  nota || 'Habitación puesta en mantenimiento',
         icon:  '/icon-192.png',
         tag:   `mant-${hab.id}`,
-        data:  { url: '/index.html' }
+        data:  { url: '/index.html#habitaciones' }
       });
 
     } else if (accion === 'finalizar') {
@@ -1277,12 +1253,12 @@ app.put('/api/habitaciones/:id/mantenimiento', auth, async (req, res) => {
       );
 
       // Push a admin y recepcionista informando finalización
-      sendPushToRoles(['admin','recepcionista','mucama'], {
+      sendPushToRoles(['admin', 'recepcionista'], {
         title: `✅ Hab. ${hab.numero} — mantenimiento finalizado`,
-        body:  `Disponible · Estado: ${statusFinal}`,
+        body:  `Volvió a estado: ${statusFinal}`,
         icon:  '/icon-192.png',
         tag:   `mant-fin-${hab.id}`,
-        data:  { url: '/index.html' }
+        data:  { url: '/index.html#habitaciones' }
       });
     }
 
@@ -2435,6 +2411,31 @@ app.post('/api/push/desuscribir', auth, async (req, res) => {
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // ── RESET DIARIO 8 AM ────────────────────────────────
+// ── SINCRONIZACIÓN AUTOMÁTICA RESERVAS → HABITACIONES ───────────────
+// Corre cada hora: si hay reserva futura con entrada <= hoy y la hab está libre,
+// la pone en "reservada" para que el panel la muestre correctamente.
+async function sincronizarReservas() {
+  try {
+    const result = await db.query(`
+      UPDATE habitaciones h
+      SET status = 'reservada',
+          nota   = r.nombre_huesped,
+          updated_at = NOW()
+      FROM reservas r
+      WHERE r.habitacion_id = h.id
+        AND r.estado IN ('futura','confirmada')
+        AND DATE(r.entrada AT TIME ZONE 'America/Argentina/Buenos_Aires') <= CURRENT_DATE
+        AND h.status IN ('libre','lista','libre_limpia')
+    `);
+    if (result.rowCount > 0) {
+      console.log(`🔄 Sync reservas: ${result.rowCount} hab. actualizadas a "reservada"`);
+      await db.query("INSERT INTO log_acciones (usuario_nombre,accion,detalle) VALUES ($1,$2,$3)",
+        ['Sistema','SYNC_RESERVAS',`${result.rowCount} hab. → reservada`]);
+    }
+  } catch(e) { console.error('Error sync reservas:', e.message); }
+}
+setInterval(sincronizarReservas, 60 * 60 * 1000); // cada hora
+
 function scheduleReset() {
   const now = new Date();
   const next8am = new Date();
@@ -2495,6 +2496,7 @@ app.delete('/api/movimientos-manuales/:id', auth, adminOnly, async (req, res) =>
 db.initDB().then(() => {
   app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT}`));
   scheduleReset();
+  sincronizarReservas(); // ejecutar al arrancar también
 }).catch(e => {
   console.error('Error iniciando DB:', e);
   process.exit(1);
