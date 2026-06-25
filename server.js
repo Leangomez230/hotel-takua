@@ -390,6 +390,12 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
     await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', ['ocupada', nombre, habitacion_id]);
     await logAction(req.user.id, req.user.nombre, 'CHECKIN', `Hab ${hab.numero} - ${nombre}`);
     await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
+    sendPushToRoles(['admin','recepcionista','mucama'], {
+      title: `✅ Check-in — Hab. ${hab.numero}`,
+      body:  nombre,
+      icon:  '/icon-192.png', tag: `checkin-${habitacion_id}`,
+      data:  { url: '/index.html' }
+    });
     res.json({ ok: true, reserva_id: finalReservaId });
   } catch(e) { console.error('CHECKIN ERROR:', e); res.status(500).json({ error: 'Error en check-in: ' + e.message }); }
 });
@@ -448,6 +454,12 @@ app.post('/api/checkout/:habitacion_id', auth, adminRecepMucama, async (req, res
     await db.query("UPDATE habitaciones SET status='limpieza',nota='',updated_at=NOW() WHERE id=$1", [id]);
     await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}${totalCobrar>0?` · Cobrado $${totalCobrar}`:''}`);
     await registrarLibro(req.user.id, req.user.nombre, req.user.rol, id, `🚪 Check-out — Hab. ${hab.numero} (${reserva?.nombre_huesped||''})`);
+    sendPushToRoles(['admin','recepcionista','mucama'], {
+      title: `🚪 Check-out — Hab. ${hab.numero}`,
+      body:  `${reserva?.nombre_huesped||''} — Lista para limpiar`,
+      icon:  '/icon-192.png', tag: `checkout-${id}`,
+      data:  { url: '/index.html' }
+    });
     res.json({ ok: true, cobrado: totalCobrar });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
