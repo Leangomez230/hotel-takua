@@ -2438,8 +2438,22 @@ setInterval(sincronizarReservas, 60 * 60 * 1000); // cada hora
 
 // Endpoint manual para forzar sincronización (solo admin)
 app.post('/api/admin/sync-reservas', auth, adminOnly, async (req, res) => {
-  await sincronizarReservas();
-  res.json({ ok: true, mensaje: 'Sincronización ejecutada' });
+  try {
+    const result = await db.query(`
+      UPDATE habitaciones h
+      SET status = 'reservada',
+          nota   = r.nombre_huesped,
+          updated_at = NOW()
+      FROM reservas r
+      WHERE r.habitacion_id::text = h.id
+        AND r.estado IN ('futura','confirmada')
+        AND r.salida >= CURRENT_DATE
+        AND h.status IN ('libre','lista','libre_limpia')
+    `);
+    res.json({ ok: true, filas: result.rowCount, mensaje: `${result.rowCount} habitaciones actualizadas` });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
 });
 
 function scheduleReset() {
