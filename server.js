@@ -518,7 +518,7 @@ app.get('/api/habitaciones/:id/debug', auth, adminOrRecep, async (req, res) => {
 });
 
 // Obtener reserva vigente de una habitación (para precarga en checkin)
-app.get('/api/habitaciones/:id/reserva', auth, adminOrRecep, async (req, res) => {
+app.get('/api/habitaciones/:id/reserva', auth, adminRecepMucama, async (req, res) => {
   try {
     const reserva = await db.getOne(
       `SELECT * FROM reservas WHERE habitacion_id=$1
