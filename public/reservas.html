@@ -30,7 +30,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .cal-nav-btn:hover{background:#f1f5f9;border-color:#cbd5e1}
 .cal-today-btn{background:#1a2035;color:#fff;border:none;border-radius:9px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif}
 
-.gantt{min-width:900px;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.gantt{border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
 .gantt-head{display:grid;background:#1a2035;position:sticky;top:0;z-index:10}
 .gh-room{background:#0f1628;padding:10px 14px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;border-right:1px solid rgba(255,255,255,.08);display:flex;align-items:center;width:130px;flex-shrink:0}
 .gh-days{display:flex;flex:1}
@@ -92,7 +92,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
   .main{margin-left:0!important}
   #hamburger{display:flex!important}
     .cal-wrap{padding:8px 10px}
-  .gantt{min-width:700px}
+  .gantt{}
   .gh-room,.gr-room{width:90px}
 }
 </style>
@@ -358,8 +358,10 @@ function renderGantt() {
     </div>`;
   }).join('');
 
+  const roomColW = window.innerWidth <= 900 ? 90 : 130;
+  const ganttMinW = roomColW + diasEnMes * 32;
   container.innerHTML = `
-    <div class="gantt">
+    <div class="gantt" style="min-width:${ganttMinW}px">
       <div class="gantt-head" style="display:flex">
         <div class="gh-room">Hab.</div>
         <div class="gh-days" style="display:grid;grid-template-columns:repeat(${diasEnMes},1fr);flex:1">
