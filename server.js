@@ -2424,7 +2424,7 @@ async function sincronizarReservas() {
       FROM reservas r
       WHERE r.habitacion_id::text = h.id
         AND r.estado IN ('futura','confirmada')
-        AND DATE(r.entrada AT TIME ZONE 'America/Argentina/Buenos_Aires') <= CURRENT_DATE
+        AND DATE(r.salida AT TIME ZONE 'America/Argentina/Buenos_Aires') >= CURRENT_DATE
         AND h.status IN ('libre','lista','libre_limpia')
     `);
     if (result.rowCount > 0) {
