@@ -2422,7 +2422,7 @@ async function sincronizarReservas() {
           nota   = r.nombre_huesped,
           updated_at = NOW()
       FROM reservas r
-      WHERE r.habitacion_id = h.id
+      WHERE r.habitacion_id::text = h.id
         AND r.estado IN ('futura','confirmada')
         AND DATE(r.entrada AT TIME ZONE 'America/Argentina/Buenos_Aires') <= CURRENT_DATE
         AND h.status IN ('libre','lista','libre_limpia')
