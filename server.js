@@ -163,7 +163,7 @@ app.get('/api/habitaciones', auth, async (req, res) => {
       );
     } catch(e2) { console.error('Error reservas activas:', e2.message); }
     const habsEnriquecidas = habs.map(h => {
-      const reserva = reservasActivas.find(r => r.habitacion_id == h.id);
+      const reserva = reservasActivas.find(r => String(r.habitacion_id) === String(h.id));
       return {
         ...h,
         reserva_activa: reserva ? {
