@@ -384,7 +384,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
         <p id="tb-fecha" class="topbar-title"></p>
       </div>
       <div class="tb-right">
-        <button class="tb-btn caja nav-admin" id="tb-caja">💰 Caja</button>
         <button class="tb-btn" id="tb-libro" style="display:none;position:relative" onclick="abrirLibro()">📋 Libro
           <span id="libro-badge" style="display:none;position:absolute;top:-7px;right:-7px;
             background:#ef4444;color:#fff;border-radius:50%;min-width:18px;height:18px;
@@ -529,12 +528,7 @@ function zoomLabel() { return roomCols?roomCols+' col.':'Auto'; }
  
 // ── SIDEBAR ──
  
-document.getElementById('tb-caja')?.addEventListener('click',()=>{
-  if(currentUser?.rol==='admin') window.location.href='/caja.html';
-  else { goTo('caja'); }
-});
- 
- 
+
 // ── AUTH ──
 // Login manejado por portal.html
 // Mostrar botón Libro para admin, recepcionista y mucama
