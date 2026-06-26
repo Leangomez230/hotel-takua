@@ -112,6 +112,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rcard.en_limpieza{background:#fefce8;border-color:#fde68a}
 .rcard.limpia{background:#fff5f5;border-color:#fca5a5}
 .rcard.limpia-occ{background:#fff5f5;border-color:#fca5a5}
+.rcard.vencida-occ{background:#fff7ed;border-color:#fdba74}
 .rcard.selected{outline:3px solid var(--accent);outline-offset:2px}
 .rcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
 .room-icon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;flex-shrink:0}
@@ -727,12 +728,18 @@ function buildCard(h) {
   // ── Fondo de la tarjeta ──
   // en_limpieza → amarillo, limpia → rojo (sigue siendo hab. ocupada)
   let cardBg = '';
+  const isAdminRecepVencida = ['admin','recepcionista'].includes(currentUser?.rol) && !!h.reserva_vencida && h.status === 'libre';
   if (h.status === 'limpia')       cardBg = ' limpia-occ';
+  if (isAdminRecepVencida)         cardBg = ' vencida-occ';
   if (h.status === 'libre_limpia') cardBg = ' libre'; // mismo verde
   // Reservada con check-in lejano o sin fecha → verde (disponible); próximo/hoy → violeta
   if (h.status === 'reservada' && proximidadCheckin !== 'hoy' && proximidadCheckin !== 'proximo') cardBg = ' libre';
   // Color del ícono de cama: si es reservada lejana, usar color de libre
-  const iconColor = (h.status === 'reservada' && proximidadCheckin === 'futuro') ? '#16a34a' : s.color;
+  const iconColor = isAdminRecepVencida
+    ? '#f97316'
+    : (h.status === 'reservada' && (proximidadCheckin === 'futuro' || diasParaCheckin === null || diasParaCheckin < 0))
+      ? '#16a34a'
+      : s.color;
  
   // ── Helpers de formato ──
   const fmtFecha = s => {
@@ -816,10 +823,10 @@ function buildCard(h) {
             <rect x="19.5" y="18" width="2.5" height="3" rx="1" fill="${iconColor}"/>
           </svg>
         </div>
-        <div>
-          <div class="rnum">${h.numero}</div>
+        <div style="display:flex;flex-direction:column;justify-content:center">
+          <div class="rnum" style="line-height:1">${h.numero}</div>
           ${h.nombre?`<div class="rname">${h.nombre}</div>`:''}
-          <div class="rtipo">${tipoLabel}</div>
+          <div class="rtipo" style="margin-bottom:0">${tipoLabel}</div>
         </div>
       </div>
       ${badgeHTML}
