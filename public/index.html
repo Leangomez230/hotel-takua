@@ -3217,8 +3217,8 @@ function urlBase64ToUint8Array(base64String) {
 
 // ── CENTRO DE NOTIFICACIONES ──────────────────────────────────────────
 
-let notifCenterOpen = false;
-let notifData = []; // cache local
+var notifCenterOpen = false;
+var notifData = [];
 
 async function cargarNotificaciones() {
   if (!currentUser) return;
@@ -3356,7 +3356,7 @@ async function actualizarEstadoNotif() {
 async function activarNotificaciones() { toggleNotifCenter(); }
 
 // Polling de notificaciones cada 30s
-let _notifInterval = null;
+var _notifInterval = null;
 function startNotifPolling() {
   cargarNotificaciones();
   if (_notifInterval) clearInterval(_notifInterval);
@@ -3498,5 +3498,4 @@ async function enviarSolMantIndex() {
 }
 </script>
 </body>
-</html>
 </html>
