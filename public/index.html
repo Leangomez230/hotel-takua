@@ -2530,6 +2530,9 @@ async function renderConfig() {
   document.getElementById('btn-nuser').addEventListener('click', () => abrirModalUsuario(null));
 }
 
+const ROL_OPTS = ['admin','recepcionista','mucama','mantenimiento','cajero','mozo']
+  .map(r => `<option value="${r}">${r}</option>`).join('');
+
 function abrirModalUsuario(u) {
   const esEdicion = !!u;
   openModal(`
