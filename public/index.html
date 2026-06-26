@@ -384,7 +384,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
         <h2 id="tb-welcome">Hotel Takuá</h2>
         <p id="tb-fecha" class="topbar-title"></p>
       </div>
-      <div class="tb-right">
+      <div class="tb-right" style="position:relative">
         <button class="tb-btn" id="tb-sol-mant" style="display:none;background:#fef3c7;color:#92400e;border-color:#fcd34d" onclick="abrirModalSolMantIndex()" title="Solicitar mantenimiento">🔧 Mant.</button>
         <button class="tb-btn" id="tb-libro" style="display:none;position:relative" onclick="abrirLibro()">📋 Libro
           <span id="libro-badge" style="display:none;position:absolute;top:-7px;right:-7px;
@@ -392,12 +392,49 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
             font-size:10px;font-weight:800;line-height:18px;text-align:center;padding:0 4px;
             box-shadow:0 1px 4px rgba(0,0,0,.25);font-family:'Nunito',sans-serif"></span>
         </button>
-        <button class="tb-btn" id="btn-notif" title="Activar notificaciones"
-          onclick="activarNotificaciones()"
+        <button class="tb-btn" id="btn-notif" title="Notificaciones"
+          onclick="toggleNotifCenter()"
           style="font-size:16px;padding:6px 10px;position:relative">🔔
-          <span id="notif-badge" style="display:none;position:absolute;top:2px;right:2px;
-            width:8px;height:8px;border-radius:50%;background:#dc2626"></span>
+          <span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-5px;
+            min-width:18px;height:18px;border-radius:9px;background:#dc2626;color:#fff;
+            font-size:10px;font-weight:800;line-height:18px;text-align:center;padding:0 4px;
+            font-family:'Nunito',sans-serif;pointer-events:none"></span>
         </button>
+        <!-- DROPDOWN CENTRO DE NOTIFICACIONES -->
+        <div id="notif-center" style="display:none;position:absolute;top:60px;right:16px;
+          width:340px;max-width:calc(100vw - 32px);background:#fff;border-radius:16px;
+          box-shadow:0 8px 40px rgba(0,0,0,.18);border:1px solid #e2e8f0;z-index:500;
+          overflow:hidden;max-height:520px;display:none;flex-direction:column">
+          <!-- Header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;
+            padding:14px 16px 10px;border-bottom:1px solid #f1f5f9;flex-shrink:0">
+            <span style="font-weight:800;font-size:15px;color:#1a2035">🔔 Notificaciones</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="btn-leer-todas" onclick="leerTodasNotifs()"
+                style="font-size:11px;font-weight:700;color:#0891b2;background:none;border:none;cursor:pointer;padding:0">
+                Marcar leídas
+              </button>
+              <button onclick="cerrarNotifCenter()"
+                style="background:#f1f5f9;border:none;border-radius:50%;width:26px;height:26px;
+                cursor:pointer;font-size:14px;color:#64748b;display:flex;align-items:center;justify-content:center">✕</button>
+            </div>
+          </div>
+          <!-- Opción activar push -->
+          <div id="notif-push-row" style="display:none;padding:10px 16px;background:#f0fdf4;
+            border-bottom:1px solid #dcfce7;flex-shrink:0">
+            <button onclick="activarNotificacionesDesdeCenter()"
+              style="width:100%;background:#059669;color:#fff;border:none;border-radius:10px;
+              padding:9px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">
+              🔔 Activar notificaciones push
+            </button>
+          </div>
+          <!-- Lista -->
+          <div id="notif-list" style="overflow-y:auto;flex:1;min-height:80px"></div>
+          <!-- Footer -->
+          <div style="padding:10px 16px;border-top:1px solid #f1f5f9;flex-shrink:0;text-align:center">
+            <span style="font-size:11px;color:#94a3b8">Solo los últimos mensajes</span>
+          </div>
+        </div>
         <div class="user-av" id="user-av">A</div>
         <button class="tb-btn" id="btn-logout" style="color:#dc2626">Salir</button>
       </div>
@@ -618,6 +655,8 @@ function startApp() {
   // Iniciar polling de solicitudes (inmediato + cada 30s)
   loadSolicitudesAll();
   startSolPolling();
+  // Iniciar polling de notificaciones del sistema
+  startNotifPolling();
   updateSoundBtn();
   // Registrar Periodic Sync para notificaciones con app cerrada (Android Chrome)
   registerPeriodicSync();
@@ -2575,10 +2614,63 @@ async function renderConfig() {
         <div><span style="color:#94a3b8">Ala Oeste:</span> <strong>14 hab.</strong></div>
         <div><span style="color:#94a3b8">Versión:</span> <strong>1.1.0</strong></div>
       </div>
+    </div>
+    <div class="section-card" style="border:1.5px solid #fcd34d;background:#fffbeb">
+      <div class="sc-head" style="margin-bottom:14px">
+        <h2 style="color:#92400e">📢 Enviar notificación al sistema</h2>
+      </div>
+      <p style="font-size:12px;color:#78350f;margin-bottom:14px">
+        Enviá un aviso a todos o a roles específicos. Aparecerá en el centro de notificaciones de cada usuario y, si tienen push activo, también como notificación del dispositivo.
+      </p>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#78350f;margin-bottom:5px">Título *</label>
+        <input type="text" id="cfg-notif-titulo" placeholder="Ej: Mantenimiento programado del sistema" maxlength="80">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#78350f;margin-bottom:5px">Mensaje *</label>
+        <textarea id="cfg-notif-cuerpo" rows="3" placeholder="Ej: Estaremos trabajando en el sistema entre las 14:00 y las 15:00 hs. Pueden haber interrupciones breves."
+          style="resize:vertical;border:1.5px solid #fcd34d;border-radius:10px;padding:10px 14px;width:100%;font-family:inherit;font-size:14px;outline:none;color:#1a2035;background:#fffbeb"></textarea>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#78350f;margin-bottom:5px">Destinatarios</label>
+        <select id="cfg-notif-roles" style="border-color:#fcd34d;background:#fffbeb">
+          <option value="todos">Todos los usuarios</option>
+          <option value="admin">Solo Admin</option>
+          <option value="recepcionista">Solo Recepción</option>
+          <option value="mucama">Solo Mucamas</option>
+          <option value="mantenimiento">Solo Mantenimiento</option>
+          <option value="admin,recepcionista">Admin + Recepción</option>
+        </select>
+      </div>
+      <button id="btn-enviar-notif-broadcast"
+        style="background:#d97706;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer">
+        📢 Enviar notificación
+      </button>
     </div>`;
 
   // Botón nuevo usuario
   document.getElementById('btn-nuser').addEventListener('click', () => abrirModalUsuario(null));
+
+  // Botón enviar notificación broadcast (solo admin ve esta sección)
+  document.getElementById('btn-enviar-notif-broadcast')?.addEventListener('click', async () => {
+    const titulo = document.getElementById('cfg-notif-titulo')?.value.trim();
+    const cuerpo = document.getElementById('cfg-notif-cuerpo')?.value.trim();
+    const roles  = document.getElementById('cfg-notif-roles')?.value || 'todos';
+    if (!titulo) { document.getElementById('cfg-notif-titulo').focus(); return; }
+    if (!cuerpo) { document.getElementById('cfg-notif-cuerpo').focus(); return; }
+    const btn = document.getElementById('btn-enviar-notif-broadcast');
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    const r = await apiFetch('POST', '/notificaciones', { titulo, cuerpo, roles });
+    if (r?.ok) {
+      toast('📢 Notificación enviada ✓');
+      document.getElementById('cfg-notif-titulo').value = '';
+      document.getElementById('cfg-notif-cuerpo').value = '';
+      cargarNotificaciones(); // refrescar centro
+    } else {
+      toast(r?.error || 'Error al enviar', false);
+    }
+    btn.disabled = false; btn.textContent = '📢 Enviar notificación';
+  });
 }
 
 const ROL_OPTS = ['admin','recepcionista','mucama','mantenimiento','cajero','mozo']
@@ -3126,61 +3218,155 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
-// Actualiza el ícono del botón según el estado actual
-async function actualizarEstadoNotif() {
-  const btn   = document.getElementById('btn-notif');
-  const badge = document.getElementById('notif-badge');
-  if (!btn || !ROLES_PUSH.includes(currentUser?.rol)) { btn && (btn.style.display='none'); return; }
+// ── CENTRO DE NOTIFICACIONES ──────────────────────────────────────────
 
-  if (!('Notification' in window) || !('PushManager' in window)) {
-    btn.style.display = 'none'; return;
-  }
+let notifCenterOpen = false;
+let notifData = []; // cache local
 
-  const perm = Notification.permission;
-  if (perm === 'granted') {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) {
-      btn.textContent = '🔔'; btn.style.color = '#16a34a';
-      btn.title = 'Notificaciones activas';
-      badge.style.display = 'none';
-      return;
-    }
-  }
-  // No suscripto o permiso no dado — mostrar badge rojo
-  btn.textContent = '🔔'; btn.style.color = '';
-  btn.title = 'Activar notificaciones push';
-  badge.style.display = 'block';
+async function cargarNotificaciones() {
+  if (!currentUser) return;
+  const data = await apiFetch('GET', '/notificaciones');
+  if (!Array.isArray(data)) return;
+  notifData = data;
+  actualizarBadge();
+  if (notifCenterOpen) renderNotifList();
 }
 
-// El usuario tocó el botón — pedir permiso y suscribir
-async function activarNotificaciones() {
-  const btn = document.getElementById('btn-notif');
-  if (!btn) return;
-
-  // Si ya está activo, informar
-  if (Notification.permission === 'granted') {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) { toast('✅ Las notificaciones ya están activas'); return; }
+function actualizarBadge() {
+  const badge = document.getElementById('notif-badge');
+  const sinLeer = notifData.filter(n => !n.leida).length;
+  if (!badge) return;
+  if (sinLeer > 0) {
+    badge.textContent = sinLeer > 99 ? '99+' : sinLeer;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
   }
+}
 
-  btn.textContent = '⏳'; btn.disabled = true;
+function toggleNotifCenter() {
+  const center = document.getElementById('notif-center');
+  if (!center) return;
+  notifCenterOpen = !notifCenterOpen;
+  center.style.display = notifCenterOpen ? 'flex' : 'none';
+  if (notifCenterOpen) {
+    cargarNotificaciones();
+    actualizarPushRow();
+  }
+}
+
+function cerrarNotifCenter() {
+  notifCenterOpen = false;
+  const center = document.getElementById('notif-center');
+  if (center) center.style.display = 'none';
+}
+
+// Cerrar al click fuera
+document.addEventListener('click', function(e) {
+  const center = document.getElementById('notif-center');
+  const btn = document.getElementById('btn-notif');
+  if (!center || !btn) return;
+  if (notifCenterOpen && !center.contains(e.target) && !btn.contains(e.target)) {
+    cerrarNotifCenter();
+  }
+});
+
+function renderNotifList() {
+  const el = document.getElementById('notif-list');
+  if (!el) return;
+  if (!notifData.length) {
+    el.innerHTML = `<div style="padding:30px 16px;text-align:center;color:#94a3b8;font-size:13px">
+      Sin notificaciones</div>`;
+    return;
+  }
+  el.innerHTML = notifData.map(n => {
+    const fecha = new Date(n.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return `<div data-nid="${n.id}" onclick="marcarLeida(${n.id}, this)"
+      style="padding:12px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer;
+      background:${n.leida ? '#fff' : '#f0f9ff'};transition:background .2s">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        ${n.leida ? '' : '<div style="width:8px;height:8px;border-radius:50%;background:#3b82f6;flex-shrink:0;margin-top:5px"></div>'}
+        ${n.leida ? '<div style="width:8px;flex-shrink:0"></div>' : ''}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:${n.leida?'600':'800'};color:#1a2035;margin-bottom:2px">${escHtml(n.titulo)}</div>
+          <div style="font-size:12px;color:#475569;line-height:1.4">${escHtml(n.cuerpo)}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">${fecha}${n.creado_por_nombre ? ' · ' + escHtml(n.creado_por_nombre) : ''}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function marcarLeida(id, el) {
+  const n = notifData.find(x => x.id === id);
+  if (n && !n.leida) {
+    n.leida = true;
+    actualizarBadge();
+    if (el) el.style.background = '#fff';
+    const dot = el?.querySelector('div[style*="border-radius:50%"]');
+    if (dot) dot.style.display = 'none';
+    await apiFetch('PUT', `/notificaciones/${id}/leer`);
+  }
+}
+
+async function leerTodasNotifs() {
+  notifData.forEach(n => n.leida = true);
+  actualizarBadge();
+  renderNotifList();
+  await apiFetch('PUT', '/notificaciones/leer-todas');
+}
+
+async function actualizarPushRow() {
+  const row = document.getElementById('notif-push-row');
+  if (!row || !ROLES_PUSH.includes(currentUser?.rol)) { row && (row.style.display='none'); return; }
+  if (!('Notification' in window) || !('PushManager' in window)) { row.style.display='none'; return; }
+  if (Notification.permission === 'granted') {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) { row.style.display='none'; return; }
+    } catch(e) {}
+  }
+  row.style.display = 'block';
+}
+
+async function activarNotificacionesDesdeCenter() {
+  const btn = document.querySelector('#notif-push-row button');
+  if (btn) { btn.textContent = '⏳ Activando…'; btn.disabled = true; }
   try {
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') {
       toast('Permiso denegado — activalo desde la configuración del navegador', false);
-      btn.textContent = '🔔'; btn.disabled = false;
-      return;
+    } else {
+      await suscribirPush();
+      toast('🔔 Notificaciones push activadas');
+      document.getElementById('notif-push-row').style.display = 'none';
     }
-    await suscribirPush();
-    toast('🔔 Notificaciones activadas');
-  } catch(e) {
-    toast('Error al activar: ' + e.message, false);
-  }
-  btn.disabled = false;
-  actualizarEstadoNotif();
+  } catch(e) { toast('Error al activar: ' + e.message, false); }
+  if (btn) { btn.textContent = '🔔 Activar notificaciones push'; btn.disabled = false; }
 }
+
+// Actualiza el ícono del botón según el estado actual (compatibilidad)
+async function actualizarEstadoNotif() {
+  const btn = document.getElementById('btn-notif');
+  if (!btn) return;
+  if (!ROLES_PUSH.includes(currentUser?.rol)) { btn.style.display='none'; return; }
+  btn.style.display = '';
+  actualizarPushRow();
+}
+
+// El usuario tocó el botón — ahora abre el centro, esta función queda como fallback
+async function activarNotificaciones() { toggleNotifCenter(); }
+
+// Polling de notificaciones cada 30s
+let _notifInterval = null;
+function startNotifPolling() {
+  cargarNotificaciones();
+  if (_notifInterval) clearInterval(_notifInterval);
+  _notifInterval = setInterval(cargarNotificaciones, 30000);
+}
+
+
 
 async function suscribirPush() {
   if (!ROLES_PUSH.includes(currentUser?.rol)) return;
