@@ -369,6 +369,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <p id="header-sub">—</p>
       </div>
       <div class="tb-right">
+        <button class="tb-btn" id="btn-sol-mant" onclick="abrirModalSolMant()" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d" title="Solicitar mantenimiento">🔧 Mant.</button>
         <div class="user-av-tb" id="user-av-tb">A</div>
         <button class="tb-btn salir" onclick="doLogout()">Salir</button>
       </div>
@@ -2917,5 +2918,76 @@ function installPWA() {
 }
 </script>
 <script src="/sidebar.js"></script>
+
+<!-- ══ MODAL SOLICITUD MANTENIMIENTO ══ -->
+<div class="overlay" id="m-sol-mant">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-handle"><div></div></div>
+    <div class="modal-header">
+      <span class="modal-title">🔧 Solicitar Mantenimiento</span>
+      <button class="btn-close-modal" onclick="cerrarModalSolMant()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px">
+        Describí el problema o tarea de mantenimiento en el restaurante. El equipo de mantenimiento recibirá una alerta.
+      </p>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Descripción del problema *</label>
+        <textarea id="sol-mant-desc" rows="4" placeholder="Ej: El aire acondicionado del salón no enfría, grifo del baño con pérdida, luz fundida en la mesa 5…"
+          style="resize:vertical;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;font-family:inherit;font-size:14px;outline:none;color:#1a2035"
+          oninput="this.style.borderColor='#00c9b1'"></textarea>
+      </div>
+      <button id="btn-enviar-sol-mant" onclick="enviarSolMant()"
+        style="width:100%;background:#d97706;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer">
+        🔧 Enviar solicitud
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirModalSolMant() {
+  document.getElementById('sol-mant-desc').value = '';
+  document.getElementById('sol-mant-desc').style.borderColor = '#e2e8f0';
+  document.getElementById('m-sol-mant').classList.add('open');
+  setTimeout(() => document.getElementById('sol-mant-desc').focus(), 300);
+}
+function cerrarModalSolMant() {
+  document.getElementById('m-sol-mant').classList.remove('open');
+}
+async function enviarSolMant() {
+  const desc = document.getElementById('sol-mant-desc').value.trim();
+  if (!desc) {
+    document.getElementById('sol-mant-desc').style.borderColor = '#ef4444';
+    document.getElementById('sol-mant-desc').focus();
+    return;
+  }
+  const btn = document.getElementById('btn-enviar-sol-mant');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const r = await api('POST', '/api/mantenimiento/solicitudes', { descripcion: desc, origen: 'restaurante' });
+    if (r?.ok) {
+      cerrarModalSolMant();
+      // Toast rápido
+      const t = document.createElement('div');
+      t.textContent = '✅ Solicitud enviada a mantenimiento';
+      Object.assign(t.style, { position:'fixed',bottom:'80px',left:'50%',transform:'translateX(-50%)',
+        background:'#059669',color:'#fff',padding:'12px 22px',borderRadius:'12px',
+        fontWeight:'700',fontSize:'14px',zIndex:'9999',boxShadow:'0 4px 20px rgba(0,0,0,.2)' });
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    } else {
+      alert(r?.error || 'Error al enviar la solicitud');
+    }
+  } catch(e) {
+    alert('Error de conexión');
+  }
+  btn.disabled = false; btn.textContent = '🔧 Enviar solicitud';
+}
+// Cerrar al click en overlay
+document.getElementById('m-sol-mant').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModalSolMant();
+});
+</script>
 </body>
 </html>
