@@ -472,6 +472,21 @@ try {
   `);
   console.log('✅ Tabla solicitudes_mantenimiento lista');
 
+  // Notificaciones del sistema (centro de notificaciones in-app)
+  await query(`
+    CREATE TABLE IF NOT EXISTS notificaciones_sistema (
+      id SERIAL PRIMARY KEY,
+      titulo TEXT NOT NULL,
+      cuerpo TEXT NOT NULL,
+      roles TEXT NOT NULL DEFAULT 'todos',
+      leido_por JSONB NOT NULL DEFAULT '[]',
+      creado_por_id INTEGER,
+      creado_por_nombre TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('✅ Tabla notificaciones_sistema lista');
+
   console.log('✅ Base de datos PostgreSQL lista');
 }
 
