@@ -2958,10 +2958,11 @@ function installPWA() {
   }
 }
 </script>
+<script>
 // ── CENTRO DE NOTIFICACIONES (Restaurante) ─────────────────────────
 
-let _notifResOpen = false;
-let _notifResData = [];
+var _notifResOpen = false;
+var _notifResData = [];
 
 function escHtmlRes(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -3117,13 +3118,13 @@ if ('serviceWorker' in navigator) {
 }
 
 // Polling 30s
-let _notifResInterval = null;
+var _notifResInterval = null;
 function startNotifResPolling() {
   cargarNotifsRes();
   if (_notifResInterval) clearInterval(_notifResInterval);
   _notifResInterval = setInterval(cargarNotifsRes, 30000);
 }
-
+</script>
 
 <div class="overlay" id="m-sol-mant">
   <div class="modal" style="max-width:480px">
