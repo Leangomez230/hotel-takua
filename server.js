@@ -65,6 +65,10 @@ function authRestaurante(req, res, next) {
   if (!['admin','mozo','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos para restaurante' });
   next();
 }
+function authMantOrAdmin(req, res, next) {
+  if (!['admin','mantenimiento'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
+  next();
+}
 async function logAction(userId, userName, accion, detalle) {
   try { await db.query('INSERT INTO log_acciones (usuario_id,usuario_nombre,accion,detalle) VALUES ($1,$2,$3,$4)', [userId, userName, accion, detalle||'']); }
   catch(e) { console.error('Log error:', e.message); }
@@ -1443,6 +1447,59 @@ app.delete('/api/restaurante/menu/:id', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
     await db.query('DELETE FROM menu_restaurante WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+// ── SOLICITUDES MANTENIMIENTO (desde restaurante u otras áreas) ───────
+// POST: cualquier rol de restaurante crea una solicitud
+app.post('/api/mantenimiento/solicitudes', auth, async (req, res) => {
+  try {
+    const rolesPermitidos = ['admin','mozo','cajero','recepcionista','mucama'];
+    if (!rolesPermitidos.includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
+    const { descripcion, origen } = req.body;
+    if (!descripcion?.trim()) return res.status(400).json({ error: 'La descripción es requerida' });
+    const row = await db.getOne(
+      `INSERT INTO solicitudes_mantenimiento (origen, descripcion, usuario_id, usuario_nombre)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [origen || 'restaurante', descripcion.trim(), req.user.id, req.user.nombre]
+    );
+    // Push a mantenimiento y admin
+    sendPushToRoles(['admin', 'mantenimiento'], {
+      title: `🔧 Solicitud de mantenimiento — ${origen||'Restaurante'}`,
+      body: descripcion.trim().substring(0, 100),
+      url: '/'
+    });
+    await logAction(req.user.id, req.user.nombre, 'SOLICITUD_MANT', descripcion.trim());
+    res.json({ ok: true, solicitud: row });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET: mantenimiento y admin ven solicitudes pendientes
+app.get('/api/mantenimiento/solicitudes', auth, authMantOrAdmin, async (req, res) => {
+  try {
+    const { estado } = req.query;
+    const rows = await db.getAll(
+      `SELECT * FROM solicitudes_mantenimiento
+       WHERE ($1::text IS NULL OR estado = $1)
+       ORDER BY created_at DESC LIMIT 100`,
+      [estado || null]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT: mantenimiento o admin resuelven una solicitud
+app.put('/api/mantenimiento/solicitudes/:id/resolver', auth, authMantOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.run(
+      `UPDATE solicitudes_mantenimiento SET estado='resuelto', resuelto_por_id=$1,
+       resuelto_por_nombre=$2, resuelto_at=NOW() WHERE id=$3`,
+      [req.user.id, req.user.nombre, id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'SOLICITUD_MANT_RESUELTA', `ID ${id}`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
