@@ -557,9 +557,7 @@ async function renderLista() {
         ${Number(r.saldo_pendiente||0)>0?`<br><small style="color:#dc2626">Saldo: ${fmt(r.saldo_pendiente)}</small>`:''}
       </td>
       <td>${r.metodo_pago||'—'}</td>
-      <td><span style="background:${r.estado==='activa'?'#dcfce7':r.estado==='futura'?'#dbeafe':'#f3f4f6'};
-                        color:${r.estado==='activa'?'#16a34a':r.estado==='futura'?'#1d4ed8':'#6b7280'};
-                        padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${r.estado}</span></td>
+      <td>${(()=>{const esV=r.estado==='futura'&&new Date(r.entrada)<new Date();const bg=r.estado==='activa'?'#dcfce7':esV?'#fef3c7':r.estado==='futura'?'#dbeafe':'#f3f4f6';const cl=r.estado==='activa'?'#16a34a':esV?'#b45309':r.estado==='futura'?'#1d4ed8':'#6b7280';const lbl=esV?'⚠ Vencida':r.estado;return `<span style="background:${bg};color:${cl};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${lbl}</span>`})()}</td>
       ${isAdminOrRecep?`<td style="white-space:nowrap">
         <div style="display:flex;gap:6px">
           <button onclick="verReservaLista(${r.id})"
