@@ -8,7 +8,7 @@
 <style>
 :root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height:100vh;font-size:14px;overflow-x:hidden}
+body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height:100vh;font-size:14px}
 button{cursor:pointer;border:none;font-family:inherit;font-size:14px;transition:all .15s}
 input,select,textarea{font-family:inherit;font-size:14px;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;outline:none;transition:border-color .2s;background:#fff;color:#1a2035}
 input:focus,select:focus,textarea:focus{border-color:var(--accent)}
@@ -22,7 +22,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 
 
-.main-wrap{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
+.main-wrap{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden}
 
 
 
@@ -2991,10 +2991,22 @@ function actualizarBadgeRes() {
 
 function toggleNotifCenterRes() {
   const center = document.getElementById('notif-center-res');
-  if (!center) return;
+  const btn = document.getElementById('btn-notif-res');
+  if (!center || !btn) return;
   _notifResOpen = !_notifResOpen;
-  center.style.display = _notifResOpen ? 'flex' : 'none';
-  if (_notifResOpen) { cargarNotifsRes(); actualizarPushRowRes(); }
+  if (_notifResOpen) {
+    const rect = btn.getBoundingClientRect();
+    const w = Math.min(320, window.innerWidth - 16);
+    center.style.width = w + 'px';
+    center.style.top = (rect.bottom + 8) + 'px';
+    center.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+    center.style.left = 'auto';
+    center.style.display = 'flex';
+    cargarNotifsRes();
+    actualizarPushRowRes();
+  } else {
+    center.style.display = 'none';
+  }
 }
 
 function cerrarNotifCenterRes() {
