@@ -2550,7 +2550,7 @@ function abrirModalUsuario(u) {
       <div class="form-col"><label>Email (opcional)</label>
         <input type="email" id="mu-email" value="${u?.email||''}" placeholder="maria@hotel.com"></div>
       <div class="form-col"><label>${esEdicion ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña'}</label>
-        <input type="password" id="mu-pass" placeholder="${esEdicion ? 'Nueva contraseña...' : 'min. 6 caracteres'}"></div>
+        <input type="password" id="mu-pass" placeholder="${esEdicion ? 'Nueva contraseña...' : 'min. 6 caracteres'}" autocapitalize="none" autocorrect="off" autocomplete="new-password"></div>
     </div>
     <div class="form-row">
       <div class="form-col"><label>Rol</label>
