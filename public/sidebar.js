@@ -75,12 +75,15 @@
     .sb-btn.active { background:rgba(0,201,177,.18); color:#00c9b1; }
     .sb-btn .ni { font-size:18px; line-height:1; }
     .sb-btn .nl { font-size:8px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:inherit; line-height:1; }
-    .sb-btn.bottom { margin-top:auto; }
+    .sb-btn.bottom { }
     .sb-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:199; backdrop-filter:blur(2px); }
     .sb-overlay.open { display:block; }
     /* Contenedores mobile: transparentes en desktop */
     .sb-drawer-header { display:none; }
-    .sb-drawer-nav, .sb-drawer-footer { display:contents; }
+    .sb-drawer-nav { display:contents; }
+    .sb-drawer-footer {
+      display:flex; flex-direction:column; gap:2px; margin-top:auto; padding-bottom:8px;
+    }
     /* MOBILE */
     @media(max-width:900px) {
       .sb-sidebar {
