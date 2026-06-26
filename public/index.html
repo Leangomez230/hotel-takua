@@ -20,7 +20,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--room-cols:5}
-body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px;overflow-x:hidden}
+body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px}
  
 /* LOGIN */
 #login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e3a5f 60%,#0f172a);padding:24px}
@@ -38,7 +38,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .login-err{color:#f87171;font-size:12px;text-align:center;margin-top:8px;display:none}
  
 /* LAYOUT */
-#app{display:none;min-height:100vh}
+#app{display:none;min-height:100vh;overflow-x:hidden}
 
 
 
@@ -3244,12 +3244,21 @@ function actualizarBadge() {
 
 function toggleNotifCenter() {
   const center = document.getElementById('notif-center');
-  if (!center) return;
+  const btn = document.getElementById('btn-notif');
+  if (!center || !btn) return;
   notifCenterOpen = !notifCenterOpen;
-  center.style.display = notifCenterOpen ? 'flex' : 'none';
   if (notifCenterOpen) {
+    const rect = btn.getBoundingClientRect();
+    const w = Math.min(340, window.innerWidth - 16);
+    center.style.width = w + 'px';
+    center.style.top = (rect.bottom + 8) + 'px';
+    center.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+    center.style.left = 'auto';
+    center.style.display = 'flex';
     cargarNotificaciones();
     actualizarPushRow();
+  } else {
+    center.style.display = 'none';
   }
 }
 
