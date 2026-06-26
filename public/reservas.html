@@ -86,6 +86,12 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .total-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
 .total-row.big{font-size:15px;font-weight:800;color:#15803d}
 
+/* Nav del mes */
+.mes-nav{display:flex;align-items:center;gap:2px;background:#e2e8f0;border-radius:10px;padding:3px}
+.mes-nav .cal-nav-btn{border-color:transparent;background:none}
+.mes-nav .cal-nav-btn:hover{background:#fff;border-color:#cbd5e1}
+.mes-nav h2{font-size:15px;font-weight:800;color:#1a2035;min-width:150px;text-align:center;padding:0 6px}
+
 /* Botones de vista (Calendario / Lista) */
 .vista-switcher{display:flex;gap:4px;background:#e2e8f0;border-radius:10px;padding:3px}
 .btn-vista{padding:6px 14px;border-radius:8px;border:1.5px solid transparent;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:none;color:#64748b}
@@ -127,9 +133,11 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
         <button id="btn-vista-lista" class="btn-vista" onclick="setVista('lista')" style="display:none">📋 Lista</button>
       </div>
       <button class="cal-today-btn" id="btn-hoy" onclick="irHoy()">Hoy</button>
-      <button class="cal-nav-btn" id="btn-prev" onclick="cambiarMes(-1)">‹</button>
-      <h2 id="cal-titulo">—</h2>
-      <button class="cal-nav-btn" id="btn-next" onclick="cambiarMes(1)">›</button>
+      <div class="mes-nav">
+        <button class="cal-nav-btn" id="btn-prev" onclick="cambiarMes(-1)">‹</button>
+        <h2 id="cal-titulo">—</h2>
+        <button class="cal-nav-btn" id="btn-next" onclick="cambiarMes(1)">›</button>
+      </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div id="leyenda-cal" style="display:flex;gap:6px;font-size:11px;font-weight:700">
           <span style="background:#3b82f6;color:#fff;padding:3px 10px;border-radius:20px">Futura</span>
