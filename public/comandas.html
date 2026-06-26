@@ -368,9 +368,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <h2>TK Serrano — Restaurante</h2>
         <p id="header-sub">—</p>
       </div>
-      <div class="tb-right" style="position:relative">
+      <div class="tb-right">
         <button class="tb-btn" id="btn-sol-mant" onclick="abrirModalSolMant()" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d" title="Solicitar mantenimiento">🔧 Mant.</button>
-        <!-- CAMPANA -->
         <button class="tb-btn" id="btn-notif-res" title="Notificaciones"
           onclick="toggleNotifCenterRes()"
           style="font-size:16px;padding:6px 10px;position:relative">🔔
@@ -379,37 +378,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             font-size:10px;font-weight:800;line-height:18px;text-align:center;padding:0 4px;
             font-family:'Nunito',sans-serif;pointer-events:none"></span>
         </button>
-        <!-- DROPDOWN NOTIFICACIONES -->
-        <div id="notif-center-res" style="display:none;position:absolute;top:56px;right:0;
-          width:320px;max-width:calc(100vw - 32px);background:#fff;border-radius:16px;
-          box-shadow:0 8px 40px rgba(0,0,0,.18);border:1px solid #e2e8f0;z-index:500;
-          overflow:hidden;flex-direction:column;max-height:480px">
-          <div style="display:flex;align-items:center;justify-content:space-between;
-            padding:14px 16px 10px;border-bottom:1px solid #f1f5f9;flex-shrink:0">
-            <span style="font-weight:800;font-size:15px;color:#1a2035">🔔 Notificaciones</span>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button onclick="leerTodasRes()"
-                style="font-size:11px;font-weight:700;color:#0891b2;background:none;border:none;cursor:pointer;padding:0">
-                Marcar leídas
-              </button>
-              <button onclick="cerrarNotifCenterRes()"
-                style="background:#f1f5f9;border:none;border-radius:50%;width:26px;height:26px;
-                cursor:pointer;font-size:14px;color:#64748b;display:flex;align-items:center;justify-content:center">✕</button>
-            </div>
-          </div>
-          <div id="notif-push-row-res" style="display:none;padding:10px 16px;background:#f0fdf4;
-            border-bottom:1px solid #dcfce7;flex-shrink:0">
-            <button onclick="activarPushRes()"
-              style="width:100%;background:#059669;color:#fff;border:none;border-radius:10px;
-              padding:9px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">
-              🔔 Activar notificaciones push
-            </button>
-          </div>
-          <div id="notif-list-res" style="overflow-y:auto;flex:1;min-height:80px"></div>
-          <div style="padding:10px 16px;border-top:1px solid #f1f5f9;flex-shrink:0;text-align:center">
-            <span style="font-size:11px;color:#94a3b8">Restaurante · TK Serrano</span>
-          </div>
-        </div>
         <div class="user-av-tb" id="user-av-tb">A</div>
         <button class="tb-btn salir" onclick="doLogout()">Salir</button>
       </div>
@@ -464,6 +432,38 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <div style="text-align:center;margin-top:16px">
       <button class="btn-ghost-light" onclick="showScreen('screen-main');renderMain()">← Volver</button>
     </div>
+  </div>
+</div>
+
+<!-- DROPDOWN CENTRO DE NOTIFICACIONES -->
+<div id="notif-center-res" style="display:none;position:fixed;top:60px;right:16px;
+  width:320px;max-width:calc(100vw - 32px);background:#fff;border-radius:16px;
+  box-shadow:0 8px 40px rgba(0,0,0,.18);border:1px solid #e2e8f0;z-index:9999;
+  overflow:hidden;flex-direction:column;max-height:480px">
+  <div style="display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px 10px;border-bottom:1px solid #f1f5f9;flex-shrink:0">
+    <span style="font-weight:800;font-size:15px;color:#1a2035">🔔 Notificaciones</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="leerTodasRes()"
+        style="font-size:11px;font-weight:700;color:#0891b2;background:none;border:none;cursor:pointer;padding:0">
+        Marcar leídas
+      </button>
+      <button onclick="cerrarNotifCenterRes()"
+        style="background:#f1f5f9;border:none;border-radius:50%;width:26px;height:26px;
+        cursor:pointer;font-size:14px;color:#64748b;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+  </div>
+  <div id="notif-push-row-res" style="display:none;padding:10px 16px;background:#f0fdf4;
+    border-bottom:1px solid #dcfce7;flex-shrink:0">
+    <button onclick="activarPushRes()"
+      style="width:100%;background:#059669;color:#fff;border:none;border-radius:10px;
+      padding:9px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">
+      🔔 Activar notificaciones push
+    </button>
+  </div>
+  <div id="notif-list-res" style="overflow-y:auto;flex:1;min-height:80px"></div>
+  <div style="padding:10px 16px;border-top:1px solid #f1f5f9;flex-shrink:0;text-align:center">
+    <span style="font-size:11px;color:#94a3b8">Restaurante · TK Serrano</span>
   </div>
 </div>
 
