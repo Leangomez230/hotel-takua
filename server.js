@@ -1452,6 +1452,90 @@ app.delete('/api/restaurante/menu/:id', auth, async (req, res) => {
 });
 
 
+// ── NOTIFICACIONES SISTEMA (centro de notificaciones in-app) ─────────
+
+// GET: notificaciones del usuario según su rol (últimas 50)
+app.get('/api/notificaciones', auth, async (req, res) => {
+  try {
+    const rol = req.user.rol;
+    const uid = req.user.id;
+    const rows = await db.getAll(
+      `SELECT id, titulo, cuerpo, roles, leido_por, creado_por_nombre, created_at
+       FROM notificaciones_sistema
+       WHERE roles = 'todos' OR roles LIKE $1
+       ORDER BY created_at DESC LIMIT 50`,
+      [`%${rol}%`]
+    );
+    // Marcar cuáles ya leyó este usuario
+    const result = rows.map(n => ({
+      ...n,
+      leida: Array.isArray(n.leido_por) ? n.leido_por.includes(uid) : false
+    }));
+    res.json(result);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST: admin envía notificación broadcast
+app.post('/api/notificaciones', auth, adminOnly, async (req, res) => {
+  try {
+    const { titulo, cuerpo, roles } = req.body;
+    if (!titulo?.trim() || !cuerpo?.trim()) return res.status(400).json({ error: 'Título y cuerpo son requeridos' });
+    const rolesTarget = roles || 'todos';
+    const row = await db.getOne(
+      `INSERT INTO notificaciones_sistema (titulo, cuerpo, roles, creado_por_id, creado_por_nombre)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [titulo.trim(), cuerpo.trim(), rolesTarget, req.user.id, req.user.nombre]
+    );
+    // Push a los roles correspondientes
+    const rolesArr = rolesTarget === 'todos'
+      ? ['admin','recepcionista','mucama','mantenimiento','cajero','mozo']
+      : rolesTarget.split(',').map(r => r.trim());
+    sendPushToRoles(rolesArr, {
+      title: titulo.trim(),
+      body: cuerpo.trim(),
+      url: '/'
+    });
+    await logAction(req.user.id, req.user.nombre, 'NOTIF_BROADCAST', `${titulo} → ${rolesTarget}`);
+    res.json({ ok: true, notificacion: row });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT: marcar como leída
+app.put('/api/notificaciones/:id/leer', auth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const { id } = req.params;
+    const n = await db.getOne('SELECT leido_por FROM notificaciones_sistema WHERE id=$1', [id]);
+    if (!n) return res.status(404).json({ error: 'No encontrada' });
+    const arr = Array.isArray(n.leido_por) ? n.leido_por : [];
+    if (!arr.includes(uid)) {
+      arr.push(uid);
+      await db.run('UPDATE notificaciones_sistema SET leido_por=$1 WHERE id=$2', [JSON.stringify(arr), id]);
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT: marcar todas como leídas
+app.put('/api/notificaciones/leer-todas', auth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const rol = req.user.rol;
+    const rows = await db.getAll(
+      `SELECT id, leido_por FROM notificaciones_sistema WHERE roles='todos' OR roles LIKE $1`,
+      [`%${rol}%`]
+    );
+    for (const n of rows) {
+      const arr = Array.isArray(n.leido_por) ? n.leido_por : [];
+      if (!arr.includes(uid)) {
+        arr.push(uid);
+        await db.run('UPDATE notificaciones_sistema SET leido_por=$1 WHERE id=$2', [JSON.stringify(arr), n.id]);
+      }
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── SOLICITUDES MANTENIMIENTO (desde restaurante u otras áreas) ───────
 // POST: cualquier rol de restaurante crea una solicitud
 app.post('/api/mantenimiento/solicitudes', auth, async (req, res) => {
