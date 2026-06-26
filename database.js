@@ -455,6 +455,23 @@ try {
   `);
   console.log('✅ Tabla movimientos_manuales lista');
 
+  // Solicitudes de mantenimiento desde restaurante
+  await query(`
+    CREATE TABLE IF NOT EXISTS solicitudes_mantenimiento (
+      id SERIAL PRIMARY KEY,
+      origen TEXT NOT NULL DEFAULT 'restaurante',
+      descripcion TEXT NOT NULL,
+      estado TEXT NOT NULL DEFAULT 'pendiente',
+      usuario_id INTEGER,
+      usuario_nombre TEXT,
+      resuelto_por_id INTEGER,
+      resuelto_por_nombre TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      resuelto_at TIMESTAMP
+    );
+  `);
+  console.log('✅ Tabla solicitudes_mantenimiento lista');
+
   console.log('✅ Base de datos PostgreSQL lista');
 }
 
