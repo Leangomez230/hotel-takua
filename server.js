@@ -152,18 +152,23 @@ app.get('/api/habitaciones', auth, async (req, res) => {
   try {
     const habs = await db.getAll('SELECT * FROM habitaciones ORDER BY ala, numero');
     let reservasActivas = [];
+    let reservasVencidas = [];
     try {
       reservasActivas = await db.getAll(
         `SELECT * FROM reservas
-         WHERE (
-           estado = 'activa'
-           OR (estado IN ('futura','checkin','ocupada','confirmada','reservada') AND DATE(salida) >= CURRENT_DATE)
-         )
+         WHERE estado NOT IN ('vencida','cancelada','finalizada')
+           AND DATE(salida) >= CURRENT_DATE
          ORDER BY entrada ASC`
+      );
+      reservasVencidas = await db.getAll(
+        `SELECT * FROM reservas
+         WHERE (estado = 'vencida' OR (estado IN ('activa','futura','confirmada') AND DATE(salida) < CURRENT_DATE))
+         ORDER BY salida DESC`
       );
     } catch(e2) { console.error('Error reservas activas:', e2.message); }
     const habsEnriquecidas = habs.map(h => {
-      const reserva = reservasActivas.find(r => String(r.habitacion_id) === String(h.id));
+      const reserva        = reservasActivas.find(r => String(r.habitacion_id) === String(h.id));
+      const reservaVencida = !reserva ? reservasVencidas.find(r => String(r.habitacion_id) === String(h.id)) : null;
       return {
         ...h,
         reserva_activa: reserva ? {
@@ -173,6 +178,12 @@ app.get('/api/habitaciones', auth, async (req, res) => {
           notas:          reserva.notas,
           noches:         reserva.noches,
           estado:         reserva.estado,
+        } : null,
+        reserva_vencida: reservaVencida ? {
+          nombre_huesped: reservaVencida.nombre_huesped,
+          entrada:        reservaVencida.entrada,
+          salida:         reservaVencida.salida,
+          estado:         reservaVencida.estado,
         } : null
       };
     });
