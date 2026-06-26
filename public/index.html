@@ -385,6 +385,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
         <p id="tb-fecha" class="topbar-title"></p>
       </div>
       <div class="tb-right">
+        <button class="tb-btn" id="tb-sol-mant" style="display:none;background:#fef3c7;color:#92400e;border-color:#fcd34d" onclick="abrirModalSolMantIndex()" title="Solicitar mantenimiento">🔧 Mant.</button>
         <button class="tb-btn" id="tb-libro" style="display:none;position:relative" onclick="abrirLibro()">📋 Libro
           <span id="libro-badge" style="display:none;position:absolute;top:-7px;right:-7px;
             background:#ef4444;color:#fff;border-radius:50%;min-width:18px;height:18px;
@@ -538,6 +539,11 @@ if (['admin','recepcionista','mucama'].includes(_rolLibro)) {
   const _btnLibro = document.getElementById('tb-libro');
   if (_btnLibro) _btnLibro.style.display = '';
   _libroStartPolling();
+}
+// Mostrar botón Mantenimiento para admin y recepcionista
+if (['admin','recepcionista'].includes(currentUser?.rol)) {
+  const _btnMant = document.getElementById('tb-sol-mant');
+  if (_btnMant) _btnMant.style.display = '';
 }
 document.getElementById('btn-logout').addEventListener('click', doLogout);
  
@@ -3252,5 +3258,62 @@ function installPWA() {
 </div>
  
 <script src="/sidebar.js"></script>
+
+<!-- ══ MODAL SOLICITUD MANTENIMIENTO (admin/recep) ══ -->
+<div id="overlay-sol-mant-idx" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-end;justify-content:center">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -8px 40px rgba(0,0,0,.2);animation:slideUp .22s ease">
+    <div style="display:flex;justify-content:center;padding:10px 0 4px"><div style="width:40px;height:4px;border-radius:2px;background:#e2e8f0"></div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px">
+      <span style="font-weight:800;font-size:17px">🔧 Solicitar Mantenimiento</span>
+      <button onclick="cerrarModalSolMantIndex()" style="background:#f1f5f9;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;color:#64748b;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:0 20px 24px">
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px">Describí el problema o tarea. El equipo de mantenimiento recibirá una alerta.</p>
+      <label style="display:block;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Descripción *</label>
+      <textarea id="idx-sol-mant-desc" rows="4"
+        placeholder="Ej: Pérdida de agua en el baño del pasillo, luz quemada en recepción…"
+        style="resize:vertical;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;font-family:inherit;font-size:14px;outline:none;color:#1a2035;box-sizing:border-box"
+        oninput="this.style.borderColor='#00c9b1'"></textarea>
+      <button id="btn-enviar-sol-mant-idx" onclick="enviarSolMantIndex()"
+        style="margin-top:14px;width:100%;background:#d97706;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer">
+        🔧 Enviar solicitud
+      </button>
+    </div>
+  </div>
+</div>
+<script>
+function abrirModalSolMantIndex() {
+  document.getElementById('idx-sol-mant-desc').value = '';
+  document.getElementById('idx-sol-mant-desc').style.borderColor = '#e2e8f0';
+  const ov = document.getElementById('overlay-sol-mant-idx');
+  ov.style.display = 'flex';
+  setTimeout(() => document.getElementById('idx-sol-mant-desc').focus(), 300);
+}
+function cerrarModalSolMantIndex() {
+  document.getElementById('overlay-sol-mant-idx').style.display = 'none';
+}
+document.getElementById('overlay-sol-mant-idx').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModalSolMantIndex();
+});
+async function enviarSolMantIndex() {
+  const desc = document.getElementById('idx-sol-mant-desc').value.trim();
+  if (!desc) {
+    document.getElementById('idx-sol-mant-desc').style.borderColor = '#ef4444';
+    document.getElementById('idx-sol-mant-desc').focus();
+    return;
+  }
+  const btn = document.getElementById('btn-enviar-sol-mant-idx');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  const r = await apiFetch('POST', '/mantenimiento/solicitudes', { descripcion: desc, origen: 'recepcion' });
+  if (r?.ok) {
+    cerrarModalSolMantIndex();
+    toast('✅ Solicitud enviada a mantenimiento');
+  } else {
+    toast(r?.error || 'Error al enviar', false);
+  }
+  btn.disabled = false; btn.textContent = '🔧 Enviar solicitud';
+}
+</script>
 </body>
+</html>
 </html>
