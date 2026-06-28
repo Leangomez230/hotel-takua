@@ -1,2717 +1,3726 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const cors = require('cors');
-const path = require('path');
-const db = require('./database');
-const webpush = require('web-push');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Hotel Takuá</title>
+ 
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00c9b1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Takuá">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+ 
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--room-cols:5}
+body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px}
+ 
+/* LOGIN */
+#login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e3a5f 60%,#0f172a);padding:24px}
+.login-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:40px 36px;width:100%;max-width:380px}
+.login-logo{text-align:center;margin-bottom:28px}
+.logo-sq{width:56px;height:56px;background:var(--accent);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;margin-bottom:10px}
+.login-logo h1{color:#fff;font-size:24px;font-weight:900}
+.login-logo p{color:#94a3b8;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-top:2px}
+.lf{margin-bottom:14px}
+.lf label{display:block;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.lf input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:11px 14px;color:#fff;font-size:14px;font-family:'Nunito',sans-serif}
+.lf input:focus{outline:none;border-color:var(--accent)}
+.lf input::placeholder{color:#64748b}
+.login-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:12px;padding:14px;color:#fff;font-size:15px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:8px}
+.login-err{color:#f87171;font-size:12px;text-align:center;margin-top:8px;display:none}
+ 
+/* LAYOUT */
+#app{display:none;min-height:100vh;overflow-x:hidden}
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'takua_secret_2024';
 
-// ── VAPID ────────────────────────────────────────────────────────────
-const VAPID_PUBLIC  = process.env.VAPID_PUBLIC  || 'BGgqRVlRquUxbONf-LOZDc9dsvh9mMh-Al37U9B7XM108NA6LteBSzfmCogTbXAVbNuJULyBaymGOHwpqyjgay8';
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE || '5fhOAg_7L6Nnbprwb7JiFcwhMR8qn5Tm80JVDHAn2xo';
-webpush.setVapidDetails('mailto:hotel@takua.com', VAPID_PUBLIC, VAPID_PRIVATE);
 
-// Enviar push a todos los usuarios de ciertos roles
-async function sendPushToRoles(roles, payload) {
-  try {
-    const subs = await db.getAll(
-      `SELECT * FROM push_suscripciones WHERE rol = ANY($1)`,
-      [roles]
-    );
-    for (const s of subs) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify(payload)
-        );
-      } catch(e) {
-        // Suscripción expirada o inválida — eliminar
-        if (e.statusCode === 410 || e.statusCode === 404) {
-          await db.query('DELETE FROM push_suscripciones WHERE endpoint=$1', [s.endpoint]);
-        }
-      }
-    }
-  } catch(e) { console.error('Error enviando push:', e.message); }
+
+
+
+
+
+
+
+.main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
+.hamburger{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;flex-shrink:0}
+.tb-left{flex:1;min-width:0}
+.tb-left h2{font-size:15px;font-weight:800;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-left p{font-size:11px;color:#94a3b8;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
+.tb-btn{display:flex;align-items:center;gap:6px;background:#f5f7fb;border:1.5px solid #e0e6ef;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;color:#1a2035;cursor:pointer;font-family:'Nunito',sans-serif}
+.tb-btn.caja{background:#f0fdf9;border-color:#a7f3e4;color:#059669}
+.user-av{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#0094ff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;flex-shrink:0}
+.content{padding:20px 22px;flex:1}
+ 
+/* STAT CARDS */
+.stat-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.sc{border-radius:16px;padding:16px 14px;color:#fff;position:relative;overflow:hidden;min-height:100px;box-shadow:0 4px 20px rgba(0,0,0,.18),0 1px 4px rgba(0,0,0,.10)}
+.sc::after{content:'';position:absolute;right:-15px;bottom:-15px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08)}
+.sc .lbl{font-size:9px;font-weight:700;letter-spacing:1px;opacity:.75;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sc .ttl{font-size:12px;font-weight:800;opacity:.9;margin-bottom:3px;text-shadow:0 1px 4px rgba(0,0,0,.30)}
+.sc .val{font-size:20px;font-weight:900;line-height:1.1;text-shadow:0 2px 6px rgba(0,0,0,.30)}
+.sc.occ{background:linear-gradient(135deg,#1a2035,#2d3a5a)}
+.sc.hosp{background:linear-gradient(135deg,#2563eb,#3b82f6)}
+.sc.gastos{background:linear-gradient(135deg,#ec4899,#f43f5e)}
+.sc.balance{background:linear-gradient(135deg,#059669,#10b981)}
+.occ-big{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:900;color:var(--accent)}
+.occ-pills{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.op{background:rgba(255,255,255,.13);border-radius:6px;padding:2px 6px;font-size:10px;font-weight:700;text-align:center}
+.op span{display:block;font-size:8px;opacity:.7}
+.alert-badge{position:absolute;top:8px;right:8px;background:#ef4444;color:#fff;border-radius:20px;padding:2px 7px;font-size:9px;font-weight:800}
+ 
+/* SECTION */
+.section-card{background:#fff;border-radius:18px;padding:20px;margin-bottom:20px}
+.sc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.sc-head h2{font-size:18px;font-weight:800}
+.filters-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filter-pill{border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .15s}
+.filter-pill.active{background:var(--accent);color:#fff}
+.filter-pill:not(.active){background:#f0f4f8;color:#64748b}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:10px;padding:8px 16px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif}
+.btn-secondary{background:#f0f4f8;border:1.5px solid #e0e6ef;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;color:#374151;cursor:pointer;font-family:'Nunito',sans-serif}
+ 
+/* ZOOM */
+.zoom-bar{display:flex;align-items:center;gap:6px;background:#f0f4f8;border-radius:20px;padding:4px 10px;border:1px solid #e0e6ef}
+.zoom-bar span{font-size:11px;font-weight:700;color:#64748b;min-width:36px;text-align:center}
+.zoom-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e0e6ef;background:#fff;cursor:pointer;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;color:#374151}
+ 
+/* ROOM GRID */
+.ala-label{font-size:11px;font-weight:700;color:#64748b;letter-spacing:2px;text-transform:uppercase;padding:8px 0;border-bottom:1px solid #f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.ala-tag{background:#1a2035;color:#fff;font-size:10px;border-radius:6px;padding:2px 8px}
+.room-grid{display:grid;grid-template-columns:repeat(var(--room-cols),1fr);gap:10px;margin-bottom:18px}
+.rcard{border-radius:14px;padding:10px 8px 8px;border:2px solid transparent;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative;min-height:110px;display:flex;flex-direction:column;box-shadow:0 4px 16px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.07)}.rcard:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.15),0 2px 6px rgba(0,0,0,.08)}
+.rcard:active{transform:scale(.96)}
+.rcard.libre{background:#f0fdf4;border-color:#bbf7d0}
+.rcard.ocupada{background:#fff5f5;border-color:#fca5a5}
+.rcard.reservada{background:#ede9fe;border-color:#7c3aed}
+.rcard.reservada.libre{background:#f0fdf4!important;border-color:#bbf7d0!important}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.rcard.limpieza{background:#fffbeb;border-color:#fde68a}
+.rcard.mantenimiento{background:#f3f4f6;border-color:#d1d5db}
+.rcard.lista{background:#ede9fe;border-color:#7c3aed}
+.rcard.en_limpieza{background:#fefce8;border-color:#fde68a}
+.rcard.limpia{background:#fff5f5;border-color:#fca5a5}
+.rcard.limpia-occ{background:#fff5f5;border-color:#fca5a5}
+.rcard.vencida-occ{background:#fff7ed;border-color:#fdba74}
+.rcard.selected{outline:3px solid var(--accent);outline-offset:2px}
+.rcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.room-icon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;flex-shrink:0}
+.sbadge{font-size:9px;font-weight:800;border-radius:5px;padding:2px 6px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.sb-libre{background:#dcfce7;color:#16a34a}
+.sb-ocupada{background:#fee2e2;color:#dc2626}
+.sb-reservada{background:#ddd6fe;color:#7c3aed}
+.sb-limpieza{background:#fef3c7;color:#d97706}
+.sb-mantenimiento{background:#f3f4f6;color:#4b5563}
+.sb-en-limpieza{background:#fef3c7;color:#d97706}
+.sb-lista{background:#ddd6fe;color:#7c3aed}
+.sb-limpia{background:#dcfce7;color:#16a34a}
+.rnum{font-size:26px;font-weight:900;color:#1a2035;line-height:1;margin-bottom:2px}
+.rname{font-size:10px;font-weight:700;color:#64748b;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtipo{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.qr-btn{display:flex;align-items:center;gap:3px;background:rgba(0,0,0,.06);border:none;border-radius:6px;padding:3px 7px;font-size:9px;font-weight:700;color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:6px;width:fit-content}
+.qr-btn:hover{background:rgba(0,0,0,.12);color:#1a2035}
+ 
+/* ALERTA SOLICITUD HUÉSPED */
+@keyframes pulse-alert {
+  0%   { box-shadow: 0 0 0 0   rgba(239,68,68,.8); }
+  40%  { box-shadow: 0 0 0 10px rgba(239,68,68,.2); }
+  100% { box-shadow: 0 0 0 0   rgba(239,68,68,.0); }
+}
+@keyframes float-card {
+  0%,100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-5px) scale(1.02); }
+}
+.rcard.tiene-solicitud {
+  animation: pulse-alert 1.5s ease-out infinite, float-card 2s ease-in-out infinite;
+  border-color: #ef4444 !important;
+  border-width: 2.5px !important;
+  z-index: 2;
+  position: relative;
+}
+.sol-badge-card {
+  display: block;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 20px;
+  padding: 2px 8px;
+  text-align: center;
+  margin-bottom: 4px;
+  box-shadow: 0 2px 6px rgba(239,68,68,.5);
+  pointer-events: none;
+  animation: pulse-alert 1.5s ease-out infinite;
 }
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ── MIDDLEWARES ──────────────────────────────────────────────────────
-function auth(req, res, next) {
-  const token = (req.headers.authorization || '').split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Sin autorización' });
-  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
-  catch(e) { res.status(401).json({ error: 'Token inválido' }); }
+/* ALERTA MANTENIMIENTO — solo visible para rol mantenimiento */
+@keyframes pulse-mant {
+  0%   { box-shadow: 0 0 0 0   rgba(220,38,38,.9); }
+  40%  { box-shadow: 0 0 0 12px rgba(220,38,38,.25); }
+  100% { box-shadow: 0 0 0 0   rgba(220,38,38,.0); }
 }
-function adminOnly(req, res, next) {
-  if (req.user.rol !== 'admin') return res.status(403).json({ error: 'Solo administradores' });
-  next();
+.rcard.necesita-mantenimiento {
+  animation: pulse-mant 1.2s ease-out infinite, float-card 2s ease-in-out infinite;
+  border-color: #dc2626 !important;
+  border-width: 3px !important;
+  background: #fff5f5 !important;
+  z-index: 3;
+  position: relative;
 }
-function adminOrRecep(req, res, next) {
-  if (!['admin','recepcionista'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-  next();
+.mant-badge-card {
+  display: block;
+  background: #dc2626;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 20px;
+  padding: 2px 8px;
+  text-align: center;
+  margin-bottom: 4px;
+  box-shadow: 0 2px 8px rgba(220,38,38,.6);
+  pointer-events: none;
+  animation: pulse-mant 1.2s ease-out infinite;
 }
-function adminRecepMucama(req, res, next) {
-  if (!['admin','recepcionista','mucama'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-  next();
+.rguest{font-size:10px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px}
+.ravail{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:6px;padding:4px 0}
+.ravail-circle{width:52px;height:52px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(34,197,94,.35)}
+.ravail-label{font-size:11px;font-weight:700;color:#16a34a}
+.rclean{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:2px;padding:4px 0}
+.rclean-icon{font-size:24px;opacity:.4}
+.rclean-label{font-size:10px;font-weight:700;color:#d97706}
+ 
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{
+  background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:580px;
+  padding:22px 20px;
+  max-height:88vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  animation:slideUp .22s ease;
 }
-function authRestaurante(req, res, next) {
-  if (!['admin','mozo','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos para restaurante' });
-  next();
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-hd h3{font-size:16px;font-weight:800;flex:1;margin-right:10px}
+.modal-close{background:#f1f5f9;border:none;border-radius:8px;padding:6px 14px;font-size:18px;cursor:pointer;font-family:'Nunito',sans-serif;line-height:1;flex-shrink:0}
+.status-info{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;margin-bottom:14px;flex-wrap:wrap}
+.stitle{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin:14px 0 8px}
+.form-row{display:flex;gap:10px;margin-bottom:12px}
+.form-col{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.form-col label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px}
+.form-col input,.form-col select,.form-col textarea{border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 11px;font-size:13px;font-family:'Nunito',sans-serif;color:#1a2035;width:100%}
+.form-col input:focus,.form-col select:focus{outline:none;border-color:var(--accent)}
+.act-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.act-btn{flex:1;min-width:120px;border:none;border-radius:10px;padding:12px 10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif}
+.act-btn:active{opacity:.8}
+.save-btn{width:100%;margin-top:6px;background:#f0f4f8;border:1px solid #e0e6ef;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#374151;cursor:pointer;font-family:'Nunito',sans-serif}
+.confirm-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:4px}
+.total-box{background:#f0fdf9;border:1px solid #a7f3e4;border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.total-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
+.total-row.big{font-size:15px;font-weight:800;color:#059669;margin-top:6px;padding-top:6px;border-top:1px solid #a7f3e4}
+.info-box{background:#f0fdf9;border:1px solid #a7f3e4;border-radius:10px;padding:10px 14px;font-size:12px;color:#059669;font-weight:600;margin-bottom:12px}
+ 
+/* TABLES */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;padding:8px 12px;text-align:left;border-bottom:1px solid #f1f5f9}
+.data-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.data-table tr:hover td{background:#fafbfc}
+.pill{display:inline-block;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700}
+.pg{background:#dcfce7;color:#16a34a}.pr{background:#fee2e2;color:#dc2626}
+.pb{background:#dbeafe;color:#2563eb}.py{background:#fef9c3;color:#b45309}.pgr{background:#f3f4f6;color:#4b5563}
+ 
+/* CAJA */
+.caja-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+.caja-box{border-radius:12px;padding:14px;text-align:center}
+.caja-box.ing{background:#f0fdf9;border:1px solid #a7f3e4}
+.caja-box.eg{background:#fff5f5;border:1px solid #fca5a5}
+.caja-box.bal{background:#eff6ff;border:1px solid #bfdbfe}
+.cb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:4px}
+.cb-val{font-size:18px;font-weight:900}
+.caja-box.ing .cb-val{color:#059669}.caja-box.eg .cb-val{color:#dc2626}.caja-box.bal .cb-val{color:#2563eb}
+ 
+/* TIENDA */
+.cart-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9}
+.cart-item:last-child{border:none}
+.qty-ctrl{display:flex;align-items:center;gap:8px}
+.qty-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e0e6ef;background:#f8fafc;cursor:pointer;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
+ 
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2035;color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+ 
+/* MUCAMA */
+.mucama-header{background:linear-gradient(135deg,#166534,#15803d);color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.mucama-header .mh-icon{font-size:32px}
+.mucama-header h2{font-size:18px;font-weight:800}
+.mucama-header p{font-size:12px;opacity:.8;margin-top:2px}
+.mstat{border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
+ 
+/* RESPONSIVE */
+@media(max-width:1100px){
+  .stat-cards{grid-template-columns:repeat(3,1fr)};:root{--room-cols:4}
 }
-function authMantOrAdmin(req, res, next) {
-  if (!['admin','mantenimiento'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-  next();
+@media(max-width:900px){
+  :root{--sw:0px;--room-cols:3}
+  .main{margin-left:0!important}
+  .stat-cards{grid-template-columns:repeat(2,1fr);gap:10px}
+  .section-card{padding:14px 12px}
+  .content{padding:14px 12px}
+  .topbar{padding:10px 14px}
+  .sc-head{flex-direction:column;align-items:flex-start}
+  .caja-summary{grid-template-columns:1fr 1fr 1fr}
+  #hamburger{display:flex!important}
 }
-async function logAction(userId, userName, accion, detalle) {
-  try { await db.query('INSERT INTO log_acciones (usuario_id,usuario_nombre,accion,detalle) VALUES ($1,$2,$3,$4)', [userId, userName, accion, detalle||'']); }
-  catch(e) { console.error('Log error:', e.message); }
-}
-
-// Registro automático en libro de novedades
-async function registrarLibro(userId, userName, userRol, habitacionId, mensaje) {
-  try {
-    await db.query(
-      `INSERT INTO libro_novedades (tipo, usuario_id, usuario_nombre, usuario_rol, habitacion_id, mensaje)
-       VALUES ('auto', $1, $2, $3, $4, $5)`,
-      [userId, userName, userRol, habitacionId||'', mensaje]
-    );
-  } catch(e) { /* silencioso — no interrumpir el flujo */ }
-}
-
-// ── LOGIN ────────────────────────────────────────────────────────────
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Datos incompletos' });
-    const user = await db.getOne('SELECT * FROM usuarios WHERE email=$1 AND activo=1', [email]);
-    if (!user || !bcrypt.compareSync(password, user.password))
-      return res.status(401).json({ error: 'Email o contraseña incorrectos' });
-    const token = jwt.sign({ id: user.id, nombre: user.nombre, rol: user.rol }, JWT_SECRET, { expiresIn: '12h' });
-    await logAction(user.id, user.nombre, 'LOGIN', '');
-    res.json({ token, user: { id: user.id, nombre: user.nombre, rol: user.rol, email: user.email } });
-  } catch(e) { console.error('Login:', e); res.status(500).json({ error: e.message }); }
-});
-
-// Login restaurante (por usuario + contraseña, sin email)
-app.post('/api/restaurante/login', async (req, res) => {
-  try {
-    const { usuario, clave } = req.body;
-    if (!usuario || !clave) return res.status(400).json({ error: 'Datos incompletos' });
-    // Buscar por email o por nombre de usuario
-    const user = await db.getOne(
-      "SELECT * FROM usuarios WHERE (email=$1 OR nombre=$1) AND activo=1",
-      [usuario.trim()]
-    );
-    if (!user || !bcrypt.compareSync(clave, user.password))
-      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
-    if (!['admin','mozo','cajero'].includes(user.rol))
-      return res.status(403).json({ error: 'Este usuario no tiene acceso al restaurante' });
-    const token = jwt.sign({ id: user.id, nombre: user.nombre, rol: user.rol }, JWT_SECRET, { expiresIn: '12h' });
-    await logAction(user.id, user.nombre, 'LOGIN_RESTAURANTE', '');
-    res.json({ token, user: { id: user.id, nombre: user.nombre, rol: user.rol } });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── USUARIOS ─────────────────────────────────────────────────────────
-app.get('/api/usuarios', auth, adminOnly, async (req, res) => {
-  try { res.json(await db.getAll('SELECT id,nombre,email,rol,activo,created_at FROM usuarios ORDER BY nombre')); }
-  catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/usuarios', auth, adminOnly, async (req, res) => {
-  try {
-    const { nombre, email, password, rol } = req.body;
-    if (!nombre || !email || !password) return res.status(400).json({ error: 'Datos incompletos' });
-    const hash = bcrypt.hashSync(password, 10);
-    const r = await db.query('INSERT INTO usuarios (nombre,email,password,rol) VALUES ($1,$2,$3,$4) RETURNING id', [nombre,email,hash,rol||'recepcionista']);
-    await logAction(req.user.id, req.user.nombre, 'CREAR_USUARIO', `${nombre} (${rol})`);
-    res.json({ id: r.rows[0].id });
-  } catch(e) {
-    if (e.message.includes('unique') || e.message.includes('duplicate')) return res.status(400).json({ error: 'El email ya existe' });
-    res.status(500).json({ error: e.message });
+@media(max-width:600px){
+  :root{--room-cols:2}
+  /* Layout */
+  .content{padding:10px 8px}
+  .section-card{padding:12px 10px}
+  .topbar{padding:8px 10px;gap:6px}
+  .tb-right{gap:6px}
+  /* Stat cards */
+  .stat-cards{grid-template-columns:1fr 1fr;gap:8px}
+  .caja-summary{grid-template-columns:1fr 1fr}
+  /* Mapa */
+  .rnum{font-size:20px}
+  .sbadge{font-size:8px;padding:2px 5px}
+  .rtipo{font-size:9px}
+  .rcard-top{margin-bottom:4px}
+  .rcard{min-height:100px;padding:8px 7px 7px}
+  /* Modal — ocupa casi toda la pantalla en mobile */
+  .modal{
+    padding:16px 14px 28px;
+    max-height:93vh;
+    border-radius:18px 18px 0 0;
   }
-});
-app.put('/api/usuarios/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const { nombre, email, rol, activo, password } = req.body;
-    if (password) {
-      await db.query('UPDATE usuarios SET nombre=$1,email=$2,rol=$3,activo=$4,password=$5 WHERE id=$6',
-        [nombre,email,rol,activo,bcrypt.hashSync(password,10),req.params.id]);
-    } else {
-      await db.query('UPDATE usuarios SET nombre=$1,email=$2,rol=$3,activo=$4 WHERE id=$5',
-        [nombre,email,rol,activo,req.params.id]);
-    }
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── HABITACIONES ─────────────────────────────────────────────────────
-app.get('/api/habitaciones', auth, async (req, res) => {
-  try {
-    const habs = await db.getAll('SELECT * FROM habitaciones ORDER BY ala, numero');
-    let reservasActivas = [];
-    let reservasVencidas = [];
-    try {
-      reservasActivas = await db.getAll(
-        `SELECT * FROM reservas
-         WHERE estado NOT IN ('vencida','cancelada','finalizada')
-           AND DATE(salida) >= CURRENT_DATE
-         ORDER BY entrada ASC`
-      );
-      reservasVencidas = await db.getAll(
-        `SELECT * FROM reservas
-         WHERE (estado = 'vencida' OR (estado IN ('activa','futura','confirmada') AND DATE(salida) < CURRENT_DATE))
-         ORDER BY salida DESC`
-      );
-    } catch(e2) { console.error('Error reservas activas:', e2.message); }
-    const habsEnriquecidas = habs.map(h => {
-      const reserva        = reservasActivas.find(r => String(r.habitacion_id) === String(h.id));
-      const reservaVencida = !reserva ? reservasVencidas.find(r => String(r.habitacion_id) === String(h.id)) : null;
-      return {
-        ...h,
-        reserva_activa: reserva ? {
-          nombre_huesped: reserva.nombre_huesped,
-          entrada:        reserva.entrada,
-          salida:         reserva.salida,
-          notas:          reserva.notas,
-          noches:         reserva.noches,
-          estado:         reserva.estado,
-        } : null,
-        reserva_vencida: reservaVencida ? {
-          nombre_huesped: reservaVencida.nombre_huesped,
-          entrada:        reservaVencida.entrada,
-          salida:         reservaVencida.salida,
-          estado:         reservaVencida.estado,
-        } : null
-      };
-    });
-    res.json(habsEnriquecidas);
+  .modal-hd h3{font-size:14px;line-height:1.3}
+  .modal-hd{margin-bottom:12px;gap:8px}
+  .modal-close{padding:6px 10px;font-size:16px}
+  .stitle{margin:10px 0 6px}
+  /* Formularios */
+  .form-row{flex-direction:column;gap:8px;margin-bottom:10px}
+  .form-col input,.form-col select,.form-col textarea{
+    font-size:16px; /* evita zoom automático en iOS */
+    padding:11px 12px;
   }
-  catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.put('/api/habitaciones/:id/status', auth, async (req, res) => {
-  try {
-    const { status, nota } = req.body;
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [req.params.id]);
-    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + req.params.id });
-    await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3',
-      [status, nota !== undefined ? nota : hab.nota, req.params.id]);
-    await logAction(req.user.id, req.user.nombre, 'CAMBIO_STATUS', `Hab ${req.params.id}: ${hab.status}→${status}`);
-    res.json({ ok: true });
-  } catch(e) { console.error('Status error:', e); res.status(500).json({ error: e.message }); }
-});
-app.put('/api/habitaciones/:id', auth, async (req, res) => {
-  try {
-    const { nombre, tipo, capacidad, precio_noche, precio_hora } = req.body;
-    await db.query('UPDATE habitaciones SET nombre=$1,tipo=$2,capacidad=$3,precio_noche=$4,precio_hora=$5 WHERE id=$6',
-      [nombre||'', tipo, capacidad, precio_noche, precio_hora, req.params.id]);
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_HAB', `Hab ${req.params.id}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+  .act-btn{min-width:0;font-size:12px;padding:10px 8px}
+  .confirm-btn{padding:15px;font-size:15px}
+  /* Tabla reservas / huéspedes — scroll horizontal */
+  .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .data-table th,.data-table td{padding:8px 10px;font-size:12px;white-space:nowrap}
+  /* Dashboard mucama/mantenimiento */
+  .mucama-header{padding:12px 14px}
+  .mucama-header .mh-icon{font-size:26px}
+  .mucama-header h2{font-size:15px}
+  .mstat{font-size:12px;padding:8px 11px}
+  /* Caja */
+  .cb-val{font-size:15px}
+}
+@media(max-width:400px){
+  :root{--room-cols:2}
+  .rnum{font-size:18px}
+  .topbar-title{display:none} /* oculta subtítulo de fecha en pantallas muy pequeñas */
+}
+@media(max-width:900px) and (orientation:landscape){
+  :root{--room-cols:4}
+  .stat-cards{grid-template-columns:repeat(4,1fr)}
+  .modal{max-height:96vh}
+}
+@media(max-width:600px) and (orientation:landscape){
+  :root{--room-cols:3}
+  .content{padding:8px}
+  .stat-cards{grid-template-columns:repeat(3,1fr)}
+  .modal{max-height:96vh}
+}
+/* ── LIBRO DE NOVEDADES ── */
+.libro-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-start;justify-content:flex-end}
+.libro-overlay.open{display:flex}
+.libro-panel{background:#fff;width:400px;height:100vh;display:flex;flex-direction:column;box-shadow:-4px 0 32px rgba(0,0,0,.2);overflow:hidden}
+.libro-header{background:#1a2035;color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.libro-header h3{font-size:15px;font-weight:800;margin:0}
+.libro-header p{font-size:11px;color:#94a3b8;margin:2px 0 0}
+.libro-close{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0}
+.libro-body{flex:1;overflow-y:auto;padding:16px;background:#f8fafc;display:flex;flex-direction:column;gap:4px}
+.libro-fecha-sep{text-align:center;margin:10px 0 6px}
+.libro-fecha-sep span{background:#e2e8f0;color:#64748b;font-size:11px;font-weight:700;padding:3px 14px;border-radius:20px}
+.libro-msg{max-width:88%;padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
+.libro-msg.auto{background:#e0f2fe;color:#0369a1;border-radius:14px 14px 14px 2px;align-self:flex-start}
+.libro-msg.manual{background:#dcfce7;color:#166534;border-radius:14px 14px 2px 14px;align-self:flex-end}
+.libro-msg .lm-autor{font-size:10px;font-weight:800;opacity:.75;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.libro-msg .lm-hora{font-size:10px;opacity:.6;margin-top:3px;text-align:right}
+.libro-msg .lm-hab{display:inline-block;background:rgba(0,0,0,.1);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-bottom:2px}
+.libro-footer{padding:12px 16px;border-top:1px solid #e2e8f0;background:#fff;flex-shrink:0}
+.libro-input-row{display:flex;gap:8px;align-items:flex-end}
+.libro-input{flex:1;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 14px;font-size:14px;resize:none;font-family:inherit;outline:none;max-height:100px;min-height:42px}
+.libro-input:focus{border-color:#00c9b1}
+.libro-send{background:#00c9b1;border:none;border-radius:10px;padding:10px 16px;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+.libro-send:hover{background:#0d9488}
+@media(max-width:480px){.libro-panel{width:100vw}}
+</style>
+</head>
+<body>
+ 
+<!-- LOGIN — manejado por portal.html -->
+<div id="login-page" style="display:none"></div>
+ 
+<!-- APP -->
+<div id="app">
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger" style="display:none">☰</button>
+      <div class="tb-left">
+        <h2 id="tb-welcome">Hotel Takuá</h2>
+        <p id="tb-fecha" class="topbar-title"></p>
+      </div>
+      <div class="tb-right">
+        <button class="tb-btn" id="tb-sol-mant" style="display:none;background:#fef3c7;color:#92400e;border-color:#fcd34d" onclick="abrirModalSolMantIndex()" title="Solicitar mantenimiento">🔧 Mant.</button>
+        <button class="tb-btn" id="tb-libro" style="display:none;position:relative" onclick="abrirLibro()">📋 Libro
+          <span id="libro-badge" style="display:none;position:absolute;top:-7px;right:-7px;
+            background:#ef4444;color:#fff;border-radius:50%;min-width:18px;height:18px;
+            font-size:10px;font-weight:800;line-height:18px;text-align:center;padding:0 4px;
+            box-shadow:0 1px 4px rgba(0,0,0,.25);font-family:'Nunito',sans-serif"></span>
+        </button>
+        <button class="tb-btn" id="btn-notif" title="Notificaciones"
+          onclick="toggleNotifCenter()"
+          style="font-size:16px;padding:6px 10px;position:relative">🔔
+          <span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-5px;
+            min-width:18px;height:18px;border-radius:9px;background:#dc2626;color:#fff;
+            font-size:10px;font-weight:800;line-height:18px;text-align:center;padding:0 4px;
+            font-family:'Nunito',sans-serif;pointer-events:none"></span>
+        </button>
+        <div class="user-av" id="user-av">A</div>
+        <button class="tb-btn" id="btn-logout" style="color:#dc2626">Salir</button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+ 
+<!-- DROPDOWN CENTRO DE NOTIFICACIONES -->
+<div id="notif-center" style="display:none;position:fixed;top:60px;right:16px;
+  width:340px;max-width:calc(100vw - 32px);background:#fff;border-radius:16px;
+  box-shadow:0 8px 40px rgba(0,0,0,.18);border:1px solid #e2e8f0;z-index:9999;
+  overflow:hidden;max-height:520px;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px 10px;border-bottom:1px solid #f1f5f9;flex-shrink:0">
+    <span style="font-weight:800;font-size:15px;color:#1a2035">🔔 Notificaciones</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="btn-leer-todas" onclick="leerTodasNotifs()"
+        style="font-size:11px;font-weight:700;color:#0891b2;background:none;border:none;cursor:pointer;padding:0">
+        Marcar leídas
+      </button>
+      <button onclick="cerrarNotifCenter()"
+        style="background:#f1f5f9;border:none;border-radius:50%;width:26px;height:26px;
+        cursor:pointer;font-size:14px;color:#64748b;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+  </div>
+  <div id="notif-push-row" style="display:none;padding:10px 16px;background:#f0fdf4;
+    border-bottom:1px solid #dcfce7;flex-shrink:0">
+    <button onclick="activarNotificacionesDesdeCenter()"
+      style="width:100%;background:#059669;color:#fff;border:none;border-radius:10px;
+      padding:9px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">
+      🔔 Activar notificaciones push
+    </button>
+  </div>
+  <div id="notif-list" style="overflow-y:auto;flex:1;min-height:80px"></div>
+  <div style="padding:10px 16px;border-top:1px solid #f1f5f9;flex-shrink:0;text-align:center">
+    <span style="font-size:11px;color:#94a3b8">Solo los últimos mensajes</span>
+  </div>
+</div>
 
-// ── SERVICIO DE HABITACION ───────────────────────────────────────────
-app.post('/api/servicios', auth, async (req, res) => {
-  try {
-    const { habitacion_id, tipo_servicio, tipo_cama, necesita_mantenimiento, nota_mantenimiento, consumos, nuevo_status } = req.body;
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
-    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada' });
-    let total_consumos = 0;
-    let consumosCompletos = [];
-    if (consumos && consumos.length > 0) {
-      for (const c of consumos) {
-        const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [c.producto_id]);
-        if (prod && c.cantidad > 0) {
-          const subtotal = prod.precio * c.cantidad;
-          total_consumos += subtotal;
-          consumosCompletos.push({ id: prod.id, nombre: prod.nombre, cantidad: c.cantidad, precio: prod.precio, subtotal });
-          await db.query('UPDATE productos SET stock=stock-$1 WHERE id=$2 AND stock>=$1', [c.cantidad, prod.id]);
-        }
-      }
-      if (total_consumos > 0) {
-        const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-        if (caja) {
-          await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-            [caja.id,'ingreso','frigobar',`Frigobar hab.${hab.numero} - ${req.user.nombre}`,total_consumos,'Cuenta huésped',habitacion_id,req.user.id]);
-        }
-      }
-    }
-    const r = await db.query(
-      'INSERT INTO servicios_habitacion (habitacion_id,tipo_servicio,mucama_id,mucama_nombre,tipo_cama,necesita_mantenimiento,nota_mantenimiento,consumos,total_consumos) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id',
-      [habitacion_id, tipo_servicio||'diario', req.user.id, req.user.nombre, tipo_cama||'', necesita_mantenimiento?1:0, nota_mantenimiento||'', JSON.stringify(consumosCompletos), total_consumos]
-    );
-    if (tipo_cama) await db.query('UPDATE habitaciones SET tipo=$1 WHERE id=$2', [tipo_cama, habitacion_id]);
+<!-- MODAL -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal" id="modal-box"></div>
+</div>
+<div class="toast" id="toast"></div>
+ 
+<!-- LIBRO DE NOVEDADES -->
+<div class="libro-overlay" id="libro-overlay" onclick="cerrarLibro(event)">
+  <div class="libro-panel" onclick="event.stopPropagation()">
+    <div class="libro-header">
+      <div>
+        <h3>📋 Libro de Novedades</h3>
+        <p id="libro-turno-label">Cargando...</p>
+      </div>
+      <button class="libro-close" onclick="cerrarLibro()">✕</button>
+    </div>
+    <div class="libro-body" id="libro-body">
+      <div style="text-align:center;color:#94a3b8;padding:32px;font-size:13px">Cargando novedades...</div>
+    </div>
+    <div class="libro-footer" id="libro-footer" style="display:none">
+      <div class="libro-input-row">
+        <textarea class="libro-input" id="libro-input" placeholder="Escribí una novedad..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarNovedad()}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+        <button class="libro-send" onclick="enviarNovedad()">Enviar</button>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px">Enter para enviar · Shift+Enter nueva línea</div>
+    </div>
+  </div>
+</div>
 
-    let statusFinal = nuevo_status || 'limpia';
-    if (necesita_mantenimiento) {
-      statusFinal = 'mantenimiento';
-    } else if (tipo_servicio === 'mantenimiento') {
-      // Al finalizar mantenimiento: verificar si había huésped activo
-      const reservaActiva = await db.getOne(
-        `SELECT id FROM reservas WHERE habitacion_id=$1
-         AND estado IN ('activa','checkin','ocupada','confirmada')
-         ORDER BY created_at DESC LIMIT 1`,
-        [habitacion_id]
+<script>
+// ── STATE ──
+let token = localStorage.getItem('takua_token');
+let currentUser = JSON.parse(localStorage.getItem('takua_user')||'null');
+let isMucama   = currentUser?.rol === 'mucama';
+let isAdminUser = currentUser?.rol === 'admin';
+let currentPage = 'dashboard';
+let habitaciones = [];
+let cart = [];
+let currentAla = 'todas';
+let roomCols = 0;
+let _libroInterval = null;
+let _libroBadgeInterval = null;
+const API = '/api';
+const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+ 
+// ── HELPERS ──
+async function apiFetch(method, path, body) {
+  const opts = {method, headers: {'Content-Type':'application/json', 'Authorization':`Bearer ${token}`}};
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch(API+path, opts);
+    if (r.status===401) { doLogout(); return null; }
+    return await r.json();
+  } catch(e) { console.error('API error', path, e); return null; }
+}
+// Parsear montos: punto = separador de miles, coma = decimal
+// Ej: "45.000" → 45000 | "45,50" → 45.5 | "45000" → 45000
+function parseMonto(val) {
+  if (!val) return 0;
+  const str = String(val).trim();
+  // Si tiene coma, es separador decimal (ej: "45,50" o "45.000,50")
+  if (str.includes(',')) {
+    return parseFloat(str.replace(/\./g,'').replace(',','.')) || 0;
+  }
+  // Si tiene punto y más de 3 dígitos después → separador de miles
+  const puntoIdx = str.lastIndexOf('.');
+  if (puntoIdx !== -1 && str.length - puntoIdx - 1 === 3) {
+    return parseFloat(str.replace(/\./g,'')) || 0;
+  }
+  return parseFloat(str) || 0;
+}
+function fmt(n) { return '$ '+Math.round(n||0).toLocaleString('es-AR'); }
+function fmtExacto(n) {
+  if (!n && n !== 0) return '$ 0';
+  // Mostrar hasta 2 decimales solo si los tiene, sin trailing zeros
+  return '$ ' + Number(n).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+dt.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+}
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = (ok?'✅ ':'❌ ')+msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+ 
+// ── MODAL ──
+// Usamos un solo modal y vinculamos eventos DESPUÉS de inyectar HTML
+function openModal(html, opts={}) {
+  const box = document.getElementById('modal-box');
+  box.innerHTML = html;
+  box.style.maxWidth = opts.wide ? '860px' : '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+// Click fuera cierra
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+ 
+// ── ZOOM ──
+const ZOOM_LEVELS = [2,3,4,5,6,7];
+function initZoom() {
+  const s = parseInt(localStorage.getItem('takua_zoom')||'0');
+  if (s>0) { roomCols=s; document.documentElement.style.setProperty('--room-cols',roomCols); }
+}
+function doZoom(delta) {
+  if (!roomCols) { const w=window.innerWidth; roomCols=w<=600?2:w<=900?3:w<=1100?4:5; }
+  let i = ZOOM_LEVELS.indexOf(roomCols); if(i<0) i=2;
+  roomCols = ZOOM_LEVELS[Math.max(0,Math.min(ZOOM_LEVELS.length-1,i+delta))];
+  localStorage.setItem('takua_zoom',roomCols);
+  document.documentElement.style.setProperty('--room-cols',roomCols);
+  document.querySelectorAll('.zlabel').forEach(el=>el.textContent=roomCols+' col.');
+}
+function zoomLabel() { return roomCols?roomCols+' col.':'Auto'; }
+ 
+// ── SIDEBAR ──
+ 
+
+// ── AUTH ──
+// Login manejado por portal.html
+// Mostrar botón Libro para admin, recepcionista y mucama
+const _rolLibro = currentUser?.rol;
+if (['admin','recepcionista','mucama'].includes(_rolLibro)) {
+  const _btnLibro = document.getElementById('tb-libro');
+  if (_btnLibro) _btnLibro.style.display = '';
+  _libroStartPolling();
+}
+// Mostrar botón Mantenimiento para admin y recepcionista
+if (['admin','recepcionista'].includes(currentUser?.rol)) {
+  const _btnMant = document.getElementById('tb-sol-mant');
+  if (_btnMant) _btnMant.style.display = '';
+}
+document.getElementById('btn-logout').addEventListener('click', doLogout);
+ 
+function irARestaurante() {
+  // Pasar a comandas.html manteniendo el token (ya está en localStorage)
+  window.location.href = '/comandas.html';
+}
+
+async function doLogin() {
+  const usuario = document.getElementById('l-email').value.trim();
+  const pass    = document.getElementById('l-pass').value;
+  document.getElementById('login-err').style.display='none';
+  if (!usuario||!pass) return;
+  const data = await fetch('/api/portal/login',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({usuario, clave:pass})
+  }).then(r=>r.json()).catch(()=>null);
+  if (data?.token) {
+    token=data.token; currentUser=data.user;
+    localStorage.setItem('takua_token',token);
+    localStorage.setItem('takua_user',JSON.stringify(currentUser));
+    // Guardar token en cache del SW para notificaciones en background
+    if ('serviceWorker' in navigator && 'caches' in window) {
+      caches.open('takua-auth').then(cache =>
+        cache.put('token', new Response(token))
       );
-      statusFinal = reservaActiva ? 'ocupada' : 'libre';
-    } else if (tipo_servicio === 'post_checkout') {
-      // Post-checkout: si hay reserva futura → lista, si no → libre
-      const habIdNum = isNaN(Number(habitacion_id)) ? null : Number(habitacion_id);
-      let reservaFutura = habIdNum ? await db.getOne(
-        `SELECT id FROM reservas WHERE habitacion_id=$1
-         AND estado IN ('futura','activa','confirmada')
-         AND DATE(entrada) >= CURRENT_DATE
-         ORDER BY entrada ASC LIMIT 1`,
-        [habIdNum]
-      ) : null;
-      statusFinal = reservaFutura ? 'lista' : 'libre';
     }
-
-    let notaFinal;
-    if (necesita_mantenimiento) notaFinal = nota_mantenimiento;
-    else if (statusFinal === 'limpia' || statusFinal === 'ocupada') notaFinal = hab.nota || '';
-    else notaFinal = '';
-    await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', [statusFinal, notaFinal, habitacion_id]);
-    await logAction(req.user.id, req.user.nombre, 'SERVICIO_HAB', `Hab ${hab.numero} - ${tipo_servicio}${necesita_mantenimiento?' [MANT]':''}`);
-    const msgServicio = necesita_mantenimiento
-      ? `🔧 Mantenimiento reportado — Hab. ${hab.numero}: ${nota_mantenimiento||'sin detalle'}`
-      : `🧹 Servicio completado — Hab. ${hab.numero} (${tipo_servicio})`;
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, msgServicio);
-    res.json({ ok: true, id: r.rows[0].id, total_consumos });
-  } catch(e) { console.error('Servicio error:', e); res.status(500).json({ error: e.message }); }
-});
-app.get('/api/servicios/:habitacion_id', auth, async (req, res) => {
-  try {
-    res.json(await db.getAll('SELECT * FROM servicios_habitacion WHERE habitacion_id=$1 ORDER BY created_at DESC LIMIT 20', [req.params.habitacion_id]));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── HUÉSPEDES ────────────────────────────────────────────────────────
-app.get('/api/huespedes', auth, async (req, res) => {
-  try {
-    const q = req.query.q || '';
-    res.json(await db.getAll("SELECT * FROM huespedes WHERE nombre ILIKE $1 OR documento ILIKE $1 ORDER BY nombre LIMIT 50", [`%${q}%`]));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.get('/api/huespedes/doc/:doc', auth, async (req, res) => {
-  try { res.json(await db.getOne('SELECT * FROM huespedes WHERE documento=$1', [req.params.doc])); }
-  catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/huespedes', auth, async (req, res) => {
-  try {
-    const { documento, tipo_doc, nombre, telefono, email, nacionalidad } = req.body;
-    if (!documento || !nombre) return res.status(400).json({ error: 'Documento y nombre requeridos' });
-    try {
-      const r = await db.query('INSERT INTO huespedes (documento,tipo_doc,nombre,telefono,email,nacionalidad) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
-        [documento, tipo_doc||'DNI', nombre, telefono||'', email||'', nacionalidad||'Argentina']);
-      res.json({ id: r.rows[0].id });
-    } catch(e2) {
-      await db.query('UPDATE huespedes SET nombre=$1,telefono=$2,email=$3 WHERE documento=$4', [nombre, telefono||'', email||'', documento]);
-      const h = await db.getOne('SELECT * FROM huespedes WHERE documento=$1', [documento]);
-      res.json({ id: h.id });
+    // Redirigir a comandas si el rol no es de habitaciones
+    if (['mozo','cajero'].includes(currentUser?.rol)) {
+      window.location.href = '/comandas.html';
+      return;
     }
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── CHECK-IN ─────────────────────────────────────────────────────────
-app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches,
-            precio_total, metodo_pago, notas, reserva_id, saldo_cobrado,
-            cantidad_personas, momento_cobro, tipo_tarifa } = req.body;
-    if (!habitacion_id) return res.status(400).json({ error: 'Falta habitacion_id' });
-    if (!nombre)        return res.status(400).json({ error: 'Falta el nombre del huésped' });
-    if (!entrada)       return res.status(400).json({ error: 'Falta la fecha de entrada' });
-    if (!salida)        return res.status(400).json({ error: 'Falta la fecha de salida' });
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
-    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
-    const hab_id_int = isNaN(Number(hab.id)) ? null : Number(hab.id);
-    const statusesPermitidos = ['libre','lista','reservada','libre_limpia','limpieza','mantenimiento'];
-    if (!statusesPermitidos.includes(hab.status))
-      return res.status(400).json({ error: `La habitación está en estado "${hab.status}".` });
-
-    // Registrar/actualizar huésped
-    let huespedId = null;
-    if (documento) {
-      try {
-        const rH = await db.query('INSERT INTO huespedes (documento,tipo_doc,nombre,telefono) VALUES ($1,$2,$3,$4) RETURNING id',
-          [documento, tipo_doc||'DNI', nombre, telefono||'']);
-        huespedId = rH.rows[0].id;
-      } catch(e2) {
-        const h2 = await db.getOne('SELECT id FROM huespedes WHERE documento=$1', [documento]);
-        if (h2) { huespedId = h2.id; await db.query('UPDATE huespedes SET visitas=visitas+1 WHERE id=$1', [huespedId]); }
-      }
+    startApp();
+  } else {
+    document.getElementById('login-err').style.display='block';
+  }
+}
+function doLogout() {
+  localStorage.removeItem('takua_token'); localStorage.removeItem('takua_user');
+  token=null; currentUser=null;
+  document.getElementById('app').style.display='none';
+  window.location.href='/portal.html';
+}
+function startApp() {
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app').style.display='block';
+  initZoom();
+  const now=new Date();
+  document.getElementById('tb-fecha').textContent=`${DIAS[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]} de ${now.getFullYear()}`;
+  document.getElementById('tb-welcome').textContent=`Bienvenido, ${currentUser?.nombre||''}`;
+  document.getElementById('user-av').textContent=(currentUser?.nombre||'A')[0].toUpperCase();
+  goTo('dashboard');
+  // Polling habitaciones cada 15s — actualiza en background sin re-renderizar
+  setInterval(async () => {
+    // No actualizar si hay un modal abierto
+    const hayModal = document.getElementById('modal-overlay')?.classList.contains('open');
+    if(hayModal) return;
+    const nuevasHabs = await apiFetch('GET','/habitaciones');
+    if(!nuevasHabs || !nuevasHabs.length) return;
+    // Solo re-renderizar si algo cambió
+    const antes  = JSON.stringify(habitaciones.map(h=>({id:h.id,status:h.status,nota:h.nota})));
+    const despues= JSON.stringify(nuevasHabs.map(h=>({id:h.id,status:h.status,nota:h.nota})));
+    if(antes !== despues){
+      habitaciones = nuevasHabs;
+      if(currentPage==='dashboard')    renderDashboard();
+      if(currentPage==='habitaciones') renderHabitaciones();
+    } else if(currentUser?.rol==='mantenimiento') {
+      applyMantMapAlerts();
     }
+  }, 15000);
 
-    let finalReservaId;
+  // Iniciar polling de solicitudes (inmediato + cada 30s)
+  loadSolicitudesAll();
+  startSolPolling();
+  // Iniciar polling de notificaciones del sistema
+  startNotifPolling();
+  updateSoundBtn();
+  // Registrar Periodic Sync para notificaciones con app cerrada (Android Chrome)
+  registerPeriodicSync();
+}
+ 
+// ── NAVIGATION ──
+function goTo(page) {
+  currentPage=page;
+  const isMucama=currentUser?.rol==='mucama';
+  if (isMucama && !['dashboard','habitaciones'].includes(page)) { goTo('dashboard'); return; }
+  const isMantenimiento=currentUser?.rol==='mantenimiento';
+  if (isMantenimiento && !['dashboard','habitaciones'].includes(page)) { goTo('dashboard'); return; }
+  const pages={dashboard:renderDashboard, habitaciones:renderHabitaciones, reservas:renderReservas,
+    inventario:renderInventario,
+    caja:renderCaja, config:renderConfig};
+  if (pages[page]) pages[page]();
+}
+ 
+// ── ROOM HELPERS ──
+const SCFG = {
+  libre:        {label:'Libre',        badge:'sb-libre',        icon:'🟢', color:'#16a34a', bg:'#dcfce7'},
+  lista:        {label:'Lista',        badge:'sb-lista',        icon:'✨', color:'#7c3aed', bg:'#ede9fe'},
+  ocupada:      {label:'Ocupada',      badge:'sb-ocupada',      icon:'🔴', color:'#dc2626', bg:'#fee2e2'},
+  en_limpieza:  {label:'En Limpieza',  badge:'sb-en-limpieza',  icon:'🟡', color:'#d97706', bg:'#fef3c7'},
+  limpia:       {label:'Limpia',       badge:'sb-limpia',       icon:'🌿', color:'#16a34a', bg:'#dcfce7'},
+  libre_limpia: {label:'Libre',        badge:'sb-libre',        icon:'🟢', color:'#16a34a', bg:'#dcfce7'},
+  reservada:    {label:'Reservada',    badge:'sb-reservada',    icon:'🟡', color:'#7c3aed', bg:'#ede9fe'},
+  limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
+  mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
+};
+const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', triple:'🛏🛏🛏 Triple', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
+ 
+function buildCard(h) {
+  const s=SCFG[h.status]||{label:h.status,badge:'sb-reservada',icon:'⚪',color:'#b45309',bg:'#fef9c3'};
+  const tipoLabel=TIPOS[h.tipo]||h.tipo;
 
-    if (reserva_id) {
-      // ── Checkin desde reserva existente ──────────────────
-      // Actualizar la reserva existente a estado 'activa'
-      const saldo = Number(saldo_cobrado)||0;
-      await db.query(
-        `UPDATE reservas SET estado='activa', nombre_huesped=$1, documento=$2, entrada=$3, salida=$4,
-         noches=$5, precio_total=$6, metodo_pago=$7, notas=$8, huesped_id=$9,
-         saldo_pendiente=GREATEST(0, saldo_pendiente-$10)
-         WHERE id=$11`,
-        [nombre, documento||'', entrada, salida, noches||1, precio_total||0,
-         metodo_pago||'Efectivo', notas||'', huespedId, saldo, reserva_id]
-      );
-      finalReservaId = reserva_id;
-      // Registrar saldo cobrado en caja si corresponde
-      if (saldo > 0) {
-        const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-        if (turnoHab) {
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [turnoHab.id, `Saldo Check-in Hab. ${hab.numero} — ${nombre}`, saldo,
-             metodo_pago||'Efectivo', `Reserva #${reserva_id}`,
-             req.user.id, req.user.nombre, hab_id_int, hab.numero]
-          );
-        }
+  // ── Calcular proximidad de check-in para habitaciones reservadas ──
+  let diasParaCheckin = null;
+  let proximidadCheckin = null; // 'hoy' | 'proximo' | 'futuro'
+  if (h.status === 'reservada') {
+    const r = h.reserva_activa;
+    if (r?.entrada) {
+      const hoyDate  = new Date(); hoyDate.setHours(0,0,0,0);
+      const entDate  = new Date(r.entrada); entDate.setHours(0,0,0,0);
+      diasParaCheckin = Math.round((entDate - hoyDate) / (1000*60*60*24));
+      if (diasParaCheckin <= 0)       proximidadCheckin = 'hoy';
+      else if (diasParaCheckin <= 2)  proximidadCheckin = 'proximo';
+      else                            proximidadCheckin = 'futuro';
+    }
+  }
+
+  // ── Badge(s) arriba a la derecha ──
+  let badgeHTML;
+  if (h.status === 'lista') {
+    // Solo mostrar RESERVADA si realmente hay reserva vinculada
+    const tieneReserva = !!(h.reserva_activa?.nombre_huesped);
+    badgeHTML = tieneReserva
+      ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <span class="sbadge sb-reservada">RESERVADA</span>
+          <span class="sbadge sb-reservada">LISTA</span>
+        </div>`
+      : `<span class="sbadge sb-libre">LIBRE</span>`;
+  } else if (h.status === 'reservada') {
+    if (proximidadCheckin === 'hoy') {
+      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <span class="sbadge" style="background:#7c3aed;color:#fff;animation:pulse 1.5s infinite">🔔 HOY CHECK-IN</span>
+      </div>`;
+    } else if (proximidadCheckin === 'proximo') {
+      badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <span class="sbadge" style="background:#a78bfa;color:#fff">⏰ PRÓXIMO</span>
+        <span class="sbadge sb-reservada">RESERVADA</span>
+      </div>`;
+    } else {
+      // futuro o null → solo mostrar RESERVADA si faltan ≤7 días
+      badgeHTML = diasParaCheckin !== null && diasParaCheckin <= 7
+        ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span class="sbadge sb-libre">LIBRE</span>
+            <span class="sbadge sb-reservada">RESERVADA</span>
+          </div>`
+        : `<span class="sbadge sb-libre">LIBRE</span>`;
+    }
+  } else if (h.status === 'en_limpieza') {
+    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <span class="sbadge sb-ocupada">OCUPADA</span>
+      <span class="sbadge sb-limpieza">EN LIMPIEZA</span>
+    </div>`;
+  } else if (h.status === 'limpia') {
+    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <span class="sbadge sb-ocupada">OCUPADA</span>
+      <span class="sbadge sb-limpia">LIMPIA</span>
+    </div>`;
+  } else if (h.status === 'libre_limpia') {
+    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <span class="sbadge sb-libre">LIBRE</span>
+      <span class="sbadge sb-limpia">LIMPIA</span>
+    </div>`;
+  } else {
+    badgeHTML = `<span class="sbadge ${s.badge}">${s.label.toUpperCase()}</span>`;
+  }
+ 
+  // ── Ícono principal ──
+  let icon = s.icon;
+  if (h.status === 'lista')       icon = '🟡';
+  if (h.status === 'en_limpieza') icon = '🟡';
+  if (h.status === 'limpia')      icon = '🔴';
+  if (h.status === 'libre_limpia') icon = '🟢';
+  // Reservada: verde si lejana, amarilla si próxima, violeta si hoy
+  if (h.status === 'reservada') {
+    if (proximidadCheckin === 'hoy')      icon = '🟣';
+    else if (proximidadCheckin === 'proximo') icon = '🟡';
+    else                                      icon = '🟢';
+  }
+ 
+  // ── Fondo de la tarjeta ──
+  // en_limpieza → amarillo, limpia → rojo (sigue siendo hab. ocupada)
+  let cardBg = '';
+  const isAdminRecepVencida = ['admin','recepcionista'].includes(currentUser?.rol) && !!h.reserva_vencida && h.status === 'libre';
+  if (h.status === 'limpia')       cardBg = ' limpia-occ';
+  if (isAdminRecepVencida)         cardBg = ' vencida-occ';
+  if (h.status === 'libre_limpia') cardBg = ' libre'; // mismo verde
+  // Reservada con check-in lejano o sin fecha → verde (disponible); próximo/hoy → violeta
+  if (h.status === 'reservada' && proximidadCheckin !== 'hoy' && proximidadCheckin !== 'proximo') cardBg = ' libre';
+  // Color del ícono de cama: si es reservada lejana, usar color de libre
+  const iconColor = isAdminRecepVencida
+    ? '#f97316'
+    : (h.status === 'reservada' && (proximidadCheckin === 'futuro' || diasParaCheckin === null || diasParaCheckin < 0))
+      ? '#16a34a'
+      : s.color;
+ 
+  // ── Helpers de formato ──
+  const fmtFecha = s => {
+    if (!s) return '—';
+    // Intenta parsear distintos formatos
+    const d = new Date(s);
+    if (!isNaN(d)) return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})
+                     + ' ' + d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    return s; // devolver tal cual si ya es texto
+  };
+
+  // ── Cuerpo de la tarjeta ──
+  const r = h.reserva_activa; // datos de la reserva activa
+  let body='';
+
+  if (h.status==='libre') {
+    body=`<div class="ravail"><div class="ravail-circle"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L11.5 20L22 9" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
+  } else if (h.status==='libre_limpia') {
+    body=`<div class="ravail"><div class="ravail-circle"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L11.5 20L22 9" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>`;
+
+  } else if (h.status==='en_limpieza') {
+    body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label" style="color:#d97706">En Limpieza</div>
+      ${h.nota?`<div style="font-size:11px;color:#92400e;margin-top:3px;font-weight:600">${h.nota}</div>`:''}
+    </div>`;
+
+  } else if (h.status==='limpieza') {
+    body=`<div class="rclean"><div class="rclean-icon">🧹</div><div class="rclean-label">A Limpiar</div></div>`;
+
+  } else if (h.status==='mantenimiento') {
+    body=`<div class="rclean"><div class="rclean-icon">🔧</div><div class="rclean-label" style="color:#4b5563">Mantenimiento</div></div>`;
+
+  } else {
+    // Ocupada, lista, limpia, reservada — mostrar datos de la reserva
+    const nombre   = r?.nombre_huesped || h.nota || '';
+    const entrada  = r?.entrada ? fmtFecha(r.entrada) : '—';
+    const salida   = r?.salida  ? fmtFecha(r.salida)  : '—';
+    // Extraer patente de notas (si existe)
+    const notas    = r?.notas || '';
+    const patMatch = notas.match(/[A-Z]{2,3}[-\s]?\d{3}[-\s]?[A-Z]{0,2}\d{0,3}/i);
+    const patente  = patMatch ? patMatch[0].toUpperCase() : '';
+
+    // Reservada y lista: mostrar siempre nombre + fechas aunque r sea null
+    const esReservada = ['reservada','lista'].includes(h.status);
+
+    // Para reservadas con check-in lejano o sin fecha, mostrar como disponible con info de reserva
+    if (h.status === 'reservada' && proximidadCheckin !== 'hoy' && proximidadCheckin !== 'proximo') {
+      const fechaEnt = r?.entrada ? new Date(r.entrada).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) : '—';
+      const nombreCorto = nombre.split(' ').slice(0,2).join(' ');
+      const mostrarPastilla = diasParaCheckin !== null && diasParaCheckin <= 7;
+      body = `
+        <div class="ravail"><div class="ravail-circle"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L11.5 20L22 9" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>
+        ${mostrarPastilla ? `<div style="margin-top:6px;background:#ede9fe;border-radius:7px;padding:5px 8px;font-size:10px;color:#6d28d9;font-weight:700;display:flex;align-items:center;gap:4px">
+          📅 ${fechaEnt}${nombreCorto?' · '+nombreCorto:''}
+        </div>` : ''}`;
+    } else {
+      body = `
+        ${nombre ? `<div class="rguest" style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${nombre}</div>` : ''}
+        ${(r || esReservada) ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:4px;font-size:10px">
+          <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">ENTRADA</div>
+          <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">SALIDA</div>
+          <div style="color:#1e293b;font-weight:700;font-size:10px">${entrada}</div>
+          <div style="color:#1e293b;font-weight:700;font-size:10px">${salida}</div>
+        </div>` : ''}
+        ${patente ? `<div style="margin-top:5px;background:#f1f5f9;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:4px">🚗 ${patente}</div>` : ''}
+        ${!r && !nombre && !esReservada ? `<div class="ravail"><div class="ravail-circle"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L11.5 20L22 9" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>` : ''}
+      `;
+    }
+  }
+ 
+  const isAdminOrRecep = currentUser && ['admin','recepcionista'].includes(currentUser.rol);
+  return `<div class="rcard ${h.status}${cardBg}" data-hid="${h.id}">
+    <div class="rcard-top">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:${iconColor}22;flex-shrink:0">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="13" width="20" height="6" rx="2" fill="${iconColor}"/>
+            <rect x="2" y="10" width="20" height="4" rx="1" fill="${iconColor}" opacity=".55"/>
+            <rect x="3" y="7" width="6" height="4" rx="1.5" fill="${iconColor}"/>
+            <rect x="15" y="7" width="6" height="4" rx="1.5" fill="${iconColor}"/>
+            <rect x="2" y="18" width="2.5" height="3" rx="1" fill="${iconColor}"/>
+            <rect x="19.5" y="18" width="2.5" height="3" rx="1" fill="${iconColor}"/>
+          </svg>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center">
+          <div class="rnum" style="line-height:1">${h.numero}</div>
+          ${h.nombre?`<div class="rname">${h.nombre}</div>`:''}
+          <div class="rtipo" style="margin-bottom:0">${tipoLabel}</div>
+        </div>
+      </div>
+      ${badgeHTML}
+    </div>
+    ${body}
+    ${isAdminOrRecep?`<button class="qr-btn" data-hid="${h.id}" data-num="${h.numero}" title="Ver QR">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 13h7v7H3v-7zm2 2v3h3v-3H5zm11-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm-4-4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-8h2v2h-2v-2z"/></svg> QR
+    </button>`:''}
+  </div>`;
+}
+ 
+function renderMap(container, habs) {
+  const alas = currentAla==='todas'?['Este','Oeste']:[currentAla];
+  container.innerHTML = alas.map(a=>{
+    const list=habs.filter(h=>h.ala===a);
+    if (!list.length) return '';
+    return `<div class="ala-label"><span class="ala-tag">ALA ${a.toUpperCase()}</span><span style="color:#94a3b8;font-weight:400">${list.length} hab.</span></div>
+    <div class="room-grid">${list.map(h=>buildCard(h)).join('')}</div>`;
+  }).join('');
+  // Bind clicks — esto es clave: después de insertar el HTML
+  container.querySelectorAll('.rcard[data-hid]').forEach(card=>{
+    card.addEventListener('click', e=>{
+      // Si tocaron el botón QR, no abrir modal de hab
+      if (e.target.closest('.qr-btn')) return;
+      const hab=habitaciones.find(h=>String(h.id)===String(card.dataset.hid));
+      if (hab) showHabModal(hab);
+    });
+  });
+  // QR buttons
+  container.querySelectorAll('.qr-btn[data-hid]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const hab = habitaciones.find(h=>String(h.id)===String(btn.dataset.hid));
+      if (hab) showQRModal(hab);
+    });
+  });
+}
+ 
+function bindZoom() {
+  document.getElementById('zoom-in')?.addEventListener('click',()=>doZoom(-1));
+  document.getElementById('zoom-out')?.addEventListener('click',()=>doZoom(1));
+}
+function bindAlaFilters() {
+  document.querySelectorAll('.ala-filter').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      currentAla=btn.dataset.ala;
+      document.querySelectorAll('.ala-filter').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const map=document.getElementById('room-map');
+      if (map) renderMap(map, habitaciones);
+    });
+  });
+}
+ 
+async function refreshHabs() {
+  habitaciones = await apiFetch('GET','/habitaciones') || [];
+  const map=document.getElementById('room-map');
+  if (map) renderMap(map, habitaciones);
+  // Actualizar stats
+  if (currentPage==='dashboard') renderDashboard();
+}
+ 
+// ══════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════
+async function renderDashboard() {
+  const isMucama=currentUser?.rol==='mucama';
+  const isMantenimiento=currentUser?.rol==='mantenimiento';
+
+  if (isMantenimiento) {
+    habitaciones = await apiFetch('GET','/habitaciones') || [];
+    const mant = habitaciones.filter(h=>h.status==='mantenimiento').length;
+    const occ  = habitaciones.filter(h=>['ocupada','en_limpieza','limpia'].includes(h.status)).length;
+    const lib  = habitaciones.filter(h=>['libre','lista','libre_limpia'].includes(h.status)).length;
+    document.getElementById('content').innerHTML=`
+      <div class="mucama-header">
+        <div class="mh-icon">🔧</div>
+        <div><h2>Bienvenido, ${currentUser?.nombre||'Mantenimiento'}</h2><p>Gestión de mantenimiento</p></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <div class="mstat" style="background:#fee2e2;color:#dc2626">🔧 ${mant} en mantenimiento</div>
+        <div class="mstat" style="background:#fee2e2;color:#dc2626">🔴 ${occ} ocupadas</div>
+        <div class="mstat" style="background:#dcfce7;color:#16a34a">🟢 ${lib} libres</div>
+      </div>
+      <div id="mant-sols-restaurante" style="margin-bottom:12px"></div>
+      <div id="mant-alerts" style="margin-bottom:12px"></div>
+      ${mapSection()}`;
+    afterMapInsert();
+    setTimeout(() => { renderMantAlerts(); applyMantMapAlerts(); renderSolsRestaurante(); }, 100);
+    return;
+  }
+
+  if (isMucama) {
+    habitaciones = await apiFetch('GET','/habitaciones') || [];
+    const limp  = habitaciones.filter(h=>h.status==='limpieza').length;
+    const mant  = habitaciones.filter(h=>h.status==='mantenimiento').length;
+    const occ   = habitaciones.filter(h=>['ocupada','en_limpieza','limpia'].includes(h.status)).length;
+    const res   = habitaciones.filter(h=>h.status==='reservada').length;
+    document.getElementById('content').innerHTML=`
+      <div class="mucama-header">
+        <div class="mh-icon">🧹</div>
+        <div><h2>Bienvenida, ${currentUser?.nombre||'Mucama'}</h2><p>Gestión de habitaciones</p></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <div class="mstat" style="background:#fef3c7;color:#d97706">🧹 ${limp} a limpiar</div>
+        <div class="mstat" style="background:#fee2e2;color:#dc2626">🔴 ${occ} ocupadas</div>
+        <div class="mstat" style="background:#fef9c3;color:#b45309">📋 ${res} reservadas</div>
+        <div class="mstat" style="background:#f3f4f6;color:#4b5563">🔧 ${mant} mantenimiento</div>
+      </div>
+      <div id="mucama-sols" style="margin-bottom:12px"></div>
+      ${mapSection()}`;
+    afterMapInsert();
+    setTimeout(() => loadSolicitudesAll(), 100);
+    return;
+  }
+ 
+  const [dash, habs, turnoRest, alertasStock] = await Promise.all([
+    apiFetch('GET','/dashboard'),
+    apiFetch('GET','/habitaciones'),
+    apiFetch('GET','/restaurante/turno/activo').catch(()=>null),
+    apiFetch('GET','/inventario/alertas').catch(()=>[]),
+  ]);
+  habitaciones = habs||[];
+  const OCUPADAS=['ocupada','en_limpieza','limpia'];
+  const LIBRES  =['libre','lista','libre_limpia'];
+  const occ  = habitaciones.filter(h=>OCUPADAS.includes(h.status)).length;
+  const lib  = habitaciones.filter(h=>LIBRES.includes(h.status)).length;
+  const limp = habitaciones.filter(h=>h.status==='limpieza').length;
+  const mant = habitaciones.filter(h=>h.status==='mantenimiento').length;
+  const reserv=habitaciones.filter(h=>h.status==='reservada').length;
+  const pct  = Math.round(occ/(habitaciones.length||1)*100);
+
+  // Métricas restaurante
+  const cerradas   = turnoRest?.cerradas||[];
+  const restTotal  = cerradas.reduce((s,c)=>s+(Number(c.total_final)||0),0);
+  const restCmdas  = cerradas.length;
+  const restComen  = cerradas.reduce((s,c)=>s+(c.comensales||0),0);
+  const turnoAbierto = turnoRest?.estado==='abierto';
+
+  document.getElementById('content').innerHTML=`
+    <!-- HABITACIONES -->
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🏨 Habitaciones</div>
+
+    <div class="stat-cards" style="margin-bottom:20px">
+      <!-- Tarjeta OCUPACIÓN -->
+      <div class="sc occ" style="grid-column:span 3;display:flex;align-items:center;gap:20px">
+        <div style="flex-shrink:0">
+          <div class="lbl">Turno actual</div>
+          <div class="ttl">OCUPACIÓN</div>
+          <div style="font-size:36px;font-weight:900;color:var(--accent);line-height:1;margin-top:4px">${pct}%</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;justify-content:center">
+          ${[
+            {val:occ,   label:'Ocupadas',     grad:'linear-gradient(135deg,#991b1b,#dc2626)'},
+            {val:lib,   label:'Libres',       grad:'linear-gradient(135deg,#15803d,#22c55e)'},
+            {val:limp,  label:'Limpieza',     grad:'linear-gradient(135deg,#b45309,#f59e0b)'},
+            {val:reserv,label:'Reservadas',   grad:'linear-gradient(135deg,#6d28d9,#a78bfa)'},
+            {val:mant,  label:'Mantenimiento',grad:'linear-gradient(135deg,#374151,#6b7280)'},
+          ].map(x=>`<div style="background:${x.grad};border-radius:12px;padding:10px 14px;text-align:center;min-width:68px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.25)">
+            <div style="position:absolute;right:-8px;bottom:-8px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08)"></div>
+            <div style="font-size:22px;font-weight:900;color:#fff;line-height:1">${x.val}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.8);margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px">${x.label}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <!-- Tarjeta HOSPEDAJE -->
+      <div class="sc hosp" style="grid-column:span 2;cursor:pointer" onclick="toggleHuespedes(this)">
+        <div class="lbl">Turno actual</div>
+        <div class="ttl">HOSPEDAJE</div>
+        <div class="val">${fmt(dash?.hospedaje)}</div>
+        ${(dash?.reservas_activas||0)>0?`<div style="font-size:12px;opacity:.85;margin-top:6px">👥 ${dash.reservas_activas} huéspedes</div>`:''}
+        <div class="huespedes-detalle" style="display:none;margin-top:8px;text-align:left">
+          ${(dash?.huespedes_actuales||[]).map(h=>`
+            <div style="font-size:11px;padding:3px 0;border-top:1px solid rgba(255,255,255,.15)">
+              <strong>Hab.${h.numero}</strong> ${h.nombre||'—'}
+              <span style="float:right;opacity:.8">${fmt(h.precio_total)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- RESTAURANTE -->
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🍽️ Restaurante ${turnoAbierto?'<span style="color:#22c55e">● Turno abierto</span>':'<span style="color:#94a3b8">○ Sin turno activo</span>'}</div>
+    <div class="stat-cards" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+      <div class="sc" style="background:linear-gradient(135deg,#059669,#10b981)">
+        <div class="lbl">Restaurante</div><div class="ttl">TOTAL COBRADO</div>
+        <div class="val">${fmt(restTotal)}</div>
+      </div>
+      <div class="sc" style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+        <div class="lbl">Restaurante</div><div class="ttl">COMANDAS</div>
+        <div class="val">${restCmdas}</div>
+      </div>
+      <div class="sc" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">
+        <div class="lbl">Restaurante</div><div class="ttl">COMENSALES</div>
+        <div class="val">${restComen}</div>
+      </div>
+    </div>
+
+    <!-- SOLICITUDES PENDIENTES -->
+    <div class="section-card" id="sols-pendientes" style="display:none">
+      <div class="sc-head" style="flex-wrap:nowrap">
+        <h2 style="display:flex;align-items:center;gap:8px">🔔 Solicitudes de huéspedes
+          <span id="sols-count" style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px">0</span>
+        </h2>
+      </div>
+      <div id="sols-rows"></div>
+    </div>
+
+    <!-- ALERTAS DE STOCK -->
+    ${(alertasStock||[]).length ? `
+    <div class="section-card" style="border-left:4px solid #f59e0b">
+      <div class="sc-head" style="margin-bottom:12px">
+        <h2 style="display:flex;align-items:center;gap:8px;font-size:15px">
+          ⚠️ Alertas de inventario
+          <span style="background:#f59e0b;color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">${alertasStock.length}</span>
+        </h2>
+        <button class="btn-secondary" onclick="window.location.href='/inventario.html'">Ver inventario →</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${alertasStock.map(a=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;
+            background:${Number(a.stock)<=0?'#fff5f5':'#fffbeb'};
+            border:1px solid ${Number(a.stock)<=0?'#fca5a5':'#fcd34d'};
+            border-radius:10px;font-size:13px">
+            <div>
+              <span style="font-weight:700">${a.nombre}</span>
+              <span style="background:#f3f4f6;color:#374151;border-radius:6px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px;text-transform:uppercase">${a.modulo||'general'}</span>
+            </div>
+            <span style="font-weight:700;color:${Number(a.stock)<=0?'#dc2626':'#d97706'}">
+              ${Number(a.stock)<=0?'⛔ Sin stock':'⚠️ '+a.stock+' '+(a.unidad||'u')+' / mín '+a.stock_minimo}
+            </span>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}`;
+
+  setTimeout(() => loadSolicitudesAll(), 100);
+}
+ 
+function toggleHuespedes(card) {
+  const detalle = card.querySelector('.huespedes-detalle');
+  if (detalle) detalle.style.display = detalle.style.display === 'none' ? 'block' : 'none';
+}
+
+function mapSection(showLog=false) {
+  return `<div class="section-card">
+    <div class="sc-head">
+      <h2>Mapa de Habitaciones</h2>
+      <div class="filters-row">
+        <button class="filter-pill ala-filter ${currentAla==='todas'?'active':''}" data-ala="todas">Todas</button>
+        <button class="filter-pill ala-filter ${currentAla==='Este'?'active':''}" data-ala="Este">Ala Este</button>
+        <button class="filter-pill ala-filter ${currentAla==='Oeste'?'active':''}" data-ala="Oeste">Ala Oeste</button>
+        <div class="zoom-bar">
+          <button class="zoom-btn" id="zoom-in">＋</button>
+          <span class="zlabel">${zoomLabel()}</span>
+          <button class="zoom-btn" id="zoom-out">－</button>
+        </div>
+        ${showLog?'<button class="btn-secondary" id="btn-log">📋 Historial</button>':''}
+      </div>
+    </div>
+    <div id="room-map"></div>
+  </div>`;
+}
+ 
+function afterMapInsert(showLog=false) {
+  bindAlaFilters();
+  bindZoom();
+  if (showLog) document.getElementById('btn-log')?.addEventListener('click', loadLog);
+  renderMap(document.getElementById('room-map'), habitaciones);
+  // Solicitudes pendientes (solo admin/recep)
+  if (!isMucama) loadSolicitudes();
+}
+ 
+function loadSolicitudes(pendientes) {
+  const el = document.getElementById('sols-pendientes');
+  if (!el) return;
+  if (!pendientes || !pendientes.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  document.getElementById('sols-count').textContent = pendientes.length;
+  document.getElementById('sols-rows').innerHTML = pendientes.map(s => `
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #f1f5f9">
+      <div style="font-size:26px">${s.tipo==='servicio'?'🧹':'🍫'}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800">Hab. ${s.numero} — Ala ${s.ala}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:1px">${s.tipo==='servicio'?'Solicitud de limpieza':'Pedido de frigobar'}</div>
+        ${s.detalle?`<div style="font-size:12px;color:#374151;margin-top:2px;font-style:italic">"${s.detalle}"</div>`:''}
+        ${s.consumos&&s.consumos!=='[]'?`<div style="font-size:11px;color:#94a3b8;margin-top:2px">${JSON.parse(s.consumos).map(c=>c.nombre+' ×'+c.cantidad).join(' · ')}</div>`:''}
+        <div style="font-size:10px;color:#94a3b8;margin-top:3px">${new Date(s.created_at).toLocaleString('es',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}</div>
+      </div>
+      <button class="btn-primary" data-sol-id="${s.id}" style="font-size:11px;padding:6px 10px;white-space:nowrap;flex-shrink:0">✅ Atendida</button>
+    </div>`).join('');
+ 
+  document.querySelectorAll('[data-sol-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await apiFetch('PUT', `/solicitudes/${btn.dataset.solId}`, { estado: 'atendida' });
+      toast('Solicitud marcada como atendida');
+      loadSolicitudes();
+    });
+  });
+}
+ 
+// Polling automático cada 30 segundos para nuevas solicitudes
+let solInterval = null;
+function startSolPolling() {
+  if (solInterval) clearInterval(solInterval);
+  solInterval = setInterval(() => {
+    if (currentPage === 'dashboard') loadSolicitudesAll();
+  }, 30000);
+}
+ 
+// ══════════════════════════════════════
+// HABITACIONES PAGE
+// ══════════════════════════════════════
+async function renderHabitaciones() {
+  habitaciones = await apiFetch('GET','/habitaciones') || [];
+  document.getElementById('content').innerHTML = mapSection();
+  afterMapInsert();
+  if (currentUser?.rol === 'mantenimiento') {
+    setTimeout(() => applyMantMapAlerts(), 100);
+  }
+}
+ 
+// ══════════════════════════════════════
+// HAB MODAL
+// ══════════════════════════════════════
+/*
+  ESTADOS Y FLUJOS:
+  libre       → recep/admin: check-in, reservar, mantenimiento
+  reservada   → mucama: servicio-lista (limpia y marca lista)
+              → recep/admin: check-in, cancelar reserva
+  lista       → recep/admin: check-in, mantenimiento
+  ocupada     → mucama: servicio-diario (limpia, carga frigobar)
+              → recep/admin: check-out
+  limpieza    → mucama: servicio-post (limpia post-checkout, marca lista)
+              → recep/admin: marcar libre/lista, mantenimiento
+  limpia      → recep/admin: marcar libre, mantenimiento
+  mantenimiento → mucama: marcar lista
+                → recep/admin: marcar libre/lista
+*/
+function showHabModal(hab) {
+  const rol = currentUser?.rol || 'recepcionista';
+  const isMucama = rol === 'mucama';
+  const isAdmin  = rol === 'admin';
+  const isRecep  = rol === 'recepcionista';
+  const canEdit  = isAdmin || isRecep;
+
+  // Modal exclusivo para mantenimiento
+  if (rol === 'mantenimiento') { showMantModal(hab); return; }
+ 
+  const s = SCFG[hab.status] || {label:hab.status, color:'#374151', bg:'#f8fafc', icon:'⚪'};
+  const tipoLabel = TIPOS[hab.tipo] || hab.tipo;
+ 
+  // ── ACCIONES POR ROL Y ESTADO ──
+ 
+  // Mucama: abre modal de servicio específico según estado
+  const mucamaAcciones = {
+    reservada:    { label:'✨ Preparar habitación',      color:'#0891b2', servicio:'pre_checkin',   nuevoStatus:'lista',       soloIniciar:false },
+    libre:        { label:'🧹 Iniciar limpieza',         color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true, esLibre:true },
+    libre_limpia: { label:'🧹 Nuevo repaso',              color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true, esLibre:true },
+    ocupada:      { label:'🧹 Iniciar servicio diario',  color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
+    en_limpieza:  { label:'✅ Finalizar servicio',       color:'#166534', servicio:'diario',         nuevoStatus:'limpia',      soloIniciar:false },
+    limpia:       { label:'🧹 Nuevo servicio diario',    color:'#d97706', servicio:'iniciar_diario', nuevoStatus:'en_limpieza', soloIniciar:true  },
+    limpieza:     { label:'🧹 Limpieza post-checkout',   color:'#d97706', servicio:'post_checkout',  nuevoStatus:'lista',       soloIniciar:false },
+    mantenimiento:{ label:'✅ Finalizar mantenimiento',  color:'#0891b2', servicio:'mantenimiento',  nuevoStatus:'lista',       soloIniciar:false },
+  };
+ 
+  // Recep/Admin: transiciones directas de estado
+  const recepTransitions = {
+    libre:        [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
+                   {s:'reservada',     label:'📋 Reservar',           color:'#7c3aed'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    libre_limpia: [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
+                   {s:'reservada',     label:'📋 Reservar',           color:'#7c3aed'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    lista:        [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
+                   {s:'reservada',     label:'📋 Reservar',           color:'#7c3aed'},
+                   {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    reservada:    [{s:'check-in',      label:'✅ Check-in',           color:'#059669'},
+                   {s:'reservada',     label:'📋 Nueva reserva',      color:'#7c3aed'},
+                   {s:'libre',         label:'✕ Cancelar reserva',   color:'#6b7280'}],
+    ocupada:      [{s:'checkout',      label:'🚪 Check-out',          color:'#dc2626'},
+                   {s:'cambiar-hab',   label:'🔄 Cambiar habitación',  color:'#7c3aed'}],
+    en_limpieza:  [{s:'ocupada',       label:'🔴 Volver a Ocupada',   color:'#dc2626'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    limpia:       [{s:'ocupada',       label:'🔴 Volver a Ocupada',   color:'#dc2626'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    limpieza:     [{s:'lista',         label:'✨ Marcar Lista',        color:'#0891b2'},
+                   {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'},
+                   {s:'mantenimiento', label:'🔧 Mantenimiento',      color:'#6b7280'}],
+    mantenimiento:[{s:'lista',         label:'✨ Marcar Lista',        color:'#0891b2'},
+                   {s:'libre',         label:'🟢 Marcar Libre',       color:'#16a34a'}],
+  };
+ 
+  const mucamaAccion  = mucamaAcciones[hab.status] || null;
+  const transitions   = canEdit
+    ? (recepTransitions[hab.status] || [])
+    : isMucama
+      ? (recepTransitions[hab.status] || []).filter(t => t.s === 'check-in' || t.s === 'checkout')
+      : [];
+  const actHTML = transitions.map((t,i) =>
+    `<button class="act-btn" id="hab-act-${i}" style="background:${t.color}">${t.label}</button>`
+  ).join('');
+ 
+  // Selector tipo cama (visible para todos)
+  const esTriple = hab.tipo === 'triple';
+  const esTwin  = !['queen','suite','triple'].includes(hab.tipo);
+  const tipoCamaHTML = `
+    <div class="stitle">Tipo de cama</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="tbtn-twin"   style="flex:1;padding:10px;border:2px solid ${esTwin   ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin   ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏 Twin</button>
+      <button id="tbtn-queen"  style="flex:1;padding:10px;border:2px solid ${!esTwin && !esTriple?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin && !esTriple?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
+      <button id="tbtn-triple" style="flex:1;padding:10px;border:2px solid ${esTriple ?'#f59e0b':'#e0e6ef'};border-radius:10px;background:${esTriple ?'#fffbeb':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏🛏 Triple</button>
+    </div>`;
+ 
+  const todosLosEstados = [
+    {s:'libre',label:'🟢 Libre'},{s:'reservada',label:'📋 Reservada'},
+    {s:'ocupada',label:'🔴 Ocupada'},{s:'limpieza',label:'🧹 En limpieza'},
+    {s:'lista',label:'✨ Lista'},{s:'mantenimiento',label:'🔧 Mantenimiento'},
+  ];
+  const adminHTML = isAdmin ? `
+    <details style="margin-top:14px;border:1px solid #e0e6ef;border-radius:10px;padding:10px 12px">
+      <summary style="cursor:pointer;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">⚙️ Admin</summary>
+      <div style="padding-top:12px;display:flex;flex-direction:column;gap:10px">
+        <div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:10px;padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🔄 Corregir estado</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="he-status-corr" style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;font-family:inherit">
+              ${todosLosEstados.map(e=>`<option value="${e.s}" ${hab.status===e.s?'selected':''}>${e.label}</option>`).join('')}
+            </select>
+            <button id="btn-corr-estado" style="background:#92400e;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">Aplicar</button>
+          </div>
+          <div style="font-size:11px;color:#92400e;margin-top:6px;opacity:.8">⚠️ Cambia el estado sin registrar movimientos de caja</div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">Editar habitación</div>
+        <div class="form-col"><label>Nombre personalizado</label>
+          <input type="text" id="he-nombre" value="${hab.nombre||''}" placeholder="Ej: Hab. Jardín...">
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Capacidad (pers.)</label><input type="number" id="he-cap" value="${hab.capacidad||2}" min="1" max="10"></div>
+          <div class="form-col"><label>Precio noche ($)</label><input type="number" id="he-pnoche" value="${hab.precio_noche||50000}"></div>
+          <div class="form-col"><label>Precio hora ($)</label><input type="number" id="he-phora" value="${hab.precio_hora||15000}"></div>
+        </div>
+        <button class="btn-primary" id="btn-save-hab" style="width:100%">💾 Guardar cambios</button>
+      </div>
+    </details>` : '';
+ 
+  openModal(`
+    <div class="modal-hd">
+      <h3>Hab. ${hab.numero}${hab.nombre?' · '+hab.nombre:''} — Ala ${hab.ala}</h3>
+      <button class="modal-close" id="hab-close">✕</button>
+    </div>
+    <div class="status-info" style="background:${s.bg||'#f8fafc'}">
+      <span style="font-weight:800;color:${s.color||'#374151'};font-size:15px">${s.icon} ${s.label}</span>
+      <span style="color:#64748b;font-size:12px">· ${tipoLabel} · ${hab.capacidad} pers. · ${fmt(hab.precio_noche)}/noche</span>
+    </div>
+    ${hab.nota&&!['libre','lista','limpia'].includes(hab.status)?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:''}
+ 
+    ${tipoCamaHTML}
+ 
+    ${isMucama ? `
+      <button class="save-btn" id="btn-save-tipo" style="margin-bottom:10px;width:100%">💾 Guardar tipo de cama</button>
+    ` : ''}
+    ${isMucama && mucamaAccion ? `
+      <button class="confirm-btn" id="btn-servicio" style="background:linear-gradient(135deg,${mucamaAccion.color},${mucamaAccion.color}cc);margin-bottom:8px">
+        ${mucamaAccion.label}
+      </button>
+    ` : ''}
+    ${isMucama && hab.status==='ocupada' ? `
+      <button class="confirm-btn" id="btn-mucama-checkout"
+        style="background:linear-gradient(135deg,#dc2626,#b91c1c);margin-bottom:8px">
+        🚪 Check-out
+      </button>
+    ` : ''}
+ 
+    ${(canEdit || (isMucama && transitions.length > 0)) && transitions.length > 0 ? `
+      <div class="form-col" style="margin-bottom:12px">
+        <label>Nota / Observación</label>
+        <input type="text" id="hab-nota" value="${hab.nota||''}" placeholder="Huésped, patente, solicitud...">
+      </div>
+      <div class="stitle">Acciones</div>
+      <div class="act-grid">${actHTML}</div>
+      ${canEdit ? `<button class="save-btn" id="hab-save-nota">💾 Guardar nota</button>` : ''}
+    ` : ''}
+ 
+    ${isMucama && !mucamaAccion && transitions.length === 0 ? `
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;font-size:13px;color:#64748b;text-align:center">
+        Esta habitación no requiere acción en este momento.
+      </div>
+    ` : ''}
+ 
+    ${adminHTML}
+  `);
+ 
+  // ── BIND EVENTS ──
+  document.getElementById('hab-close').addEventListener('click', closeModal);
+ 
+  // Selector tipo cama
+  let tipoCamaSeleccionada = esTriple ? 'triple' : esTwin ? 'twin' : 'queen';
+  const btnTwin   = document.getElementById('tbtn-twin');
+  const btnQueen  = document.getElementById('tbtn-queen');
+  const btnTriple = document.getElementById('tbtn-triple');
+  function selectTipo(tipo) {
+    tipoCamaSeleccionada = tipo;
+    btnTwin.style.borderColor    = tipo==='twin'  ?'#00c9b1':'#e0e6ef';
+    btnTwin.style.background     = tipo==='twin'  ?'#f0fdf9':'#f8fafc';
+    btnQueen.style.borderColor   = tipo==='queen' ?'#7c3aed':'#e0e6ef';
+    btnQueen.style.background    = tipo==='queen' ?'#faf5ff':'#f8fafc';
+    if(btnTriple){btnTriple.style.borderColor = tipo==='triple'?'#f59e0b':'#e0e6ef'; btnTriple.style.background = tipo==='triple'?'#fffbeb':'#f8fafc';}
+  }
+  btnTwin?.addEventListener('click',   () => selectTipo('twin'));
+  btnQueen?.addEventListener('click',  () => selectTipo('queen'));
+  btnTriple?.addEventListener('click', () => selectTipo('triple'));
+
+  // Mucama: guardar tipo de cama
+  document.getElementById('btn-save-tipo')?.addEventListener('click', async () => {
+    const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
+      nombre: hab.nombre||'', tipo: tipoCamaSeleccionada,
+      capacidad: hab.capacidad, precio_noche: hab.precio_noche, precio_hora: hab.precio_hora
+    });
+    if (r?.ok) { toast('Tipo de cama guardado ✓'); closeModal(); await refreshHabs(); }
+    else toast(r?.error||'Error', false);
+  });
+
+  // Botón servicio mucama
+  document.getElementById('btn-mucama-checkout')?.addEventListener('click', () => {
+    closeModal();
+    showCheckoutModal(hab);
+  });
+
+  document.getElementById('btn-servicio')?.addEventListener('click', async () => {
+    if (mucamaAccion.soloIniciar) {
+      // Solo cambiar estado a "en_limpieza" — guardar nombre de mucama en nota
+      const notaLimpieza = mucamaAccion.nuevoStatus === 'en_limpieza'
+        ? (currentUser?.nombre || 'Mucama')
+        : hab.nota || '';
+      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status: mucamaAccion.nuevoStatus, nota: notaLimpieza });
+      if (r?.ok) {
+        toast('Servicio iniciado — habitación en limpieza');
+        closeModal();
+        await refreshHabs();
+      } else {
+        toast(r?.error || 'Error', false);
       }
     } else {
-      // ── Checkin directo sin reserva previa ───────────────
-      const reserva = await db.query(
-        `INSERT INTO reservas (habitacion_id,huesped_id,nombre_huesped,documento,entrada,salida,noches,
-          precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente,cantidad_personas,momento_cobro)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activa',0,0,$11,$12) RETURNING id`,
-        [habitacion_id, huespedId, nombre, documento||'', entrada, salida,
-         noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'',
-         cantidad_personas||1, momento_cobro||'ahora']
-      );
-      finalReservaId = reserva.rows[0].id;
-      // Registrar cobro total en caja solo si paga ahora
-      if ((precio_total||0) > 0 && (momento_cobro||'ahora') === 'ahora') {
-        const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-        if (turnoHab) {
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [turnoHab.id, `Check-in Hab. ${hab.numero} — ${nombre}`, precio_total||0,
-             metodo_pago||'Efectivo', `Reserva #${finalReservaId}`,
-             req.user.id, req.user.nombre, hab_id_int, hab.numero]
-          );
+      closeModal();
+      showServicioModal(hab, mucamaAccion, tipoCamaSeleccionada);
+    }
+  });
+ 
+  // Acciones recep/admin
+  transitions.forEach((t,i) => {
+    document.getElementById(`hab-act-${i}`)?.addEventListener('click', async () => {
+      if (t.s==='check-in')   { closeModal(); showCheckinModal(hab.id); return; }
+      if (t.s==='reservada')  { closeModal(); showReservaModal(hab.id); return; }
+      if (t.s==='cambiar-hab'){ closeModal(); showCambiarHabModal(hab); return; }
+      if (t.s==='checkout')   { closeModal(); showCheckoutModal(hab); return; }
+      {
+        const nota = document.getElementById('hab-nota')?.value || hab.nota || '';
+        // Guardar tipo de cama si cambió
+        if (tipoCamaSeleccionada !== (esTriple?'triple':esTwin?'twin':'queen')) {
+          await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
         }
-        // (registro en caja habitaciones arriba)
+        const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:t.s, nota });
+        if (r?.ok) toast('Estado actualizado: ' + t.label);
+        else { toast(r?.error||'Error', false); return; }
       }
-    }
-
-    await db.query('UPDATE habitaciones SET status=$1,nota=$2,updated_at=NOW() WHERE id=$3', ['ocupada', nombre, habitacion_id]);
-    await logAction(req.user.id, req.user.nombre, 'CHECKIN', `Hab ${hab.numero} - ${nombre}`);
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, habitacion_id, `✅ Check-in realizado — Hab. ${hab.numero} (${nombre})`);
-    sendPushToRoles(['admin','recepcionista','mucama'], {
-      title: `✅ Check-in — Hab. ${hab.numero}`,
-      body:  nombre,
-      icon:  '/icon-192.png', tag: `checkin-${habitacion_id}`,
-      data:  { url: '/index.html' }
+      closeModal();
+      await refreshHabs();
     });
-    res.json({ ok: true, reserva_id: finalReservaId });
-  } catch(e) { console.error('CHECKIN ERROR:', e); res.status(500).json({ error: 'Error en check-in: ' + e.message }); }
-});
-
-// ── CONFIG TARIFAS ──────────────────────────────────────────────────
-app.get('/api/config/tarifas', auth, async (req, res) => {
-  try {
-    const rows = await db.getAll("SELECT clave, valor FROM config_hotel WHERE clave IN ('precio_noche','precio_hora','precio_dia')");
-    const cfg = {};
-    rows.forEach(r => { cfg[r.clave] = Number(r.valor); });
-    res.json(cfg);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/config/tarifas', auth, adminOnly, async (req, res) => {
-  try {
-    const { precio_noche, precio_dia, precio_hora } = req.body;
-    const items = [['precio_noche', precio_noche], ['precio_dia', precio_dia], ['precio_hora', precio_hora]];
-    for (const [clave, valor] of items) {
-      if (valor !== undefined) {
-        await db.query(
-          `INSERT INTO config_hotel (clave,valor,updated_at) VALUES ($1,$2,NOW())
-           ON CONFLICT (clave) DO UPDATE SET valor=$2, updated_at=NOW()`,
-          [clave, String(valor)]
-        );
-      }
+  });
+ 
+  // Guardar nota
+  document.getElementById('hab-save-nota')?.addEventListener('click', async () => {
+    const nota = document.getElementById('hab-nota').value;
+    if (tipoCamaSeleccionada !== (esTriple?'triple':esTwin?'twin':'queen')) {
+      await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
     }
-    await logAction(req.user.id, req.user.nombre, 'CONFIG_TARIFAS', `Noche:${precio_noche} Hora:${precio_hora} Día:${precio_dia}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+    const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:hab.status, nota });
+    if (r?.ok) toast('Guardado');
+    else toast('Error', false);
+    closeModal();
+    await refreshHabs();
+  });
+ 
+  // Admin corregir estado
+  document.getElementById('btn-corr-estado')?.addEventListener('click', async () => {
+    const nuevoStatus = document.getElementById('he-status-corr').value;
+    if (nuevoStatus === hab.status) { toast('El estado ya es ' + nuevoStatus, false); return; }
+    if (!confirm(`¿Cambiar Hab. ${hab.numero} de "${hab.status}" a "${nuevoStatus}"?\nEsto no registra movimientos de caja.`)) return;
+    const r = await apiFetch('PUT', `/habitaciones/${String(hab.id)}/status`, { status: nuevoStatus, nota: hab.nota || '' });
+    if (r?.ok) { toast(`Estado corregido → ${nuevoStatus}`); closeModal(); await refreshHabs(); }
+    else toast(r?.error || 'Error al corregir estado', false);
+  });
+  // Admin guardar cambios
+  document.getElementById('btn-save-hab')?.addEventListener('click', async () => {
+    const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
+      nombre:      document.getElementById('he-nombre').value,
+      tipo:        tipoCamaSeleccionada,
+      capacidad:   parseInt(document.getElementById('he-cap').value)||2,
+      precio_noche:parseMonto(document.getElementById('he-pnoche').value),
+      precio_hora: parseMonto(document.getElementById('he-phora').value),
+    });
+    if (r?.ok) { toast('Habitación actualizada'); closeModal(); await refreshHabs(); }
+    else toast(r?.error||'Error', false);
+  });
+}
+ 
+// ══════════════════════════════════════
+// MODAL MANTENIMIENTO
+// ══════════════════════════════════════
+function showMantModal(hab) {
+  const s = SCFG[hab.status] || {label:hab.status, color:'#374151', bg:'#f8fafc', icon:'⚪'};
+  const enMant = hab.status === 'mantenimiento';
+  const notaLimpia = (hab.nota||'').replace(/^\[prev:(libre|ocupada)\]\s*/,'');
 
-// ── CHECK-OUT ────────────────────────────────────────────────────────
-app.post('/api/checkout/:habitacion_id', auth, adminRecepMucama, async (req, res) => {
-  try {
-    const id = req.params.habitacion_id;
-    const { monto_extra, metodo_pago_extra, concepto_extra } = req.body;
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [id]);
-    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + id });
-    const id_int = isNaN(Number(hab.id)) ? null : Number(hab.id);
+  openModal(`
+    <div class="modal-hd">
+      <h3>🔧 Hab. ${hab.numero}${hab.nombre?' · '+hab.nombre:''} — Ala ${hab.ala}</h3>
+      <button class="modal-close" id="mant-close">✕</button>
+    </div>
+    <div class="status-info" style="background:${s.bg||'#f8fafc'}">
+      <span style="font-weight:800;color:${s.color||'#374151'};font-size:15px">${s.icon} ${s.label}</span>
+    </div>
+    ${enMant && notaLimpia ? `<div style="background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;font-size:13px;color:#7f1d1d;margin-bottom:12px">📝 ${notaLimpia}</div>` : ''}
+    ${!enMant ? `
+      <div class="form-col" style="margin-bottom:14px">
+        <label>Motivo / Descripción</label>
+        <input type="text" id="mant-nota" placeholder="Ej: Cañería rota, aire acondicionado...">
+      </div>
+      <button class="confirm-btn" id="btn-mant-iniciar" style="background:linear-gradient(135deg,#dc2626,#b91c1c);width:100%">
+        🔧 Poner en mantenimiento
+      </button>
+    ` : `
+      <button class="confirm-btn" id="btn-mant-fin" style="background:linear-gradient(135deg,#059669,#047857);width:100%">
+        ✅ Mantenimiento finalizado
+      </button>
+    `}
+  `);
 
-    // Obtener reserva activa con su saldo
-    const reserva = await db.getOne(
-      "SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [id]
-    );
+  document.getElementById('mant-close').addEventListener('click', closeModal);
 
-    // Cobrar saldo pendiente si existe
-    const saldo = Number(reserva?.saldo_pendiente||0);
-    const extra = Number(monto_extra||0);
-    const totalCobrar = saldo + extra;
+  document.getElementById('btn-mant-iniciar')?.addEventListener('click', async () => {
+    const nota = document.getElementById('mant-nota')?.value.trim();
+    const btn = document.getElementById('btn-mant-iniciar');
+    btn.disabled=true; btn.textContent='Procesando...';
+    const r = await apiFetch('PUT', `/habitaciones/${hab.id}/mantenimiento`, { accion:'iniciar', nota });
+    if (r?.ok) { toast('Habitación en mantenimiento'); closeModal(); await refreshHabs(); renderMantAlerts(); applyMantMapAlerts(); }
+    else { toast(r?.error||'Error', false); btn.disabled=false; btn.textContent='🔧 Poner en mantenimiento'; }
+  });
 
-    if (totalCobrar > 0) {
-      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-      if (!turnoHab) {
-        return res.status(400).json({
-          error: `No hay turno de habitaciones abierto. Abrí el turno en Caja antes de realizar el check-out con cobro pendiente de ${new Intl.NumberFormat('es-AR').format(totalCobrar)}.`
-        });
+  document.getElementById('btn-mant-fin')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-mant-fin');
+    btn.disabled=true; btn.textContent='Finalizando...';
+    const r = await apiFetch('PUT', `/habitaciones/${hab.id}/mantenimiento`, { accion:'finalizar' });
+    if (r?.ok) { toast('Mantenimiento finalizado ✓'); closeModal(); await refreshHabs(); renderMantAlerts(); applyMantMapAlerts(); }
+    else { toast(r?.error||'Error', false); btn.disabled=false; btn.textContent='✅ Mantenimiento finalizado'; }
+  });
+}
+
+function renderMantAlerts() {
+  const el = document.getElementById('mant-alerts');
+  if (!el) return;
+  const enMant = (habitaciones||[]).filter(h => h.status === 'mantenimiento');
+  if (!enMant.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="section-card" style="border:2px solid #fca5a5;background:#fff5f5">
+      <div class="sc-head" style="margin-bottom:10px">
+        <h2 style="display:flex;align-items:center;gap:8px;font-size:16px;color:#dc2626">
+          🔧 En mantenimiento
+          <span style="background:#dc2626;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:800">${enMant.length}</span>
+        </h2>
+      </div>
+      ${enMant.map(h=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;
+                    background:#fff;border-radius:12px;border:1px solid #fecaca;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+          <div style="font-size:32px;flex-shrink:0">🔧</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:15px;font-weight:800;color:#1e293b">Hab. ${h.numero} — Ala ${h.ala}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:2px">${(h.nota||'').replace(/^\[prev:(libre|ocupada)\]\s*/,'')||'Sin detalle'}</div>
+          </div>
+          <button data-hid="${h.id}"
+            style="flex-shrink:0;background:#059669;color:#fff;border:none;border-radius:10px;
+                   padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+            ✅ Finalizar
+          </button>
+        </div>`).join('')}
+    </div>`;
+
+  el.querySelectorAll('[data-hid]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled=true; btn.textContent='...';
+      const r = await apiFetch('PUT', `/habitaciones/${btn.dataset.hid}/mantenimiento`, { accion:'finalizar' });
+      if (r?.ok) { toast('Finalizado ✓'); await refreshHabs(); renderMantAlerts(); applyMantMapAlerts(); }
+      else { toast('Error', false); btn.disabled=false; btn.textContent='✅ Finalizar'; }
+    });
+  });
+}
+
+async function renderSolsRestaurante() {
+  const el = document.getElementById('mant-sols-restaurante');
+  if (!el) return;
+  const sols = await apiFetch('GET', '/mantenimiento/solicitudes?estado=pendiente') || [];
+  if (!sols.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="section-card" style="border:2px solid #fcd34d;background:#fffbeb;margin-bottom:4px">
+      <div class="sc-head" style="margin-bottom:10px">
+        <h2 style="display:flex;align-items:center;gap:8px;font-size:16px;color:#92400e">
+          🍽️ Solicitudes del Restaurante
+          <span style="background:#d97706;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:800">${sols.length}</span>
+        </h2>
+      </div>
+      ${sols.map(s=>`
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;margin-bottom:8px;
+                    background:#fff;border-radius:12px;border:1px solid #fde68a;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+          <div style="font-size:28px;flex-shrink:0;margin-top:2px">🔧</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:#1e293b">${escHtml(s.descripcion)}</div>
+            <div style="font-size:11px;color:#92400e;margin-top:3px;font-weight:600">
+              ${s.usuario_nombre||'—'} · ${new Date(s.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+            </div>
+          </div>
+          <button data-sid="${s.id}"
+            style="flex-shrink:0;background:#059669;color:#fff;border:none;border-radius:10px;
+                   padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+            ✅ Resolver
+          </button>
+        </div>`).join('')}
+    </div>`;
+  el.querySelectorAll('[data-sid]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled=true; btn.textContent='...';
+      const r = await apiFetch('PUT', `/mantenimiento/solicitudes/${btn.dataset.sid}/resolver`);
+      if (r?.ok) { toast('Solicitud resuelta ✓'); renderSolsRestaurante(); }
+      else { toast('Error', false); btn.disabled=false; btn.textContent='✅ Resolver'; }
+    });
+  });
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function applyMantMapAlerts() {
+  if (currentUser?.rol !== 'mantenimiento') return;
+  document.querySelectorAll('.rcard[data-hid]').forEach(card => {
+    const hid = card.dataset.hid;
+    const hab = (habitaciones||[]).find(h => String(h.id) === String(hid));
+    if (hab?.status === 'mantenimiento') {
+      card.classList.add('necesita-mantenimiento');
+      if (!card.querySelector('.mant-badge-card')) {
+        const badge = document.createElement('div');
+        badge.className = 'mant-badge-card';
+        badge.textContent = '🔧 MANT.';
+        card.insertBefore(badge, card.firstChild);
       }
-      if (saldo > 0) {
-        await db.query(
-          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [turnoHab.id, `Saldo Checkout Hab. ${hab.numero} — ${reserva.nombre_huesped||''}`,
-           saldo, metodo_pago_extra||'Efectivo', reserva?`Reserva #${reserva.id}`:'',
-           req.user.id, req.user.nombre, id_int, hab.numero]
-        );
-      }
-      if (extra > 0) {
-        await db.query(
-          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8)`,
-          [turnoHab.id, concepto_extra||`Extra Checkout Hab. ${hab.numero}`,
-           extra, metodo_pago_extra||'Efectivo',
-           req.user.id, req.user.nombre, id_int, hab.numero]
-        );
-      }
+    } else {
+      card.classList.remove('necesita-mantenimiento');
+      card.querySelector('.mant-badge-card')?.remove();
     }
+  });
+}
 
-    // Marcar reserva como finalizada y saldo en 0
+// ══════════════════════════════════════
+// SERVICIO DE HABITACION (MUCAMA)
+// ══════════════════════════════════════
+async function showServicioModal(hab, accion, tipoCamaInicial) {
+  const productos = await apiFetch('GET', '/productos') || [];
+  const esDiario = accion.servicio === 'diario';
+ 
+  // Descripción según tipo
+  const titulos = {
+    pre_checkin:    '✨ Preparar hab. para check-in',
+    post_checkout:  '🧹 Limpieza post-checkout',
+    iniciar_diario: '🧹 Iniciar servicio diario',
+    diario:         '✅ Finalizar servicio diario',
+    mantenimiento:  '✅ Finalizar mantenimiento',
+  };
+ 
+  const prodRows = productos.map(p => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+      <div>
+        <div style="font-size:13px;font-weight:600">${p.nombre}</div>
+        <div style="font-size:11px;color:#94a3b8">${fmt(p.precio)} · Stock: ${p.stock}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="qty-btn srv-menos" data-id="${p.id}">−</button>
+        <span class="srv-qty" data-id="${p.id}" style="font-weight:700;min-width:18px;text-align:center">0</span>
+        <button class="qty-btn srv-mas" data-id="${p.id}">+</button>
+      </div>
+    </div>`).join('');
+ 
+  const esTripleSrv = tipoCamaInicial === 'triple';
+  const esTwinSrv = !['queen','triple'].includes(tipoCamaInicial);
+ 
+  openModal(`
+    <div class="modal-hd">
+      <h3>${titulos[accion.servicio]||'Servicio'} — Hab. ${hab.numero}</h3>
+      <button class="modal-close" id="srv-close">✕</button>
+    </div>
+ 
+    <div style="background:${accion.color}18;border:1px solid ${accion.color}40;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:${accion.color};font-weight:700">
+      ${hab.status==='reservada'   ? 'La habitación está reservada. Al terminar quedará <strong>Lista</strong> para recibir al huésped.' :
+        hab.status==='limpieza'    ? 'Limpieza post-checkout. Al terminar quedará <strong>Lista</strong> para nueva reserva/venta.' :
+        hab.status==='en_limpieza' ? 'Registrá consumos del frigobar. Al confirmar la habitación vuelve a <strong>Ocupada</strong> con marca <strong>Limpia</strong>.' :
+        'Al terminar, indicá el nuevo estado de la habitación.'}
+    </div>
+ 
+    <div class="stitle">Tipo de cama preparada</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="srv-twin"   style="flex:1;padding:10px;border:2px solid ${esTwinSrv   ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwinSrv   ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏 Twin</button>
+      <button id="srv-queen"  style="flex:1;padding:10px;border:2px solid ${!esTwinSrv && !esTripleSrv?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwinSrv && !esTripleSrv?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
+      <button id="srv-triple" style="flex:1;padding:10px;border:2px solid ${esTripleSrv ?'#f59e0b':'#e0e6ef'};border-radius:10px;background:${esTripleSrv ?'#fffbeb':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏🛏 Triple</button>
+    </div>
+ 
+    ${esDiario || accion.servicio==='post_checkout' ? `
+      <div class="stitle">Consumos del frigobar (opcional)</div>
+      <div style="max-height:180px;overflow-y:auto;margin-bottom:8px">${prodRows}</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:8px 0;border-top:1px solid #e0e6ef;margin-bottom:14px">
+        <span>Total consumos:</span><span id="srv-total" style="color:var(--accent)">$ 0</span>
+      </div>
+    ` : ''}
+ 
+    <div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:12px;padding:12px;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="srv-mant" style="width:18px;height:18px">
+        <span style="font-size:13px;font-weight:700;color:#dc2626">🔧 Necesita mantenimiento</span>
+      </label>
+      <div id="srv-mant-wrap" style="display:none;margin-top:8px">
+        <textarea id="srv-mant-nota" rows="2" placeholder="Describí el problema (grifo, AC, puerta...)"
+          style="width:100%;border:1.5px solid #fca5a5;border-radius:8px;padding:8px;font-size:13px;font-family:'Nunito',sans-serif;resize:none"></textarea>
+      </div>
+    </div>
+ 
+    <button class="confirm-btn" id="srv-confirm" style="background:linear-gradient(135deg,${accion.color},${accion.color}bb)">
+      ✅ Confirmar y guardar
+    </button>
+  `);
+ 
+  // Tipo cama
+  let tipoCama = esTripleSrv ? 'triple' : esTwinSrv ? 'twin' : 'queen';
+  const btnT  = document.getElementById('srv-twin');
+  const btnQ  = document.getElementById('srv-queen');
+  const btnTr = document.getElementById('srv-triple');
+  function selTipo(t) {
+    tipoCama = t;
+    btnT.style.borderColor  = t==='twin'  ?'#00c9b1':'#e0e6ef'; btnT.style.background  = t==='twin'  ?'#f0fdf9':'#f8fafc';
+    btnQ.style.borderColor  = t==='queen' ?'#7c3aed':'#e0e6ef'; btnQ.style.background  = t==='queen' ?'#faf5ff':'#f8fafc';
+    if(btnTr){btnTr.style.borderColor = t==='triple'?'#f59e0b':'#e0e6ef'; btnTr.style.background = t==='triple'?'#fffbeb':'#f8fafc';}
+  }
+  btnT.addEventListener('click',  () => selTipo('twin'));
+  btnQ.addEventListener('click',  () => selTipo('queen'));
+  btnTr?.addEventListener('click', () => selTipo('triple'));
+ 
+  // Cantidades frigobar
+  const cantidades = {};
+  function updateTotal() {
+    let tot = 0;
+    document.querySelectorAll('.srv-mas').forEach(btn => {
+      const id = parseInt(btn.dataset.id);
+      const qty = cantidades[id] || 0;
+      const prod = productos.find(p => p.id === id || parseInt(p.id) === id);
+      if (prod && qty > 0) tot += qty * prod.precio;
+    });
+    const el = document.getElementById('srv-total');
+    if (el) el.textContent = fmt(tot);
+  }
+  document.querySelectorAll('.srv-mas').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.id);
+      cantidades[id] = (cantidades[id]||0) + 1;
+      document.querySelector(`.srv-qty[data-id="${id}"]`).textContent = cantidades[id];
+      updateTotal();
+    });
+  });
+  document.querySelectorAll('.srv-menos').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.id);
+      if ((cantidades[id]||0) > 0) {
+        cantidades[id]--;
+        document.querySelector(`.srv-qty[data-id="${id}"]`).textContent = cantidades[id];
+        updateTotal();
+      }
+    });
+  });
+ 
+  // Mantenimiento toggle
+  document.getElementById('srv-mant').addEventListener('change', function() {
+    document.getElementById('srv-mant-wrap').style.display = this.checked ? 'block' : 'none';
+  });
+ 
+  document.getElementById('srv-close').addEventListener('click', closeModal);
+ 
+  document.getElementById('srv-confirm').addEventListener('click', async () => {
+    const necesitaMant = document.getElementById('srv-mant').checked;
+    const notaMant = document.getElementById('srv-mant-nota')?.value || '';
+    const consumos = Object.entries(cantidades)
+      .filter(([id,qty]) => qty > 0)
+      .map(([id,qty]) => ({ producto_id: parseInt(id), cantidad: qty }));
+ 
+    // Si la hab era libre antes → al terminar limpieza vuelve a libre_limpia
+    const eraLibre = ['libre','libre_limpia','lista'].includes(hab.status) ||
+                     (hab.status === 'en_limpieza' && !hab.reserva_activa);
+    const statusDestino = necesitaMant
+      ? 'mantenimiento'
+      : (accion.nuevoStatus === 'limpia' && eraLibre)
+        ? 'libre_limpia'
+        : accion.nuevoStatus;
+
+    const r = await apiFetch('POST', '/servicios', {
+      habitacion_id:         hab.id,
+      tipo_servicio:         accion.servicio,
+      tipo_cama:             tipoCama,
+      necesita_mantenimiento:necesitaMant,
+      nota_mantenimiento:    notaMant,
+      consumos:              consumos,
+      nuevo_status:          statusDestino,
+    });
+ 
+    if (r?.ok) {
+      let msg = '✅ Servicio registrado';
+      if (r.total_consumos > 0) msg += ` · Frigobar: ${fmt(r.total_consumos)}`;
+      if (necesitaMant) msg += ' · ⚠️ Mantenimiento pendiente';
+      toast(msg);
+      closeModal();
+      await refreshHabs();
+    } else {
+      toast(r?.error || 'Error al registrar', false);
+    }
+  });
+}
+ 
+// ══════════════════════════════════════
+// CAMBIAR HABITACIÓN
+// ══════════════════════════════════════
+function showCambiarHabModal(hab) {
+  // Filtrar habitaciones libres o lista como destino
+  const libres = habitaciones.filter(h =>
+    ['libre','lista','limpia','libre_limpia'].includes(h.status) && h.id !== hab.id
+  );
+  if (!libres.length) {
+    toast('No hay habitaciones disponibles para el traslado', false);
+    return;
+  }
+  const reserva = hab.reserva_activa;
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>🔄 Cambiar habitación — Hab. ${hab.numero} Ala ${hab.ala}</h3>
+      <button class="modal-close" id="ch-close">✕</button>
+    </div>
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px">
+      <div style="font-weight:700;color:#0369a1">👤 ${reserva?.nombre_huesped || hab.nota || 'Huésped'}</div>
+      <div style="color:#0369a1;font-size:12px;margin-top:2px">Hab. ${hab.numero} · Ala ${hab.ala}</div>
+    </div>
+    <div class="form-col" style="margin-bottom:14px">
+      <label>Habitación destino</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:6px" id="ch-grid">
+        ${libres.map(h=>`
+          <button data-hid="${h.id}" class="ch-hab-btn"
+            style="padding:12px 8px;border-radius:10px;border:2px solid #e2e8f0;
+            background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;
+            transition:all .15s;text-align:center">
+            <div style="font-size:16px;font-weight:800">${h.numero}</div>
+            <div style="font-size:10px;color:#94a3b8">${h.ala} · ${h.tipo||''}</div>
+            <div style="font-size:10px;color:#16a34a;margin-top:2px">${h.status}</div>
+          </button>`).join('')}
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:14px">
+      <label>¿Qué pasa con la Hab. ${hab.numero} al liberar?</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button id="ch-estado-libre" class="ch-estado-btn"
+          style="flex:1;padding:10px;border-radius:10px;border:2px solid #16a34a;
+          background:#dcfce7;color:#166534;font-weight:700;font-size:13px;cursor:pointer">
+          🟢 Pasa a Libre
+        </button>
+        <button id="ch-estado-mant" class="ch-estado-btn"
+          style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;
+          background:#f8fafc;color:#4b5563;font-weight:700;font-size:13px;cursor:pointer">
+          🔧 Necesita mantenimiento
+        </button>
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:16px">
+      <label>Motivo / Nota (opcional)</label>
+      <input type="text" id="ch-motivo" placeholder="Ej: Solicitud del huésped, problema de AC..."/>
+    </div>
+    <button class="confirm-btn" id="ch-confirm" disabled
+      style="background:#7c3aed;opacity:.5;cursor:not-allowed">
+      🔄 Confirmar traslado
+    </button>
+  `);
+
+  document.getElementById('ch-close').addEventListener('click', closeModal);
+
+  let habDestinoId = null;
+  document.querySelectorAll('.ch-hab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Deseleccionar todos
+      document.querySelectorAll('.ch-hab-btn').forEach(b => {
+        b.style.borderColor = '#e2e8f0';
+        b.style.background  = '#f8fafc';
+        b.style.color       = '';
+      });
+      // Seleccionar este
+      btn.style.borderColor = '#7c3aed';
+      btn.style.background  = '#faf5ff';
+      habDestinoId = btn.dataset.hid; // mantener como string (ej: 'O101', 'E102')
+      const confirmBtn = document.getElementById('ch-confirm');
+      confirmBtn.disabled = false;
+      confirmBtn.style.opacity = '1';
+      confirmBtn.style.cursor  = 'pointer';
+    });
+  });
+
+  // Selector estado origen
+  let estadoOrigen = 'libre'; // default
+  const btnLibre = document.getElementById('ch-estado-libre');
+  const btnMant  = document.getElementById('ch-estado-mant');
+  function selEstadoOrigen(estado) {
+    estadoOrigen = estado;
+    btnLibre.style.borderColor = estado==='libre'    ? '#16a34a' : '#e2e8f0';
+    btnLibre.style.background  = estado==='libre'    ? '#dcfce7' : '#f8fafc';
+    btnLibre.style.color       = estado==='libre'    ? '#166534' : '#4b5563';
+    btnMant.style.borderColor  = estado==='mantenimiento' ? '#6b7280' : '#e2e8f0';
+    btnMant.style.background   = estado==='mantenimiento' ? '#f3f4f6' : '#f8fafc';
+    btnMant.style.color        = estado==='mantenimiento' ? '#374151' : '#4b5563';
+  }
+  btnLibre.addEventListener('click', () => selEstadoOrigen('libre'));
+  btnMant.addEventListener('click',  () => selEstadoOrigen('mantenimiento'));
+
+  document.getElementById('ch-confirm').addEventListener('click', async () => {
+    if (!habDestinoId) return;
+    const motivo = document.getElementById('ch-motivo').value.trim();
+    const r = await apiFetch('POST', `/habitaciones/${hab.id}/cambiar`, {
+      nueva_habitacion_id: habDestinoId, motivo, estado_origen: estadoOrigen
+    });
+    if (r?.ok) {
+      const destino = habitaciones.find(h => String(h.id) === String(habDestinoId));
+      toast(`✅ ${r.nombre_huesped} trasladado/a a Hab. ${destino?.numero}`);
+      closeModal();
+      await refreshHabs();
+    } else {
+      toast(r?.error || 'Error al cambiar habitación', false);
+    }
+  });
+}
+
+// ══════════════════════════════════════
+// CHECK-OUT
+// ══════════════════════════════════════
+async function showCheckoutModal(hab) {
+  // Obtener reserva activa con saldo
+  const reserva = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
+  const saldo   = Number(reserva?.saldo_pendiente || 0);
+  const nombre  = reserva?.nombre_huesped || hab.nota || '—';
+  const metodo0 = reserva?.metodo_pago || 'Efectivo';
+  const total0  = Number(reserva?.precio_total || 0);
+  const senia0  = Number(reserva?.monto_senia || 0);
+
+  // Si hay saldo a cobrar, verificar que haya turno abierto
+  if (saldo > 0) {
+    const turnoHab = await apiFetch('GET', '/caja-hab/turno/activo').catch(()=>null);
+    if (!turnoHab) {
+      openModal(`
+        <div class="modal-hd">
+          <h3>Check-out — Hab. ${hab.numero}</h3>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+          <div style="font-weight:800;font-size:15px;color:#dc2626;margin-bottom:6px">Sin turno de caja abierto</div>
+          <div style="font-size:13px;color:#64748b;margin-bottom:12px">
+            Hay un saldo pendiente de <strong>${fmt(saldo)}</strong> para cobrar.<br>
+            Abrí el turno de habitaciones en Caja antes de continuar.
+          </div>
+          <a href="/caja.html" style="display:inline-block;background:#dc2626;color:#fff;border-radius:8px;
+             padding:10px 20px;font-size:13px;font-weight:700;text-decoration:none">
+            💰 Ir a Caja
+          </a>
+        </div>
+      `);
+      return;
+    }
+  }
+
+  const bannerSaldo = saldo > 0
+    ? `<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:12px;color:#64748b">Saldo pendiente de la reserva</div>
+        <div style="font-size:22px;font-weight:900;color:#dc2626">${fmt(saldo)}</div>
+       </div>`
+    : `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:13px;color:#16a34a;font-weight:700">✅ Reserva ya saldada</div>
+       </div>`;
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>Check-out — Hab. ${hab.numero} Ala ${hab.ala}</h3>
+      <button class="modal-close" id="co-close">✕</button>
+    </div>
+    <div style="background:#f8fafc;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+      👤 <strong>${nombre}</strong>
+      ${total0>0 ? `<span style="color:#64748b"> · Total estadía: ${fmt(total0)}</span>` : ''}
+      ${senia0>0 ? `<span style="color:#16a34a"> · Seña cobrada: ${fmt(senia0)}</span>` : ''}
+    </div>
+    ${bannerSaldo}
+    <div class="form-row" id="co-metodo-row" style="${saldo===0?'display:none':''}">
+      <div class="form-col"><label>Método de pago del saldo</label>
+        <select id="co-pago">
+          ${['Efectivo','Débito','Crédito','Transferencia','QR','Otro']
+            .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div style="border-top:1.5px solid #e2e8f0;margin:14px 0;padding-top:14px">
+      <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">Consumos extras (opcional)</div>
+      <div class="form-row">
+        <div class="form-col"><label>Concepto extra</label>
+          <input type="text" id="co-concepto" placeholder="Ej: Minibar, lavandería...">
+        </div>
+        <div class="form-col"><label>Monto extra</label>
+          <input type="number" id="co-extra" value="0" min="0">
+        </div>
+      </div>
+      <div class="form-col"><label>Método pago extra</label>
+        <select id="co-pago-extra">
+          ${['Efectivo','Débito','Crédito','Transferencia','QR','Otro']
+            .map(m=>`<option>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="total-box">
+      ${saldo>0?`<div class="total-row"><span>Saldo pendiente:</span><span>${fmt(saldo)}</span></div>`:''}
+      <div class="total-row"><span>Extra:</span><span id="co-tot-extra">${fmt(0)}</span></div>
+      <div class="total-row big"><span>Total a cobrar:</span><span id="co-tot-cobrar">${fmt(saldo)}</span></div>
+    </div>
+    <button class="confirm-btn" id="co-confirm">🚪 Confirmar Check-out</button>
+  `);
+
+  const recalc = () => {
+    const extra = parseMonto(document.getElementById('co-extra')?.value||'0');
+    document.getElementById('co-tot-extra').textContent   = fmtExacto(extra);
+    document.getElementById('co-tot-cobrar').textContent  = fmtExacto(saldo + extra);
+  };
+  document.getElementById('co-extra')?.addEventListener('input', recalc);
+  document.getElementById('co-close')?.addEventListener('click', closeModal);
+
+  document.getElementById('co-confirm')?.addEventListener('click', async () => {
+    const extra    = parseMonto(document.getElementById('co-extra')?.value||'0');
+    const concepto = document.getElementById('co-concepto')?.value.trim();
+    const body = {
+      metodo_pago_extra:  document.getElementById('co-pago')?.value,
+      monto_extra:        extra,
+      concepto_extra:     concepto,
+    };
+    // Si hay extra con método diferente, usar el del extra
+    if (extra > 0) body.metodo_pago_extra = document.getElementById('co-pago-extra')?.value;
+
+    const r = await apiFetch('POST', `/checkout/${hab.id}`, body);
+    if (r?.ok) {
+      const cobrado = Number(r.cobrado||0);
+      toast(cobrado > 0 ? `Check-out realizado · Cobrado ${fmt(cobrado)}` : 'Check-out realizado');
+      closeModal();
+      await refreshHabs();
+    } else toast(r?.error||'Error en check-out', false);
+  });
+}
+
+// ══════════════════════════════════════
+// CHECK-IN
+// ══════════════════════════════════════
+async function showCheckinModal(habId) {
+  const hab = habitaciones.find(h=>String(h.id)===String(habId));
+  const habIdReal = hab?.id ?? habId;
+  const now = new Date(), tom = new Date(now); tom.setDate(tom.getDate()+1);
+  const iso = d => d.toISOString().slice(0,16);
+  const pn  = hab?.precio_noche||50000;
+
+  // Buscar reserva existente
+  const reserva  = await apiFetch('GET', `/habitaciones/${habIdReal}/reserva`);
+  const tarifasCfg = await apiFetch('GET', '/config/tarifas') || {};
+  const tfNoche = tarifasCfg.precio_noche || pn;
+  const tfHora  = tarifasCfg.precio_hora  || hab?.precio_hora || 20000;
+  const tfDia   = tarifasCfg.precio_dia   || Math.round(pn * 1.5);
+
+  // Prellenar con datos de la reserva si existe
+  const nombre0  = reserva?.nombre_huesped || '';
+  const doc0     = reserva?.documento || '';
+  const entrada0 = reserva ? new Date(reserva.entrada).toISOString().slice(0,16) : iso(now);
+  const salida0  = reserva ? new Date(reserva.salida).toISOString().slice(0,16)  : iso(tom);
+  const noches0  = reserva?.noches || 1;
+  const total0   = reserva?.precio_total || pn;
+  const senia0   = reserva?.monto_senia || 0;
+  const saldo0   = reserva?.saldo_pendiente ?? total0;
+  const metodo0  = reserva?.metodo_pago || 'Efectivo';
+
+  const bannerReserva = reserva ? `
+    <div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+      📋 <strong>Reserva existente vinculada</strong>
+      <div style="margin-top:4px;color:#1d4ed8">
+        Total: <strong>${fmt(total0)}</strong>
+        ${senia0>0?` · Seña cobrada: <strong style="color:#16a34a">${fmt(senia0)}</strong>`:''}
+        · <strong style="color:${saldo0>0?'#dc2626':'#16a34a'}">Saldo: ${fmt(saldo0)}</strong>
+      </div>
+    </div>` : '';
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>Ocupar — Habitación #${hab?.numero}</h3>
+      <button class="modal-close" id="ci-close">✕</button>
+    </div>
+    ${bannerReserva}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+      <!-- COLUMNA IZQUIERDA: Huésped -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👤 Huésped</div>
+        <div class="form-row">
+          <div class="form-col"><label>Tipo Documento</label>
+            <select id="ci-tdoc" style="width:100%">
+              <option>DNI</option><option>Pasaporte</option><option>Carnet</option>
+            </select>
+          </div>
+          <div class="form-col"><label>N° Documento</label>
+            <input type="text" id="ci-doc" placeholder="12345678" value="${doc0}">
+          </div>
+        </div>
+        <div id="ci-ginfo" style="display:none" class="info-box"></div>
+        <div class="form-row">
+          <div class="form-col"><label>Nombre Completo</label>
+            <input type="text" id="ci-nombre" placeholder="Juan García" value="${nombre0}">
+          </div>
+          <div class="form-col"><label>Celular (Opcional)</label>
+            <input type="text" id="ci-tel" placeholder="+54 9 11...">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Entrada</label>
+            <input type="datetime-local" id="ci-in" value="${entrada0}">
+          </div>
+          <div class="form-col"><label>Salida</label>
+            <input type="datetime-local" id="ci-out" value="${salida0}">
+          </div>
+        </div>
+        <div class="form-row" style="align-items:center">
+          <div class="form-col"><label>Cantidad de Personas</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+              <button id="ci-pers-minus" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">−</button>
+              <span id="ci-pers" style="font-size:18px;font-weight:800;min-width:24px;text-align:center">1</span>
+              <button id="ci-pers-plus" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">+</button>
+            </div>
+          </div>
+          <div class="form-col"><label>Notas / Cochera</label>
+            <input type="text" id="ci-notas" placeholder="Ej: ART-158, solicitudes...">
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMNA DERECHA: Tarifa y Cobro -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">💰 Tipo de Tarifa</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <button class="ci-tarifa-btn" data-tipo="noche" data-monto="${tfNoche}" style="border:2px solid #3b82f6;border-radius:10px;padding:10px;background:#eff6ff;cursor:pointer;text-align:left">
+            <div style="font-size:10px;color:#64748b;font-weight:600">🌙 Por Noche</div>
+            <div style="font-size:15px;font-weight:800;color:#1d4ed8">${fmt(tfNoche)}</div>
+          </button>
+          <button class="ci-tarifa-btn" data-tipo="hora" data-monto="${tfHora}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
+            <div style="font-size:10px;color:#64748b;font-weight:600">⏱ Por Horas</div>
+            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(tfHora)} <span style="font-size:9px;font-weight:500">hasta 6h</span></div>
+          </button>
+          <button class="ci-tarifa-btn" data-tipo="dia" data-monto="${tfDia}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
+            <div style="font-size:10px;color:#64748b;font-weight:600">📅 Por Día (24h)</div>
+            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(tfDia)}</div>
+          </button>
+          <button class="ci-tarifa-btn" data-tipo="personalizado" data-monto="0" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
+            <div style="font-size:10px;color:#64748b;font-weight:600">✏️ Personalizado</div>
+            <div style="font-size:12px;color:#94a3b8;font-weight:500">Monto manual</div>
+          </button>
+        </div>
+        <div id="ci-monto-manual" style="display:none;margin-bottom:10px">
+          <label>Monto personalizado ($)</label>
+          <input type="number" id="ci-tarifa" value="${reserva ? Math.round(total0/noches0) : tfNoche}" placeholder="0">
+        </div>
+        
+
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⏰ Momento de Cobro</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <button id="ci-cobro-ahora" style="border:2px solid #16a34a;border-radius:10px;padding:10px 8px;background:#f0fdf4;cursor:pointer;font-size:13px;font-weight:700;color:#15803d">
+            💳 Paga Ahora
+          </button>
+          <button id="ci-cobro-salir" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 8px;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;color:#64748b">
+            🕐 Paga al Salir
+          </button>
+        </div>
+
+        <div id="ci-metodo-wrap" style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="margin:0">Método de Pago <span style="color:#ef4444">*</span></label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748b;cursor:pointer">
+              <input type="checkbox" id="ci-mixto" style="width:15px;height:15px;cursor:pointer;accent-color:#3b82f6">
+              Pago Mixto
+            </label>
+          </div>
+          <select id="ci-pago" style="width:100%">
+            ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia','QR']
+              .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
+          </select>
+          <div id="ci-mixto-wrap" style="display:none;margin-top:8px;background:#f0f9ff;border-radius:8px;padding:10px;font-size:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <label style="font-size:11px">Monto en Efectivo</label>
+                <input type="number" id="ci-mixto-ef" placeholder="$ 0" style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px">Monto en Tarjeta/Transf.</label>
+                <input type="number" id="ci-mixto-tg" placeholder="$ 0" style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#f8fafc;border-radius:10px;padding:12px;font-size:13px">
+          <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:4px">
+            <span>Habitación:</span><span id="ci-tot">${fmt(total0)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:8px">
+            <span>Noches / Unidades:</span><span id="ci-n">${noches0}</span>
+          </div>
+          ${senia0>0?`<div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:8px"><span>Seña cobrada:</span><span>- ${fmt(senia0)}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;border-top:1.5px solid #e2e8f0;padding-top:8px;color:#1d4ed8">
+            <span>TOTAL</span><span id="ci-saldo">${fmt(saldo0)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="confirm-btn" id="ci-confirm" style="margin-top:16px">✅ Confirmar y Cobrar</button>
+  `, { wide: true });
+
+  // Estado del modal
+  let ciTipoTarifa = 'noche';
+  let ciTarifaMonto = tfNoche;
+  let ciMomentoCobro = 'ahora';
+  let ciPersonas = 1;
+
+  const getInnOut = () => {
+    return {
+      inn: document.getElementById('ci-in')?.value,
+      out: document.getElementById('ci-out')?.value
+    };
+  };
+
+  const recalc = () => {
+    const { inn, out } = getInnOut();
+    if (!inn || !out) return;
+    let n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
+    if (ciTipoTarifa === 'hora') n = 1;
+    if (ciTipoTarifa === 'dia')  n = 1;
+    const total = n * ciTarifaMonto;
+    const saldo = Math.max(0, total - senia0);
+    document.getElementById('ci-n').textContent   = n;
+    document.getElementById('ci-tot').textContent = fmtExacto(total);
+    if (document.getElementById('ci-saldo'))
+      document.getElementById('ci-saldo').textContent = ciMomentoCobro === 'ahora' ? fmtExacto(saldo) : '$ 0 (paga al salir)';
+  };
+
+  // Botones tipo tarifa
+  document.querySelectorAll('.ci-tarifa-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      ciTipoTarifa  = btn.dataset.tipo;
+      ciTarifaMonto = Number(btn.dataset.monto);
+      document.querySelectorAll('.ci-tarifa-btn').forEach(b => {
+        b.style.borderColor = '#e2e8f0'; b.style.background = '#f8fafc';
+        b.querySelector('div:last-child').style.color = '#374151';
+      });
+      btn.style.borderColor = '#3b82f6'; btn.style.background = '#eff6ff';
+      btn.querySelector('div:last-child').style.color = '#1d4ed8';
+      const wrap = document.getElementById('ci-monto-manual');
+      const inp  = document.getElementById('ci-tarifa');
+      if (ciTipoTarifa === 'personalizado') {
+        wrap.style.display = 'block';
+        inp.addEventListener('input', () => { ciTarifaMonto = parseMonto(inp.value)||0; recalc(); });
+      } else {
+        wrap.style.display = 'none';
+      }
+      recalc();
+    });
+  });
+
+  // Momento de cobro
+  document.getElementById('ci-cobro-ahora').addEventListener('click', () => {
+    ciMomentoCobro = 'ahora';
+    document.getElementById('ci-cobro-ahora').style.cssText += 'border-color:#16a34a;background:#f0fdf4;color:#15803d';
+    document.getElementById('ci-cobro-salir').style.cssText += 'border-color:#e2e8f0;background:#f8fafc;color:#64748b';
+    document.getElementById('ci-metodo-wrap').style.display = 'block';
+    recalc();
+  });
+  document.getElementById('ci-cobro-salir').addEventListener('click', () => {
+    ciMomentoCobro = 'salir';
+    document.getElementById('ci-cobro-salir').style.cssText += 'border-color:#f59e0b;background:#fffbeb;color:#b45309';
+    document.getElementById('ci-cobro-ahora').style.cssText += 'border-color:#e2e8f0;background:#f8fafc;color:#64748b';
+    document.getElementById('ci-metodo-wrap').style.display = 'none';
+    recalc();
+  });
+
+  // Personas +/-
+  document.getElementById('ci-pers-minus').addEventListener('click', () => {
+    if (ciPersonas > 1) { ciPersonas--; document.getElementById('ci-pers').textContent = ciPersonas; }
+  });
+  document.getElementById('ci-pers-plus').addEventListener('click', () => {
+    ciPersonas++; document.getElementById('ci-pers').textContent = ciPersonas;
+  });
+
+  // Pago mixto toggle
+  document.getElementById('ci-mixto').addEventListener('change', function() {
+    document.getElementById('ci-mixto-wrap').style.display = this.checked ? 'block' : 'none';
+  });
+
+  // Fechas
+  ['ci-in','ci-out'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
+
+  // Autocompletado huésped por documento
+  document.getElementById('ci-doc').addEventListener('input', async () => {
+    const doc = document.getElementById('ci-doc').value;
+    if (doc.length < 6) return;
+    const h = await apiFetch('GET', `/huespedes/doc/${doc}`);
+    if (h) {
+      document.getElementById('ci-nombre').value = h.nombre;
+      document.getElementById('ci-tel').value    = h.telefono || '';
+      const gi = document.getElementById('ci-ginfo');
+      gi.style.display = 'block';
+      gi.textContent = `✅ Huésped encontrado — ${h.visitas} visitas previas`;
+    }
+  });
+
+  document.getElementById('ci-close').addEventListener('click', closeModal);
+
+  document.getElementById('ci-confirm').addEventListener('click', async () => {
+    const nombre = document.getElementById('ci-nombre').value.trim();
+    if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
+    const { inn, out } = getInnOut();
+    let noches = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
+    if (ciTipoTarifa === 'hora' || ciTipoTarifa === 'dia') noches = 1;
+    const total = noches * ciTarifaMonto;
+    const saldo = ciMomentoCobro === 'ahora' ? Math.max(0, total - senia0) : 0;
+    const body = {
+      habitacion_id:     habIdReal,
+      documento:         document.getElementById('ci-doc').value,
+      tipo_doc:          document.getElementById('ci-tdoc').value,
+      nombre,
+      telefono:          document.getElementById('ci-tel').value,
+      entrada:           inn,
+      salida:            out,
+      noches,
+      precio_total:      total,
+      metodo_pago:       ciMomentoCobro === 'ahora'
+        ? (document.getElementById('ci-mixto')?.checked
+            ? `Pago Mixto (Ef: ${fmt(Number(document.getElementById('ci-mixto-ef')?.value)||0)} / Tg: ${fmt(Number(document.getElementById('ci-mixto-tg')?.value)||0)})`
+            : (document.getElementById('ci-pago')?.value || 'Efectivo'))
+        : 'Paga al Salir',
+      notas:             document.getElementById('ci-notas').value,
+      cantidad_personas: ciPersonas,
+      momento_cobro:     ciMomentoCobro,
+      tipo_tarifa:       ciTipoTarifa,
+    };
     if (reserva) {
-      await db.query("UPDATE reservas SET estado='finalizada', saldo_pendiente=0 WHERE id=$1", [reserva.id]);
+      body.reserva_id    = reserva.id;
+      body.saldo_cobrado = saldo;
     }
-
-    await db.query("UPDATE habitaciones SET status='limpieza',nota='',updated_at=NOW() WHERE id=$1", [id]);
-    await logAction(req.user.id, req.user.nombre, 'CHECKOUT', `Hab ${hab.numero}${totalCobrar>0?` · Cobrado $${totalCobrar}`:''}`);
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, id, `🚪 Check-out — Hab. ${hab.numero} (${reserva?.nombre_huesped||''})`);
-    sendPushToRoles(['admin','recepcionista','mucama'], {
-      title: `🚪 Check-out — Hab. ${hab.numero}`,
-      body:  `${reserva?.nombre_huesped||''} — Lista para limpiar`,
-      icon:  '/icon-192.png', tag: `checkout-${id}`,
-      data:  { url: '/index.html' }
+    const r = await apiFetch('POST', '/checkin', body);
+    if (r?.ok) { toast('Check-in realizado'); closeModal(); await refreshHabs(); }
+    else toast(r?.error || 'Error en check-in', false);
+  });
+}
+ 
+// ══════════════════════════════════════
+// RESERVA
+// ══════════════════════════════════════
+function showReservaModal(habId) {
+  const hab=habitaciones.find(h=>String(h.id)===String(habId));
+  const habIdReal = hab?.id ?? habId;
+  const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
+  const iso=d=>d.toISOString().slice(0,16);
+  const pn=hab?.precio_noche||50000;
+ 
+  openModal(`
+    <div class="modal-hd"><h3>Reserva — Hab. ${hab?.numero} Ala ${hab?.ala}</h3><button class="modal-close" id="res-close">✕</button></div>
+    <div class="form-row">
+      <div class="form-col"><label>Nombre del huésped</label><input type="text" id="res-nombre" placeholder="Juan García"></div>
+      <div class="form-col"><label>Documento</label><input type="text" id="res-doc" placeholder="12345678"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Entrada</label><input type="datetime-local" id="res-in" value="${iso(now)}"></div>
+      <div class="form-col"><label>Salida</label><input type="datetime-local" id="res-out" value="${iso(tom)}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Tarifa/noche ($)</label><input type="number" id="res-tarifa" value="${pn}"></div>
+      <div class="form-col"><label>Método de pago</label>
+        <select id="res-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>QR</option></select>
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:12px"><label>Notas</label><input type="text" id="res-notas" placeholder="Observaciones..."></div>
+    <div class="total-box">
+      <div class="total-row"><span>Noches:</span><span id="res-n">1</span></div>
+      <div class="total-row big"><span>Total estimado:</span><span id="res-tot">${fmt(pn)}</span></div>
+    </div>
+    <div class="stitle">Seña (opcional)</div>
+    <div class="form-row" style="margin-bottom:14px">
+      <div class="form-col"><label>Monto de seña ($)</label>
+        <input type="number" id="res-senia" value="0" min="0" placeholder="0 = sin seña">
+      </div>
+      <div class="form-col"><label>Método seña</label>
+        <select id="res-pago-senia"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>QR</option></select>
+      </div>
+    </div>
+    <button class="confirm-btn" id="res-confirm" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">📋 Confirmar Reserva</button>
+  `);
+ 
+  const recalc=()=>{
+    const inn=document.getElementById('res-in')?.value;
+    const out=document.getElementById('res-out')?.value;
+    const tar=parseMonto(document.getElementById('res-tarifa')?.value);
+    if (!inn||!out) return;
+    const n=Math.max(1,Math.ceil((new Date(out)-new Date(inn))/86400000));
+    document.getElementById('res-n').textContent=n;
+    document.getElementById('res-tot').textContent=fmtExacto(n*tar);
+  };
+  ['res-in','res-out','res-tarifa'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalc));
+  document.getElementById('res-close').addEventListener('click',closeModal);
+  document.getElementById('res-confirm').addEventListener('click', async ()=>{
+    const nombre=document.getElementById('res-nombre').value.trim();
+    if (!nombre) { toast('Ingresá el nombre',false); return; }
+    const n=parseInt(document.getElementById('res-n').textContent)||1;
+    const tar=parseMonto(document.getElementById('res-tarifa').value);
+    const r=await apiFetch('POST','/reservas',{
+      habitacion_id:habIdReal, nombre_huesped:nombre,
+      documento:document.getElementById('res-doc').value,
+      entrada:document.getElementById('res-in').value,
+      salida:document.getElementById('res-out').value,
+      noches:n, precio_total:n*tar,
+      metodo_pago:document.getElementById('res-pago').value,
+      notas:document.getElementById('res-notas').value,
+      monto_senia:parseMonto(document.getElementById('res-senia').value),
     });
-    res.json({ ok: true, cobrado: totalCobrar });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Cambiar habitación — transfiere reserva y datos del huésped a otra habitación
-app.post('/api/habitaciones/:id/cambiar', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { nueva_habitacion_id, motivo, estado_origen } = req.body;
-    const habOrigen = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [req.params.id]);
-    const habDestino = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [nueva_habitacion_id]);
-    if (!habOrigen) return res.status(404).json({ error: 'Habitación origen no encontrada' });
-    if (!habDestino) return res.status(404).json({ error: 'Habitación destino no encontrada' });
-    if (!['libre','lista','limpia','libre_limpia'].includes(habDestino.status))
-      return res.status(400).json({ error: `La habitación ${habDestino.numero} está ${habDestino.status}` });
-
-    // Obtener reserva activa de origen
-    const reserva = await db.getOne(
-      `SELECT * FROM reservas WHERE habitacion_id=$1
-       AND estado IN ('activa','checkin','ocupada','confirmada')
-       ORDER BY created_at DESC LIMIT 1`,
-      [req.params.id]
-    );
-    if (!reserva) return res.status(400).json({ error: 'No hay reserva activa en esta habitación' });
-
-    // Transferir reserva a destino
-    await db.query(
-      `UPDATE reservas SET habitacion_id=$1,
-       notas=COALESCE(notas,'')||$2
-       WHERE id=$3`,
-      [nueva_habitacion_id, motivo ? ` | Cambio hab: ${motivo}` : ' | Cambio de habitación', reserva.id]
-    );
-
-    // Habitación destino → ocupada con datos del huésped
-    await db.query("UPDATE habitaciones SET status='ocupada', nota=$1, updated_at=NOW() WHERE id=$2",
-      [habOrigen.nota || reserva.nombre_huesped, nueva_habitacion_id]);
-
-    // Habitación origen → según elección del recepcionista
-    const statusOrigen = estado_origen === 'mantenimiento' ? 'mantenimiento' : 'libre';
-    const notaOrigen   = statusOrigen === 'mantenimiento' ? (motivo || 'Cambio de habitación') : '';
-    await db.query('UPDATE habitaciones SET status=$1, nota=$2, updated_at=NOW() WHERE id=$3',
-      [statusOrigen, notaOrigen, req.params.id]);
-
-    await logAction(req.user.id, req.user.nombre, 'CAMBIO_HAB',
-      `Hab ${habOrigen.numero} → ${habDestino.numero} (${reserva.nombre_huesped}) → origen: ${statusOrigen}`);
-    res.json({ ok: true, nombre_huesped: reserva.nombre_huesped });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── DIAGNÓSTICO: ver status real de habitación ───────────────────────
-app.get('/api/habitaciones/:id/debug', auth, adminOrRecep, async (req, res) => {
-  try {
-    const hab = await db.getOne('SELECT id, numero, ala, status, nota FROM habitaciones WHERE id=$1', [req.params.id]);
-    const reservas = await db.getAll('SELECT id, estado, nombre_huesped, entrada, salida FROM reservas WHERE habitacion_id=$1 ORDER BY created_at DESC LIMIT 5', [req.params.id]);
-    res.json({ hab, reservas });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Obtener reserva vigente de una habitación (para precarga en checkin)
-app.get('/api/habitaciones/:id/reserva', auth, adminRecepMucama, async (req, res) => {
-  try {
-    const reserva = await db.getOne(
-      `SELECT * FROM reservas WHERE habitacion_id=$1
-       AND estado IN ('futura','activa') ORDER BY created_at DESC LIMIT 1`,
-      [req.params.id]
-    );
-    res.json(reserva || null);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── RESERVAS HOTEL ───────────────────────────────────────────────────
-app.get('/api/reservas', auth, async (req, res) => {
-  try {
-    res.json(await db.getAll(`
-      SELECT r.*,h.nombre as hab_nombre,h.numero as hab_numero,h.ala,h.tipo
-      FROM reservas r LEFT JOIN habitaciones h ON r.habitacion_id=h.id
-      WHERE r.estado IN ('activa','futura')
-      ORDER BY r.entrada ASC
-    `));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Reservas para el calendario Gantt (por rango de fechas)
-app.get('/api/reservas/calendario', auth, async (req, res) => {
-  try {
-    if (!['admin','recepcionista','mucama','cajero'].includes(req.user.rol))
-      return res.status(403).json({ error: 'Sin permisos' });
-    const { desde, hasta } = req.query;
-    if (!desde || !hasta) return res.status(400).json({ error: 'Falta rango de fechas' });
-    res.json(await db.getAll(`
-      SELECT r.*, h.numero as hab_numero, h.ala, h.tipo
-      FROM reservas r
-      LEFT JOIN habitaciones h ON r.habitacion_id = h.id
-      WHERE r.estado IN ('activa','futura','finalizada')
-      AND r.entrada <= $2 AND r.salida >= $1
-      ORDER BY h.ala, h.numero, r.entrada
-    `, [desde, hasta]));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia, saldo_pendiente } = req.body;
-    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
-    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-    const seniaAnterior = Number(reserva.monto_senia||0);
-    const senia = Number(monto_senia??reserva.monto_senia??0);
-    const saldo  = Number(saldo_pendiente??Math.max(0,(precio_total||0)-senia));
-    await db.query(
-      `UPDATE reservas SET nombre_huesped=$1,documento=$2,entrada=$3,salida=$4,
-       noches=$5,precio_total=$6,metodo_pago=$7,notas=$8,monto_senia=$9,saldo_pendiente=$10 WHERE id=$11`,
-      [nombre_huesped, documento||'', entrada, salida,
-       noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo, req.params.id]
-    );
-    await db.query(
-      "UPDATE habitaciones SET nota=$1,updated_at=NOW() WHERE id=$2 AND status IN ('reservada','lista')",
-      [nombre_huesped, reserva.habitacion_id]
-    );
-
-    // #3 — Si cambió la seña, registrar ajuste en caja habitaciones
-    const difSenia = senia - seniaAnterior;
-    if (difSenia !== 0) {
-      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-      if (turnoHab) {
-        const hab = await db.getOne('SELECT numero FROM habitaciones WHERE id=$1', [reserva.habitacion_id]);
-        if (difSenia > 0) {
-          // Seña aumentó → ingreso adicional
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [turnoHab.id, `Ajuste seña Reserva #${req.params.id} — ${nombre_huesped}`, difSenia,
-             metodo_pago||'Efectivo', `Reserva #${req.params.id}`,
-             req.user.id, req.user.nombre, reserva.habitacion_id, hab?.numero||'']
-          );
-        } else {
-          // Seña disminuyó → egreso/devolución
-          await db.query(
-            `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-             VALUES ($1,'egreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [turnoHab.id, `Devolución seña Reserva #${req.params.id} — ${nombre_huesped}`, Math.abs(difSenia),
-             metodo_pago||'Efectivo', `Reserva #${req.params.id}`,
-             req.user.id, req.user.nombre, reserva.habitacion_id, hab?.numero||'']
-          );
-        }
-      }
+    if (r?.ok) {
+      closeModal(); await refreshHabs();
+      if (r.aviso) setTimeout(() => alert(r.aviso), 300);
+      else toast('Reserva creada');
     }
+    else toast(r?.error||'Error',false);
+  });
+}
+ 
+// ══════════════════════════════════════
+// RESERVAS PAGE
+// ══════════════════════════════════════
+async function renderReservas() {
+  const reservas = await apiFetch('GET','/reservas') || [];
+  const isAdminOrRecep = ['admin','recepcionista'].includes(currentUser?.rol);
 
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_RESERVA', `Reserva #${req.params.id} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+  const rows = reservas.length
+    ? reservas.map(r=>`<tr>
+        <td><strong>Hab. ${r.hab_numero||r.habitacion_id}</strong><br><small style="color:#94a3b8">Ala ${r.ala||''}</small></td>
+        <td>${r.nombre_huesped}<br><small style="color:#94a3b8">${r.documento||''}</small></td>
+        <td>${fmtDate(r.entrada)}</td>
+        <td>${fmtDate(r.salida)}</td>
+        <td>
+          <strong>${fmt(r.precio_total)}</strong>
+          ${r.monto_senia>0?`<br><small style="color:#16a34a">Seña: ${fmt(r.monto_senia)}</small>`:''}
+          ${r.saldo_pendiente>0?`<br><small style="color:#dc2626">Saldo: ${fmt(r.saldo_pendiente)}</small>`:''}
+        </td>
+        <td>${r.metodo_pago}</td>
+        <td><span class="pill ${r.estado==='activa'?'pg':r.estado==='futura'?'pb':'pgr'}">${r.estado}</span></td>
+        ${isAdminOrRecep?`<td style="white-space:nowrap">
+          <div style="display:flex;gap:6px">
+            <button onclick="editarReserva(${r.id})"
+              style="background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif">
+              ✏️ Editar
+            </button>
+            <button onclick="eliminarReserva(${r.id},'${r.nombre_huesped.replace(/'/g,"\\'")}')"
+              style="background:#fff1f2;border:1px solid #fecdd3;color:#be123c;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif">
+              🗑️
+            </button>
+          </div>
+        </td>`:''}
+      </tr>`).join('')
+    : `<tr><td colspan="${isAdminOrRecep?8:7}" style="text-align:center;color:#94a3b8;padding:32px">Sin reservas vigentes</td></tr>`;
 
-app.delete('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
-  try {
-    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
-    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-    await db.query('DELETE FROM reservas WHERE id=$1', [req.params.id]);
-    const otraReserva = await db.getOne(
-      "SELECT id FROM reservas WHERE habitacion_id=$1 AND estado IN ('activa','futura')",
-      [reserva.habitacion_id]
-    );
-    if (!otraReserva) {
-      await db.query(
-        "UPDATE habitaciones SET status='libre',nota='',updated_at=NOW() WHERE id=$1 AND status IN ('reservada','lista')",
-        [reserva.habitacion_id]
-      );
-    }
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_RESERVA', `Reserva #${req.params.id} - ${reserva.nombre_huesped}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+  document.getElementById('content').innerHTML=`
+    <div class="section-card">
+      <div class="sc-head">
+        <h2>📅 Reservas</h2>
+        <button class="btn-primary" id="btn-nueva-res">+ Nueva reserva</button>
+      </div>
+      <div style="overflow-x:auto"><table class="data-table">
+        <thead><tr>
+          <th>Hab.</th><th>Huésped</th><th>Entrada</th><th>Salida</th>
+          <th>Total</th><th>Pago</th><th>Estado</th>
+          ${isAdminOrRecep?'<th>Acciones</th>':''}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
 
-app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { habitacion_id, nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia } = req.body;
-    if (!habitacion_id)  return res.status(400).json({ error: 'Falta habitacion_id' });
-    if (!nombre_huesped) return res.status(400).json({ error: 'Falta el nombre del huésped' });
-    if (!entrada)        return res.status(400).json({ error: 'Falta fecha de entrada' });
-    if (!salida)         return res.status(400).json({ error: 'Falta fecha de salida' });
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
-    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
-
-    // Bloquear si está ocupada o en mantenimiento (no se puede reservar)
-    if (['ocupada','mantenimiento'].includes(hab.status))
-      return res.status(400).json({ error: `La habitación está actualmente ${hab.status} y no se puede reservar.` });
-
-    // Verificar solapamiento de fechas con reservas existentes
-    const solapamiento = await db.getOne(
-      `SELECT id, nombre_huesped, entrada, salida FROM reservas
-       WHERE habitacion_id=$1
-       AND estado IN ('futura','activa')
-       AND entrada < $3 AND salida > $2`,
-      [habitacion_id, entrada, salida]
-    );
-    if (solapamiento) {
-      const entStr = new Date(solapamiento.entrada).toLocaleDateString('es-AR');
-      const salStr = new Date(solapamiento.salida).toLocaleDateString('es-AR');
-      return res.status(400).json({
-        error: `La habitación ya tiene una reserva de ${solapamiento.nombre_huesped} del ${entStr} al ${salStr}.`
-      });
-    }
-    const senia = Number(monto_senia)||0;
-    const saldo = Number(precio_total||0) - senia;
-    const r = await db.query(
-      `INSERT INTO reservas (habitacion_id,nombre_huesped,documento,entrada,salida,noches,precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'futura',$10,$11) RETURNING id`,
-      [habitacion_id, nombre_huesped, documento||'', entrada, salida, noches||1,
-       precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo]
-    );
-    // Solo marcar como reservada si estaba libre/lista — si ya era reservada, dejarla
-    if (['libre','lista','limpieza'].includes(hab.status)) {
-      await db.query("UPDATE habitaciones SET status='reservada',nota=$1,updated_at=NOW() WHERE id=$2", [nombre_huesped, habitacion_id]);
-    }
-    // Si hay seña, registrarla en caja habitaciones
-    if (senia > 0) {
-      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-      if (turnoHab) {
-        await db.query(
-          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [turnoHab.id, `Seña Reserva Hab. ${hab.numero} — ${nombre_huesped}`, senia,
-           metodo_pago||'Efectivo', `Reserva #${r.rows[0].id}`,
-           req.user.id, req.user.nombre, habitacion_id, hab.numero]
-        );
-      } else {
-        // Sin turno abierto: la reserva se guarda igual pero se advierte
-        await logAction(req.user.id, req.user.nombre, 'AVISO',
-          `Seña $${senia} de Reserva #${r.rows[0].id} (Hab. ${hab.numero}) NO registrada en caja — sin turno abierto`);
-        res.json({ ok: true, id: r.rows[0].id, aviso: `⚠️ Seña de $${senia} guardada en la reserva pero NO registrada en caja — no hay turno de habitaciones abierto.` });
-        return;
-      }
-    }
-    await logAction(req.user.id, req.user.nombre, 'RESERVA', `Hab ${hab.numero} - ${nombre_huesped}${senia?` · Seña $${senia}`:''}`);
-    res.json({ ok: true, id: r.rows[0].id });
-  } catch(e) { console.error('RESERVA ERROR:', e); res.status(500).json({ error: 'Error al guardar reserva: ' + e.message }); }
-});
-
-// ── CAJA HOTEL ───────────────────────────────────────────────────────
-app.get('/api/caja/activa', auth, async (req, res) => {
-  try {
-    const caja = await db.getOne("SELECT c.*,u.nombre as usuario_nombre FROM cajas c LEFT JOIN usuarios u ON c.usuario_id=u.id WHERE c.estado='abierta' ORDER BY c.id DESC LIMIT 1");
-    res.json(caja || null);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/caja/abrir', auth, adminOrRecep, async (req, res) => {
-  try {
-    const ya = await db.getOne("SELECT id FROM cajas WHERE estado='abierta'");
-    if (ya) return res.status(400).json({ error: 'Ya hay una caja abierta' });
-    const r = await db.query('INSERT INTO cajas (usuario_id,monto_inicial) VALUES ($1,$2) RETURNING id', [req.user.id, req.body.monto_inicial||0]);
-    await logAction(req.user.id, req.user.nombre, 'ABRIR_CAJA', `Monto: $${req.body.monto_inicial||0}`);
-    res.json({ id: r.rows[0].id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/caja/cerrar', auth, adminOrRecep, async (req, res) => {
-  try {
-    const caja = await db.getOne("SELECT * FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-    if (!caja) return res.status(400).json({ error: 'No hay caja abierta' });
-    const movs = await db.getAll('SELECT tipo,SUM(monto) as total FROM movimientos WHERE caja_id=$1 GROUP BY tipo', [caja.id]);
-    let ingresos = 0, egresos = 0;
-    movs.forEach(m => { if (m.tipo==='ingreso') ingresos=parseFloat(m.total); else egresos=parseFloat(m.total); });
-    const final = (caja.monto_inicial||0) + ingresos - egresos;
-    await db.query("UPDATE cajas SET estado='cerrada',monto_final=$1,cerrada_at=NOW() WHERE id=$2", [final, caja.id]);
-    await logAction(req.user.id, req.user.nombre, 'CERRAR_CAJA', `Total: $${final}`);
-    res.json({ ok: true, monto_final: final, ingresos, egresos });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.get('/api/caja/movimientos', auth, async (req, res) => {
-  try {
-    const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-    if (!caja) return res.json([]);
-    res.json(await db.getAll('SELECT * FROM movimientos WHERE caja_id=$1 ORDER BY created_at DESC', [caja.id]));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/caja/movimiento', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { tipo, categoria, descripcion, monto, metodo_pago } = req.body;
-    const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-    if (!caja) return res.status(400).json({ error: 'No hay caja abierta' });
-    await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [caja.id, tipo, categoria||'general', descripcion, monto, metodo_pago||'Efectivo', req.user.id]);
-    await logAction(req.user.id, req.user.nombre, tipo.toUpperCase(), `${descripcion}: $${monto}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── FINANZAS ─────────────────────────────────────────────────────────
-app.get('/api/finanzas/resumen', auth, async (req, res) => {
-  try {
-    const { desde, hasta } = req.query;
-    let movs;
-    if (desde && hasta) movs = await db.getAll("SELECT tipo,categoria,SUM(monto) as total FROM movimientos WHERE created_at BETWEEN $1 AND $2 GROUP BY tipo,categoria", [desde, hasta+' 23:59:59']);
-    else movs = await db.getAll("SELECT tipo,categoria,SUM(monto) as total FROM movimientos GROUP BY tipo,categoria");
-    let ingresos=0, egresos=0;
-    movs.forEach(m => { if(m.tipo==='ingreso') ingresos+=parseFloat(m.total||0); else egresos+=parseFloat(m.total||0); });
-    res.json({ ingresos, egresos, balance: ingresos-egresos, detalle: movs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.get('/api/finanzas/movimientos', auth, async (req, res) => {
-  try {
-    const { desde, hasta, tipo } = req.query;
-    let movs;
-    if (desde && hasta && tipo) movs = await db.getAll("SELECT * FROM movimientos WHERE created_at BETWEEN $1 AND $2 AND tipo=$3 ORDER BY created_at DESC LIMIT 200", [desde, hasta+' 23:59:59', tipo]);
-    else if (desde && hasta) movs = await db.getAll("SELECT * FROM movimientos WHERE created_at BETWEEN $1 AND $2 ORDER BY created_at DESC LIMIT 200", [desde, hasta+' 23:59:59']);
-    else movs = await db.getAll("SELECT * FROM movimientos ORDER BY created_at DESC LIMIT 200");
-    res.json(movs);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── PRODUCTOS ────────────────────────────────────────────────────────
-app.get('/api/productos', auth, async (req, res) => {
-  try { res.json(await db.getAll("SELECT * FROM productos WHERE activo=1 ORDER BY categoria,nombre")); }
-  catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/productos', auth, adminOnly, async (req, res) => {
-  try {
-    const r = await db.query('INSERT INTO productos (nombre,categoria,precio,stock,stock_minimo) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [req.body.nombre, req.body.categoria||'general', req.body.precio, req.body.stock||0, req.body.stock_minimo||5]);
-    res.json({ id: r.rows[0].id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.put('/api/productos/:id', auth, adminOnly, async (req, res) => {
-  try {
-    await db.query('UPDATE productos SET nombre=$1,categoria=$2,precio=$3,stock=$4,stock_minimo=$5,activo=$6 WHERE id=$7',
-      [req.body.nombre, req.body.categoria, req.body.precio, req.body.stock, req.body.stock_minimo, req.body.activo!==undefined?req.body.activo:1, req.params.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── TIENDA ───────────────────────────────────────────────────────────
-app.post('/api/tienda/venta', auth, async (req, res) => {
-  try {
-    const { items } = req.body;
-    if (!items?.length) return res.status(400).json({ error: 'Sin productos' });
-    const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-    let totalVenta = 0;
-    for (const item of items) {
-      const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [item.producto_id]);
-      if (!prod) throw new Error(`Producto no encontrado: ${item.producto_id}`);
-      if (prod.stock < item.cantidad) throw new Error(`Stock insuficiente: ${prod.nombre}`);
-      const total = prod.precio * item.cantidad;
-      totalVenta += total;
-      await db.query('INSERT INTO ventas_tienda (producto_id,cantidad,precio_unitario,total,caja_id,usuario_id) VALUES ($1,$2,$3,$4,$5,$6)',
-        [item.producto_id, item.cantidad, prod.precio, total, caja?.id||null, req.user.id]);
-      await db.query('UPDATE productos SET stock=stock-$1 WHERE id=$2', [item.cantidad, item.producto_id]);
-    }
-    if (caja) {
-      await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,usuario_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        [caja.id,'ingreso','tienda',`Venta tienda (${items.length} items)`,totalVenta,'Efectivo',req.user.id]);
-    }
-    await logAction(req.user.id, req.user.nombre, 'VENTA_TIENDA', `Total: $${totalVenta}`);
-    res.json({ ok: true, total: totalVenta });
-  } catch(e) { res.status(400).json({ error: e.message }); }
-});
-
-// ── INVENTARIO COMPLETO ──────────────────────────────────────────────
-app.get('/api/inventario/productos', auth, async (req, res) => {
-  try {
-    const { modulo } = req.query;
-    let q = 'SELECT * FROM productos WHERE activo=1';
-    const params = [];
-    if (modulo) { q += ` AND modulo=$1`; params.push(modulo); }
-    q += ' ORDER BY modulo,categoria,nombre';
-    res.json(await db.getAll(q, params));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/inventario/productos', auth, adminOnly, async (req, res) => {
-  try {
-    const { nombre, categoria, precio, costo, stock, stock_minimo, unidad, proveedor, modulo } = req.body;
-    if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
-    const esBebida = modulo === 'bebidas';
-    let menu_id = null;
-
-    // Si es bebida, crear también en menu_restaurante
-    if (esBebida) {
-      const menuExistente = await db.getOne(
-        'SELECT id FROM menu_restaurante WHERE LOWER(nombre)=LOWER($1)', [nombre]
-      );
-      if (menuExistente) {
-        menu_id = menuExistente.id;
-        // Actualizar precio y marcar como bebida
-        await db.query(
-          'UPDATE menu_restaurante SET precio=$1,categoria=$2,es_bebida=1,disponible=1 WHERE id=$3',
-          [precio||0, categoria||'Bebidas', menu_id]
-        );
-      } else {
-        const rm = await db.query(
-          'INSERT INTO menu_restaurante (nombre,categoria,precio,disponible,es_bebida) VALUES ($1,$2,$3,1,1) RETURNING id',
-          [nombre, categoria||'Bebidas', precio||0]
-        );
-        menu_id = rm.rows[0].id;
-      }
-    }
-
-    const r = await db.query(
-      `INSERT INTO productos (nombre,categoria,precio,costo,stock,stock_minimo,unidad,proveedor,modulo,menu_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-      [nombre, categoria||'General', precio||0, costo||0, stock||0, stock_minimo||5,
-       unidad||'unidad', proveedor||'', modulo||'general', menu_id]
-    );
-    await logAction(req.user.id, req.user.nombre, 'CREAR_PRODUCTO', nombre);
-
-    if ((stock||0) > 0) {
-      await db.query(
-        `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
-         VALUES ($1,'entrada',$2,'Stock inicial',$3,$4,0,$2)`,
-        [r.rows[0].id, stock||0, req.user.id, req.user.nombre]
-      );
-    }
-    res.json({ id: r.rows[0].id, menu_id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/inventario/productos/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [req.params.id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const { nombre, categoria, precio, costo, stock_minimo, unidad, proveedor, modulo, activo } = req.body;
-    const nuevoModulo = modulo ?? prod.modulo;
-    const esBebida = nuevoModulo === 'bebidas';
-    let menu_id = prod.menu_id;
-
-    // Sincronizar con menú si es bebida
-    if (esBebida) {
-      if (menu_id) {
-        // Actualizar el registro existente en el menú
-        await db.query(
-          'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,es_bebida=1 WHERE id=$4',
-          [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio, menu_id]
-        );
-      } else {
-        // Crear en el menú si no existe
-        const rm = await db.query(
-          'INSERT INTO menu_restaurante (nombre,categoria,precio,disponible,es_bebida) VALUES ($1,$2,$3,1,1) RETURNING id',
-          [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio]
-        );
-        menu_id = rm.rows[0].id;
-      }
-      // Si se desactiva el producto, deshabilitar en el menú también
-      if (activo === 0 && menu_id) {
-        await db.query('UPDATE menu_restaurante SET disponible=0 WHERE id=$1', [menu_id]);
-      }
-    } else if (prod.modulo === 'bebidas' && nuevoModulo !== 'bebidas' && menu_id) {
-      // Si cambió de bebidas a otro módulo, deshabilitar del menú
-      await db.query('UPDATE menu_restaurante SET disponible=0,es_bebida=0 WHERE id=$1', [menu_id]);
-      menu_id = null;
-    }
-
-    await db.query(
-      `UPDATE productos SET nombre=$1,categoria=$2,precio=$3,costo=$4,stock_minimo=$5,
-       unidad=$6,proveedor=$7,modulo=$8,menu_id=$9,activo=$10 WHERE id=$11`,
-      [nombre??prod.nombre, categoria??prod.categoria, precio??prod.precio, costo??prod.costo,
-       stock_minimo??prod.stock_minimo, unidad??prod.unidad, proveedor??prod.proveedor,
-       nuevoModulo, menu_id, activo??prod.activo, req.params.id]
-    );
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_PRODUCTO', nombre??prod.nombre);
-    res.json({ ok: true, menu_id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/inventario/productos/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [req.params.id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    // Soft delete en inventario
-    await db.query('UPDATE productos SET activo=0 WHERE id=$1', [req.params.id]);
-    // Si tiene vinculo con el menú, deshabilitar también
-    if (prod.menu_id) {
-      await db.query('UPDATE menu_restaurante SET disponible=0 WHERE id=$1', [prod.menu_id]);
-    }
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_PRODUCTO', prod.nombre);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Entrada de stock
-app.post('/api/inventario/entrada', auth, async (req, res) => {
-  try {
-    const { producto_id, cantidad, motivo } = req.body;
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const stockAntes = Number(prod.stock)||0;
-    const stockDespues = stockAntes + (Number(cantidad)||0);
-    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, producto_id]);
-    await db.query(
-      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
-       VALUES ($1,'entrada',$2,$3,$4,$5,$6,$7)`,
-      [producto_id, cantidad, motivo||'Entrada manual', req.user.id, req.user.nombre, stockAntes, stockDespues]
-    );
-    await logAction(req.user.id, req.user.nombre, 'ENTRADA_STOCK', `${prod.nombre}: +${cantidad}`);
-    res.json({ ok: true, stock: stockDespues });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Salida manual de stock
-app.post('/api/inventario/salida', auth, adminOnly, async (req, res) => {
-  try {
-    const { producto_id, cantidad, motivo } = req.body;
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const stockAntes = Number(prod.stock)||0;
-    if (stockAntes < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
-    const stockDespues = stockAntes - (Number(cantidad)||0);
-    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, producto_id]);
-    await db.query(
-      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
-       VALUES ($1,'salida',$2,$3,$4,$5,$6,$7)`,
-      [producto_id, cantidad, motivo||'Salida manual', req.user.id, req.user.nombre, stockAntes, stockDespues]
-    );
-    await logAction(req.user.id, req.user.nombre, 'SALIDA_STOCK', `${prod.nombre}: -${cantidad}`);
-    res.json({ ok: true, stock: stockDespues });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Ajuste de stock (corrección)
-app.post('/api/inventario/ajuste', auth, adminOnly, async (req, res) => {
-  try {
-    const { producto_id, stock_nuevo, motivo } = req.body;
-    const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [producto_id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    const stockAntes = Number(prod.stock)||0;
-    await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stock_nuevo, producto_id]);
-    await db.query(
-      `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,usuario_id,usuario_nombre,stock_antes,stock_despues)
-       VALUES ($1,'ajuste',$2,$3,$4,$5,$6,$7)`,
-      [producto_id, Math.abs(stock_nuevo-stockAntes), motivo||'Ajuste manual', req.user.id, req.user.nombre, stockAntes, stock_nuevo]
-    );
-    res.json({ ok: true, stock: stock_nuevo });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Historial de movimientos de un producto
-app.get('/api/inventario/movimientos/:producto_id', auth, async (req, res) => {
-  try {
-    res.json(await db.getAll(
-      'SELECT * FROM inventario_movimientos WHERE producto_id=$1 ORDER BY created_at DESC LIMIT 100',
-      [req.params.producto_id]
-    ));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Alertas de stock bajo
-app.get('/api/inventario/alertas', auth, async (req, res) => {
-  try {
-    res.json(await db.getAll('SELECT * FROM productos WHERE stock<=stock_minimo AND activo=1 ORDER BY modulo,nombre'));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Reporte de inventario
-app.get('/api/inventario/reporte', auth, async (req, res) => {
-  try {
-    const { desde, hasta } = req.query;
-    const productos = await db.getAll('SELECT * FROM productos WHERE activo=1 ORDER BY modulo,categoria,nombre');
-    let movimientos;
-    if (desde && hasta) {
-      movimientos = await db.getAll(
-        `SELECT im.*, p.nombre as producto_nombre, p.modulo, p.categoria
-         FROM inventario_movimientos im JOIN productos p ON im.producto_id=p.id
-         WHERE im.created_at BETWEEN $1 AND $2 ORDER BY im.created_at DESC`,
-        [desde, hasta+' 23:59:59']
-      );
-    } else {
-      movimientos = await db.getAll(
-        `SELECT im.*, p.nombre as producto_nombre, p.modulo, p.categoria
-         FROM inventario_movimientos im JOIN productos p ON im.producto_id=p.id
-         ORDER BY im.created_at DESC LIMIT 200`
-      );
-    }
-    const valorTotal = productos.reduce((s,p)=>s+(Number(p.stock)*Number(p.costo||0)),0);
-    res.json({ productos, movimientos, valorTotal });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── INVENTARIO LEGACY ────────────────────────────────────────────────
-app.get('/api/productos', auth, async (req, res) => {
-  try { res.json(await db.getAll("SELECT * FROM productos WHERE activo=1 ORDER BY categoria,nombre")); }
-  catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/productos', auth, adminOnly, async (req, res) => {
-  try {
-    const r = await db.query('INSERT INTO productos (nombre,categoria,precio,stock,stock_minimo) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [req.body.nombre, req.body.categoria||'general', req.body.precio, req.body.stock||0, req.body.stock_minimo||5]);
-    res.json({ id: r.rows[0].id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.put('/api/productos/:id', auth, adminOnly, async (req, res) => {
-  try {
-    await db.query('UPDATE productos SET nombre=$1,categoria=$2,precio=$3,stock=$4,stock_minimo=$5,activo=$6 WHERE id=$7',
-      [req.body.nombre, req.body.categoria, req.body.precio, req.body.stock, req.body.stock_minimo, req.body.activo!==undefined?req.body.activo:1, req.params.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── LOG ──────────────────────────────────────────────────────────────
-app.get('/api/log', auth, async (req, res) => {
-  try { res.json(await db.getAll("SELECT * FROM log_acciones ORDER BY created_at DESC LIMIT 100")); }
-  catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── DASHBOARD HOTEL ──────────────────────────────────────────────────
-app.get('/api/dashboard', auth, async (req, res) => {
-  try {
-    const habs = await db.getAll("SELECT status,COUNT(*) as cnt FROM habitaciones GROUP BY status");
-    const caja = await db.getOne("SELECT * FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-    let hospedaje=0, tienda=0, frigobar=0, ingresos=0, egresos=0;
-    if (caja) {
-      const movs = await db.getAll("SELECT tipo,categoria,SUM(monto) as total FROM movimientos WHERE caja_id=$1 GROUP BY tipo,categoria", [caja.id]);
-      movs.forEach(m => {
-        const t = parseFloat(m.total||0);
-        if (m.tipo==='ingreso'&&m.categoria==='hospedaje') hospedaje=t;
-        if (m.tipo==='ingreso'&&m.categoria==='tienda')    tienda=t;
-        if (m.tipo==='ingreso'&&m.categoria==='frigobar')  frigobar=t;
-        if (m.tipo==='ingreso') ingresos+=t;
-        if (m.tipo==='egreso')  egresos+=t;
-      });
-    }
-
-    // Ingresos proyectados desde reservas activas (aunque movimientos esté vacío)
-    const reservasActivas = await db.getAll(
-      `SELECT r.precio_total, r.noches, r.entrada, r.salida, r.nombre_huesped,
-              h.numero, h.ala
-       FROM reservas r
-       LEFT JOIN habitaciones h ON r.habitacion_id = h.id
-       WHERE r.estado IN ('activa','checkin','ocupada','confirmada')`
-    );
-    const hospedajeProyectado = reservasActivas.reduce((s,r) => s + parseFloat(r.precio_total||0), 0);
-
-    // Frigobar del turno actual (servicios registrados hoy)
-    const frigobarHoy = await db.getOne(
-      `SELECT COALESCE(SUM(total_consumos),0) as total
-       FROM servicios_habitacion
-       WHERE DATE(created_at) = CURRENT_DATE AND total_consumos > 0`
-    );
-
-    // Gastos de la tienda/servicios extras
-    const ventasTienda = await db.getOne(
-      `SELECT COALESCE(SUM(total),0) as total FROM ventas_tienda
-       WHERE DATE(created_at) = CURRENT_DATE`
-    ).catch(() => ({total:0}));
-
-    const alertas = await db.getOne("SELECT COUNT(*) as c FROM productos WHERE stock<=stock_minimo AND activo=1");
-
-    // Si no hay movimientos registrados, usar los proyectados/calculados
-    if (hospedaje === 0) hospedaje = hospedajeProyectado;
-    if (frigobar === 0)  frigobar  = parseFloat(frigobarHoy?.total||0);
-    if (tienda === 0)    tienda    = parseFloat(ventasTienda?.total||0);
-    ingresos = hospedaje + tienda + frigobar;
-
-    res.json({
-      habitaciones: habs,
-      ingresos, egresos, hospedaje, tienda, frigobar,
-      balance: ingresos - egresos,
-      alertas_stock: parseInt(alertas.c),
-      caja_abierta: !!caja,
-      reservas_activas: reservasActivas.length,
-      huespedes_actuales: reservasActivas.map(r => ({
-        nombre: r.nombre_huesped, numero: r.numero, ala: r.ala,
-        salida: r.salida, precio_total: r.precio_total
-      }))
-    });
-  } catch(e) { console.error('Dashboard error:', e); res.status(500).json({ error: e.message }); }
-});
-
-// ── DEBUG ────────────────────────────────────────────────────────────
-app.get('/api/debug/habitaciones', async (req, res) => {
-  try {
-    const habs = await db.getAll("SELECT id,numero,ala,status,tipo FROM habitaciones ORDER BY ala,numero");
-    res.json({ total: habs.length, habitaciones: habs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── HUÉSPED QR ───────────────────────────────────────────────────────
-app.post('/api/huesped/login', async (req, res) => {
-  try {
-    const { habitacion_id, password } = req.body;
-    if (!habitacion_id || !password) return res.status(400).json({ error: 'Datos incompletos' });
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
-    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada' });
-    if (hab.password_puerta !== password) return res.status(401).json({ error: 'Contraseña incorrecta' });
-    if (!['ocupada','en_limpieza','limpia'].includes(hab.status))
-      return res.status(403).json({ error: 'No hay huésped activo en esta habitación' });
-    const reserva = await db.getOne("SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [habitacion_id]);
-    const token = jwt.sign({ hab_id: habitacion_id, rol: 'huesped' }, JWT_SECRET, { expiresIn: '24h' });
-    res.json({ token, habitacion: { id: hab.id, numero: hab.numero, tipo: hab.tipo, nombre: hab.nombre, ala: hab.ala }, reserva: reserva || null });
-  } catch(e) { console.error('Huesped login:', e); res.status(500).json({ error: e.message }); }
-});
-
-function authHuesped(req, res, next) {
-  const token = (req.headers.authorization || '').split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Sin autorización' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.rol !== 'huesped') return res.status(403).json({ error: 'Solo huéspedes' });
-    req.huesped = decoded;
-    next();
-  } catch(e) { res.status(401).json({ error: 'Token inválido' }); }
+  document.getElementById('btn-nueva-res').addEventListener('click',()=>{ goTo('habitaciones'); });
 }
 
-app.get('/api/huesped/info', authHuesped, async (req, res) => {
-  try {
-    const hab = await db.getOne('SELECT id,numero,tipo,nombre,ala,status FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
-    const reserva = await db.getOne("SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [req.huesped.hab_id]);
-    const productos = await db.getAll("SELECT id,nombre,categoria,precio,stock FROM productos WHERE activo=1 AND stock>0 ORDER BY categoria,nombre");
-    const solicitudes = await db.getAll("SELECT * FROM solicitudes_huesped WHERE habitacion_id=$1 ORDER BY created_at DESC LIMIT 5", [req.huesped.hab_id]);
-    res.json({ habitacion: hab, reserva, productos, solicitudes });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/huesped/solicitud', authHuesped, async (req, res) => {
-  try {
-    const { tipo, detalle, consumos } = req.body;
-    let consumosCompletos = [], total = 0;
-    if (consumos && consumos.length > 0) {
-      for (const c of consumos) {
-        if (c.cantidad <= 0) continue;
-        const prod = await db.getOne('SELECT * FROM productos WHERE id=$1', [c.producto_id]);
-        if (prod) {
-          const subtotal = prod.precio * c.cantidad;
-          total += subtotal;
-          consumosCompletos.push({ id: prod.id, nombre: prod.nombre, cantidad: c.cantidad, precio: prod.precio, subtotal });
-          await db.query('UPDATE productos SET stock=stock-$1 WHERE id=$2 AND stock>=$1', [c.cantidad, prod.id]);
-        }
-      }
-      if (total > 0) {
-        const caja = await db.getOne("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1");
-        if (caja) {
-          const hab = await db.getOne('SELECT numero FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
-          await db.query('INSERT INTO movimientos (caja_id,tipo,categoria,descripcion,monto,metodo_pago,habitacion_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-            [caja.id,'ingreso','frigobar',`Frigobar hab.${hab.numero} (huésped)`,total,'Cuenta huésped',req.huesped.hab_id]);
-        }
-      }
-    }
-    await db.query('INSERT INTO solicitudes_huesped (habitacion_id,tipo,detalle,consumos,estado) VALUES ($1,$2,$3,$4,$5)',
-      [req.huesped.hab_id, tipo||'servicio', detalle||'', JSON.stringify(consumosCompletos), 'pendiente']);
-
-    // Push notification a recepcionistas y mucamas
-    const hab = await db.getOne('SELECT numero FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
-    const esLimpieza = (tipo||'servicio') === 'servicio';
-    const titulo = esLimpieza ? '🧹 Solicitud de Mucama' : '🛎️ Solicitud de huésped';
-    const cuerpo  = `Habitación ${hab?.numero||req.huesped.hab_id}${detalle ? ': ' + detalle : ''}`;
-    const rolesDestino = esLimpieza ? ['recepcionista','mucama','admin'] : ['recepcionista','admin'];
-    sendPushToRoles(rolesDestino, {
-      title: titulo,
-      body:  cuerpo,
-      icon:  '/icon-192.png',
-      badge: '/icon-192.png',
-      tag:   'solicitud-huesped',
-      data:  { url: '/index.html#huespedes' }
-    });
-
-    res.json({ ok: true, total });
-  } catch(e) { console.error('Solicitud huesped:', e); res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/habitaciones/:id/password', auth, adminOnly, async (req, res) => {
-  try {
-    const hab = await db.getOne('SELECT password_puerta FROM habitaciones WHERE id=$1', [req.params.id]);
-    if (!hab) return res.status(404).json({ error: 'No encontrada' });
-    res.json({ password: hab.password_puerta });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.put('/api/habitaciones/:id/mantenimiento', auth, async (req, res) => {
-  try {
-    const { accion, nota } = req.body;
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [req.params.id]);
-    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada' });
-
-    if (accion === 'iniciar') {
-      // Guardar estado previo en la nota para poder restaurarlo al finalizar
-      const prevStatus = hab.status || 'libre';
-      const notaFinal  = `[prev:${prevStatus}] ${nota || ''}`.trim();
-      await db.query(
-        "UPDATE habitaciones SET status='mantenimiento', nota=$1, updated_at=NOW() WHERE id=$2",
-        [notaFinal, req.params.id]
-      );
-      await logAction(req.user.id, req.user.nombre, 'INICIAR_MANT', `Hab ${hab.numero}: ${nota||'sin detalle'}`);
-      await db.query(
-        "INSERT INTO log_acciones (usuario_nombre, accion, detalle) VALUES ($1,$2,$3)",
-        [req.user.nombre, 'MANTENIMIENTO', `Hab ${hab.numero} — iniciado: ${nota||'sin detalle'}`]
-      );
-
-      // Push a admin, mantenimiento y recepcionista
-      sendPushToRoles(['admin', 'mantenimiento', 'recepcionista'], {
-        title: `🔧 Hab. ${hab.numero} en mantenimiento`,
-        body:  nota || 'Habitación puesta en mantenimiento',
-        icon:  '/icon-192.png',
-        tag:   `mant-${hab.id}`,
-        data:  { url: '/index.html#habitaciones' }
-      });
-
-    } else if (accion === 'finalizar') {
-      // Restaurar estado previo desde la nota
-      const matchPrev = (hab.nota || '').match(/\[prev:(\w+)\]/);
-      const statusFinal = matchPrev ? matchPrev[1] : 'libre';
-      const notaLimpia  = (hab.nota || '').replace(/\[prev:\w+\]\s*/, '').trim();
-      await db.query(
-        'UPDATE habitaciones SET status=$1, nota=$2, updated_at=NOW() WHERE id=$3',
-        [statusFinal, notaLimpia, req.params.id]
-      );
-      await logAction(req.user.id, req.user.nombre, 'FINALIZAR_MANT', `Hab ${hab.numero} → ${statusFinal}`);
-      await db.query(
-        "INSERT INTO log_acciones (usuario_nombre, accion, detalle) VALUES ($1,$2,$3)",
-        [req.user.nombre, 'MANTENIMIENTO', `Hab ${hab.numero} — finalizado → ${statusFinal}`]
-      );
-
-      // Push a admin y recepcionista informando finalización
-      sendPushToRoles(['admin', 'recepcionista'], {
-        title: `✅ Hab. ${hab.numero} — mantenimiento finalizado`,
-        body:  `Volvió a estado: ${statusFinal}`,
-        icon:  '/icon-192.png',
-        tag:   `mant-fin-${hab.id}`,
-        data:  { url: '/index.html#habitaciones' }
-      });
-    }
-
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/habitaciones/:id/password', auth, adminOnly, async (req, res) => {
-  try {
-    const { password } = req.body;
-    if (!password) return res.status(400).json({ error: 'Falta la contraseña' });
-    await db.query('UPDATE habitaciones SET password_puerta=$1 WHERE id=$2', [password, req.params.id]);
-    await logAction(req.user.id, req.user.nombre, 'CAMBIO_PASSWORD_HAB', `Hab ${req.params.id}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.get('/api/solicitudes', auth, async (req, res) => {
-  try {
-    const sols = await db.getAll(`
-      SELECT s.*, h.numero, h.ala FROM solicitudes_huesped s
-      LEFT JOIN habitaciones h ON s.habitacion_id = h.id
-      ORDER BY s.created_at DESC LIMIT 50
-    `);
-    res.json(sols);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.put('/api/solicitudes/:id', auth, async (req, res) => {
-  try {
-    await db.query('UPDATE solicitudes_huesped SET estado=$1 WHERE id=$2', [req.body.estado, req.params.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ════════════════════════════════════════════════════════════════════
-// ── RESTAURANTE ──────────────────────────────────────────────────────
-// ════════════════════════════════════════════════════════════════════
-
-// ── MESAS RESTAURANTE ─────────────────────────────────────────────
-app.get('/api/restaurante/mesas', auth, authRestaurante, async (req, res) => {
-  try {
-    res.json(await db.getAll('SELECT * FROM mesas_restaurante WHERE activo=1 ORDER BY numero, id'));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/restaurante/mesas/:id', auth, authRestaurante, async (req, res) => {
-  try {
-    const { alias, tipo, x, y, numero, status } = req.body;
-
-    // Traer los valores actuales para no pisar con null
-    const actual = await db.getOne('SELECT * FROM mesas_restaurante WHERE id=$1', [req.params.id]);
-    if (!actual) return res.status(404).json({ error: 'Mesa no encontrada' });
-
-    await db.query(
-      `UPDATE mesas_restaurante
-       SET alias=$1, tipo=$2, x=$3, y=$4, numero=$5, status=COALESCE($6, status),
-           ancho=COALESCE($7, ancho), alto=COALESCE($8, alto), updated_at=NOW()
-       WHERE id=$9`,
-      [
-        alias  !== undefined ? alias  : actual.alias,
-        tipo   !== undefined ? tipo   : actual.tipo,
-        x      !== undefined ? x      : actual.x,
-        y      !== undefined ? y      : actual.y,
-        numero !== undefined ? numero : actual.numero,
-        status !== undefined ? status : null,
-        req.body.ancho !== undefined ? req.body.ancho : null,
-        req.body.alto  !== undefined ? req.body.alto  : null,
-        req.params.id
-      ]
-    );
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/restaurante/mesas', auth, authRestaurante, async (req, res) => {
-  try {
-    const { tipo, x, y, alias, numero } = req.body;
-    const r = await db.query(
-      'INSERT INTO mesas_restaurante (tipo, x, y, alias, numero, status, activo, ancho, alto, partes) VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8,$9) RETURNING *',
-      [tipo||'cuadrada', x||100, y||100, alias||'', numero||null, 'libre', req.body.ancho||null, req.body.alto||null, req.body.partes||null]
-    );
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/restaurante/mesas/:id', auth, authRestaurante, async (req, res) => {
-  try {
-    await db.query('UPDATE mesas_restaurante SET activo=0 WHERE id=$1', [req.params.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-
-// Guardar layout completo del salón (posiciones de todas las mesas)
-app.put('/api/restaurante/salon', auth, adminOnly, async (req, res) => {
-  try {
-    const { mesas } = req.body;
-    for (const m of mesas) {
-      await db.query('UPDATE mesas_restaurante SET alias=$1,tipo=$2,x=$3,y=$4,updated_at=NOW() WHERE id=$5',
-        [m.alias||'', m.tipo, m.x, m.y, m.id]);
-    }
-    await logAction(req.user.id, req.user.nombre, 'GUARDAR_SALON', `${mesas.length} mesas actualizadas`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── MENÚ RESTAURANTE ─────────────────────────────────────────────────
-app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
-  try {
-    const menu = await db.getAll('SELECT * FROM menu_restaurante ORDER BY categoria,nombre');
-    // Para cada producto, verificar si tiene stock vinculado
-    for (const item of menu) {
-      if (item.es_bebida) {
-        const invProd = await db.getOne('SELECT stock FROM productos WHERE menu_id=$1 AND activo=1', [item.id]);
-        if (invProd) {
-          item.stock_inv = Number(invProd.stock)||0;
-          item.sin_stock = item.stock_inv <= 0;
-        }
-      }
-    }
-    res.json(menu);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/restaurante/menu', auth, async (req, res) => {
-  try {
-    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, es_bebida } = req.body;
-    if (!nombre || !precio) return res.status(400).json({ error: 'Nombre y precio requeridos' });
-    const r = await db.query(
-      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida) VALUES ($1,$2,$3,$4) RETURNING *',
-      [nombre, categoria||'General', precio, es_bebida?1:0]
-    );
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
-  try {
-    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, disponible, es_bebida } = req.body;
-    const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [req.params.id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-    await db.query(
-      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5 WHERE id=$6',
-      [
-        nombre     !== undefined ? nombre     : prod.nombre,
-        categoria  !== undefined ? categoria  : prod.categoria,
-        precio     !== undefined ? precio     : prod.precio,
-        disponible !== undefined ? disponible : prod.disponible,
-        es_bebida  !== undefined ? (es_bebida?1:0) : prod.es_bebida,
-        req.params.id
-      ]
-    );
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/restaurante/menu/:id', auth, async (req, res) => {
-  try {
-    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    await db.query('DELETE FROM menu_restaurante WHERE id=$1', [req.params.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-
-// ── NOTIFICACIONES SISTEMA (centro de notificaciones in-app) ─────────
-
-// GET: notificaciones del usuario según su rol (últimas 50)
-app.get('/api/notificaciones', auth, async (req, res) => {
-  try {
-    const rol = req.user.rol;
-    const uid = req.user.id;
-    const rows = await db.getAll(
-      `SELECT id, titulo, cuerpo, roles, leido_por, creado_por_nombre, created_at
-       FROM notificaciones_sistema
-       WHERE roles = 'todos' OR roles LIKE $1
-       ORDER BY created_at DESC LIMIT 50`,
-      [`%${rol}%`]
-    );
-    // Marcar cuáles ya leyó este usuario
-    const result = rows.map(n => ({
-      ...n,
-      leida: Array.isArray(n.leido_por) ? n.leido_por.includes(uid) : false
-    }));
-    res.json(result);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// POST: admin envía notificación broadcast
-app.post('/api/notificaciones', auth, adminOnly, async (req, res) => {
-  try {
-    const { titulo, cuerpo, roles } = req.body;
-    if (!titulo?.trim() || !cuerpo?.trim()) return res.status(400).json({ error: 'Título y cuerpo son requeridos' });
-    const rolesTarget = roles || 'todos';
-    const row = await db.getOne(
-      `INSERT INTO notificaciones_sistema (titulo, cuerpo, roles, creado_por_id, creado_por_nombre)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [titulo.trim(), cuerpo.trim(), rolesTarget, req.user.id, req.user.nombre]
-    );
-    // Push a los roles correspondientes
-    const rolesArr = rolesTarget === 'todos'
-      ? ['admin','recepcionista','mucama','mantenimiento','cajero','mozo']
-      : rolesTarget.split(',').map(r => r.trim());
-    sendPushToRoles(rolesArr, {
-      title: titulo.trim(),
-      body: cuerpo.trim(),
-      url: '/'
-    });
-    await logAction(req.user.id, req.user.nombre, 'NOTIF_BROADCAST', `${titulo} → ${rolesTarget}`);
-    res.json({ ok: true, notificacion: row });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// PUT: marcar como leída
-app.put('/api/notificaciones/:id/leer', auth, async (req, res) => {
-  try {
-    const uid = req.user.id;
-    const { id } = req.params;
-    const n = await db.getOne('SELECT leido_por FROM notificaciones_sistema WHERE id=$1', [id]);
-    if (!n) return res.status(404).json({ error: 'No encontrada' });
-    const arr = Array.isArray(n.leido_por) ? n.leido_por : [];
-    if (!arr.includes(uid)) {
-      arr.push(uid);
-      await db.run('UPDATE notificaciones_sistema SET leido_por=$1 WHERE id=$2', [JSON.stringify(arr), id]);
-    }
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// PUT: marcar todas como leídas
-app.put('/api/notificaciones/leer-todas', auth, async (req, res) => {
-  try {
-    const uid = req.user.id;
-    const rol = req.user.rol;
-    const rows = await db.getAll(
-      `SELECT id, leido_por FROM notificaciones_sistema WHERE roles='todos' OR roles LIKE $1`,
-      [`%${rol}%`]
-    );
-    for (const n of rows) {
-      const arr = Array.isArray(n.leido_por) ? n.leido_por : [];
-      if (!arr.includes(uid)) {
-        arr.push(uid);
-        await db.run('UPDATE notificaciones_sistema SET leido_por=$1 WHERE id=$2', [JSON.stringify(arr), n.id]);
-      }
-    }
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── SOLICITUDES MANTENIMIENTO (desde restaurante u otras áreas) ───────
-// POST: cualquier rol de restaurante crea una solicitud
-app.post('/api/mantenimiento/solicitudes', auth, async (req, res) => {
-  try {
-    const rolesPermitidos = ['admin','mozo','cajero','recepcionista','mucama'];
-    if (!rolesPermitidos.includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { descripcion, origen } = req.body;
-    if (!descripcion?.trim()) return res.status(400).json({ error: 'La descripción es requerida' });
-    const row = await db.getOne(
-      `INSERT INTO solicitudes_mantenimiento (origen, descripcion, usuario_id, usuario_nombre)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [origen || 'restaurante', descripcion.trim(), req.user.id, req.user.nombre]
-    );
-    // Push a mantenimiento y admin
-    sendPushToRoles(['admin', 'mantenimiento'], {
-      title: `🔧 Solicitud de mantenimiento — ${origen||'Restaurante'}`,
-      body: descripcion.trim().substring(0, 100),
-      url: '/'
-    });
-    await logAction(req.user.id, req.user.nombre, 'SOLICITUD_MANT', descripcion.trim());
-    res.json({ ok: true, solicitud: row });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET: mantenimiento y admin ven solicitudes pendientes
-app.get('/api/mantenimiento/solicitudes', auth, authMantOrAdmin, async (req, res) => {
-  try {
-    const { estado } = req.query;
-    const rows = await db.getAll(
-      `SELECT * FROM solicitudes_mantenimiento
-       WHERE ($1::text IS NULL OR estado = $1)
-       ORDER BY created_at DESC LIMIT 100`,
-      [estado || null]
-    );
-    res.json(rows);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// PUT: mantenimiento o admin resuelven una solicitud
-app.put('/api/mantenimiento/solicitudes/:id/resolver', auth, authMantOrAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.run(
-      `UPDATE solicitudes_mantenimiento SET estado='resuelto', resuelto_por_id=$1,
-       resuelto_por_nombre=$2, resuelto_at=NOW() WHERE id=$3`,
-      [req.user.id, req.user.nombre, id]
-    );
-    await logAction(req.user.id, req.user.nombre, 'SOLICITUD_MANT_RESUELTA', `ID ${id}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── COMANDAS ─────────────────────────────────────────────────────────
-app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => {
-  try {
-    const { estado, mozo_id } = req.query;
-    let q = `SELECT c.*, m.alias as mesa_alias, m.tipo as mesa_tipo,
-             u.nombre as mozo_nombre
-             FROM comandas c
-             LEFT JOIN mesas_restaurante m ON c.mesa_id=m.id
-             LEFT JOIN usuarios u ON c.mozo_id=u.id`;
-    const params = [];
-    const wheres = [];
-    if (estado) { wheres.push(`c.estado=$${params.length+1}`); params.push(estado); }
-    else wheres.push(`c.estado IN ('abierta','cuenta')`);
-    if (mozo_id) { wheres.push(`c.mozo_id=$${params.length+1}`); params.push(mozo_id); }
-    if (wheres.length) q += ' WHERE ' + wheres.join(' AND ');
-    q += ' ORDER BY c.abierta_at DESC';
-    const comandas = await db.getAll(q, params);
-    for (const cmd of comandas) {
-      cmd.items = await db.getAll(
-        `SELECT ci.*, ci.precio as precio_unitario,
-        COALESCE(m.categoria, ci.nota, '') as categoria
-        FROM comanda_items ci
-        LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
-        WHERE ci.comanda_id=$1 ORDER BY ci.id`,
-        [cmd.id]
-      );
-    }
-    res.json(comandas);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/restaurante/comandas/:id', auth, authRestaurante, async (req, res) => {
-  try {
-    const cmd = await db.getOne(
-      `SELECT c.*, u.nombre as mozo_nombre
-       FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id
-       WHERE c.id=$1`, [req.params.id]
-    );
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    cmd.items = await db.getAll(
-      `SELECT ci.*, ci.precio as precio_unitario,
-        COALESCE(m.categoria, ci.nota, '') as categoria
-        FROM comanda_items ci
-        LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
-        WHERE ci.comanda_id=$1 ORDER BY ci.id`,
-      [cmd.id]
-    );
-    res.json(cmd);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Abrir comanda
-app.post('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => {
-  try {
-    const { mesa_id, comensales, observaciones } = req.body;
-    if (!mesa_id) return res.status(400).json({ error: 'Falta mesa_id' });
-    // Verificar que la mesa esté libre
-    const mesa = await db.getOne('SELECT * FROM mesas_restaurante WHERE id=$1', [mesa_id]);
-    if (!mesa) return res.status(404).json({ error: 'Mesa no encontrada' });
-    if (mesa.status !== 'libre' && mesa.status !== 'reservada')
-      return res.status(400).json({ error: `La mesa está ${mesa.status}` });
-    const r = await db.query(
-      'INSERT INTO comandas (mesa_id,mozo_id,mozo_nombre,comensales,observaciones) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      [mesa_id, req.user.id, req.user.nombre, comensales||0, observaciones||'']
-    );
-    await db.query("UPDATE mesas_restaurante SET status='ocupada',updated_at=NOW() WHERE id=$1", [mesa_id]);
-    await logAction(req.user.id, req.user.nombre, 'ABRIR_COMANDA', `Mesa ${mesa_id}`);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Agregar ítem a comanda (acumula cantidad si el producto ya existe)
-app.get('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
-  try {
-    const cols = await db.getAll(
-      `SELECT column_name FROM information_schema.columns WHERE table_name='comanda_items'`
-    );
-    const colNames = cols.map(c=>c.column_name);
-    const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
-                    : colNames.includes('precio')          ? 'precio' : '0';
-    const items = await db.getAll(
-      `SELECT nombre, cantidad, ${precioCol} as precio_unitario
-       FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
-      [req.params.id]
-    );
-    res.json(items);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
-  try {
-    const { producto_id, cantidad, nota } = req.body;
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'La comanda está cerrada' });
-    const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [producto_id]);
-    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
-
-    // Si ya existe el mismo producto (y misma nota), incrementar cantidad
-    const itemExistente = await db.getOne(
-      `SELECT * FROM comanda_items
-       WHERE comanda_id=$1 AND producto_id=$2 AND COALESCE(nota,'')=COALESCE($3,'')`,
-      [cmd.id, producto_id, nota||'']
-    );
-
-    let item;
-    if (itemExistente) {
-      const r = await db.query(
-        'UPDATE comanda_items SET cantidad=cantidad+$1 WHERE id=$2 RETURNING *',
-        [cantidad||1, itemExistente.id]
-      );
-      item = r.rows[0];
-    } else {
-      const r = await db.query(
-        'INSERT INTO comanda_items (comanda_id,producto_id,nombre,precio,cantidad,nota) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-        [cmd.id, producto_id, prod.nombre, prod.precio, cantidad||1, nota||'']
-      );
-      item = r.rows[0];
-    }
-
-    // Recalcular total
-    const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
-    await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, cmd.id]);
-
-    // Descontar stock si el producto tiene vinculo con inventario
-    if (prod.es_bebida && prod.id) {
-      const invProd = await db.getOne('SELECT * FROM productos WHERE menu_id=$1 AND activo=1', [prod.id]);
-      if (invProd) {
-        const cant = (itemExistente ? cantidad||1 : cantidad||1);
-        const stockAntes = Number(invProd.stock)||0;
-        const stockDespues = Math.max(0, stockAntes - cant);
-        await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, invProd.id]);
-        await db.query(
-          `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,referencia,usuario_id,usuario_nombre,stock_antes,stock_despues)
-           VALUES ($1,'consumo',$2,'Consumo comanda','Comanda #'||$3,$4,$5,$6,$7)`,
-          [invProd.id, cant, cmd.id, req.user.id, req.user.nombre, stockAntes, stockDespues]
-        );
-      }
-    }
-
-    res.json(item);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Cancelar comanda (solo si está vacía) — libera la mesa
-app.delete('/api/restaurante/comandas/:id', auth, authRestaurante, async (req, res) => {
-  try {
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    const items = await db.getOne('SELECT COUNT(*) as n FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
-    if (Number(items.n) > 0) return res.status(400).json({ error: 'No podés cancelar una comanda con ítems' });
-    await db.query('DELETE FROM comandas WHERE id=$1', [cmd.id]);
-    await db.query("UPDATE mesas_restaurante SET status='libre', updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    await logAction(req.user.id, req.user.nombre, 'CANCELAR_COMANDA', `Mesa ${cmd.mesa_id}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Quitar ítem (resta 1; elimina la fila si llega a 0)
-app.delete('/api/restaurante/comandas/:id/items/:itemId', auth, authRestaurante, async (req, res) => {
-  try {
-    const item = await db.getOne('SELECT * FROM comanda_items WHERE id=$1 AND comanda_id=$2',
-      [req.params.itemId, req.params.id]);
-    if (!item) return res.status(404).json({ error: 'Ítem no encontrado' });
-
-    if (item.cantidad > 1) {
-      await db.query('UPDATE comanda_items SET cantidad=cantidad-1 WHERE id=$1', [item.id]);
-    } else {
-      await db.query('DELETE FROM comanda_items WHERE id=$1', [item.id]);
-    }
-
-    // Recalcular total (0 si no quedan ítems)
-    const tot = await db.getOne('SELECT COALESCE(SUM(precio*cantidad),0) as t FROM comanda_items WHERE comanda_id=$1', [req.params.id]);
-    await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t, req.params.id]);
-
-    // Si no quedan ítems, NO liberamos la mesa automáticamente — el mozo debe cancelar explícitamente
-    // (puede que estén por agregar más ítems)
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Marcar ítem entregado
-app.put('/api/restaurante/comandas/:id/items/:itemId', auth, authRestaurante, async (req, res) => {
-  try {
-    await db.query('UPDATE comanda_items SET entregado=$1 WHERE id=$2 AND comanda_id=$3',
-      [req.body.entregado ? 1 : 0, req.params.itemId, req.params.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Pedir cuenta
-app.put('/api/restaurante/comandas/:id/cuenta', auth, authRestaurante, async (req, res) => {
-  try {
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    await db.query("UPDATE comandas SET estado='cuenta' WHERE id=$1", [cmd.id]);
-    await db.query("UPDATE mesas_restaurante SET status='cuenta',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Cerrar/cobrar comanda
-app.put('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (req, res) => {
-  try {
-    const { metodo_pago, descuento, monto_recibido } = req.body;
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'Ya está cerrada' });
-    const desc = descuento || 0;
-    const totalFinal = cmd.total * (1 - desc / 100);
-    const esEfectivo = (metodo_pago || 'Efectivo') === 'Efectivo';
-    const montoRec = esEfectivo ? (Number(monto_recibido) || totalFinal) : totalFinal;
-    const vuelto = esEfectivo ? Math.max(0, montoRec - totalFinal) : 0;
-    await db.query(
-      `UPDATE comandas SET estado='cerrada',metodo_pago=$1,descuento=$2,total_final=$3,
-       cajero_id=$4,cajero_nombre=$5,cerrada_at=NOW(),monto_recibido=$6,vuelto=$7 WHERE id=$8`,
-      [metodo_pago||'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, montoRec, vuelto, cmd.id]
-    );
-    await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
-    res.json({ ok: true, total_final: totalFinal, vuelto });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Cambiar mesa
-app.put('/api/restaurante/comandas/:id/cambiar-mesa', auth, authRestaurante, async (req, res) => {
-  try {
-    const { nueva_mesa_id } = req.body;
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    const nuevaMesa = await db.getOne('SELECT * FROM mesas_restaurante WHERE id=$1', [nueva_mesa_id]);
-    if (!nuevaMesa || nuevaMesa.status !== 'libre') return res.status(400).json({ error: 'Mesa destino no disponible' });
-    // Liberar mesa anterior
-    await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    // Ocupar mesa nueva
-    await db.query("UPDATE mesas_restaurante SET status='ocupada',updated_at=NOW() WHERE id=$1", [nueva_mesa_id]);
-    // Actualizar comanda
-    await db.query('UPDATE comandas SET mesa_id=$1 WHERE id=$2', [nueva_mesa_id, cmd.id]);
-    await logAction(req.user.id, req.user.nombre, 'CAMBIO_MESA', `Comanda ${cmd.id}: mesa ${cmd.mesa_id}→${nueva_mesa_id}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── TURNO CAJA RESTAURANTE ───────────────────────────────────────────
-app.get('/api/restaurante/turno/activo', auth, authRestaurante, async (req, res) => {
-  try {
-    const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!turno) return res.json(null);
-    const cerradas = await db.getAll(
-      "SELECT * FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 ORDER BY cerrada_at DESC",
-      [turno.abierto_at]
-    );
-    for (const c of cerradas) {
-      c.items = await db.getAll('SELECT * FROM comanda_items WHERE comanda_id=$1', [c.id]);
-    }
-    const retiros = await db.getAll(
-      "SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at DESC",
-      [turno.id]
-    );
-    res.json({ ...turno, cerradas, retiros });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res) => {
-  try {
-    const turno = await db.getOne('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 1');
-    if (!turno) return res.json(null);
-    const cerradas = await db.getAll(
-      "SELECT c.*, u.nombre as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
-      [turno.abierto_at]
-    );
-    const retiros = await db.getAll(
-      "SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at DESC",
-      [turno.id]
-    );
-    res.json({ ...turno, cerradas, retiros });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Registrar retiro de caja
-app.post('/api/restaurante/turno/retiro', auth, authRestaurante, async (req, res) => {
-  try {
-    const { monto, motivo } = req.body;
-    if (!monto || monto <= 0) return res.status(400).json({ error: 'Monto inválido' });
-    const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!turno) return res.status(400).json({ error: 'No hay turno abierto' });
-    await db.query(
-      `INSERT INTO caja_retiros (turno_id, monto, motivo, usuario_id, usuario_nombre)
-       VALUES ($1,$2,$3,$4,$5)`,
-      [turno.id, monto, motivo||'Sin motivo', req.user.id, req.user.nombre]
-    );
-    await logAction(req.user.id, req.user.nombre, 'RETIRO_CAJA', `$${monto} — ${motivo||'Sin motivo'}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/restaurante/turno/abrir', auth, authRestaurante, async (req, res) => {
-  try {
-    const ya = await db.getOne("SELECT id FROM turnos_restaurante WHERE estado='abierto'");
-    if (ya) return res.status(400).json({ error: 'Ya hay un turno abierto' });
-    const r = await db.query(
-      'INSERT INTO turnos_restaurante (cajero_id,cajero_nombre,fondo_inicial) VALUES ($1,$2,$3) RETURNING *',
-      [req.user.id, req.user.nombre, req.body.fondo_inicial||0]
-    );
-    await logAction(req.user.id, req.user.nombre, 'ABRIR_TURNO_REST', `Fondo: $${req.body.fondo_inicial||0}`);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/restaurante/turno/cerrar', auth, authRestaurante, async (req, res) => {
-  try {
-    const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!turno) return res.status(400).json({ error: 'No hay turno abierto' });
-    await db.query("UPDATE turnos_restaurante SET estado='cerrado',cerrado_at=NOW() WHERE id=$1", [turno.id]);
-    // Resumen final
-    const cerradas = await db.getAll(
-      "SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cantidad FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 GROUP BY metodo_pago",
-      [turno.abierto_at]
-    );
-    const totalCobrado = cerradas.reduce((s,c) => s+parseFloat(c.total||0), 0);
-    await logAction(req.user.id, req.user.nombre, 'CERRAR_TURNO_REST', `Total: $${totalCobrado}`);
-    res.json({ ok: true, total_cobrado: totalCobrado, por_metodo: cerradas });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── RESERVAS RESTAURANTE ─────────────────────────────────────────────
-app.get('/api/restaurante/reservas', auth, authRestaurante, async (req, res) => {
-  try {
-    const fecha = req.query.fecha || new Date().toISOString().split('T')[0];
-    res.json(await db.getAll(
-      "SELECT r.*,m.alias as mesa_alias FROM reservas_restaurante r LEFT JOIN mesas_restaurante m ON r.mesa_id=m.id WHERE r.fecha=$1 AND r.estado='activa' ORDER BY r.hora",
-      [fecha]
-    ));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/restaurante/reservas', auth, authRestaurante, async (req, res) => {
-  try {
-    const { mesa_id, nombre, hora, personas, telefono, notas, fecha } = req.body;
-    if (!nombre || !hora) return res.status(400).json({ error: 'Nombre y hora requeridos' });
-    const r = await db.query(
-      'INSERT INTO reservas_restaurante (mesa_id,nombre,hora,personas,telefono,notas,fecha) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-      [mesa_id||null, nombre, hora, personas||1, telefono||'', notas||'', fecha||new Date().toISOString().split('T')[0]]
-    );
-    if (mesa_id) await db.query("UPDATE mesas_restaurante SET status='reservada',updated_at=NOW() WHERE id=$1", [mesa_id]);
-    await logAction(req.user.id, req.user.nombre, 'RESERVA_REST', `${nombre} - ${hora}`);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/restaurante/reservas/:id', auth, authRestaurante, async (req, res) => {
-  try {
-    const { estado } = req.body;
-    const res_ = await db.getOne('SELECT * FROM reservas_restaurante WHERE id=$1', [req.params.id]);
-    await db.query('UPDATE reservas_restaurante SET estado=$1 WHERE id=$2', [estado, req.params.id]);
-    if (estado === 'cancelada' && res_?.mesa_id) {
-      await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1 AND status='reservada'", [res_.mesa_id]);
-    }
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── USUARIOS RESTAURANTE (para admin crear mozo/cajero) ──────────────
-app.post('/api/restaurante/usuarios', auth, adminOnly, async (req, res) => {
-  try {
-    const { nombre, email, password, rol } = req.body;
-    if (!nombre || !email || !password) return res.status(400).json({ error: 'Datos incompletos' });
-    if (!['mozo','cajero','admin'].includes(rol)) return res.status(400).json({ error: 'Rol inválido para restaurante' });
-    const hash = bcrypt.hashSync(password, 10);
-    const r = await db.query(
-      'INSERT INTO usuarios (nombre,email,password,rol) VALUES ($1,$2,$3,$4) RETURNING id',
-      [nombre, email, hash, rol]
-    );
-    await logAction(req.user.id, req.user.nombre, 'CREAR_USUARIO_REST', `${nombre} (${rol})`);
-    res.json({ id: r.rows[0].id });
-  } catch(e) {
-    if (e.message.includes('unique')) return res.status(400).json({ error: 'El email ya existe' });
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/restaurante/usuarios', auth, adminOnly, async (req, res) => {
-  try {
-    res.json(await db.getAll(
-      "SELECT id,nombre,email,rol,activo FROM usuarios WHERE rol IN ('mozo','cajero','admin') ORDER BY nombre"
-    ));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-// ── LOGIN UNIFICADO (portal) ─────────────────────────────────────────
-app.post('/api/portal/login', async (req, res) => {
-  try {
-    const { usuario, clave } = req.body;
-    if (!usuario || !clave)
-      return res.status(400).json({ error: 'Completá usuario y contraseña' });
- 
-    // Buscar por: campo usuario, email, o nombre (en ese orden de prioridad)
-    const user = await db.getOne(
-      `SELECT * FROM usuarios
-       WHERE activo = 1
-         AND (
-           usuario = $1
-           OR email = $1
-           OR LOWER(nombre) = LOWER($1)
-         )
-       LIMIT 1`,
-      [usuario.trim()]
-    );
- 
-    if (!user || !bcrypt.compareSync(clave, user.password))
-      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
- 
-    const token = jwt.sign(
-      { id: user.id, nombre: user.nombre, rol: user.rol, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '12h' }
-    );
- 
-    await logAction(user.id, user.nombre, 'LOGIN_PORTAL', `rol: ${user.rol}`);
- 
-    res.json({
-      token,
-      user: {
-        id:     user.id,
-        nombre: user.nombre,
-        usuario: user.usuario || user.email,
-        rol:    user.rol,
-        email:  user.email,
-      }
-    });
-  } catch(e) {
-    console.error('Portal login error:', e);
-    res.status(500).json({ error: e.message });
-  }
-});
- 
-// ── GET perfil del usuario autenticado ──────────────────────────────
-app.get('/api/portal/me', auth, async (req, res) => {
-  try {
-    const user = await db.getOne(
-      'SELECT id, nombre, usuario, email, rol FROM usuarios WHERE id = $1',
-      [req.user.id]
-    );
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-    res.json(user);
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-});
- 
-// ── GESTIÓN DE USUARIOS (solo admin) ────────────────────────────────
- 
-// Listar todos
-app.get('/api/portal/usuarios', auth, adminOnly, async (req, res) => {
-  try {
-    const users = await db.getAll(
-      'SELECT id, nombre, usuario, email, rol, activo FROM usuarios ORDER BY rol, nombre'
-    );
-    res.json(users);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
- 
-// Crear usuario
-app.post('/api/portal/usuarios', auth, adminOnly, async (req, res) => {
-  try {
-    const { nombre, usuario, email, password, rol } = req.body;
-    if (!nombre || !password || !rol)
-      return res.status(400).json({ error: 'Faltan campos obligatorios (nombre, password, rol)' });
- 
-    // usuario o email como identificador único
-    const identificador = usuario?.trim() || email?.trim();
-    if (!identificador)
-      return res.status(400).json({ error: 'Se requiere usuario o email' });
- 
-    // Verificar duplicado
-    const existe = await db.getOne(
-      'SELECT id FROM usuarios WHERE usuario = $1 OR email = $1',
-      [identificador]
-    );
-    if (existe) return res.status(400).json({ error: 'Ese usuario o email ya existe' });
- 
-    const hash = bcrypt.hashSync(password, 10);
-    const r = await db.query(
-      `INSERT INTO usuarios (nombre, usuario, email, password, rol, activo)
-       VALUES ($1, $2, $3, $4, $5, 1) RETURNING id, nombre, usuario, email, rol`,
-      [nombre.trim(), usuario?.trim() || null, email?.trim() || null, hash, rol]
-    );
-    await logAction(req.user.id, req.user.nombre, 'CREAR_USUARIO', `${nombre} (${rol})`);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
- 
-// Editar usuario
-app.put('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const { nombre, usuario, email, password, rol, activo } = req.body;
-    const uid = req.params.id;
- 
-    let query, params;
-    if (password) {
-      const hash = bcrypt.hashSync(password, 10);
-      query = `UPDATE usuarios SET nombre=$1, usuario=$2, email=$3, password=$4, rol=$5, activo=$6 WHERE id=$7`;
-      params = [nombre, usuario||null, email||null, hash, rol, activo ?? 1, uid];
-    } else {
-      query = `UPDATE usuarios SET nombre=$1, usuario=$2, email=$3, rol=$4, activo=$5 WHERE id=$6`;
-      params = [nombre, usuario||null, email||null, rol, activo ?? 1, uid];
-    }
-    await db.query(query, params);
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_USUARIO', `id:${uid}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-// Eliminar (desactivar) usuario
-app.delete('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const uid = req.params.id;
-    if (Number(uid) === req.user.id) return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
-    await db.query('UPDATE usuarios SET activo=0 WHERE id=$1', [uid]);
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_USUARIO', `id:${uid}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ════════════════════════════════════════════════════════════════════
-// ── ALIASES FRONTEND ─────────────────────────────────────────────────
-// El frontend usa POST /cerrar y PUT /pedir-cuenta
-// ════════════════════════════════════════════════════════════════════
-
-// POST /cerrar (alias de PUT /cerrar)
-app.post('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (req, res) => {
-  try {
-    const { metodo_pago, descuento } = req.body;
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'Ya está cerrada' });
-    const desc = Number(descuento) || 0;
-    const totalFinal = Number(cmd.total) * (1 - desc / 100);
-    await db.query(
-      `UPDATE comandas SET estado='cerrada', metodo_pago=$1, descuento=$2, total_final=$3,
-       cajero_id=$4, cajero_nombre=$5, cerrada_at=NOW() WHERE id=$6`,
-      [metodo_pago || 'Efectivo', desc, totalFinal, req.user.id, req.user.nombre, cmd.id]
-    );
-    await db.query("UPDATE mesas_restaurante SET status='libre', updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    await logAction(req.user.id, req.user.nombre, 'CERRAR_COMANDA', `Mesa ${cmd.mesa_id} - $${totalFinal}`);
-    res.json({ ok: true, total_final: totalFinal });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Ítem extra (fuera de menú, lo agrega el cajero al cobrar)
-app.post('/api/restaurante/comandas/:id/items/extra', auth, authRestaurante, async (req, res) => {
-  try {
-    const { nombre, precio } = req.body;
-    if (!nombre || !precio) return res.status(400).json({ error: 'Faltan nombre y precio' });
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    // Insertar como ítem sin producto_id
-    await db.query(
-      'INSERT INTO comanda_items (comanda_id, producto_id, nombre, precio, cantidad, nota) VALUES ($1, NULL, $2, $3, 1, $4)',
-      [cmd.id, nombre.trim(), Number(precio), 'ítem extra']
-    );
-    // Recalcular total
-    const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
-    await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, cmd.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// PUT /observaciones
-app.put('/api/restaurante/comandas/:id/observaciones', auth, authRestaurante, async (req, res) => {
-  try {
-    const { observaciones } = req.body;
-    await db.query('UPDATE comandas SET observaciones=$1 WHERE id=$2', [observaciones||'', req.params.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// PUT /pedir-cuenta (alias de PUT /cuenta)
-app.put('/api/restaurante/comandas/:id/pedir-cuenta', auth, authRestaurante, async (req, res) => {
-  try {
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    await db.query("UPDATE comandas SET estado='cuenta' WHERE id=$1", [cmd.id]);
-    await db.query("UPDATE mesas_restaurante SET status='cuenta', updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ════════════════════════════════════════════════════════════════════
-// ── LIBRO DE NOVEDADES ──────────────────────────────────────────────
-app.get('/api/libro-novedades', auth, async (req, res) => {
-  try {
-    // Últimos 7 días
-    const rows = await db.getAll(
-      `SELECT * FROM libro_novedades
-       WHERE created_at >= NOW() - INTERVAL '7 days'
-       ORDER BY created_at ASC`
-    );
-    res.json(rows);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/libro-novedades', auth, async (req, res) => {
-  try {
-    const { mensaje, tipo, habitacion_id } = req.body;
-    if (!mensaje) return res.status(400).json({ error: 'Mensaje requerido' });
-    // Solo mucamas pueden escribir mensajes manuales
-    if (tipo === 'manual' && !['mucama','admin'].includes(req.user.rol))
-      return res.status(403).json({ error: 'Sin permisos para escribir en el libro' });
-    await db.query(
-      `INSERT INTO libro_novedades (tipo, usuario_id, usuario_nombre, usuario_rol, habitacion_id, mensaje)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [tipo||'auto', req.user.id, req.user.nombre, req.user.rol, habitacion_id||'', mensaje]
-    );
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── CAJA HABITACIONES ────────────────────────────────────────────────
-app.get('/api/caja-hab/turno/activo', auth, async (req, res) => {
-  try {
-    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!t) return res.json(null);
-    const movs = await db.getAll("SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at DESC", [t.id]);
-    res.json({ ...t, movimientos: movs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/caja-hab/turno/ultimo', auth, async (req, res) => {
-  try {
-    const t = await db.getOne('SELECT * FROM turnos_habitaciones ORDER BY id DESC LIMIT 1');
-    if (!t) return res.json(null);
-    const movs = await db.getAll("SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at DESC", [t.id]);
-    res.json({ ...t, movimientos: movs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/caja-hab/turno/abrir', auth, adminOrRecep, async (req, res) => {
-  try {
-    const ya = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto'");
-    if (ya) return res.status(400).json({ error: 'Ya hay un turno abierto' });
-    const r = await db.query(
-      "INSERT INTO turnos_habitaciones (cajero_id,cajero_nombre,fondo_inicial) VALUES ($1,$2,$3) RETURNING *",
-      [req.user.id, req.user.nombre, req.body.fondo_inicial||0]
-    );
-    await logAction(req.user.id, req.user.nombre, 'ABRIR_TURNO_HAB', `Fondo: $${req.body.fondo_inicial||0}`);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/caja-hab/turno/cerrar', auth, adminOrRecep, async (req, res) => {
-  try {
-    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!t) return res.status(400).json({ error: 'No hay turno abierto' });
-    await db.query("UPDATE turnos_habitaciones SET estado='cerrado',cerrado_at=NOW() WHERE id=$1", [t.id]);
-    await logAction(req.user.id, req.user.nombre, 'CERRAR_TURNO_HAB', `Turno #${t.id}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/caja-hab/movimiento', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { tipo, concepto, monto, metodo_pago, referencia, habitacion_id, habitacion_numero } = req.body;
-    const t = await db.getOne("SELECT * FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
-    if (!t) return res.status(400).json({ error: 'No hay turno abierto en habitaciones' });
-    const r = await db.query(
-      `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-      [t.id, tipo||'ingreso', concepto||'', monto||0, metodo_pago||'Efectivo',
-       referencia||'', req.user.id, req.user.nombre, habitacion_id||null, habitacion_numero||'']
-    );
-    res.json({ ok: true, id: r.rows[0].id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── CAJA GLOBAL (admin) ──────────────────────────────────────────────
-app.get('/api/caja-global/resumen-dia', auth, adminOnly, async (req, res) => {
-  try {
-    const hoy = req.query.fecha || new Date().toISOString().split('T')[0];
-
-    // Restaurante — comandas cerradas hoy (usando fecha en zona Argentina)
-    const cmdHoy = await db.getAll(
-      `SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant
-       FROM comandas
-       WHERE estado='cerrada'
-       AND DATE(cerrada_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1
-       GROUP BY metodo_pago`,
-      [hoy]
-    );
-    // Restaurante — retiros hoy
-    const retirosRest = await db.getAll(
-      `SELECT SUM(monto) as total FROM caja_retiros
-       WHERE DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1`,
-      [hoy]
-    );
-    // Habitaciones — movimientos hoy
-    const movHab = await db.getAll(
-      `SELECT tipo, metodo_pago, SUM(monto) as total
-       FROM movimientos_habitaciones
-       WHERE DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1
-       GROUP BY tipo, metodo_pago`,
-      [hoy]
-    );
-
-    res.json({
-      fecha: hoy,
-      restaurante: { por_metodo: cmdHoy, retiros: Number(retirosRest[0]?.total||0) },
-      habitaciones: { movimientos: movHab }
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
-  try {
-    const { desde, hasta, limit } = req.query;
-    const lim = parseInt(limit)||200;
-    const d = desde || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
-    const h = hasta  || new Date().toISOString().split('T')[0];
-
-    // Comandas restaurante
-    const cmds = await db.getAll(
-      `SELECT 'restaurante' as fuente, 'ingreso' as tipo, total_final as monto,
-              metodo_pago, concat('Mesa ', mesa_id) as concepto,
-              cajero_nombre as usuario, cerrada_at as fecha,
-              id as comanda_id, mesa_id
-       FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2
-       ORDER BY cerrada_at DESC LIMIT $3`,
-      [d+' 00:00:00', h+' 23:59:59', lim]
-    );
-    // Retiros restaurante
-    const retRest = await db.getAll(
-      `SELECT 'restaurante' as fuente, 'egreso' as tipo, monto,
-              'Efectivo' as metodo_pago, motivo as concepto,
-              usuario_nombre as usuario, created_at as fecha
-       FROM caja_retiros WHERE created_at BETWEEN $1 AND $2
-       ORDER BY created_at DESC`,
-      [d+' 00:00:00', h+' 23:59:59']
-    );
-    // Movimientos habitaciones
-    const movHab = await db.getAll(
-      `SELECT 'habitaciones' as fuente, tipo, monto, metodo_pago, concepto,
-              usuario_nombre as usuario, created_at as fecha
-       FROM movimientos_habitaciones WHERE created_at BETWEEN $1 AND $2
-       ORDER BY created_at DESC`,
-      [d+' 00:00:00', h+' 23:59:59']
-    );
-
-    // Unir y ordenar por fecha desc
-    const todo = [...cmds, ...retRest, ...movHab]
-      .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
-
-    res.json({ desde: d, hasta: h, movimientos: todo });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) => {
-  try {
-    const { desde, hasta } = req.query;
-    if (!desde||!hasta) return res.status(400).json({ error: 'Falta rango de fechas' });
-    const TZ = `AT TIME ZONE 'America/Argentina/Buenos_Aires'`;
-
-    const [cmdTotal, retTotal, habIngresos, habEgresos] = await Promise.all([
-      db.getAll(`SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
-      db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM caja_retiros WHERE DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
-      db.getAll(`SELECT metodo_pago, SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
-      db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='egreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
-    ]);
-
-    // Movimientos manuales del período
-    const manuales = await db.getAll(
-      `SELECT * FROM movimientos_manuales WHERE fecha BETWEEN $1 AND $2 ORDER BY fecha`,
-      [desde, hasta]
-    );
-
-    // Resumen por día incluyendo manuales
-    const porDia = await db.getAll(`
-      SELECT dia, SUM(total) as total, fuente FROM (
-        SELECT DATE(cerrada_at ${TZ})::text as dia, SUM(total_final) as total, 'restaurante' as fuente
-        FROM comandas WHERE estado='cerrada' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(cerrada_at ${TZ})
-        UNION ALL
-        SELECT DATE(created_at ${TZ})::text, SUM(monto), 'habitaciones'
-        FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(created_at ${TZ})
-      ) t GROUP BY dia, fuente ORDER BY dia DESC
-    `, [desde,hasta]);
-
-    // Detalle de turnos en el período
-    const turnosRest = await db.getAll(`
-      SELECT t.*, 
-        COALESCE((SELECT SUM(c.total_final) FROM comandas c WHERE c.estado='cerrada' AND c.cerrada_at >= t.abierto_at AND (t.cerrado_at IS NULL OR c.cerrada_at <= t.cerrado_at)),0) as total_cobrado,
-        COALESCE((SELECT SUM(r.monto) FROM caja_retiros r WHERE r.turno_id=t.id),0) as retiros,
-        COALESCE((SELECT COUNT(*) FROM comandas c WHERE c.estado='cerrada' AND c.cerrada_at >= t.abierto_at AND (t.cerrado_at IS NULL OR c.cerrada_at <= t.cerrado_at)),0) as cant_comandas
-      FROM turnos_restaurante t
-      WHERE DATE(t.abierto_at ${TZ}) BETWEEN $1 AND $2
-      ORDER BY t.id DESC
-    `, [desde, hasta]);
-
-    const turnosHab = await db.getAll(`
-      SELECT t.*,
-        COALESCE((SELECT SUM(m.monto) FROM movimientos_habitaciones m WHERE m.turno_id=t.id AND m.tipo='ingreso'),0) as total_ingresos,
-        COALESCE((SELECT SUM(m.monto) FROM movimientos_habitaciones m WHERE m.turno_id=t.id AND m.tipo='egreso'),0) as total_egresos
-      FROM turnos_habitaciones t
-      WHERE DATE(t.abierto_at ${TZ}) BETWEEN $1 AND $2
-      ORDER BY t.id DESC
-    `, [desde, hasta]);
-
-    res.json({
-      restaurante: { por_metodo: cmdTotal, retiros: Number(retTotal[0]?.total||0), detalle_turnos: turnosRest },
-      habitaciones: { ingresos: habIngresos, egresos: Number(habEgresos[0]?.total||0), detalle_turnos: turnosHab },
-      por_dia: porDia,
-      manuales
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Historial de turnos (restaurante + habitaciones)
-app.get('/api/caja-global/turnos', auth, adminOnly, async (req, res) => {
-  try {
-    const { fuente } = req.query;
-    if (fuente === 'restaurante') {
-      const turnos = await db.getAll('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 50');
-      // Calcular total cobrado y retiros por turno
-      for (const t of turnos) {
-        const cobrado = await db.getOne(
-          "SELECT COALESCE(SUM(total_final),0) as total FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 AND ($2::timestamp IS NULL OR cerrada_at <= $2)",
-          [t.abierto_at, t.cerrado_at||null]
-        );
-        const retiros = await db.getOne(
-          "SELECT COALESCE(SUM(monto),0) as total FROM caja_retiros WHERE turno_id=$1",
-          [t.id]
-        );
-        t.total_cobrado = Number(cobrado?.total||0);
-        t.total_retiros = Number(retiros?.total||0);
-        t.total_final   = t.total_cobrado + Number(t.fondo_inicial||0) - t.total_retiros;
-      }
-      res.json(turnos);
-    } else {
-      const turnos = await db.getAll('SELECT * FROM turnos_habitaciones ORDER BY id DESC LIMIT 50');
-      for (const t of turnos) {
-        const ingresos = await db.getOne(
-          "SELECT COALESCE(SUM(monto),0) as total FROM movimientos_habitaciones WHERE turno_id=$1 AND tipo='ingreso'",
-          [t.id]
-        );
-        const egresos = await db.getOne(
-          "SELECT COALESCE(SUM(monto),0) as total FROM movimientos_habitaciones WHERE turno_id=$1 AND tipo='egreso'",
-          [t.id]
-        );
-        t.total_cobrado = Number(ingresos?.total||0);
-        t.total_retiros = Number(egresos?.total||0);
-        t.total_final   = Number(t.fondo_inicial||0) + t.total_cobrado - t.total_retiros;
-      }
-      res.json(turnos);
-    }
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Turno completo con comandas y retiros (para reimprimir arqueo)
-app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
-  try {
-    const { id, fuente } = req.query;
-    if (fuente === 'restaurante') {
-      const turno = await db.getOne('SELECT * FROM turnos_restaurante WHERE id=$1', [id]);
-      if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-      const cerradas = await db.getAll(
-        `SELECT * FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1
-         AND ($2::timestamp IS NULL OR cerrada_at <= $2) ORDER BY cerrada_at DESC`,
-        [turno.abierto_at, turno.cerrado_at||null]
-      );
-      const retiros = await db.getAll(
-        'SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at',
-        [id]
-      );
-      // Detectar columna de precio disponible en comanda_items
-      const cols = await db.getAll(
-        `SELECT column_name FROM information_schema.columns
-         WHERE table_name='comanda_items'`
-      );
-      const colNames = cols.map(c=>c.column_name);
-      const precioCol = colNames.includes('precio_unitario') ? 'ci.precio_unitario'
-                      : colNames.includes('precio')          ? 'ci.precio'
-                      : colNames.includes('subtotal')        ? 'ci.subtotal/NULLIF(ci.cantidad,0)'
-                      : '0';
-
-      // Ítems vendidos agrupados por nombre
-      const itemsVendidos = await db.getAll(
-        `SELECT ci.nombre,
-                COALESCE(m.categoria, 'Sin categoría') as categoria,
-                SUM(ci.cantidad) as cantidad,
-                SUM(${precioCol} * ci.cantidad) as total
-         FROM comanda_items ci
-         JOIN comandas c ON ci.comanda_id = c.id
-         LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
-         WHERE c.estado='cerrada' AND c.cerrada_at >= $1
-         AND ($2::timestamp IS NULL OR c.cerrada_at <= $2)
-         GROUP BY ci.nombre, COALESCE(m.categoria, 'Sin categoría')
-         ORDER BY total DESC`,
-        [turno.abierto_at, turno.cerrado_at||null]
-      );
-      // Por método de pago
-      const porMetodo = {};
-      cerradas.forEach(c => {
-        porMetodo[c.metodo_pago] = (porMetodo[c.metodo_pago]||0) + Number(c.total_final||0);
-      });
-      res.json({ ...turno, cerradas, retiros, porMetodo, itemsVendidos });
-    } else {
-      const turno = await db.getOne('SELECT * FROM turnos_habitaciones WHERE id=$1', [id]);
-      if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-      const movimientos = await db.getAll(
-        'SELECT * FROM movimientos_habitaciones WHERE turno_id=$1 ORDER BY created_at',
-        [id]
-      );
-      const porMetodo = {};
-      movimientos.filter(m=>m.tipo==='ingreso').forEach(m => {
-        porMetodo[m.metodo_pago] = (porMetodo[m.metodo_pago]||0) + Number(m.monto||0);
-      });
-      res.json({ ...turno, movimientos, porMetodo });
-    }
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Editar fondo inicial de un turno (solo admin)
-app.put('/api/caja-global/turno-fondo', auth, adminOnly, async (req, res) => {
-  try {
-    const { turno_id, fuente, fondo_inicial } = req.body;
-    const tabla = fuente === 'restaurante' ? 'turnos_restaurante' : 'turnos_habitaciones';
-    await db.query(`UPDATE ${tabla} SET fondo_inicial=$1 WHERE id=$2`, [fondo_inicial, turno_id]);
-    await logAction(req.user.id, req.user.nombre, 'EDITAR_FONDO', `${fuente} turno #${turno_id}: $${fondo_inicial}`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Ítems de una comanda específica (para historial caja)
-app.get('/api/caja-global/comanda-items/:id', auth, adminOnly, async (req, res) => {
-  try {
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    const cols = await db.getAll(
-      `SELECT column_name FROM information_schema.columns WHERE table_name='comanda_items'`
-    );
-    const colNames = cols.map(c=>c.column_name);
-    const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
-                    : colNames.includes('precio')          ? 'precio'
-                    : '0';
-    const items = await db.getAll(
-      `SELECT nombre, cantidad, ${precioCol} as precio_unit,
-              cantidad * ${precioCol} as total
-       FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
-      [req.params.id]
-    );
-    res.json({ ...cmd, items });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── PUSH NOTIFICATIONS ───────────────────────────────────────────────
-
-// Devolver la VAPID public key al frontend
-app.get('/api/push/vapid-public', (req, res) => {
-  res.json({ publicKey: VAPID_PUBLIC });
-});
-
-// Suscribir dispositivo
-app.post('/api/push/suscribir', auth, async (req, res) => {
-  try {
-    const { endpoint, keys } = req.body;
-    if (!endpoint || !keys?.p256dh || !keys?.auth)
-      return res.status(400).json({ error: 'Datos de suscripción incompletos' });
-    // Usar endpoint+usuario_id como clave única — mismo celular, distintos usuarios
-    await db.query(
-      `INSERT INTO push_suscripciones (usuario_id, usuario_nombre, rol, endpoint, p256dh, auth)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (endpoint, usuario_id) DO UPDATE SET
-         usuario_nombre=$2, rol=$3, p256dh=$5, auth=$6`,
-      [req.user.id, req.user.nombre, req.user.rol, endpoint, keys.p256dh, keys.auth]
-    );
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Desuscribir dispositivo
-app.post('/api/push/desuscribir', auth, async (req, res) => {
-  try {
-    await db.query('DELETE FROM push_suscripciones WHERE usuario_id=$1', [req.user.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── CATCH-ALL ────────────────────────────────────────
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
-// ── RESET DIARIO 8 AM ────────────────────────────────
-// ── SINCRONIZACIÓN AUTOMÁTICA RESERVAS → HABITACIONES ───────────────
-// Corre cada hora: si hay reserva futura con entrada <= hoy y la hab está libre,
-// la pone en "reservada" para que el panel la muestre correctamente.
-async function sincronizarReservas() {
-  try {
-    const result = await db.query(`
-      UPDATE habitaciones h
-      SET status = 'reservada',
-          nota   = r.nombre_huesped,
-          updated_at = NOW()
-      FROM reservas r
-      WHERE r.habitacion_id::text = h.id
-        AND r.estado IN ('futura','confirmada')
-        AND DATE(r.salida) >= CURRENT_DATE
-        AND h.status IN ('libre','lista','libre_limpia')
-    `);
-    if (result.rowCount > 0) {
-      console.log(`🔄 Sync reservas: ${result.rowCount} hab. actualizadas a "reservada"`);
-      await db.query("INSERT INTO log_acciones (usuario_nombre,accion,detalle) VALUES ($1,$2,$3)",
-        ['Sistema','SYNC_RESERVAS',`${result.rowCount} hab. → reservada`]);
-    }
-  } catch(e) { console.error('Error sync reservas:', e.message); }
+async function editarReserva(id) {
+  const reservas = await apiFetch('GET','/reservas') || [];
+  const r = reservas.find(x=>x.id===id);
+  if (!r) { toast('Reserva no encontrada', false); return; }
+
+  const toLocal = iso => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const p = n=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+
+  const senia0 = Number(r.monto_senia||0);
+  const saldo0 = Number(r.saldo_pendiente??r.precio_total??0);
+
+  openModal(`
+    <div class="modal-hd">
+      <h3>✏️ Editar Reserva — Hab. ${r.hab_numero||r.habitacion_id}</h3>
+      <button class="modal-close" id="er-close">✕</button>
+    </div>
+    <div class="stitle">Huésped</div>
+    <div class="form-row">
+      <div class="form-col"><label>Nombre</label><input id="er-nombre" value="${r.nombre_huesped||''}"></div>
+      <div class="form-col"><label>Documento</label><input id="er-doc" value="${r.documento||''}"></div>
+    </div>
+    <div class="stitle">Fechas</div>
+    <div class="form-row">
+      <div class="form-col"><label>Entrada</label><input type="datetime-local" id="er-entrada" value="${toLocal(r.entrada)}"></div>
+      <div class="form-col"><label>Salida</label><input type="datetime-local" id="er-salida" value="${toLocal(r.salida)}"></div>
+    </div>
+    <div class="stitle">Pago</div>
+    <div class="form-row">
+      <div class="form-col"><label>Total ($)</label><input type="number" id="er-total" value="${r.precio_total||0}" oninput="erRecalc()"></div>
+      <div class="form-col"><label>Método</label>
+        <select id="er-metodo">
+          ${['Efectivo','Tarjeta','Transferencia','Débito','QR','Otro'].map(m=>`<option value="${m}" ${r.metodo_pago===m?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="stitle">Seña</div>
+    <div class="form-row" style="margin-bottom:6px">
+      <div class="form-col"><label>Monto de seña ($)</label>
+        <input type="number" id="er-senia" value="${senia0}" min="0" oninput="erRecalc()">
+      </div>
+      <div class="form-col"><label>Método seña</label>
+        <select id="er-pago-senia">
+          ${['Efectivo','Tarjeta','Transferencia','Débito','QR','Otro'].map(m=>`<option value="${m}" ${r.metodo_pago===m?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+      Saldo pendiente: <strong id="er-saldo" style="color:#dc2626">${fmt(saldo0)}</strong>
+    </div>
+    <div class="form-col" style="margin-bottom:14px"><label>Notas</label>
+      <textarea id="er-notas" rows="2" style="border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 11px;font-size:13px;font-family:'Nunito',sans-serif;width:100%;resize:vertical">${r.notas||''}</textarea>
+    </div>
+    <button class="confirm-btn" id="er-save">💾 Guardar cambios</button>
+  `);
+
+  // Recalcular saldo en tiempo real
+  window.erRecalc = () => {
+    const total = parseMonto(document.getElementById('er-total').value);
+    const senia = parseMonto(document.getElementById('er-senia').value);
+    const saldo = Math.max(0, total - senia);
+    const el = document.getElementById('er-saldo');
+    if (el) el.textContent = fmtExacto(saldo);
+  };
+
+  document.getElementById('er-close').addEventListener('click', closeModal);
+  document.getElementById('er-save').addEventListener('click', async () => {
+    const entrada = document.getElementById('er-entrada').value;
+    const salida  = document.getElementById('er-salida').value;
+    if (!entrada||!salida) { toast('Completá las fechas', false); return; }
+    const noches = Math.max(1, Math.round((new Date(salida)-new Date(entrada))/86400000));
+    const precio_total = parseMonto(document.getElementById('er-total').value);
+    const monto_senia  = parseMonto(document.getElementById('er-senia').value);
+    const saldo_pendiente = Math.max(0, precio_total - monto_senia);
+    const body = {
+      nombre_huesped: document.getElementById('er-nombre').value.trim(),
+      documento:      document.getElementById('er-doc').value.trim(),
+      entrada, salida, noches,
+      precio_total, monto_senia, saldo_pendiente,
+      metodo_pago:    document.getElementById('er-metodo').value,
+      notas:          document.getElementById('er-notas').value.trim(),
+    };
+    if (!body.nombre_huesped) { toast('Ingresá el nombre', false); return; }
+    const btn = document.getElementById('er-save');
+    btn.disabled=true; btn.textContent='Guardando...';
+    const res = await apiFetch('PUT',`/reservas/${id}`, body);
+    if (res?.ok) { toast('Reserva actualizada'); closeModal(); renderReservas(); }
+    else { toast(res?.error||'Error al guardar', false); btn.disabled=false; btn.textContent='💾 Guardar cambios'; }
+  });
 }
-setInterval(sincronizarReservas, 60 * 60 * 1000); // cada hora
 
-// Endpoint manual para forzar sincronización (solo admin)
-app.post('/api/admin/sync-reservas', auth, adminOnly, async (req, res) => {
-  try {
-    const result = await db.query(`
-      UPDATE habitaciones h
-      SET status = 'reservada',
-          nota   = r.nombre_huesped,
-          updated_at = NOW()
-      FROM reservas r
-      WHERE r.habitacion_id::text = h.id
-        AND r.estado IN ('futura','confirmada')
-        AND DATE(r.salida) >= CURRENT_DATE
-        AND h.status IN ('libre','lista','libre_limpia')
+async function eliminarReserva(id, nombre) {
+  if (!confirm(`¿Eliminar la reserva de ${nombre}?\n\nLa habitación volverá a estado "Libre".`)) return;
+  const r = await apiFetch('DELETE',`/reservas/${id}`);
+  if (r?.ok) { toast('Reserva eliminada'); renderReservas(); }
+  else toast(r?.error||'Error al eliminar', false);
+}
+ 
+// ══════════════════════════════════════
+// HUÉSPEDES
+// ══════════════════════════════════════
+async function renderInventario() {
+  const [prods,alertas]=await Promise.all([apiFetch('GET','/productos'),apiFetch('GET','/inventario/alertas')]);
+  const alertHTML=(alertas||[]).length?`
+    <div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+      <div style="font-weight:800;color:#dc2626;margin-bottom:6px">⚠️ Stock bajo</div>
+      ${alertas.map(a=>`<div style="font-size:12px">• ${a.nombre}: <strong>${a.stock}</strong> (mín: ${a.stock_minimo})</div>`).join('')}
+    </div>`:'';
+  const rows=(prods||[]).map(p=>`<tr>
+    <td><strong>${p.nombre}</strong></td>
+    <td><span class="pill pgr">${p.categoria}</span></td>
+    <td>${fmt(p.precio)}</td>
+    <td><span style="font-weight:800;color:${p.stock<=p.stock_minimo?'#dc2626':'#16a34a'}">${p.stock}</span></td>
+    <td>${p.stock_minimo}</td>
+    <td><button class="btn-secondary btn-ent" data-pid="${p.id}" data-pnombre="${p.nombre}" style="padding:4px 10px;font-size:11px">+ Entrada</button></td>
+  </tr>`).join('');
+  document.getElementById('content').innerHTML=`
+    <div class="section-card">
+      <div class="sc-head"><h2>📦 Inventario</h2><button class="btn-primary" id="btn-nprod">+ Nuevo producto</button></div>
+      ${alertHTML}
+      <div style="overflow-x:auto"><table class="data-table">
+        <thead><tr><th>Producto</th><th>Cat.</th><th>Precio</th><th>Stock</th><th>Mín.</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  document.getElementById('btn-nprod').addEventListener('click',()=>showNuevoProd());
+  document.querySelectorAll('.btn-ent').forEach(b=>{
+    b.addEventListener('click',()=>showEntrada(parseInt(b.dataset.pid),b.dataset.pnombre));
+  });
+}
+function showEntrada(id,nombre) {
+  openModal(`
+    <div class="modal-hd"><h3>Entrada de stock — ${nombre}</h3><button class="modal-close" id="es-c">✕</button></div>
+    <div class="form-row">
+      <div class="form-col"><label>Cantidad</label><input type="number" id="es-cant" value="10" min="1"></div>
+      <div class="form-col"><label>Descripción</label><input type="text" id="es-desc" placeholder="Compra proveedor..."></div>
+    </div>
+    <button class="confirm-btn" id="es-ok">✅ Confirmar entrada</button>
+  `);
+  document.getElementById('es-c').addEventListener('click',closeModal);
+  document.getElementById('es-ok').addEventListener('click',async()=>{
+    const r=await apiFetch('POST','/inventario/entrada',{
+      producto_id:id,cantidad:parseInt(document.getElementById('es-cant').value),
+      descripcion:document.getElementById('es-desc').value
+    });
+    if(r?.ok){toast('Stock actualizado');closeModal();renderInventario();}
+    else toast('Error',false);
+  });
+}
+function showNuevoProd() {
+  openModal(`
+    <div class="modal-hd"><h3>Nuevo producto</h3><button class="modal-close" id="np-c">✕</button></div>
+    <div class="form-row">
+      <div class="form-col"><label>Nombre</label><input type="text" id="np-nom" placeholder="Agua mineral"></div>
+      <div class="form-col"><label>Categoría</label><input type="text" id="np-cat" placeholder="Bebidas"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Precio</label><input type="number" id="np-precio" placeholder="1000"></div>
+      <div class="form-col"><label>Stock inicial</label><input type="number" id="np-stock" placeholder="20"></div>
+      <div class="form-col"><label>Stock mínimo</label><input type="number" id="np-min" placeholder="5"></div>
+    </div>
+    <button class="confirm-btn" id="np-ok">✅ Crear producto</button>
+  `);
+  document.getElementById('np-c').addEventListener('click',closeModal);
+  document.getElementById('np-ok').addEventListener('click',async()=>{
+    const r=await apiFetch('POST','/productos',{
+      nombre:document.getElementById('np-nom').value,
+      categoria:document.getElementById('np-cat').value,
+      precio:parseFloat(document.getElementById('np-precio').value),
+      stock:parseInt(document.getElementById('np-stock').value),
+      stock_minimo:parseInt(document.getElementById('np-min').value),
+    });
+    if(r?.id){toast('Producto creado');closeModal();renderInventario();}
+    else toast('Error',false);
+  });
+}
+ 
+// ══════════════════════════════════════
+// CAJA
+// ══════════════════════════════════════
+async function renderCaja() {
+  const [caja,movs]=await Promise.all([apiFetch('GET','/caja/activa'),apiFetch('GET','/caja/movimientos')]);
+  const ing=(movs||[]).filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
+  const eg=(movs||[]).filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0);
+  const rows=(movs||[]).map(m=>`<tr>
+    <td>${fmtDate(m.created_at)}</td><td>${m.descripcion}</td>
+    <td><span class="pill ${m.tipo==='ingreso'?'pg':'pr'}">${m.tipo}</span></td>
+    <td><strong style="color:${m.tipo==='ingreso'?'#059669':'#dc2626'}">${m.tipo==='egreso'?'−':'+'}${fmt(m.monto)}</strong></td>
+    <td>${m.metodo_pago}</td>
+  </tr>`).join('');
+  document.getElementById('content').innerHTML=`
+    <div class="section-card">
+      <div class="sc-head">
+        <h2>💰 Caja ${caja?'<span style="font-size:12px;background:#dcfce7;color:#16a34a;border-radius:6px;padding:2px 8px;margin-left:8px">Abierta</span>':'<span style="font-size:12px;background:#fee2e2;color:#dc2626;border-radius:6px;padding:2px 8px;margin-left:8px">Cerrada</span>'}</h2>
+        ${!caja?'<button class="btn-primary" id="btn-abrir">+ Abrir caja</button>':'<button class="btn-secondary" id="btn-cerrar">🔒 Cerrar caja</button>'}
+      </div>
+      ${caja?`<div class="caja-summary">
+        <div class="caja-box ing"><div class="cb-label">Ingresos</div><div class="cb-val">${fmt(ing)}</div></div>
+        <div class="caja-box eg"><div class="cb-label">Egresos</div><div class="cb-val">${fmt(eg)}</div></div>
+        <div class="caja-box bal"><div class="cb-label">Balance</div><div class="cb-val">${fmt(ing-eg)}</div></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn-primary" id="btn-ing">+ Ingreso manual</button>
+        <button class="btn-secondary" id="btn-eg">− Registrar gasto</button>
+      </div>`:''}
+      <div style="overflow-x:auto"><table class="data-table">
+        <thead><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Monto</th><th>Pago</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px">Sin movimientos</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+  document.getElementById('btn-abrir')?.addEventListener('click',()=>{
+    openModal(`
+      <div class="modal-hd"><h3>Abrir caja</h3><button class="modal-close" id="ac-c">✕</button></div>
+      <div class="form-col" style="margin-bottom:14px"><label>Monto inicial efectivo</label><input type="number" id="ac-m" value="0"></div>
+      <button class="confirm-btn" id="ac-ok">✅ Abrir caja</button>
     `);
-    res.json({ ok: true, filas: result.rowCount, mensaje: `${result.rowCount} habitaciones actualizadas` });
-  } catch(e) {
-    res.json({ ok: false, error: e.message });
-  }
-});
+    document.getElementById('ac-c').addEventListener('click',closeModal);
+    document.getElementById('ac-ok').addEventListener('click',async()=>{
+      const r=await apiFetch('POST','/caja/abrir',{monto_inicial:parseMonto(document.getElementById('ac-m').value)});
+      if(r?.id){toast('Caja abierta');closeModal();renderCaja();}else toast(r?.error||'Error',false);
+    });
+  });
+  document.getElementById('btn-cerrar')?.addEventListener('click',async()=>{
+    if(!confirm('¿Cerrar la caja del turno?')) return;
+    const r=await apiFetch('POST','/caja/cerrar');
+    if(r?.ok){toast(`Caja cerrada. Total: ${fmt(r.monto_final)}`);renderCaja();}else toast(r?.error||'Error',false);
+  });
+  ['btn-ing','btn-eg'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('click',()=>showMov(id==='btn-ing'?'ingreso':'egreso'));
+  });
+}
+function showMov(tipo) {
+  const esI=tipo==='ingreso';
+  openModal(`
+    <div class="modal-hd"><h3>${esI?'+ Ingreso':'− Gasto'}</h3><button class="modal-close" id="nm-c">✕</button></div>
+    <div class="form-row">
+      <div class="form-col"><label>Descripción</label><input type="text" id="nm-desc" placeholder="${esI?'Concepto':'Gasto en...'}"></div>
+      <div class="form-col"><label>Monto ($)</label><input type="number" id="nm-m" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Categoría</label><input type="text" id="nm-cat" value="${esI?'general':'operativo'}"></div>
+      <div class="form-col"><label>Método</label><select id="nm-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>QR</option></select></div>
+    </div>
+    <button class="confirm-btn" id="nm-ok" style="background:${esI?'linear-gradient(135deg,var(--accent),#0094ff)':'linear-gradient(135deg,#ec4899,#f43f5e)'}">✅ Registrar</button>
+  `);
+  document.getElementById('nm-c').addEventListener('click',closeModal);
+  document.getElementById('nm-ok').addEventListener('click',async()=>{
+    const r=await apiFetch('POST','/caja/movimiento',{
+      tipo, categoria:document.getElementById('nm-cat').value,
+      descripcion:document.getElementById('nm-desc').value,
+      monto:parseMonto(document.getElementById('nm-m').value),
+      metodo_pago:document.getElementById('nm-pago').value,
+    });
+    if(r?.ok){toast('Registrado');closeModal();renderCaja();}else toast('Error',false);
+  });
+}
+ 
+// ══════════════════════════════════════
+// FINANZAS
+// ══════════════════════════════════════
+async function renderConfig() {
+  let usuarios = await apiFetch('GET','/portal/usuarios');
+  if (!usuarios) usuarios = await apiFetch('GET','/usuarios') || [];
+  const rolColor = { admin:'pb', recepcionista:'pg', mucama:'py', mozo:'pgr', cajero:'pr', mantenimiento:'pgr' };
+  const rows = usuarios.map(u=>`<tr>
+    <td><strong>${u.nombre}</strong></td>
+    <td style="color:#64748b;font-size:12px">${u.usuario||'—'}</td>
+    <td style="color:#94a3b8;font-size:12px">${u.email||'—'}</td>
+    <td><span class="pill ${rolColor[u.rol]||'pgr'}">${u.rol}</span></td>
+    <td><span class="pill ${u.activo?'pg':'pr'}">${u.activo?'Activo':'Inactivo'}</span></td>
+    <td style="white-space:nowrap">
+      <button onclick="editarUsuario(${u.id})" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-right:4px">✏️ Editar</button>
+      <button onclick="eliminarUsuario(${u.id},'${u.nombre.replace(/'/g,"\'")}')" style="background:#fff1f2;border:1px solid #fecdd3;color:#be123c;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">🗑️</button>
+    </td>
+  </tr>`).join('');
 
-function scheduleReset() {
-  const now = new Date();
-  const next8am = new Date();
-  next8am.setHours(8, 0, 0, 0);
-  if (now >= next8am) next8am.setDate(next8am.getDate() + 1);
-  const msUntil = next8am - now;
-  console.log(`⏰ Reset diario en ${Math.round(msUntil/1000/60)} minutos`);
-  setTimeout(async () => {
+  document.getElementById('content').innerHTML=`
+    <div class="section-card">
+      <div class="sc-head"><h2>⚙️ Usuarios</h2><button class="btn-primary" id="btn-nuser">+ Nuevo usuario</button></div>
+      <table class="data-table">
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="section-card">
+      <h2 style="margin-bottom:12px">🏨 Hotel Takuá</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+        <div><span style="color:#94a3b8">Habitaciones:</span> <strong>28</strong></div>
+        <div><span style="color:#94a3b8">Ala Este:</span> <strong>14 hab.</strong></div>
+        <div><span style="color:#94a3b8">Ala Oeste:</span> <strong>14 hab.</strong></div>
+        <div><span style="color:#94a3b8">Versión:</span> <strong>1.1.0</strong></div>
+      </div>
+    </div>
+    <div class="section-card" style="border:1.5px solid #fcd34d;background:#fffbeb">
+      <div class="sc-head" style="margin-bottom:14px">
+        <h2 style="color:#92400e">📢 Enviar notificación al sistema</h2>
+      </div>
+      <p style="font-size:12px;color:#78350f;margin-bottom:14px">
+        Enviá un aviso a todos o a roles específicos. Aparecerá en el centro de notificaciones de cada usuario y, si tienen push activo, también como notificación del dispositivo.
+      </p>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#78350f;margin-bottom:5px">Título *</label>
+        <input type="text" id="cfg-notif-titulo" placeholder="Ej: Mantenimiento programado del sistema" maxlength="80">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#78350f;margin-bottom:5px">Mensaje *</label>
+        <textarea id="cfg-notif-cuerpo" rows="3" placeholder="Ej: Estaremos trabajando en el sistema entre las 14:00 y las 15:00 hs. Pueden haber interrupciones breves."
+          style="resize:vertical;border:1.5px solid #fcd34d;border-radius:10px;padding:10px 14px;width:100%;font-family:inherit;font-size:14px;outline:none;color:#1a2035;background:#fffbeb"></textarea>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#78350f;margin-bottom:5px">Destinatarios</label>
+        <select id="cfg-notif-roles" style="border-color:#fcd34d;background:#fffbeb">
+          <option value="todos">Todos los usuarios</option>
+          <option value="admin">Solo Admin</option>
+          <option value="recepcionista">Solo Recepción</option>
+          <option value="mucama">Solo Mucamas</option>
+          <option value="mantenimiento">Solo Mantenimiento</option>
+          <option value="mozo,cajero">Solo Restaurante (Mozos y Cajeros)</option>
+          <option value="admin,recepcionista">Admin + Recepción</option>
+        </select>
+      </div>
+      <button id="btn-enviar-notif-broadcast"
+        style="background:#d97706;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer">
+        📢 Enviar notificación
+      </button>
+    </div>`;
+
+  // ── Tarifas ──
+  const tarifas = await apiFetch('GET', '/config/tarifas') || {};
+  const tfNoche = tarifas.precio_noche || 50000;
+  const tfHora  = tarifas.precio_hora  || 20000;
+  const tfDia   = tarifas.precio_dia   || 75000;
+
+  const secTarifas = `
+    <div class="section-card" style="margin-top:16px">
+      <div class="sc-head"><h2>💰 Tarifas de Habitaciones</h2></div>
+      <div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#0369a1;line-height:1.6">
+        <strong>¿Cuándo aplica cada tarifa?</strong><br>
+        🌙 <strong>Por Noche</strong>: check-in y check-out en días distintos (estadía estándar).<br>
+        📅 <strong>Por Día (24h)</strong>: el huésped ocupa la habitación por un período de 24 horas corridas.<br>
+        ⏱ <strong>Por Horas</strong>: uso corto de la habitación (hasta 6 horas), sin pernoctar.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;border:1.5px solid #e2e8f0">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">🌙 Por Noche</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:14px;color:#94a3b8">$</span>
+            <input type="number" id="cfg-tf-noche" value="${tfNoche}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:15px;font-weight:700">
+          </div>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;border:1.5px solid #e2e8f0">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">📅 Por Día (24h)</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:14px;color:#94a3b8">$</span>
+            <input type="number" id="cfg-tf-dia" value="${tfDia}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:15px;font-weight:700">
+          </div>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;border:1.5px solid #e2e8f0">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">⏱ Por Horas</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:14px;color:#94a3b8">$</span>
+            <input type="number" id="cfg-tf-hora" value="${tfHora}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:15px;font-weight:700">
+          </div>
+        </div>
+      </div>
+      <button id="btn-guardar-tarifas" class="confirm-btn" style="margin-top:14px;max-width:200px">💾 Guardar Tarifas</button>
+    </div>`;
+
+  document.getElementById('content').innerHTML += secTarifas;
+
+  // Botón nuevo usuario
+  document.getElementById('btn-nuser').addEventListener('click', () => abrirModalUsuario(null));
+
+  // Guardar tarifas
+  document.getElementById('btn-guardar-tarifas').addEventListener('click', async () => {
+    const precio_noche = Number(document.getElementById('cfg-tf-noche').value) || 0;
+    const precio_dia   = Number(document.getElementById('cfg-tf-dia').value)   || 0;
+    const precio_hora  = Number(document.getElementById('cfg-tf-hora').value)  || 0;
+    const r = await apiFetch('POST', '/config/tarifas', { precio_noche, precio_dia, precio_hora });
+    if (r?.ok) toast('Tarifas guardadas ✓');
+    else toast(r?.error || 'Error al guardar', false);
+  });
+
+  // Botón enviar notificación broadcast (solo admin ve esta sección)
+  document.getElementById('btn-enviar-notif-broadcast')?.addEventListener('click', async () => {
+    const titulo = document.getElementById('cfg-notif-titulo')?.value.trim();
+    const cuerpo = document.getElementById('cfg-notif-cuerpo')?.value.trim();
+    const roles  = document.getElementById('cfg-notif-roles')?.value || 'todos';
+    if (!titulo) { document.getElementById('cfg-notif-titulo').focus(); return; }
+    if (!cuerpo) { document.getElementById('cfg-notif-cuerpo').focus(); return; }
+    const btn = document.getElementById('btn-enviar-notif-broadcast');
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    const r = await apiFetch('POST', '/notificaciones', { titulo, cuerpo, roles });
+    if (r?.ok) {
+      toast('📢 Notificación enviada ✓');
+      document.getElementById('cfg-notif-titulo').value = '';
+      document.getElementById('cfg-notif-cuerpo').value = '';
+      cargarNotificaciones(); // refrescar centro
+    } else {
+      toast(r?.error || 'Error al enviar', false);
+    }
+    btn.disabled = false; btn.textContent = '📢 Enviar notificación';
+  });
+}
+
+const ROL_OPTS = ['admin','recepcionista','mucama','mantenimiento','cajero','mozo']
+  .map(r => `<option value="${r}">${r}</option>`).join('');
+
+function abrirModalUsuario(u) {
+  const esEdicion = !!u;
+  openModal(`
+    <div class="modal-hd">
+      <h3>${esEdicion ? '✏️ Editar usuario' : '➕ Nuevo usuario'}</h3>
+      <button class="modal-close" id="mu-c">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Nombre completo</label>
+        <input type="text" id="mu-nom" value="${u?.nombre||''}" placeholder="María García"></div>
+      <div class="form-col"><label>Usuario</label>
+        <input type="text" id="mu-usuario" value="${u?.usuario||''}" placeholder="maria.garcia"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Email (opcional)</label>
+        <input type="email" id="mu-email" value="${u?.email||''}" placeholder="maria@hotel.com"></div>
+      <div class="form-col"><label>${esEdicion ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña'}</label>
+        <input type="password" id="mu-pass" placeholder="${esEdicion ? 'Nueva contraseña...' : 'min. 6 caracteres'}" autocapitalize="none" autocorrect="off" autocomplete="new-password"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Rol</label>
+        <select id="mu-rol">${ROL_OPTS}</select>
+      </div>
+      ${esEdicion ? `<div class="form-col"><label>Estado</label>
+        <select id="mu-activo">
+          <option value="1" ${u.activo?'selected':''}>Activo</option>
+          <option value="0" ${!u.activo?'selected':''}>Inactivo</option>
+        </select></div>` : ''}
+    </div>
+    <button class="confirm-btn" id="mu-ok">${esEdicion ? '💾 Guardar cambios' : '✅ Crear usuario'}</button>
+  `);
+
+  // Setear rol seleccionado
+  if (u?.rol) setTimeout(() => {
+    const sel = document.getElementById('mu-rol');
+    if (sel) sel.value = u.rol;
+  }, 0);
+
+  document.getElementById('mu-c').addEventListener('click', closeModal);
+  document.getElementById('mu-ok').addEventListener('click', async () => {
+    const nombre   = document.getElementById('mu-nom').value.trim();
+    const usuario  = document.getElementById('mu-usuario').value.trim();
+    const email    = document.getElementById('mu-email').value.trim();
+    const password = document.getElementById('mu-pass').value;
+    const rol      = document.getElementById('mu-rol').value;
+    const activo   = document.getElementById('mu-activo')?.value ?? '1';
+
+    if (!nombre || !usuario) { toast('Completá nombre y usuario', false); return; }
+    if (!esEdicion && !password) { toast('La contraseña es obligatoria', false); return; }
+
+    let r;
+    if (esEdicion) {
+      const body = { nombre, usuario, email: email||null, rol, activo: Number(activo) };
+      if (password) body.password = password;
+      r = await apiFetch('PUT', `/portal/usuarios/${u.id}`, body);
+      if (r?.ok) { toast('Usuario actualizado ✓'); closeModal(); renderConfig(); }
+      else toast(r?.error || 'Error al actualizar', false);
+    } else {
+      r = await apiFetch('POST', '/portal/usuarios', { nombre, usuario, email: email||null, password, rol });
+      if (r?.id) { toast('Usuario creado ✓'); closeModal(); renderConfig(); }
+      else toast(r?.error || 'Error al crear', false);
+    }
+  });
+}
+
+async function editarUsuario(id) {
+  const usuarios = await apiFetch('GET', '/portal/usuarios') || [];
+  const u = usuarios.find(x => x.id === id);
+  if (!u) return;
+  abrirModalUsuario(u);
+}
+
+async function eliminarUsuario(id, nombre) {
+  if (!confirm(`¿Eliminar al usuario "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  const r = await apiFetch('DELETE', `/portal/usuarios/${id}`);
+  if (r?.ok) { toast('Usuario eliminado'); renderConfig(); }
+  else toast(r?.error || 'Error al eliminar', false);
+}
+ 
+// ══════════════════════════════════════
+// QR MODAL
+// ══════════════════════════════════════
+function showQRModal(hab) {
+  const isAdmin = currentUser?.rol === 'admin';
+  const url = `${window.location.origin}/huesped.html?hab=${hab.numero}`;
+ 
+  openModal(`
+    <div class="modal-hd">
+      <h3>📱 QR Huésped — Hab. ${hab.numero}</h3>
+      <button class="modal-close" id="qr-close">✕</button>
+    </div>
+    <div style="text-align:center;padding:10px 0 16px">
+      <div id="qr-canvas" style="display:inline-block;padding:12px;background:#fff;border-radius:12px;border:2px solid #e0e6ef"></div>
+      <div style="margin-top:12px;font-size:13px;color:#64748b">Escaneá este QR para acceder al panel de servicios</div>
+      <div style="margin-top:6px;font-size:11px;color:#94a3b8;word-break:break-all">${url}</div>
+    </div>
+    ${isAdmin ? `
+    <div style="border-top:1px solid #f1f5f9;padding-top:14px;margin-top:4px">
+      <div class="stitle">Contraseña de la puerta</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="qr-pwd" placeholder="Ej: 1234" maxlength="8" inputmode="numeric"
+          style="flex:1;border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 12px;font-size:16px;font-family:'Nunito',sans-serif;letter-spacing:4px;font-weight:700">
+        <button class="btn-primary" id="qr-save-pwd" style="white-space:nowrap">💾 Guardar</button>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px">Esta contraseña la usa el huésped para acceder al panel QR</div>
+    </div>` : ''}
+    <button class="confirm-btn" id="qr-copy" style="margin-top:14px;background:linear-gradient(135deg,#1a2035,#2d3a5a)">
+      📋 Copiar enlace
+    </button>
+  `);
+ 
+  document.getElementById('qr-close').addEventListener('click', closeModal);
+ 
+  // Generar QR
+  setTimeout(() => {
+    const canvas = document.getElementById('qr-canvas');
+    if (canvas && window.QRCode) {
+      new QRCode(canvas, { text: url, width: 200, height: 200, colorDark: '#1a2035', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+    }
+  }, 100);
+ 
+  // Copiar enlace
+  document.getElementById('qr-copy').addEventListener('click', () => {
+    navigator.clipboard.writeText(url).then(() => toast('Enlace copiado')).catch(() => {
+      prompt('Copiá este enlace:', url);
+    });
+  });
+ 
+  // Guardar contraseña (solo admin)
+  if (isAdmin) {
+    // Cargar contraseña actual
+    apiFetch('GET', `/habitaciones/${hab.id}/password`).then(r => {
+      if (r?.password) {
+        const input = document.getElementById('qr-pwd');
+        if (input) input.value = r.password;
+      }
+    });
+    document.getElementById('qr-save-pwd')?.addEventListener('click', async () => {
+      const pwd = document.getElementById('qr-pwd').value.trim();
+      if (!pwd) { toast('Ingresá una contraseña', false); return; }
+      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/password`, { password: pwd });
+      if (r?.ok) toast('Contraseña guardada');
+      else toast(r?.error||'Error', false);
+    });
+  }
+}
+ 
+// ══════════════════════════════════════
+// HISTORIAL
+// ══════════════════════════════════════
+async function loadLog() {
+  const log=await apiFetch('GET','/log')||[];
+  openModal(`
+    <div class="modal-hd"><h3>📋 Historial</h3><button class="modal-close" id="log-c">✕</button></div>
+    <div style="max-height:420px;overflow-y:auto">
+      ${log.map(e=>`<div style="border-left:3px solid #e0e6ef;padding-left:10px;margin-bottom:12px">
+        <div style="font-size:10px;color:#94a3b8">${fmtDate(e.created_at)} · ${e.usuario_nombre||'Sistema'}</div>
+        <div style="font-size:13px;font-weight:700">${e.accion}</div>
+        <div style="font-size:12px;color:#64748b">${e.detalle}</div>
+      </div>`).join('')||'<div style="text-align:center;color:#94a3b8;padding:20px">Sin acciones</div>'}
+    </div>
+  `);
+  document.getElementById('log-c').addEventListener('click',closeModal);
+}
+ 
+// ── SONIDO DE NOTIFICACIÓN ──
+let soundEnabled = localStorage.getItem('takua_sound') !== 'off';
+let lastSolCount = -1;
+let notifPermission = Notification?.permission || 'default';
+ 
+// Pedir permiso de notificaciones del sistema
+// En Android DEBE ser llamado desde un gesto del usuario (click)
+async function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  notifPermission = Notification.permission;
+  if (Notification.permission === 'granted') return;
+  if (Notification.permission !== 'denied') {
     try {
-      const result = await db.query("UPDATE habitaciones SET status='ocupada',updated_at=NOW() WHERE status='limpia'");
-      console.log(`⏰ Reset 8 AM: ${result.rowCount||0} habitaciones limpia→ocupada`);
-      await db.query("INSERT INTO log_acciones (usuario_nombre,accion,detalle) VALUES ($1,$2,$3)",
-        ['Sistema','RESET_DIARIO',`${result.rowCount||0} hab. limpia→ocupada`]);
-    } catch(e) { console.error('Error reset diario:', e.message); }
-    scheduleReset();
-  }, msUntil);
+      const perm = await Notification.requestPermission();
+      notifPermission = perm;
+      if (perm === 'granted') {
+        // Test notification via SW
+        sendSystemNotif('Hotel Takuá', '🔔 Notificaciones activadas', 'takua-test');
+      }
+    } catch(e) { console.log('Notif permission error:', e); }
+  }
+}
+ 
+function sendSystemNotif(titulo, cuerpo, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+ 
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    // MÉTODO CORRECTO PARA ANDROID:
+    // Enviamos mensaje al SW — el SW usa event.waitUntil() que mantiene
+    // el proceso vivo el tiempo necesario para mostrar la notificación en la barra
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SHOW_NOTIF',
+      title: titulo,
+      body: cuerpo,
+      tag: tag || 'takua-sol'
+    });
+  } else {
+    // Fallback: intentar directo con el SW registrado
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(titulo, {
+        body: cuerpo,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        vibrate: [200, 100, 200],
+        tag: tag || 'takua-sol',
+        renotify: true,
+      });
+    }).catch(() => {
+      // Último fallback: desktop sin SW activo
+      try { new Notification(titulo, { body: cuerpo, icon: '/icon-192.png' }); } catch(e) {}
+    });
+  }
+}
+ 
+function updateSoundBtn() {
+  const btn = document.getElementById('btn-sound');
+  if (!btn) return;
+  btn.textContent = soundEnabled ? '🔔' : '🔕';
+  btn.title = soundEnabled ? 'Sonido activo — toca para apagar' : 'Sonido apagado — toca para activar';
+  btn.style.opacity = soundEnabled ? '1' : '0.5';
+}
+ 
+function playNotifSound() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[880,0,0.25,0.3],[660,0.28,0.35,0.22]].forEach(([f,s,d,v]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = f; o.type = 'sine';
+      g.gain.setValueAtTime(0, ctx.currentTime+s);
+      g.gain.linearRampToValueAtTime(v, ctx.currentTime+s+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+s+d);
+      o.start(ctx.currentTime+s); o.stop(ctx.currentTime+s+d+0.1);
+    });
+  } catch(e) {}
+}
+ 
+document.getElementById('btn-sound')?.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('takua_sound', soundEnabled ? 'on' : 'off');
+  updateSoundBtn();
+  if (soundEnabled) {
+    playNotifSound();
+    // Pedir permiso de notificaciones (Android requiere gesto del usuario)
+    requestNotifPermission();
+  }
+  toast(soundEnabled ? '🔔 Sonido y notificaciones activados' : '🔕 Sonido silenciado');
+});
+ 
+async function registerPeriodicSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    // Background Sync: se ejecuta cuando hay conexión aunque la app esté cerrada
+    if ('periodicSync' in reg) {
+      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+      if (status.state === 'granted') {
+        await reg.periodicSync.register('check-solicitudes-periodic', { minInterval: 60 * 1000 }); // cada 1 min
+        console.log('Periodic sync registrado');
+      }
+    }
+  } catch(e) { console.log('Periodic sync no disponible:', e.message); }
+}
+ 
+// Solicitudes con sonido y mucama
+async function loadSolicitudesAll() {
+  const isMantenimiento = currentUser?.rol === 'mantenimiento';
+
+  // Mantenimiento no ve solicitudes de huéspedes — solo alertas del mapa
+  if (isMantenimiento) {
+    applyMantMapAlerts();
+    return;
+  }
+
+  const sols = await apiFetch('GET', '/solicitudes') || [];
+  const pendientes = sols.filter(s => s.estado === 'pendiente');
+  const isMucama = currentUser?.rol === 'mucama';
+
+  // Sonido + notificación del sistema cuando hay nuevas
+  if (lastSolCount >= 0 && pendientes.length > lastSolCount) {
+    playNotifSound();
+    const nueva = pendientes[pendientes.length - 1];
+    if (nueva) {
+      const tipo = nueva.tipo === 'servicio' ? '🧹 Limpieza solicitada' : '🍫 Pedido de frigobar';
+      sendSystemNotif(`Hotel Takuá — Hab. ${nueva.numero} Ala ${nueva.ala}`, tipo+(nueva.detalle?': '+nueva.detalle:''), 'takua-sol');
+    }
+  }
+  lastSolCount = pendientes.length;
+
+  applyMapAlerts(pendientes);
+
+  if (isMucama) {
+    renderMucamaSolicitudes(pendientes);
+  } else {
+    loadSolicitudes(pendientes);
+  }
+}
+ 
+function applyMapAlerts(pendientes) {
+  const habsConSol = new Set(pendientes.map(s => s.habitacion_id));
+  document.querySelectorAll('.rcard[data-hid]').forEach(card => {
+    const hid = card.dataset.hid;
+    if (habsConSol.has(hid)) {
+      card.classList.add('tiene-solicitud');
+      if (!card.querySelector('.sol-badge-card')) {
+        const badge = document.createElement('div');
+        badge.className = 'sol-badge-card';
+        badge.textContent = '🔔';
+        card.insertBefore(badge, card.firstChild);
+      }
+    } else {
+      card.classList.remove('tiene-solicitud');
+      card.querySelector('.sol-badge-card')?.remove();
+    }
+  });
+}
+ 
+function renderMucamaSolicitudes(pendientes) {
+  const el = document.getElementById('mucama-sols');
+  if (!el) return;
+  if (!pendientes.length) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `
+    <div class="section-card" style="border:2px solid #fca5a5;background:#fff7f7">
+      <div class="sc-head" style="margin-bottom:10px">
+        <h2 style="display:flex;align-items:center;gap:8px;font-size:16px;color:#dc2626">
+          🔔 Solicitudes pendientes
+          <span style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:800">${pendientes.length}</span>
+        </h2>
+      </div>
+      ${pendientes.map(s=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;
+                  background:#fff;border-radius:12px;border:1px solid #fecdd3;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="font-size:32px;flex-shrink:0">${s.tipo==='servicio'?'🧹':'🍫'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:800;color:#1e293b">Hab. ${s.numero} — Ala ${s.ala}</div>
+          <div style="font-size:13px;color:#64748b;margin-top:1px">${s.tipo==='servicio'?'Limpieza solicitada':'Pedido de frigobar'}</div>
+          ${s.detalle?`<div style="font-size:12px;font-style:italic;color:#374151;margin-top:2px">"${s.detalle}"</div>`:''}
+        </div>
+        <button data-sol-id="${s.id}"
+          style="flex-shrink:0;background:#16a34a;color:#fff;border:none;border-radius:10px;
+                 padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+          ✅ Atendido
+        </button>
+      </div>`).join('')}
+    </div>`;
+
+  // Bind botones atendido
+  el.querySelectorAll('[data-sol-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = '...';
+      const r = await apiFetch('PUT', `/solicitudes/${btn.dataset.solId}`, { estado: 'atendida' });
+      if (r?.ok) {
+        toast('Solicitud marcada como atendida ✓');
+        loadSolicitudesAll();
+      } else {
+        toast('Error al actualizar', false);
+        btn.disabled = false;
+        btn.textContent = '✅ Atendido';
+      }
+    });
+  });
+}
+ 
+ 
+// ══════════════════════════════════════
+// ══════════════════════════════════════
+// LIBRO DE NOVEDADES
+// ══════════════════════════════════════
+
+// ── BADGE LIBRO ───────────────────────────────────────────────────────
+function _libroLastReadKey() {
+  return 'libro_last_read_' + (currentUser?.id || 'x');
 }
 
-// ── MOVIMIENTOS MANUALES ─────────────────────────────────────────────
-app.get('/api/movimientos-manuales', auth, adminOrRecep, async (req, res) => {
+function _libroMarcarLeido() {
+  localStorage.setItem(_libroLastReadKey(), new Date().toISOString());
+  _libroActualizarBadge(0);
+}
+
+function _libroActualizarBadge(count) {
+  const badge = document.getElementById('libro-badge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function _libroCheckBadge() {
+  const data = await apiFetch('GET', '/libro-novedades');
+  if (!Array.isArray(data) || !data.length) { _libroActualizarBadge(0); return; }
+  const lastRead = localStorage.getItem(_libroLastReadKey());
+  const since = lastRead ? new Date(lastRead) : null;
+  const nuevos = since
+    ? data.filter(m => new Date(m.created_at) > since && String(m.usuario_id) !== String(currentUser?.id)).length
+    : data.filter(m => String(m.usuario_id) !== String(currentUser?.id)).length;
+  _libroActualizarBadge(nuevos);
+}
+
+function _libroStartPolling() {
+  _libroCheckBadge();
+  _libroBadgeInterval = setInterval(_libroCheckBadge, 60000);
+}
+// ─────────────────────────────────────────────────────────────────────
+
+function abrirLibro() {
+  document.getElementById('libro-overlay').classList.add('open');
+  const footer = document.getElementById('libro-footer');
+  if (footer) footer.style.display = isMucama ? '' : 'none';
+  _libroMarcarLeido();
+  cargarLibro();
+  _libroInterval = setInterval(cargarLibro, 15000);
+}
+
+function cerrarLibro(e) {
+  if (e && e.target !== document.getElementById('libro-overlay')) return;
+  document.getElementById('libro-overlay').classList.remove('open');
+  clearInterval(_libroInterval);
+}
+
+async function cargarLibro() {
+  const body = document.getElementById('libro-body');
+  const data = await apiFetch('GET', '/libro-novedades');
+  if (!data) return;
+
+  const hoy = new Date().toLocaleDateString('es-AR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('libro-turno-label').textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
+
+  if (!data.length) {
+    body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:32px;font-size:13px">Sin novedades hoy</div>';
+    return;
+  }
+
+  // Agrupar por fecha
+  let html = '';
+  let fechaActual = '';
+  data.forEach(m => {
+    const fecha = new Date(m.created_at).toLocaleDateString('es-AR', {weekday:'long',day:'numeric',month:'long'});
+    if (fecha !== fechaActual) {
+      fechaActual = fecha;
+      html += `<div class="libro-fecha-sep"><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)}</span></div>`;
+    }
+    const hora = new Date(m.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    const esManual = m.tipo === 'manual';
+    html += `<div class="libro-msg ${esManual?'manual':'auto'}">
+      <div class="lm-autor">${m.usuario_nombre}</div>
+      ${m.habitacion_id ? `<div class="lm-hab">Hab. ${m.habitacion_id}</div>` : ''}
+      <div>${m.mensaje}</div>
+      <div class="lm-hora">${hora}</div>
+    </div>`;
+  });
+
+  const wasAtBottom = body.scrollHeight - body.scrollTop <= body.clientHeight + 50;
+  body.innerHTML = html;
+  if (wasAtBottom) body.scrollTop = body.scrollHeight;
+}
+
+async function enviarNovedad() {
+  const input = document.getElementById('libro-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const r = await apiFetch('POST', '/libro-novedades', { mensaje: msg, tipo: 'manual' });
+  if (r?.ok) {
+    input.value = '';
+    input.style.height = '42px';
+    await cargarLibro();
+    const body = document.getElementById('libro-body');
+    body.scrollTop = body.scrollHeight;
+  } else {
+    toast('Error al enviar', false);
+  }
+}
+
+// Registrar evento automático en el libro
+async function registrarLibro(mensaje, habitacion_id='') {
+  await apiFetch('POST', '/libro-novedades', {
+    mensaje, tipo: 'auto', habitacion_id
+  });
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+if (token && currentUser) {
+  startApp();
+  // Si viene con hash (desde comandas), navegar a esa sección
+  const hash = window.location.hash.replace('#','');
+  if (hash && ['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].includes(hash)) {
+    setTimeout(() => { goTo(hash); }, 100);
+  }
+} else { window.location.href = "/portal.html"; }
+ 
+// ── SONIDO DE NOTIFICACIÓN ────────────────────────────
+function playNotifSound() {
   try {
-    const { desde, hasta } = req.query;
-    const rows = await db.getAll(
-      `SELECT * FROM movimientos_manuales
-       WHERE ($1::date IS NULL OR fecha >= $1) AND ($2::date IS NULL OR fecha <= $2)
-       ORDER BY fecha DESC, id DESC`,
-      [desde||null, hasta||null]
-    );
-    res.json(rows);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Dos beeps cortos tipo "ding"
+    [0, 0.25].forEach(delay => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime + delay);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + delay + 0.15);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.2);
+    });
+  } catch(e) {}
+}
+
+// Escuchar mensajes del SW (cuando llega push con la app abierta)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'PLAY_SOUND') playNotifSound();
+  });
+}
+
+// ── SERVICE WORKER + PUSH SUBSCRIPTION ──────────────
+const ROLES_PUSH = ['recepcionista','mucama','admin','mantenimiento'];
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+// ── CENTRO DE NOTIFICACIONES ──────────────────────────────────────────
+
+var notifCenterOpen = false;
+var notifData = [];
+
+async function cargarNotificaciones() {
+  if (!currentUser) return;
+  const data = await apiFetch('GET', '/notificaciones');
+  if (!Array.isArray(data)) return;
+  notifData = data;
+  actualizarBadge();
+  if (notifCenterOpen) renderNotifList();
+}
+
+function actualizarBadge() {
+  const badge = document.getElementById('notif-badge');
+  const sinLeer = notifData.filter(n => !n.leida).length;
+  if (!badge) return;
+  if (sinLeer > 0) {
+    badge.textContent = sinLeer > 99 ? '99+' : sinLeer;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function toggleNotifCenter() {
+  const center = document.getElementById('notif-center');
+  const btn = document.getElementById('btn-notif');
+  if (!center || !btn) return;
+  notifCenterOpen = !notifCenterOpen;
+  if (notifCenterOpen) {
+    const rect = btn.getBoundingClientRect();
+    const w = Math.min(340, window.innerWidth - 16);
+    center.style.width = w + 'px';
+    center.style.top = (rect.bottom + 8) + 'px';
+    center.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+    center.style.left = 'auto';
+    center.style.display = 'flex';
+    cargarNotificaciones();
+    actualizarPushRow();
+  } else {
+    center.style.display = 'none';
+  }
+}
+
+function cerrarNotifCenter() {
+  notifCenterOpen = false;
+  const center = document.getElementById('notif-center');
+  if (center) center.style.display = 'none';
+}
+
+// Cerrar al click fuera
+document.addEventListener('click', function(e) {
+  const center = document.getElementById('notif-center');
+  const btn = document.getElementById('btn-notif');
+  if (!center || !btn) return;
+  if (notifCenterOpen && !center.contains(e.target) && !btn.contains(e.target)) {
+    cerrarNotifCenter();
+  }
 });
 
-app.post('/api/movimientos-manuales', auth, adminOrRecep, async (req, res) => {
-  try {
-    const { fecha, concepto, monto, tipo, metodo_pago, rubro } = req.body;
-    if (!fecha)    return res.status(400).json({ error: 'Falta la fecha' });
-    if (!concepto) return res.status(400).json({ error: 'Falta el concepto' });
-    if (!monto)    return res.status(400).json({ error: 'Falta el monto' });
-    const r = await db.query(
-      `INSERT INTO movimientos_manuales (fecha,concepto,monto,tipo,metodo_pago,rubro,usuario_id,usuario_nombre)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [fecha, concepto, Number(monto), tipo||'ingreso', metodo_pago||'Efectivo',
-       rubro||'habitaciones', req.user.id, req.user.nombre]
-    );
-    await logAction(req.user.id, req.user.nombre, 'MOV_MANUAL',
-      `${tipo||'ingreso'} $${monto} — ${concepto} (${rubro||'habitaciones'})`);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+function renderNotifList() {
+  const el = document.getElementById('notif-list');
+  if (!el) return;
+  if (!notifData.length) {
+    el.innerHTML = `<div style="padding:30px 16px;text-align:center;color:#94a3b8;font-size:13px">
+      Sin notificaciones</div>`;
+    return;
+  }
+  el.innerHTML = notifData.map(n => {
+    const fecha = new Date(n.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return `<div data-nid="${n.id}" onclick="marcarLeida(${n.id}, this)"
+      style="padding:12px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer;
+      background:${n.leida ? '#fff' : '#f0f9ff'};transition:background .2s">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        ${n.leida ? '' : '<div style="width:8px;height:8px;border-radius:50%;background:#3b82f6;flex-shrink:0;margin-top:5px"></div>'}
+        ${n.leida ? '<div style="width:8px;flex-shrink:0"></div>' : ''}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:${n.leida?'600':'800'};color:#1a2035;margin-bottom:2px">${escHtml(n.titulo)}</div>
+          <div style="font-size:12px;color:#475569;line-height:1.4">${escHtml(n.cuerpo)}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">${fecha}${n.creado_por_nombre ? ' · ' + escHtml(n.creado_por_nombre) : ''}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-app.delete('/api/movimientos-manuales/:id', auth, adminOnly, async (req, res) => {
-  try {
-    await db.query('DELETE FROM movimientos_manuales WHERE id=$1', [req.params.id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+async function marcarLeida(id, el) {
+  const n = notifData.find(x => x.id === id);
+  if (n && !n.leida) {
+    n.leida = true;
+    actualizarBadge();
+    if (el) el.style.background = '#fff';
+    const dot = el?.querySelector('div[style*="border-radius:50%"]');
+    if (dot) dot.style.display = 'none';
+    await apiFetch('PUT', `/notificaciones/${id}/leer`);
+  }
+}
 
-db.initDB().then(() => {
-  app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT}`));
-  scheduleReset();
-  sincronizarReservas(); // ejecutar al arrancar también
-}).catch(e => {
-  console.error('Error iniciando DB:', e);
-  process.exit(1);
+async function leerTodasNotifs() {
+  notifData.forEach(n => n.leida = true);
+  actualizarBadge();
+  renderNotifList();
+  await apiFetch('PUT', '/notificaciones/leer-todas');
+}
+
+async function actualizarPushRow() {
+  const row = document.getElementById('notif-push-row');
+  if (!row || !ROLES_PUSH.includes(currentUser?.rol)) { row && (row.style.display='none'); return; }
+  if (!('Notification' in window) || !('PushManager' in window)) { row.style.display='none'; return; }
+  if (Notification.permission === 'granted') {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) { row.style.display='none'; return; }
+    } catch(e) {}
+  }
+  row.style.display = 'block';
+}
+
+async function activarNotificacionesDesdeCenter() {
+  const btn = document.querySelector('#notif-push-row button');
+  if (btn) { btn.textContent = '⏳ Activando…'; btn.disabled = true; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      toast('Permiso denegado — activalo desde la configuración del navegador', false);
+    } else {
+      await suscribirPush();
+      toast('🔔 Notificaciones push activadas');
+      document.getElementById('notif-push-row').style.display = 'none';
+    }
+  } catch(e) { toast('Error al activar: ' + e.message, false); }
+  if (btn) { btn.textContent = '🔔 Activar notificaciones push'; btn.disabled = false; }
+}
+
+// Actualiza el ícono del botón según el estado actual (compatibilidad)
+async function actualizarEstadoNotif() {
+  const btn = document.getElementById('btn-notif');
+  if (!btn) return;
+  if (!ROLES_PUSH.includes(currentUser?.rol)) { btn.style.display='none'; return; }
+  btn.style.display = '';
+  actualizarPushRow();
+}
+
+// El usuario tocó el botón — ahora abre el centro, esta función queda como fallback
+async function activarNotificaciones() { toggleNotifCenter(); }
+
+// Polling de notificaciones cada 30s
+var _notifInterval = null;
+function startNotifPolling() {
+  cargarNotificaciones();
+  if (_notifInterval) clearInterval(_notifInterval);
+  _notifInterval = setInterval(cargarNotificaciones, 30000);
+}
+
+
+
+async function suscribirPush() {
+  if (!ROLES_PUSH.includes(currentUser?.rol)) return;
+  const reg = await navigator.serviceWorker.ready;
+  const resp = await apiFetch('GET', '/push/vapid-public');
+  if (!resp?.publicKey) throw new Error('No se pudo obtener la clave del servidor');
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(resp.publicKey)
+  });
+  const subJSON = sub.toJSON();
+  await apiFetch('POST', '/push/suscribir', {
+    endpoint: subJSON.endpoint,
+    keys: { p256dh: subJSON.keys.p256dh, auth: subJSON.keys.auth }
+  });
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(async () => {
+        console.log('SW registrado');
+        // Auto-suscribir solo si ya tiene permiso previo (no pedir prompt automático)
+        if (Notification.permission === 'granted' && ROLES_PUSH.includes(currentUser?.rol)) {
+          try { await suscribirPush(); } catch(e) {}
+        }
+        actualizarEstadoNotif();
+      })
+      .catch(e => console.log('SW error:', e));
+  });
+}
+ 
+// ── INSTALAR PWA ──
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (window.innerWidth <= 900) {
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'flex';
+  }
 });
+window.addEventListener('appinstalled', () => {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'none';
+  deferredPrompt = null;
+});
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+  }
+}
+</script>
+ 
+<!-- Banner instalar app -->
+<div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1a2035;color:#fff;padding:14px 20px;z-index:9999;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.3)">
+  <div style="display:flex;align-items:center;gap:12px">
+    <img src="/icon-192.png" style="width:40px;height:40px;border-radius:10px">
+    <div>
+      <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:14px">Hotel Takuá</div>
+      <div style="font-family:'Nunito',sans-serif;font-size:12px;color:#94a3b8">Instalá la app en tu dispositivo</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="document.getElementById('install-banner').style.display='none'"
+      style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-family:'Nunito',sans-serif;cursor:pointer">
+      Ahora no
+    </button>
+    <button onclick="installPWA()"
+      style="background:#00c9b1;border:none;color:#fff;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer">
+      📲 Instalar
+    </button>
+  </div>
+</div>
+ 
+<script src="/sidebar.js"></script>
+
+<!-- ══ MODAL SOLICITUD MANTENIMIENTO (admin/recep) ══ -->
+<div id="overlay-sol-mant-idx" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-end;justify-content:center">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -8px 40px rgba(0,0,0,.2);animation:slideUp .22s ease">
+    <div style="display:flex;justify-content:center;padding:10px 0 4px"><div style="width:40px;height:4px;border-radius:2px;background:#e2e8f0"></div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px">
+      <span style="font-weight:800;font-size:17px">🔧 Solicitar Mantenimiento</span>
+      <button onclick="cerrarModalSolMantIndex()" style="background:#f1f5f9;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;color:#64748b;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:0 20px 24px">
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px">Describí el problema o tarea. El equipo de mantenimiento recibirá una alerta.</p>
+      <label style="display:block;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Descripción *</label>
+      <textarea id="idx-sol-mant-desc" rows="4"
+        placeholder="Ej: Pérdida de agua en el baño del pasillo, luz quemada en recepción…"
+        style="resize:vertical;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;font-family:inherit;font-size:14px;outline:none;color:#1a2035;box-sizing:border-box"
+        oninput="this.style.borderColor='#00c9b1'"></textarea>
+      <button id="btn-enviar-sol-mant-idx" onclick="enviarSolMantIndex()"
+        style="margin-top:14px;width:100%;background:#d97706;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer">
+        🔧 Enviar solicitud
+      </button>
+    </div>
+  </div>
+</div>
+<script>
+function abrirModalSolMantIndex() {
+  document.getElementById('idx-sol-mant-desc').value = '';
+  document.getElementById('idx-sol-mant-desc').style.borderColor = '#e2e8f0';
+  const ov = document.getElementById('overlay-sol-mant-idx');
+  ov.style.display = 'flex';
+  setTimeout(() => document.getElementById('idx-sol-mant-desc').focus(), 300);
+}
+function cerrarModalSolMantIndex() {
+  document.getElementById('overlay-sol-mant-idx').style.display = 'none';
+}
+document.getElementById('overlay-sol-mant-idx').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModalSolMantIndex();
+});
+async function enviarSolMantIndex() {
+  const desc = document.getElementById('idx-sol-mant-desc').value.trim();
+  if (!desc) {
+    document.getElementById('idx-sol-mant-desc').style.borderColor = '#ef4444';
+    document.getElementById('idx-sol-mant-desc').focus();
+    return;
+  }
+  const btn = document.getElementById('btn-enviar-sol-mant-idx');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  const r = await apiFetch('POST', '/mantenimiento/solicitudes', { descripcion: desc, origen: 'recepcion' });
+  if (r?.ok) {
+    cerrarModalSolMantIndex();
+    toast('✅ Solicitud enviada a mantenimiento');
+  } else {
+    toast(r?.error || 'Error al enviar', false);
+  }
+  btn.disabled = false; btn.textContent = '🔧 Enviar solicitud';
+}
+</script>
+</body>
+</html>
