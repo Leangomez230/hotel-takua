@@ -2050,7 +2050,11 @@ async function showCheckinModal(habId) {
   const pn  = hab?.precio_noche||50000;
 
   // Buscar reserva existente
-  const reserva = await apiFetch('GET', `/habitaciones/${habIdReal}/reserva`);
+  const reserva  = await apiFetch('GET', `/habitaciones/${habIdReal}/reserva`);
+  const tarifasCfg = await apiFetch('GET', '/config/tarifas') || {};
+  const tfNoche = tarifasCfg.precio_noche || pn;
+  const tfHora  = tarifasCfg.precio_hora  || hab?.precio_hora || 20000;
+  const tfDia   = tarifasCfg.precio_dia   || Math.round(pn * 1.5);
 
   // Prellenar con datos de la reserva si existe
   const nombre0  = reserva?.nombre_huesped || '';
@@ -2129,17 +2133,17 @@ async function showCheckinModal(habId) {
       <div>
         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">💰 Tipo de Tarifa</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-          <button class="ci-tarifa-btn" data-tipo="noche" data-monto="${pn}" style="border:2px solid #3b82f6;border-radius:10px;padding:10px;background:#eff6ff;cursor:pointer;text-align:left">
+          <button class="ci-tarifa-btn" data-tipo="noche" data-monto="${tfNoche}" style="border:2px solid #3b82f6;border-radius:10px;padding:10px;background:#eff6ff;cursor:pointer;text-align:left">
             <div style="font-size:10px;color:#64748b;font-weight:600">🌙 Por Noche</div>
-            <div style="font-size:15px;font-weight:800;color:#1d4ed8">${fmt(pn)}</div>
+            <div style="font-size:15px;font-weight:800;color:#1d4ed8">${fmt(tfNoche)}</div>
           </button>
-          <button class="ci-tarifa-btn" data-tipo="hora" data-monto="${hab?.precio_hora||20000}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
+          <button class="ci-tarifa-btn" data-tipo="hora" data-monto="${tfHora}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
             <div style="font-size:10px;color:#64748b;font-weight:600">⏱ Por Horas</div>
-            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(hab?.precio_hora||20000)} <span style="font-size:9px;font-weight:500">hasta 6h</span></div>
+            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(tfHora)} <span style="font-size:9px;font-weight:500">hasta 6h</span></div>
           </button>
-          <button class="ci-tarifa-btn" data-tipo="dia" data-monto="${Math.round(pn*1.5)}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
+          <button class="ci-tarifa-btn" data-tipo="dia" data-monto="${tfDia}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
             <div style="font-size:10px;color:#64748b;font-weight:600">📅 Por Día (24h)</div>
-            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(Math.round(pn*1.5))}</div>
+            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(tfDia)}</div>
           </button>
           <button class="ci-tarifa-btn" data-tipo="personalizado" data-monto="0" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
             <div style="font-size:10px;color:#64748b;font-weight:600">✏️ Personalizado</div>
@@ -2148,7 +2152,7 @@ async function showCheckinModal(habId) {
         </div>
         <div id="ci-monto-manual" style="display:none;margin-bottom:10px">
           <label>Monto personalizado ($)</label>
-          <input type="number" id="ci-tarifa" value="${reserva ? Math.round(total0/noches0) : pn}" placeholder="0">
+          <input type="number" id="ci-tarifa" value="${reserva ? Math.round(total0/noches0) : tfNoche}" placeholder="0">
         </div>
         
 
@@ -2171,7 +2175,7 @@ async function showCheckinModal(habId) {
             </label>
           </div>
           <select id="ci-pago" style="width:100%">
-            ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia']
+            ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia','QR']
               .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
           </select>
           <div id="ci-mixto-wrap" style="display:none;margin-top:8px;background:#f0f9ff;border-radius:8px;padding:10px;font-size:12px">
@@ -2208,7 +2212,7 @@ async function showCheckinModal(habId) {
 
   // Estado del modal
   let ciTipoTarifa = 'noche';
-  let ciTarifaMonto = pn;
+  let ciTarifaMonto = tfNoche;
   let ciMomentoCobro = 'ahora';
   let ciPersonas = 1;
 
@@ -2365,7 +2369,7 @@ function showReservaModal(habId) {
     <div class="form-row">
       <div class="form-col"><label>Tarifa/noche ($)</label><input type="number" id="res-tarifa" value="${pn}"></div>
       <div class="form-col"><label>Método de pago</label>
-        <select id="res-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>
+        <select id="res-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>QR</option></select>
       </div>
     </div>
     <div class="form-col" style="margin-bottom:12px"><label>Notas</label><input type="text" id="res-notas" placeholder="Observaciones..."></div>
@@ -2379,7 +2383,7 @@ function showReservaModal(habId) {
         <input type="number" id="res-senia" value="0" min="0" placeholder="0 = sin seña">
       </div>
       <div class="form-col"><label>Método seña</label>
-        <select id="res-pago-senia"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>
+        <select id="res-pago-senia"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>QR</option></select>
       </div>
     </div>
     <button class="confirm-btn" id="res-confirm" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">📋 Confirmar Reserva</button>
@@ -2509,7 +2513,7 @@ async function editarReserva(id) {
       <div class="form-col"><label>Total ($)</label><input type="number" id="er-total" value="${r.precio_total||0}" oninput="erRecalc()"></div>
       <div class="form-col"><label>Método</label>
         <select id="er-metodo">
-          ${['Efectivo','Tarjeta','Transferencia','Débito','Otro'].map(m=>`<option value="${m}" ${r.metodo_pago===m?'selected':''}>${m}</option>`).join('')}
+          ${['Efectivo','Tarjeta','Transferencia','Débito','QR','Otro'].map(m=>`<option value="${m}" ${r.metodo_pago===m?'selected':''}>${m}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -2520,7 +2524,7 @@ async function editarReserva(id) {
       </div>
       <div class="form-col"><label>Método seña</label>
         <select id="er-pago-senia">
-          ${['Efectivo','Tarjeta','Transferencia','Débito','Otro'].map(m=>`<option value="${m}" ${r.metodo_pago===m?'selected':''}>${m}</option>`).join('')}
+          ${['Efectivo','Tarjeta','Transferencia','Débito','QR','Otro'].map(m=>`<option value="${m}" ${r.metodo_pago===m?'selected':''}>${m}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -2718,7 +2722,7 @@ function showMov(tipo) {
     </div>
     <div class="form-row">
       <div class="form-col"><label>Categoría</label><input type="text" id="nm-cat" value="${esI?'general':'operativo'}"></div>
-      <div class="form-col"><label>Método</label><select id="nm-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select></div>
+      <div class="form-col"><label>Método</label><select id="nm-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>QR</option></select></div>
     </div>
     <button class="confirm-btn" id="nm-ok" style="background:${esI?'linear-gradient(135deg,var(--accent),#0094ff)':'linear-gradient(135deg,#ec4899,#f43f5e)'}">✅ Registrar</button>
   `);
@@ -2804,8 +2808,61 @@ async function renderConfig() {
       </button>
     </div>`;
 
+  // ── Tarifas ──
+  const tarifas = await apiFetch('GET', '/config/tarifas') || {};
+  const tfNoche = tarifas.precio_noche || 50000;
+  const tfHora  = tarifas.precio_hora  || 20000;
+  const tfDia   = tarifas.precio_dia   || 75000;
+
+  const secTarifas = `
+    <div class="section-card" style="margin-top:16px">
+      <div class="sc-head"><h2>💰 Tarifas de Habitaciones</h2></div>
+      <div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#0369a1;line-height:1.6">
+        <strong>¿Cuándo aplica cada tarifa?</strong><br>
+        🌙 <strong>Por Noche</strong>: check-in y check-out en días distintos (estadía estándar).<br>
+        📅 <strong>Por Día (24h)</strong>: el huésped ocupa la habitación por un período de 24 horas corridas.<br>
+        ⏱ <strong>Por Horas</strong>: uso corto de la habitación (hasta 6 horas), sin pernoctar.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;border:1.5px solid #e2e8f0">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">🌙 Por Noche</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:14px;color:#94a3b8">$</span>
+            <input type="number" id="cfg-tf-noche" value="${tfNoche}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:15px;font-weight:700">
+          </div>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;border:1.5px solid #e2e8f0">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">📅 Por Día (24h)</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:14px;color:#94a3b8">$</span>
+            <input type="number" id="cfg-tf-dia" value="${tfDia}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:15px;font-weight:700">
+          </div>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;border:1.5px solid #e2e8f0">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">⏱ Por Horas</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:14px;color:#94a3b8">$</span>
+            <input type="number" id="cfg-tf-hora" value="${tfHora}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:15px;font-weight:700">
+          </div>
+        </div>
+      </div>
+      <button id="btn-guardar-tarifas" class="confirm-btn" style="margin-top:14px;max-width:200px">💾 Guardar Tarifas</button>
+    </div>`;
+
+  document.getElementById('content').innerHTML += secTarifas;
+
   // Botón nuevo usuario
   document.getElementById('btn-nuser').addEventListener('click', () => abrirModalUsuario(null));
+
+  // Guardar tarifas
+  document.getElementById('btn-guardar-tarifas').addEventListener('click', async () => {
+    const precio_noche = Number(document.getElementById('cfg-tf-noche').value) || 0;
+    const precio_dia   = Number(document.getElementById('cfg-tf-dia').value)   || 0;
+    const precio_hora  = Number(document.getElementById('cfg-tf-hora').value)  || 0;
+    const r = await apiFetch('POST', '/config/tarifas', { precio_noche, precio_dia, precio_hora });
+    if (r?.ok) toast('Tarifas guardadas ✓');
+    else toast(r?.error || 'Error al guardar', false);
+  });
 
   // Botón enviar notificación broadcast (solo admin ve esta sección)
   document.getElementById('btn-enviar-notif-broadcast')?.addEventListener('click', async () => {
