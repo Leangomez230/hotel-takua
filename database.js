@@ -487,6 +487,19 @@ try {
   `);
   console.log('✅ Tabla notificaciones_sistema lista');
 
+  // Migración: tabla config_hotel
+  await query(`
+    CREATE TABLE IF NOT EXISTS config_hotel (
+      clave TEXT PRIMARY KEY,
+      valor TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  // Insertar tarifas por defecto si no existen
+  await query(`INSERT INTO config_hotel (clave,valor) VALUES ('precio_noche','50000') ON CONFLICT DO NOTHING`);
+  await query(`INSERT INTO config_hotel (clave,valor) VALUES ('precio_hora','20000') ON CONFLICT DO NOTHING`);
+  await query(`INSERT INTO config_hotel (clave,valor) VALUES ('precio_dia','75000') ON CONFLICT DO NOTHING`);
+
   // Migración: cantidad_personas y momento_cobro en reservas
   await query('ALTER TABLE reservas ADD COLUMN IF NOT EXISTS cantidad_personas INTEGER DEFAULT 1');
   await query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS momento_cobro TEXT DEFAULT 'ahora'");
