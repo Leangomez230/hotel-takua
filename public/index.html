@@ -534,8 +534,10 @@ function toast(msg, ok=true) {
  
 // ── MODAL ──
 // Usamos un solo modal y vinculamos eventos DESPUÉS de inyectar HTML
-function openModal(html) {
-  document.getElementById('modal-box').innerHTML = html;
+function openModal(html, opts={}) {
+  const box = document.getElementById('modal-box');
+  box.innerHTML = html;
+  box.style.maxWidth = opts.wide ? '860px' : '';
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal() {
@@ -2072,83 +2074,208 @@ async function showCheckinModal(habId) {
     </div>` : '';
 
   openModal(`
-    <div class="modal-hd"><h3>Check-in — Hab. ${hab?.numero} Ala ${hab?.ala}</h3>
+    <div class="modal-hd">
+      <h3>Ocupar — Habitación #${hab?.numero}</h3>
       <button class="modal-close" id="ci-close">✕</button>
     </div>
     ${bannerReserva}
-    <div class="form-row">
-      <div class="form-col"><label>Tipo doc.</label>
-        <select id="ci-tdoc"><option>DNI</option><option>Pasaporte</option><option>Carnet</option></select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+      <!-- COLUMNA IZQUIERDA: Huésped -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👤 Huésped</div>
+        <div class="form-row">
+          <div class="form-col"><label>Tipo Documento</label>
+            <select id="ci-tdoc" style="width:100%">
+              <option>DNI</option><option>Pasaporte</option><option>Carnet</option>
+            </select>
+          </div>
+          <div class="form-col"><label>N° Documento</label>
+            <input type="text" id="ci-doc" placeholder="12345678" value="${doc0}">
+          </div>
+        </div>
+        <div id="ci-ginfo" style="display:none" class="info-box"></div>
+        <div class="form-row">
+          <div class="form-col"><label>Nombre Completo</label>
+            <input type="text" id="ci-nombre" placeholder="Juan García" value="${nombre0}">
+          </div>
+          <div class="form-col"><label>Celular (Opcional)</label>
+            <input type="text" id="ci-tel" placeholder="+54 9 11...">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Entrada</label>
+            <input type="datetime-local" id="ci-in" value="${entrada0}">
+          </div>
+          <div class="form-col"><label>Salida</label>
+            <input type="datetime-local" id="ci-out" value="${salida0}">
+          </div>
+        </div>
+        <div class="form-row" style="align-items:center">
+          <div class="form-col"><label>Cantidad de Personas</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+              <button id="ci-pers-minus" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">−</button>
+              <span id="ci-pers" style="font-size:18px;font-weight:800;min-width:24px;text-align:center">1</span>
+              <button id="ci-pers-plus" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">+</button>
+            </div>
+          </div>
+          <div class="form-col"><label>Notas / Cochera</label>
+            <input type="text" id="ci-notas" placeholder="Ej: ART-158, solicitudes...">
+          </div>
+        </div>
       </div>
-      <div class="form-col"><label>N° Documento</label>
-        <input type="text" id="ci-doc" placeholder="12345678" value="${doc0}">
+
+      <!-- COLUMNA DERECHA: Tarifa y Cobro -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">💰 Tipo de Tarifa</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <button class="ci-tarifa-btn" data-tipo="noche" data-monto="${pn}" style="border:2px solid #3b82f6;border-radius:10px;padding:10px;background:#eff6ff;cursor:pointer;text-align:left">
+            <div style="font-size:10px;color:#64748b;font-weight:600">🌙 Por Noche</div>
+            <div style="font-size:15px;font-weight:800;color:#1d4ed8">${fmt(pn)}</div>
+          </button>
+          <button class="ci-tarifa-btn" data-tipo="hora" data-monto="${hab?.precio_hora||20000}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
+            <div style="font-size:10px;color:#64748b;font-weight:600">⏱ Por Horas</div>
+            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(hab?.precio_hora||20000)} <span style="font-size:9px;font-weight:500">hasta 6h</span></div>
+          </button>
+          <button class="ci-tarifa-btn" data-tipo="dia" data-monto="${Math.round(pn*1.5)}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
+            <div style="font-size:10px;color:#64748b;font-weight:600">📅 Por Día (24h)</div>
+            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(Math.round(pn*1.5))}</div>
+          </button>
+          <button class="ci-tarifa-btn" data-tipo="personalizado" data-monto="0" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
+            <div style="font-size:10px;color:#64748b;font-weight:600">✏️ Personalizado</div>
+            <div style="font-size:12px;color:#94a3b8;font-weight:500">Monto manual</div>
+          </button>
+        </div>
+        <div id="ci-monto-manual" style="display:none;margin-bottom:10px">
+          <label>Monto personalizado ($)</label>
+          <input type="number" id="ci-tarifa" value="${reserva ? Math.round(total0/noches0) : pn}" placeholder="0">
+        </div>
+        
+
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⏰ Momento de Cobro</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <button id="ci-cobro-ahora" style="border:2px solid #16a34a;border-radius:10px;padding:10px 8px;background:#f0fdf4;cursor:pointer;font-size:13px;font-weight:700;color:#15803d">
+            💳 Paga Ahora
+          </button>
+          <button id="ci-cobro-salir" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 8px;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;color:#64748b">
+            🕐 Paga al Salir
+          </button>
+        </div>
+
+        <div id="ci-metodo-wrap" style="margin-bottom:12px">
+          <label>Método de Pago</label>
+          <select id="ci-pago" style="width:100%">
+            ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia','Pago Mixto']
+              .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="background:#f8fafc;border-radius:10px;padding:12px;font-size:13px">
+          <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:4px">
+            <span>Habitación:</span><span id="ci-tot">${fmt(total0)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:8px">
+            <span>Noches / Unidades:</span><span id="ci-n">${noches0}</span>
+          </div>
+          ${senia0>0?`<div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:8px"><span>Seña cobrada:</span><span>- ${fmt(senia0)}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;border-top:1.5px solid #e2e8f0;padding-top:8px;color:#1d4ed8">
+            <span>TOTAL</span><span id="ci-saldo">${fmt(saldo0)}</span>
+          </div>
+        </div>
       </div>
     </div>
-    <div id="ci-ginfo" style="display:none" class="info-box"></div>
-    <div class="form-row">
-      <div class="form-col"><label>Nombre completo</label>
-        <input type="text" id="ci-nombre" placeholder="Juan García" value="${nombre0}">
-      </div>
-      <div class="form-col"><label>Teléfono</label>
-        <input type="text" id="ci-tel" placeholder="+54 9 11...">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-col"><label>Entrada</label>
-        <input type="datetime-local" id="ci-in" value="${entrada0}">
-      </div>
-      <div class="form-col"><label>Salida</label>
-        <input type="datetime-local" id="ci-out" value="${salida0}">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-col"><label>Tarifa / noche ($)</label>
-        <input type="number" id="ci-tarifa" value="${reserva ? Math.round(total0/noches0) : pn}">
-      </div>
-      <div class="form-col"><label>Método de pago</label>
-        <select id="ci-pago">
-          ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia']
-            .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    <div class="form-col" style="margin-bottom:12px"><label>Notas (patente, etc.)</label>
-      <input type="text" id="ci-notas" placeholder="ART-158, solicitudes...">
-    </div>
-    <div class="total-box">
-      <div class="total-row"><span>Noches:</span><span id="ci-n">${noches0}</span></div>
-      <div class="total-row"><span>Total estadía:</span><span id="ci-tot">${fmt(total0)}</span></div>
-      ${senia0>0?`<div class="total-row"><span style="color:#16a34a">Seña cobrada:</span><span style="color:#16a34a">- ${fmt(senia0)}</span></div>`:''}
-      <div class="total-row big"><span>A cobrar ahora:</span><span id="ci-saldo">${fmt(saldo0)}</span></div>
-    </div>
-    <button class="confirm-btn" id="ci-confirm">✅ Confirmar Check-in</button>
-  `);
+
+    <button class="confirm-btn" id="ci-confirm" style="margin-top:16px">✅ Confirmar y Cobrar</button>
+  `, { wide: true });
+
+  // Estado del modal
+  let ciTipoTarifa = 'noche';
+  let ciTarifaMonto = pn;
+  let ciMomentoCobro = 'ahora';
+  let ciPersonas = 1;
+
+  const getInnOut = () => {
+    return {
+      inn: document.getElementById('ci-in')?.value,
+      out: document.getElementById('ci-out')?.value
+    };
+  };
 
   const recalc = () => {
-    const inn = document.getElementById('ci-in')?.value;
-    const out = document.getElementById('ci-out')?.value;
-    const tar = parseMonto(document.getElementById('ci-tarifa')?.value);
-    if (!inn||!out) return;
-    const n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
-    const total = n*tar;
+    const { inn, out } = getInnOut();
+    if (!inn || !out) return;
+    let n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
+    if (ciTipoTarifa === 'hora') n = 1;
+    if (ciTipoTarifa === 'dia')  n = 1;
+    const total = n * ciTarifaMonto;
     const saldo = Math.max(0, total - senia0);
     document.getElementById('ci-n').textContent   = n;
     document.getElementById('ci-tot').textContent = fmtExacto(total);
     if (document.getElementById('ci-saldo'))
-      document.getElementById('ci-saldo').textContent = fmtExacto(saldo);
+      document.getElementById('ci-saldo').textContent = ciMomentoCobro === 'ahora' ? fmtExacto(saldo) : '$ 0 (paga al salir)';
   };
-  ['ci-in','ci-out','ci-tarifa'].forEach(id => document.getElementById(id)?.addEventListener('input',recalc));
 
+  // Botones tipo tarifa
+  document.querySelectorAll('.ci-tarifa-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      ciTipoTarifa  = btn.dataset.tipo;
+      ciTarifaMonto = Number(btn.dataset.monto);
+      document.querySelectorAll('.ci-tarifa-btn').forEach(b => {
+        b.style.borderColor = '#e2e8f0'; b.style.background = '#f8fafc';
+        b.querySelector('div:last-child').style.color = '#374151';
+      });
+      btn.style.borderColor = '#3b82f6'; btn.style.background = '#eff6ff';
+      btn.querySelector('div:last-child').style.color = '#1d4ed8';
+      const wrap = document.getElementById('ci-monto-manual');
+      const inp  = document.getElementById('ci-tarifa');
+      if (ciTipoTarifa === 'personalizado') {
+        wrap.style.display = 'block';
+        inp.addEventListener('input', () => { ciTarifaMonto = parseMonto(inp.value)||0; recalc(); });
+      } else {
+        wrap.style.display = 'none';
+      }
+      recalc();
+    });
+  });
+
+  // Momento de cobro
+  document.getElementById('ci-cobro-ahora').addEventListener('click', () => {
+    ciMomentoCobro = 'ahora';
+    document.getElementById('ci-cobro-ahora').style.cssText += 'border-color:#16a34a;background:#f0fdf4;color:#15803d';
+    document.getElementById('ci-cobro-salir').style.cssText += 'border-color:#e2e8f0;background:#f8fafc;color:#64748b';
+    document.getElementById('ci-metodo-wrap').style.display = 'block';
+    recalc();
+  });
+  document.getElementById('ci-cobro-salir').addEventListener('click', () => {
+    ciMomentoCobro = 'salir';
+    document.getElementById('ci-cobro-salir').style.cssText += 'border-color:#f59e0b;background:#fffbeb;color:#b45309';
+    document.getElementById('ci-cobro-ahora').style.cssText += 'border-color:#e2e8f0;background:#f8fafc;color:#64748b';
+    document.getElementById('ci-metodo-wrap').style.display = 'none';
+    recalc();
+  });
+
+  // Personas +/-
+  document.getElementById('ci-pers-minus').addEventListener('click', () => {
+    if (ciPersonas > 1) { ciPersonas--; document.getElementById('ci-pers').textContent = ciPersonas; }
+  });
+  document.getElementById('ci-pers-plus').addEventListener('click', () => {
+    ciPersonas++; document.getElementById('ci-pers').textContent = ciPersonas;
+  });
+
+  // Fechas
+  ['ci-in','ci-out'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
+
+  // Autocompletado huésped por documento
   document.getElementById('ci-doc').addEventListener('input', async () => {
     const doc = document.getElementById('ci-doc').value;
-    if (doc.length<6) return;
-    const h = await apiFetch('GET',`/huespedes/doc/${doc}`);
+    if (doc.length < 6) return;
+    const h = await apiFetch('GET', `/huespedes/doc/${doc}`);
     if (h) {
       document.getElementById('ci-nombre').value = h.nombre;
-      document.getElementById('ci-tel').value    = h.telefono||'';
+      document.getElementById('ci-tel').value    = h.telefono || '';
       const gi = document.getElementById('ci-ginfo');
-      gi.style.display='block';
-      gi.textContent=`✅ Huésped encontrado — ${h.visitas} visitas previas`;
+      gi.style.display = 'block';
+      gi.textContent = `✅ Huésped encontrado — ${h.visitas} visitas previas`;
     }
   });
 
@@ -2157,30 +2284,34 @@ async function showCheckinModal(habId) {
   document.getElementById('ci-confirm').addEventListener('click', async () => {
     const nombre = document.getElementById('ci-nombre').value.trim();
     if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
-    const noches = parseInt(document.getElementById('ci-n').textContent)||1;
-    const tarifa = parseMonto(document.getElementById('ci-tarifa').value);
-    const total  = noches * tarifa;
-    const saldo  = Math.max(0, total - senia0);
+    const { inn, out } = getInnOut();
+    let noches = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
+    if (ciTipoTarifa === 'hora' || ciTipoTarifa === 'dia') noches = 1;
+    const total = noches * ciTarifaMonto;
+    const saldo = ciMomentoCobro === 'ahora' ? Math.max(0, total - senia0) : 0;
     const body = {
-      habitacion_id: habIdReal,
-      documento:     document.getElementById('ci-doc').value,
-      tipo_doc:      document.getElementById('ci-tdoc').value,
+      habitacion_id:     habIdReal,
+      documento:         document.getElementById('ci-doc').value,
+      tipo_doc:          document.getElementById('ci-tdoc').value,
       nombre,
-      telefono:      document.getElementById('ci-tel').value,
-      entrada:       document.getElementById('ci-in').value,
-      salida:        document.getElementById('ci-out').value,
-      noches, precio_total: total,
-      metodo_pago:   document.getElementById('ci-pago').value,
-      notas:         document.getElementById('ci-notas').value,
+      telefono:          document.getElementById('ci-tel').value,
+      entrada:           inn,
+      salida:            out,
+      noches,
+      precio_total:      total,
+      metodo_pago:       ciMomentoCobro === 'ahora' ? (document.getElementById('ci-pago')?.value || 'Efectivo') : 'Paga al Salir',
+      notas:             document.getElementById('ci-notas').value,
+      cantidad_personas: ciPersonas,
+      momento_cobro:     ciMomentoCobro,
+      tipo_tarifa:       ciTipoTarifa,
     };
-    // Si viene de reserva existente, vincular y cobrar saldo
     if (reserva) {
       body.reserva_id    = reserva.id;
       body.saldo_cobrado = saldo;
     }
     const r = await apiFetch('POST', '/checkin', body);
     if (r?.ok) { toast('Check-in realizado'); closeModal(); await refreshHabs(); }
-    else toast(r?.error||'Error en check-in', false);
+    else toast(r?.error || 'Error en check-in', false);
   });
 }
  
