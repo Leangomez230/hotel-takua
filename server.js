@@ -417,6 +417,34 @@ app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
   } catch(e) { console.error('CHECKIN ERROR:', e); res.status(500).json({ error: 'Error en check-in: ' + e.message }); }
 });
 
+// ── CONFIG TARIFAS ──────────────────────────────────────────────────
+app.get('/api/config/tarifas', auth, async (req, res) => {
+  try {
+    const rows = await db.getAll("SELECT clave, valor FROM config_hotel WHERE clave IN ('precio_noche','precio_hora','precio_dia')");
+    const cfg = {};
+    rows.forEach(r => { cfg[r.clave] = Number(r.valor); });
+    res.json(cfg);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/config/tarifas', auth, adminOnly, async (req, res) => {
+  try {
+    const { precio_noche, precio_dia, precio_hora } = req.body;
+    const items = [['precio_noche', precio_noche], ['precio_dia', precio_dia], ['precio_hora', precio_hora]];
+    for (const [clave, valor] of items) {
+      if (valor !== undefined) {
+        await db.query(
+          `INSERT INTO config_hotel (clave,valor,updated_at) VALUES ($1,$2,NOW())
+           ON CONFLICT (clave) DO UPDATE SET valor=$2, updated_at=NOW()`,
+          [clave, String(valor)]
+        );
+      }
+    }
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_TARIFAS', `Noche:${precio_noche} Hora:${precio_hora} Día:${precio_dia}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── CHECK-OUT ────────────────────────────────────────────────────────
 app.post('/api/checkout/:habitacion_id', auth, adminRecepMucama, async (req, res) => {
   try {
