@@ -2163,11 +2163,29 @@ async function showCheckinModal(habId) {
         </div>
 
         <div id="ci-metodo-wrap" style="margin-bottom:12px">
-          <label>Método de Pago</label>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="margin:0">Método de Pago <span style="color:#ef4444">*</span></label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748b;cursor:pointer">
+              <input type="checkbox" id="ci-mixto" style="width:15px;height:15px;cursor:pointer;accent-color:#3b82f6">
+              Pago Mixto
+            </label>
+          </div>
           <select id="ci-pago" style="width:100%">
-            ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia','Pago Mixto']
+            ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia']
               .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
           </select>
+          <div id="ci-mixto-wrap" style="display:none;margin-top:8px;background:#f0f9ff;border-radius:8px;padding:10px;font-size:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <label style="font-size:11px">Monto en Efectivo</label>
+                <input type="number" id="ci-mixto-ef" placeholder="$ 0" style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px">Monto en Tarjeta/Transf.</label>
+                <input type="number" id="ci-mixto-tg" placeholder="$ 0" style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px">
+              </div>
+            </div>
+          </div>
         </div>
 
         <div style="background:#f8fafc;border-radius:10px;padding:12px;font-size:13px">
@@ -2262,6 +2280,11 @@ async function showCheckinModal(habId) {
     ciPersonas++; document.getElementById('ci-pers').textContent = ciPersonas;
   });
 
+  // Pago mixto toggle
+  document.getElementById('ci-mixto').addEventListener('change', function() {
+    document.getElementById('ci-mixto-wrap').style.display = this.checked ? 'block' : 'none';
+  });
+
   // Fechas
   ['ci-in','ci-out'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
 
@@ -2299,7 +2322,11 @@ async function showCheckinModal(habId) {
       salida:            out,
       noches,
       precio_total:      total,
-      metodo_pago:       ciMomentoCobro === 'ahora' ? (document.getElementById('ci-pago')?.value || 'Efectivo') : 'Paga al Salir',
+      metodo_pago:       ciMomentoCobro === 'ahora'
+        ? (document.getElementById('ci-mixto')?.checked
+            ? `Pago Mixto (Ef: ${fmt(Number(document.getElementById('ci-mixto-ef')?.value)||0)} / Tg: ${fmt(Number(document.getElementById('ci-mixto-tg')?.value)||0)})`
+            : (document.getElementById('ci-pago')?.value || 'Efectivo'))
+        : 'Paga al Salir',
       notas:             document.getElementById('ci-notas').value,
       cantidad_personas: ciPersonas,
       momento_cobro:     ciMomentoCobro,
