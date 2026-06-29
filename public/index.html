@@ -839,15 +839,33 @@ function buildCard(h) {
           📅 ${fechaEnt}${nombreCorto?' · '+nombreCorto:''}
         </div>` : ''}`;
     } else {
+      // Separar fecha y hora para mostrarlas en dos líneas
+      const fmtFechaHora = (dt) => {
+        if (!dt) return {fecha:'—', hora:''};
+        const d = new Date(dt);
+        const fecha = d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+        const hora  = d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+        return {fecha, hora};
+      };
+      const entObj = r?.entrada ? fmtFechaHora(r.entrada) : {fecha:'—',hora:''};
+      const salObj = r?.salida  ? fmtFechaHora(r.salida)  : {fecha:'—',hora:''};
+
       body = `
-        ${nombre ? `<div class="rguest" style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${nombre}</div>` : ''}
-        ${(r || esReservada) ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:4px;font-size:10px">
-          <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">ENTRADA</div>
-          <div style="color:#94a3b8;font-weight:600;letter-spacing:.03em">SALIDA</div>
-          <div style="color:#1e293b;font-weight:700;font-size:10px">${entrada}</div>
-          <div style="color:#1e293b;font-weight:700;font-size:10px">${salida}</div>
+        ${nombre ? `<div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:6px;display:flex;align-items:center;gap:4px">👤 ${nombre}</div>` : ''}
+        ${(r || esReservada) ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:2px">
+          <div style="font-size:9px;font-weight:800;color:#3b82f6;letter-spacing:.06em;text-transform:uppercase">ENTRADA</div>
+          <div style="font-size:9px;font-weight:800;color:#ef4444;letter-spacing:.06em;text-transform:uppercase">SALIDA</div>
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#1e293b;line-height:1.2">${entObj.fecha}</div>
+            <div style="font-size:10px;color:#64748b;font-weight:600">${entObj.hora}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#ef4444;line-height:1.2">${salObj.fecha}</div>
+            <div style="font-size:10px;color:#94a3b8;font-weight:600">${salObj.hora}</div>
+          </div>
         </div>` : ''}
-        ${patente ? `<div style="margin-top:5px;background:#f1f5f9;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;color:#475569;display:inline-flex;align-items:center;gap:4px">🚗 ${patente}</div>` : ''}
+        ${patente ? `<div style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px;background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:#92400e">🚗 ${patente}</div>` : ''}
         ${!r && !nombre && !esReservada ? `<div class="ravail"><div class="ravail-circle"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L11.5 20L22 9" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>` : ''}
       `;
     }
