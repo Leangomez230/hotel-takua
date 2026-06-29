@@ -99,7 +99,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .ala-label{font-size:11px;font-weight:700;color:#64748b;letter-spacing:2px;text-transform:uppercase;padding:8px 0;border-bottom:1px solid #f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .ala-tag{background:#1a2035;color:#fff;font-size:10px;border-radius:6px;padding:2px 8px}
 .room-grid{display:grid;grid-template-columns:repeat(var(--room-cols),1fr);gap:10px;margin-bottom:18px}
-.rcard{border-radius:14px;padding:10px 8px 8px;border:2px solid transparent;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative;min-height:110px;display:flex;flex-direction:column;box-shadow:0 4px 16px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.07)}.rcard:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.15),0 2px 6px rgba(0,0,0,.08)}
+.rcard{border-radius:14px;padding:10px 8px 30px;border:2px solid transparent;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative;min-height:110px;display:flex;flex-direction:column;box-shadow:0 4px 16px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.07)}.rcard:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.15),0 2px 6px rgba(0,0,0,.08)}
 .rcard:active{transform:scale(.96)}
 .rcard.libre{background:#f0fdf4;border-color:#bbf7d0}
 .rcard.ocupada{background:#fff5f5;border-color:#fca5a5}
@@ -1344,7 +1344,28 @@ function showHabModal(hab) {
       <span style="font-weight:800;color:${s.color||'#374151'};font-size:15px">${s.icon} ${s.label}</span>
       <span style="color:#64748b;font-size:12px">· ${tipoLabel} · ${hab.capacidad} pers.</span>
     </div>
-    ${hab.nota&&!['libre','lista','limpia'].includes(hab.status)?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:''}
+    ${['ocupada','en_limpieza','limpia'].includes(hab.status) && hab.reserva_activa ? (() => {
+      const r = hab.reserva_activa;
+      const fmtDt = dt => {
+        const d = new Date(dt);
+        return d.toLocaleDateString('es-AR',{day:'2-digit',month:'short'}) + ', ' + d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+      };
+      const saldoPend = r.saldo_pendiente || 0;
+      return `
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
+          <div style="font-size:15px;font-weight:800;color:#1e293b;margin-bottom:4px">${r.nombre_huesped}</div>
+          <div style="display:inline-flex;align-items:center;gap:5px;background:${saldoPend>0?'#fef9c3':'#dcfce7'};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:${saldoPend>0?'#92400e':'#166534'};margin-bottom:10px">
+            ${saldoPend>0 ? '⚠️ Saldo pendiente: '+fmt(saldoPend) : '✅ Sin pagos pendientes'}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;text-align:center">
+            <div style="font-size:10px;font-weight:800;color:#3b82f6;letter-spacing:.06em;text-transform:uppercase">ENTRADA</div>
+            <div style="font-size:10px;font-weight:800;color:#ef4444;letter-spacing:.06em;text-transform:uppercase">SALIDA</div>
+            <div style="font-size:12px;font-weight:700;color:#1e293b">${fmtDt(r.entrada)}</div>
+            <div style="font-size:12px;font-weight:700;color:#ef4444">${fmtDt(r.salida)}</div>
+          </div>
+          ${r.notas?`<div style="margin-top:8px;font-size:11px;color:#64748b;background:#f8fafc;border-radius:8px;padding:4px 10px">📝 ${r.notas}</div>`:''}
+        </div>`;
+    })() : (hab.nota&&!['libre','lista'].includes(hab.status)?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:'')}
  
     ${tipoCamaHTML}
  
