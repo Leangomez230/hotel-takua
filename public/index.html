@@ -128,7 +128,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rnum{font-size:26px;font-weight:900;color:#1a2035;line-height:1;margin-bottom:2px}
 .rname{font-size:10px;font-weight:700;color:#64748b;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rtipo{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
-.qr-btn{display:flex;align-items:center;gap:3px;background:rgba(0,0,0,.06);border:none;border-radius:6px;padding:3px 7px;font-size:9px;font-weight:700;color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:6px;width:fit-content}
+.qr-btn{display:flex;align-items:center;gap:3px;background:rgba(0,0,0,.06);border:none;border-radius:6px;padding:3px 7px;font-size:9px;font-weight:700;color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif;position:absolute;bottom:8px;left:8px}
 .qr-btn:hover{background:rgba(0,0,0,.12);color:#1a2035}
  
 /* ALERTA SOLICITUD HUÉSPED */
@@ -851,18 +851,18 @@ function buildCard(h) {
       const salObj = r?.salida  ? fmtFechaHora(r.salida)  : {fecha:'—',hora:''};
 
       body = `
-        ${nombre ? `<div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:6px;display:flex;align-items:center;gap:4px">👤 ${nombre}</div>` : ''}
+        ${nombre ? `<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;display:flex;align-items:center;gap:4px">👤 ${nombre}</div>` : ''}
         ${(r || esReservada) ? `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:2px">
-          <div style="font-size:9px;font-weight:800;color:#3b82f6;letter-spacing:.06em;text-transform:uppercase">ENTRADA</div>
-          <div style="font-size:9px;font-weight:800;color:#ef4444;letter-spacing:.06em;text-transform:uppercase">SALIDA</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:4px">
+          <div style="font-size:10px;font-weight:800;color:#3b82f6;letter-spacing:.06em;text-transform:uppercase">ENTRADA</div>
+          <div style="font-size:10px;font-weight:800;color:#ef4444;letter-spacing:.06em;text-transform:uppercase">SALIDA</div>
           <div>
-            <div style="font-size:11px;font-weight:800;color:#1e293b;line-height:1.2">${entObj.fecha}</div>
-            <div style="font-size:10px;color:#64748b;font-weight:600">${entObj.hora}</div>
+            <div style="font-size:13px;font-weight:800;color:#1e293b;line-height:1.2">${entObj.fecha}</div>
+            <div style="font-size:11px;color:#64748b;font-weight:600">${entObj.hora}</div>
           </div>
           <div>
-            <div style="font-size:11px;font-weight:800;color:#ef4444;line-height:1.2">${salObj.fecha}</div>
-            <div style="font-size:10px;color:#94a3b8;font-weight:600">${salObj.hora}</div>
+            <div style="font-size:13px;font-weight:800;color:#ef4444;line-height:1.2">${salObj.fecha}</div>
+            <div style="font-size:11px;color:#94a3b8;font-weight:600">${salObj.hora}</div>
           </div>
         </div>` : ''}
         ${patente ? `<div style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px;background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:#92400e">🚗 ${patente}</div>` : ''}
