@@ -1965,6 +1965,7 @@ function abrirModalCobrar(cmdId){
   const cmd=S.comandas.find(c=>c.id===cmdId); if(!cmd) return;
   S.selCmdId=cmdId;
   _extraItems=[];
+  _mixtoFilas=[];
   const mesa=S.mesas.find(m=>m.id===cmd.mesa_id);
   document.getElementById('m-cobrar-title').textContent=`Cobrar — ${mesa?mesaLabel(mesa):`Mesa ${cmd.mesa_id}`}`;
   S._cobrarBaseTotal=Number(cmd.total)||0;
@@ -2039,16 +2040,46 @@ function renderModalCobrar(cmd){
 
     <div style="margin-bottom:16px">
       <label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:8px">Método de pago</label>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px" id="cob-metodos-grid">
         ${METODOS.map((m,i)=>`<button id="mpbtn-${i}" onclick="selMetodo(${i})"
           style="padding:10px;border-radius:10px;border:1.5px solid ${i===0?'#3b82f6':'#e2e8f0'};
           background:${i===0?'#eff6ff':'#fff'};font-size:12px;font-weight:600;
           color:${i===0?'#3b82f6':'#475569'};cursor:pointer">
           ${METODO_ICONS[m]} ${m}</button>`).join('')}
       </div>
+
+      <!-- Checkbox pago mixto -->
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;user-select:none">
+        <input type="checkbox" id="cob-mixto-chk" onchange="togglePagoMixto(${totalFinal})"
+          style="width:17px;height:17px;accent-color:#7c3aed;cursor:pointer">
+        <span style="font-size:13px;font-weight:700;color:#7c3aed">Pago Mixto</span>
+        <span style="font-size:11px;color:#94a3b8">(varios métodos)</span>
+      </label>
+
+      <!-- Panel pago mixto (oculto por defecto) -->
+      <div id="cob-mixto-panel" style="display:none;margin-top:10px;background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Distribución del pago</div>
+        <div id="cob-mixto-rows"></div>
+        <button onclick="agregarFilaMixto()" style="margin-top:8px;width:100%;background:#ede9fe;border:1.5px dashed #a78bfa;border-radius:8px;color:#7c3aed;font-weight:700;font-size:13px;padding:8px;cursor:pointer">
+          + Agregar método
+        </button>
+        <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid #c4b5fd">
+          <span style="font-size:13px;font-weight:700;color:#7c3aed">Pagado</span>
+          <span id="cob-mixto-suma" style="font-size:15px;font-weight:900;color:#7c3aed">${fmt(0)}</span>
+        </div>
+        <div id="cob-mixto-resto-row" style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-size:12px;color:#94a3b8">Restante</span>
+          <span id="cob-mixto-resto" style="font-size:13px;font-weight:700;color:#ef4444">${fmt(totalFinal)}</span>
+        </div>
+        <!-- Vuelto efectivo en mixto -->
+        <div id="cob-mixto-vuelto-row" style="display:none;display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-size:12px;color:#166534;font-weight:600">Vuelto efectivo</span>
+          <span id="cob-mixto-vuelto" style="font-size:13px;font-weight:700;color:#16a34a">${fmt(0)}</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Box efectivo: monto recibido + vuelto -->
+    <!-- Box efectivo simple (método único) -->
     <div id="cob-efectivo-box" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:14px">
       <label style="font-size:13px;font-weight:700;color:#166534;display:block;margin-bottom:8px">💵 Monto recibido</label>
       <input type="number" id="cob-recibido" placeholder="$ Ingresá el monto" min="0"
@@ -2089,7 +2120,13 @@ function quitarExtra(idx){
 function updCobrarTotalDinamico(base){
   const d=Number(document.getElementById('cob-desc')?.value)||0;
   const extra=_extraItems.reduce((s,i)=>s+i.precio,0);
-  document.getElementById('cob-final').textContent=fmt((base+extra)*(1-d/100));
+  const total=(base+extra)*(1-d/100);
+  document.getElementById('cob-final').textContent=fmt(total);
+  // Actualizar vuelto si es efectivo simple
+  const metodo=METODOS[S._metodoIdx||0];
+  if(metodo==='Efectivo') updVuelto(total);
+  // Actualizar panel mixto si está activo
+  if(document.getElementById('cob-mixto-chk')?.checked) actualizarMixto(total);
 }
 
 function selMetodo(idx){
@@ -2101,9 +2138,135 @@ function selMetodo(idx){
     b.style.background=i===idx?'#eff6ff':'#fff';
     b.style.color=i===idx?'#3b82f6':'#475569';
   });
+  const mixtoOn=document.getElementById('cob-mixto-chk')?.checked;
+  if(mixtoOn) return; // en mixto los botones son visuales pero no cambian el box efectivo
   const box=document.getElementById('cob-efectivo-box');
   if(box) box.style.display=METODOS[idx]==='Efectivo'?'':'none';
 }
+
+// ── PAGO MIXTO ──────────────────────────────────────────────────────
+
+var _mixtoFilas = []; // [{metodo, monto}]
+
+function togglePagoMixto(totalFinal){
+  const on = document.getElementById('cob-mixto-chk')?.checked;
+  const panel = document.getElementById('cob-mixto-panel');
+  const boxEfectivo = document.getElementById('cob-efectivo-box');
+  const metosGrid = document.getElementById('cob-metodos-grid');
+  if(!panel) return;
+  if(on){
+    panel.style.display = 'block';
+    boxEfectivo.style.display = 'none';
+    // atenuar grid de métodos (solo referencia visual)
+    if(metosGrid) metosGrid.style.opacity = '0.4';
+    _mixtoFilas = [];
+    // Agregar 2 filas iniciales
+    agregarFilaMixto();
+    agregarFilaMixto();
+    actualizarMixto(totalFinal);
+  } else {
+    panel.style.display = 'none';
+    _mixtoFilas = [];
+    if(metosGrid) metosGrid.style.opacity = '1';
+    // Mostrar box efectivo si el método seleccionado es efectivo
+    if(METODOS[S._metodoIdx||0]==='Efectivo') boxEfectivo.style.display='';
+    else boxEfectivo.style.display='none';
+  }
+}
+
+function agregarFilaMixto(){
+  const optionsHTML = METODOS.map(m=>`<option value="${m}">${METODO_ICONS[m]} ${m}</option>`).join('');
+  const idx = _mixtoFilas.length;
+  _mixtoFilas.push({metodo: METODOS[0], monto: 0});
+  const cont = document.getElementById('cob-mixto-rows');
+  if(!cont) return;
+  const fila = document.createElement('div');
+  fila.id = `mixto-fila-${idx}`;
+  fila.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:8px';
+  fila.innerHTML = `
+    <select onchange="updFilaMixto(${idx},'metodo',this.value)"
+      style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #c4b5fd;font-size:13px;background:#fff;font-family:inherit">
+      ${optionsHTML}
+    </select>
+    <input type="number" placeholder="$ Monto" min="0"
+      oninput="updFilaMixto(${idx},'monto',this.value)"
+      style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #c4b5fd;font-size:13px">
+    <button onclick="quitarFilaMixto(${idx})"
+      style="background:#fee2e2;border:none;border-radius:8px;color:#dc2626;font-size:14px;font-weight:700;padding:6px 10px;cursor:pointer;flex-shrink:0">✕</button>`;
+  cont.appendChild(fila);
+}
+
+function updFilaMixto(idx, campo, valor){
+  if(!_mixtoFilas[idx]) return;
+  _mixtoFilas[idx][campo] = campo==='monto' ? (parseFloat(valor)||0) : valor;
+  const totalFinal = getTotalFinalActual();
+  actualizarMixto(totalFinal);
+}
+
+function quitarFilaMixto(idx){
+  _mixtoFilas.splice(idx,1);
+  // Re-render filas
+  const cont = document.getElementById('cob-mixto-rows');
+  if(!cont) return;
+  cont.innerHTML='';
+  const filasBak = [..._mixtoFilas];
+  _mixtoFilas=[];
+  filasBak.forEach(f=>{
+    const i=_mixtoFilas.length;
+    _mixtoFilas.push({metodo:f.metodo, monto:f.monto});
+    const optionsHTML = METODOS.map(m=>`<option value="${m}"${m===f.metodo?' selected':''}>${METODO_ICONS[m]} ${m}</option>`).join('');
+    const fila=document.createElement('div');
+    fila.id=`mixto-fila-${i}`;
+    fila.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:8px';
+    fila.innerHTML=`
+      <select onchange="updFilaMixto(${i},'metodo',this.value)"
+        style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #c4b5fd;font-size:13px;background:#fff;font-family:inherit">
+        ${optionsHTML}</select>
+      <input type="number" placeholder="$ Monto" min="0" value="${f.monto||''}"
+        oninput="updFilaMixto(${i},'monto',this.value)"
+        style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #c4b5fd;font-size:13px">
+      <button onclick="quitarFilaMixto(${i})"
+        style="background:#fee2e2;border:none;border-radius:8px;color:#dc2626;font-size:14px;font-weight:700;padding:6px 10px;cursor:pointer;flex-shrink:0">✕</button>`;
+    cont.appendChild(fila);
+  });
+  actualizarMixto(getTotalFinalActual());
+}
+
+function getTotalFinalActual(){
+  const base = S._cobrarBaseTotal || 0;
+  const extra = _extraItems.reduce((s,i)=>s+i.precio,0);
+  const desc = Number(document.getElementById('cob-desc')?.value)||0;
+  return (base+extra)*(1-desc/100);
+}
+
+function actualizarMixto(totalFinal){
+  const suma = _mixtoFilas.reduce((s,f)=>s+(f.monto||0),0);
+  const resto = totalFinal - suma;
+  const elSuma = document.getElementById('cob-mixto-suma');
+  const elResto = document.getElementById('cob-mixto-resto');
+  const elVueltoRow = document.getElementById('cob-mixto-vuelto-row');
+  const elVuelto = document.getElementById('cob-mixto-vuelto');
+  if(elSuma) elSuma.textContent = fmt(suma);
+  if(elResto){
+    elResto.textContent = fmt(Math.abs(resto));
+    elResto.style.color = resto <= 0 ? '#16a34a' : '#ef4444';
+    document.getElementById('cob-mixto-resto-row').querySelector('span').textContent =
+      resto <= 0 ? (resto < 0 ? 'Vuelto total' : 'Completo ✓') : 'Restante';
+  }
+  // Vuelto efectivo: si hay efectivo y la suma supera el total
+  const montoEfectivo = _mixtoFilas.filter(f=>f.metodo==='Efectivo').reduce((s,f)=>s+(f.monto||0),0);
+  const exceso = suma - totalFinal;
+  if(elVueltoRow && elVuelto){
+    if(montoEfectivo > 0 && exceso > 0){
+      elVueltoRow.style.display='flex';
+      elVuelto.textContent = fmt(Math.min(exceso, montoEfectivo));
+    } else {
+      elVueltoRow.style.display='none';
+    }
+  }
+}
+
+
 
 function updVuelto(totalFinal){
   const recibido=Number(document.getElementById('cob-recibido')?.value)||0;
@@ -2117,13 +2280,34 @@ async function confirmarCobro(cmdId,totalOrig){
     toast('⚠️ No hay turno de caja abierto', 'err'); return;
   }
   const desc=Number(document.getElementById('cob-desc')?.value)||0;
-  const metodo=METODOS[S._metodoIdx||0];
   const extra=_extraItems.reduce((s,i)=>s+i.precio,0);
   const totalFinal=(totalOrig+extra)*(1-desc/100);
-  const montoRecibido=metodo==='Efectivo'?(Number(document.getElementById('cob-recibido')?.value)||0):totalFinal;
-  if(metodo==='Efectivo' && montoRecibido < totalFinal){
-    toast('El monto recibido es menor al total','err'); return;
+  const esMixto = document.getElementById('cob-mixto-chk')?.checked;
+
+  let metodo, montoRecibido;
+
+  if(esMixto){
+    // Validar que las filas estén completas y sumen >= total
+    const filasValidas = _mixtoFilas.filter(f=>f.monto>0);
+    if(filasValidas.length < 2){
+      toast('Agregá al menos 2 métodos con monto en pago mixto','err'); return;
+    }
+    const suma = filasValidas.reduce((s,f)=>s+f.monto,0);
+    if(suma < totalFinal - 1){ // margen de $1 por redondeo
+      toast(`El total ingresado (${fmt(suma)}) es menor al total a cobrar (${fmt(totalFinal)})`,'err'); return;
+    }
+    montoRecibido = suma;
+    // Construir label descriptivo: "Efectivo + QR + Débito"
+    const metodos = [...new Set(filasValidas.map(f=>f.metodo))];
+    metodo = metodos.join(' + ');
+  } else {
+    metodo=METODOS[S._metodoIdx||0];
+    montoRecibido=metodo==='Efectivo'?(Number(document.getElementById('cob-recibido')?.value)||0):totalFinal;
+    if(metodo==='Efectivo' && montoRecibido < totalFinal){
+      toast('El monto recibido es menor al total','err'); return;
+    }
   }
+
   loading(true);
   try{
     for(const it of _extraItems){
@@ -2133,9 +2317,10 @@ async function confirmarCobro(cmdId,totalOrig){
       metodo_pago:metodo, descuento:desc, monto_recibido:montoRecibido
     });
     const vuelto=res?.vuelto||Math.max(0,montoRecibido-totalFinal);
-    if(metodo==='Efectivo'&&vuelto>0) toast(`Cobrado ✓ — Vuelto: ${fmt(vuelto)}`,'ok');
+    if(!esMixto && metodo==='Efectivo' && vuelto>0) toast(`Cobrado ✓ — Vuelto: ${fmt(vuelto)}`,'ok');
     else toast('Cobrado ✓','ok');
     _extraItems=[];
+    _mixtoFilas=[];
     closeModal('m-cobrar');
     await loadAll(); renderMain();
   }catch(e){toast(e.message,'err');}
