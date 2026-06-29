@@ -851,9 +851,9 @@ function buildCard(h) {
       const salObj = r?.salida  ? fmtFechaHora(r.salida)  : {fecha:'—',hora:''};
 
       body = `
-        ${nombre ? `<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;display:flex;align-items:center;gap:4px">👤 ${nombre}</div>` : ''}
+        ${nombre ? `<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:4px;text-align:center">👤 ${nombre}</div>` : ''}
         ${(r || esReservada) ? `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:4px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:4px;text-align:center">
           <div style="font-size:10px;font-weight:800;color:#3b82f6;letter-spacing:.06em;text-transform:uppercase">ENTRADA</div>
           <div style="font-size:10px;font-weight:800;color:#ef4444;letter-spacing:.06em;text-transform:uppercase">SALIDA</div>
           <div>
@@ -865,7 +865,7 @@ function buildCard(h) {
             <div style="font-size:11px;color:#94a3b8;font-weight:600">${salObj.hora}</div>
           </div>
         </div>` : ''}
-        ${patente ? `<div style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px;background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:#92400e">🚗 ${patente}</div>` : ''}
+        ${patente ? `<div style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px;background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:#92400e;width:100%">🚗 ${patente}</div>` : ''}
         ${!r && !nombre && !esReservada ? `<div class="ravail"><div class="ravail-circle"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L11.5 20L22 9" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>` : ''}
       `;
     }
