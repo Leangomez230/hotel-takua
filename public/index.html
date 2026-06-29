@@ -2349,78 +2349,153 @@ async function showCheckinModal(habId) {
 // ══════════════════════════════════════
 // RESERVA
 // ══════════════════════════════════════
-function showReservaModal(habId) {
-  const hab=habitaciones.find(h=>String(h.id)===String(habId));
+async function showReservaModal(habId) {
+  const hab = habitaciones.find(h=>String(h.id)===String(habId));
   const habIdReal = hab?.id ?? habId;
-  const now=new Date(), tom=new Date(now); tom.setDate(tom.getDate()+1);
-  const iso=d=>d.toISOString().slice(0,16);
-  const pn=hab?.precio_noche||50000;
- 
+  const now = new Date(), tom = new Date(now); tom.setDate(tom.getDate()+1);
+  const iso = d => d.toISOString().slice(0,16);
+
+  // Cargar tarifas globales
+  const tarifasCfg = await apiFetch('GET', '/config/tarifas') || {};
+  const tfNoche = tarifasCfg.precio_noche || hab?.precio_noche || 50000;
+  const tfHora  = tarifasCfg.precio_hora  || 20000;
+  const tfDia   = tarifasCfg.precio_dia   || 75000;
+
   openModal(`
-    <div class="modal-hd"><h3>Reserva — Hab. ${hab?.numero} Ala ${hab?.ala}</h3><button class="modal-close" id="res-close">✕</button></div>
-    <div class="form-row">
-      <div class="form-col"><label>Nombre del huésped</label><input type="text" id="res-nombre" placeholder="Juan García"></div>
-      <div class="form-col"><label>Documento</label><input type="text" id="res-doc" placeholder="12345678"></div>
+    <div class="modal-hd">
+      <h3>📋 Reserva — Hab. ${hab?.numero} Ala ${hab?.ala}</h3>
+      <button class="modal-close" id="res-close">✕</button>
     </div>
     <div class="form-row">
-      <div class="form-col"><label>Entrada</label><input type="datetime-local" id="res-in" value="${iso(now)}"></div>
-      <div class="form-col"><label>Salida</label><input type="datetime-local" id="res-out" value="${iso(tom)}"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-col"><label>Tarifa/noche ($)</label><input type="number" id="res-tarifa" value="${pn}"></div>
-      <div class="form-col"><label>Método de pago</label>
-        <select id="res-pago"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>QR</option></select>
+      <div class="form-col"><label>Nombre del huésped</label>
+        <input type="text" id="res-nombre" placeholder="Juan García">
+      </div>
+      <div class="form-col"><label>Documento</label>
+        <input type="text" id="res-doc" placeholder="12345678">
       </div>
     </div>
-    <div class="form-col" style="margin-bottom:12px"><label>Notas</label><input type="text" id="res-notas" placeholder="Observaciones..."></div>
-    <div class="total-box">
-      <div class="total-row"><span>Noches:</span><span id="res-n">1</span></div>
-      <div class="total-row big"><span>Total estimado:</span><span id="res-tot">${fmt(pn)}</span></div>
+    <div class="form-row">
+      <div class="form-col"><label>Entrada</label>
+        <input type="datetime-local" id="res-in" value="${iso(now)}">
+      </div>
+      <div class="form-col"><label>Salida</label>
+        <input type="datetime-local" id="res-out" value="${iso(tom)}">
+      </div>
     </div>
+
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px">💰 Tipo de Tarifa</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      <button class="res-tarifa-btn" data-tipo="noche" data-monto="${tfNoche}" style="border:2px solid #7c3aed;border-radius:10px;padding:10px 6px;background:#faf5ff;cursor:pointer;text-align:left">
+        <div style="font-size:10px;color:#64748b;font-weight:600">🌙 Por Noche</div>
+        <div style="font-size:14px;font-weight:800;color:#7c3aed">${fmt(tfNoche)}</div>
+      </button>
+      <button class="res-tarifa-btn" data-tipo="hora" data-monto="${tfHora}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 6px;background:#f8fafc;cursor:pointer;text-align:left">
+        <div style="font-size:10px;color:#64748b;font-weight:600">⏱ Por Horas</div>
+        <div style="font-size:14px;font-weight:800;color:#374151">${fmt(tfHora)}</div>
+      </button>
+      <button class="res-tarifa-btn" data-tipo="dia" data-monto="${tfDia}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 6px;background:#f8fafc;cursor:pointer;text-align:left">
+        <div style="font-size:10px;color:#64748b;font-weight:600">📅 Por Día (24h)</div>
+        <div style="font-size:14px;font-weight:800;color:#374151">${fmt(tfDia)}</div>
+      </button>
+      <button class="res-tarifa-btn" data-tipo="personalizado" data-monto="0" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 6px;background:#f8fafc;cursor:pointer;text-align:left">
+        <div style="font-size:10px;color:#64748b;font-weight:600">✏️ Personalizado</div>
+        <div style="font-size:11px;color:#94a3b8">Monto manual</div>
+      </button>
+    </div>
+    <div id="res-monto-manual" style="display:none;margin-bottom:10px">
+      <label>Monto personalizado ($)</label>
+      <input type="number" id="res-tarifa" value="${tfNoche}" placeholder="0">
+    </div>
+    <input type="hidden" id="res-tarifa-val" value="${tfNoche}">
+
+    <div class="form-col" style="margin-bottom:12px">
+      <label>Notas</label>
+      <input type="text" id="res-notas" placeholder="Observaciones...">
+    </div>
+
+    <div class="total-box">
+      <div class="total-row"><span>Noches / Unidades:</span><span id="res-n">1</span></div>
+      <div class="total-row big"><span>Total estimado:</span><span id="res-tot">${fmt(tfNoche)}</span></div>
+    </div>
+
     <div class="stitle">Seña (opcional)</div>
     <div class="form-row" style="margin-bottom:14px">
       <div class="form-col"><label>Monto de seña ($)</label>
         <input type="number" id="res-senia" value="0" min="0" placeholder="0 = sin seña">
       </div>
       <div class="form-col"><label>Método seña</label>
-        <select id="res-pago-senia"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>QR</option></select>
+        <select id="res-pago-senia">
+          ${['Efectivo','Transferencia','Tarjeta débito','Tarjeta crédito','QR']
+            .map(m=>`<option>${m}</option>`).join('')}
+        </select>
       </div>
     </div>
     <button class="confirm-btn" id="res-confirm" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">📋 Confirmar Reserva</button>
   `);
- 
-  const recalc=()=>{
-    const inn=document.getElementById('res-in')?.value;
-    const out=document.getElementById('res-out')?.value;
-    const tar=parseMonto(document.getElementById('res-tarifa')?.value);
-    if (!inn||!out) return;
-    const n=Math.max(1,Math.ceil((new Date(out)-new Date(inn))/86400000));
-    document.getElementById('res-n').textContent=n;
-    document.getElementById('res-tot').textContent=fmtExacto(n*tar);
+
+  let resTipoTarifa = 'noche';
+  let resTarifaMonto = tfNoche;
+
+  const recalc = () => {
+    const inn = document.getElementById('res-in')?.value;
+    const out = document.getElementById('res-out')?.value;
+    if (!inn || !out) return;
+    let n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
+    if (resTipoTarifa === 'hora' || resTipoTarifa === 'dia') n = 1;
+    document.getElementById('res-n').textContent   = n;
+    document.getElementById('res-tot').textContent = fmtExacto(n * resTarifaMonto);
   };
-  ['res-in','res-out','res-tarifa'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalc));
-  document.getElementById('res-close').addEventListener('click',closeModal);
-  document.getElementById('res-confirm').addEventListener('click', async ()=>{
-    const nombre=document.getElementById('res-nombre').value.trim();
-    if (!nombre) { toast('Ingresá el nombre',false); return; }
-    const n=parseInt(document.getElementById('res-n').textContent)||1;
-    const tar=parseMonto(document.getElementById('res-tarifa').value);
-    const r=await apiFetch('POST','/reservas',{
-      habitacion_id:habIdReal, nombre_huesped:nombre,
-      documento:document.getElementById('res-doc').value,
-      entrada:document.getElementById('res-in').value,
-      salida:document.getElementById('res-out').value,
-      noches:n, precio_total:n*tar,
-      metodo_pago:document.getElementById('res-pago').value,
-      notas:document.getElementById('res-notas').value,
-      monto_senia:parseMonto(document.getElementById('res-senia').value),
+
+  // Botones tarifa
+  document.querySelectorAll('.res-tarifa-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      resTipoTarifa  = btn.dataset.tipo;
+      resTarifaMonto = Number(btn.dataset.monto);
+      document.querySelectorAll('.res-tarifa-btn').forEach(b => {
+        b.style.borderColor = '#e2e8f0'; b.style.background = '#f8fafc';
+        b.querySelector('div:last-child').style.color = '#374151';
+      });
+      btn.style.borderColor = '#7c3aed'; btn.style.background = '#faf5ff';
+      btn.querySelector('div:last-child').style.color = '#7c3aed';
+      const wrap = document.getElementById('res-monto-manual');
+      const inp  = document.getElementById('res-tarifa');
+      if (resTipoTarifa === 'personalizado') {
+        wrap.style.display = 'block';
+        inp?.addEventListener('input', () => { resTarifaMonto = parseMonto(inp.value)||0; recalc(); });
+      } else {
+        wrap.style.display = 'none';
+      }
+      recalc();
+    });
+  });
+
+  ['res-in','res-out'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
+  document.getElementById('res-close').addEventListener('click', closeModal);
+
+  document.getElementById('res-confirm').addEventListener('click', async () => {
+    const nombre = document.getElementById('res-nombre').value.trim();
+    if (!nombre) { toast('Ingresá el nombre', false); return; }
+    let n = Math.max(1, Math.ceil((new Date(document.getElementById('res-out').value) - new Date(document.getElementById('res-in').value))/86400000));
+    if (resTipoTarifa === 'hora' || resTipoTarifa === 'dia') n = 1;
+    const total = n * resTarifaMonto;
+    const r = await apiFetch('POST', '/reservas', {
+      habitacion_id:  habIdReal,
+      nombre_huesped: nombre,
+      documento:      document.getElementById('res-doc').value,
+      entrada:        document.getElementById('res-in').value,
+      salida:         document.getElementById('res-out').value,
+      noches:         n,
+      precio_total:   total,
+      metodo_pago:    'A definir en check-in',
+      notas:          document.getElementById('res-notas').value,
+      monto_senia:    parseMonto(document.getElementById('res-senia').value),
+      metodo_senia:   document.getElementById('res-pago-senia').value,
     });
     if (r?.ok) {
       closeModal(); await refreshHabs();
       if (r.aviso) setTimeout(() => alert(r.aviso), 300);
       else toast('Reserva creada');
-    }
-    else toast(r?.error||'Error',false);
+    } else toast(r?.error || 'Error', false);
   });
 }
  
