@@ -686,7 +686,7 @@ const SCFG = {
   limpieza:     {label:'A Limpiar',    badge:'sb-limpieza',     icon:'🧹', color:'#d97706', bg:'#fef3c7'},
   mantenimiento:{label:'Mantenimiento',badge:'sb-mantenimiento',icon:'🔧', color:'#4b5563', bg:'#f3f4f6'},
 };
-const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', triple:'🛏🛏🛏 Triple', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
+const TIPOS={twin:'🛏🛏 Twin', queen:'🛏 Queen', triple:'🛏🛏🛏 Triple', doble:'🛏+🛏 Doble', simple:'🛏🛏 Twin', suite:'🛏 Queen'};
  
 function buildCard(h) {
   const s=SCFG[h.status]||{label:h.status,badge:'sb-reservada',icon:'⚪',color:'#b45309',bg:'#fef9c3'};
@@ -1276,13 +1276,15 @@ function showHabModal(hab) {
  
   // Selector tipo cama (visible para todos)
   const esTriple = hab.tipo === 'triple';
-  const esTwin  = !['queen','suite','triple'].includes(hab.tipo);
+  const esDoble  = hab.tipo === 'doble';
+  const esTwin   = !['queen','suite','triple','doble'].includes(hab.tipo);
   const tipoCamaHTML = `
     <div class="stitle">Tipo de cama</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button id="tbtn-twin"   style="flex:1;padding:10px;border:2px solid ${esTwin   ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin   ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏 Twin</button>
-      <button id="tbtn-queen"  style="flex:1;padding:10px;border:2px solid ${!esTwin && !esTriple?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin && !esTriple?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
-      <button id="tbtn-triple" style="flex:1;padding:10px;border:2px solid ${esTriple ?'#f59e0b':'#e0e6ef'};border-radius:10px;background:${esTriple ?'#fffbeb':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏🛏 Triple</button>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button id="tbtn-twin"   style="flex:1;padding:10px;border:2px solid ${esTwin   ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwin   ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:12px;font-weight:700">🛏🛏 Twin</button>
+      <button id="tbtn-queen"  style="flex:1;padding:10px;border:2px solid ${!esTwin && !esTriple && !esDoble?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwin && !esTriple && !esDoble?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:12px;font-weight:700">🛏 Queen</button>
+      <button id="tbtn-triple" style="flex:1;padding:10px;border:2px solid ${esTriple ?'#f59e0b':'#e0e6ef'};border-radius:10px;background:${esTriple ?'#fffbeb':'#f8fafc'};cursor:pointer;font-size:12px;font-weight:700">🛏🛏🛏 Triple</button>
+      <button id="tbtn-doble"  style="flex:1;padding:10px;border:2px solid ${esDoble  ?'#ec4899':'#e0e6ef'};border-radius:10px;background:${esDoble  ?'#fdf2f8':'#f8fafc'};cursor:pointer;font-size:12px;font-weight:700">🛏+🛏 Doble</button>
     </div>`;
  
   const todosLosEstados = [
@@ -1368,10 +1370,11 @@ function showHabModal(hab) {
   document.getElementById('hab-close').addEventListener('click', closeModal);
  
   // Selector tipo cama
-  let tipoCamaSeleccionada = esTriple ? 'triple' : esTwin ? 'twin' : 'queen';
+  let tipoCamaSeleccionada = esTriple ? 'triple' : esDoble ? 'doble' : esTwin ? 'twin' : 'queen';
   const btnTwin   = document.getElementById('tbtn-twin');
   const btnQueen  = document.getElementById('tbtn-queen');
   const btnTriple = document.getElementById('tbtn-triple');
+  const btnDoble  = document.getElementById('tbtn-doble');
   function selectTipo(tipo) {
     tipoCamaSeleccionada = tipo;
     btnTwin.style.borderColor    = tipo==='twin'  ?'#00c9b1':'#e0e6ef';
@@ -1383,6 +1386,7 @@ function showHabModal(hab) {
   btnTwin?.addEventListener('click',   () => selectTipo('twin'));
   btnQueen?.addEventListener('click',  () => selectTipo('queen'));
   btnTriple?.addEventListener('click', () => selectTipo('triple'));
+  btnDoble?.addEventListener('click',  () => selectTipo('doble'));
 
   // Mucama: guardar tipo de cama
   document.getElementById('btn-save-tipo')?.addEventListener('click', async () => {
@@ -1430,7 +1434,7 @@ function showHabModal(hab) {
       {
         const nota = document.getElementById('hab-nota')?.value || hab.nota || '';
         // Guardar tipo de cama si cambió
-        if (tipoCamaSeleccionada !== (esTriple?'triple':esTwin?'twin':'queen')) {
+        if (tipoCamaSeleccionada !== (esTriple?'triple':esDoble?'doble':esTwin?'twin':'queen')) {
           await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
         }
         const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:t.s, nota });
@@ -1445,7 +1449,7 @@ function showHabModal(hab) {
   // Guardar nota
   document.getElementById('hab-save-nota')?.addEventListener('click', async () => {
     const nota = document.getElementById('hab-nota').value;
-    if (tipoCamaSeleccionada !== (esTriple?'triple':esTwin?'twin':'queen')) {
+    if (tipoCamaSeleccionada !== (esTriple?'triple':esDoble?'doble':esTwin?'twin':'queen')) {
       await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
     }
     const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:hab.status, nota });
@@ -1663,7 +1667,8 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
     </div>`).join('');
  
   const esTripleSrv = tipoCamaInicial === 'triple';
-  const esTwinSrv = !['queen','triple'].includes(tipoCamaInicial);
+  const esDobleSrv  = tipoCamaInicial === 'doble';
+  const esTwinSrv   = !['queen','triple','doble'].includes(tipoCamaInicial);
  
   openModal(`
     <div class="modal-hd">
@@ -1680,9 +1685,10 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
  
     <div class="stitle">Tipo de cama preparada</div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button id="srv-twin"   style="flex:1;padding:10px;border:2px solid ${esTwinSrv   ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwinSrv   ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏 Twin</button>
-      <button id="srv-queen"  style="flex:1;padding:10px;border:2px solid ${!esTwinSrv && !esTripleSrv?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwinSrv && !esTripleSrv?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏 Queen</button>
-      <button id="srv-triple" style="flex:1;padding:10px;border:2px solid ${esTripleSrv ?'#f59e0b':'#e0e6ef'};border-radius:10px;background:${esTripleSrv ?'#fffbeb':'#f8fafc'};cursor:pointer;font-size:13px;font-weight:700">🛏🛏🛏 Triple</button>
+      <button id="srv-twin"   style="flex:1;padding:10px;border:2px solid ${esTwinSrv   ?'#00c9b1':'#e0e6ef'};border-radius:10px;background:${esTwinSrv   ?'#f0fdf9':'#f8fafc'};cursor:pointer;font-size:12px;font-weight:700">🛏🛏 Twin</button>
+      <button id="srv-queen"  style="flex:1;padding:10px;border:2px solid ${!esTwinSrv && !esTripleSrv && !esDobleSrv?'#7c3aed':'#e0e6ef'};border-radius:10px;background:${!esTwinSrv && !esTripleSrv && !esDobleSrv?'#faf5ff':'#f8fafc'};cursor:pointer;font-size:12px;font-weight:700">🛏 Queen</button>
+      <button id="srv-triple" style="flex:1;padding:10px;border:2px solid ${esTripleSrv ?'#f59e0b':'#e0e6ef'};border-radius:10px;background:${esTripleSrv ?'#fffbeb':'#f8fafc'};cursor:pointer;font-size:12px;font-weight:700">🛏🛏🛏 Triple</button>
+      <button id="srv-doble"  style="flex:1;padding:10px;border:2px solid ${esDobleSrv  ?'#ec4899':'#e0e6ef'};border-radius:10px;background:${esDobleSrv  ?'#fdf2f8':'#f8fafc'};cursor:pointer;font-size:12px;font-weight:700">🛏+🛏 Doble</button>
     </div>
  
     ${esDiario || accion.servicio==='post_checkout' ? `
@@ -1710,19 +1716,22 @@ async function showServicioModal(hab, accion, tipoCamaInicial) {
   `);
  
   // Tipo cama
-  let tipoCama = esTripleSrv ? 'triple' : esTwinSrv ? 'twin' : 'queen';
+  let tipoCama = esTripleSrv ? 'triple' : esDobleSrv ? 'doble' : esTwinSrv ? 'twin' : 'queen';
   const btnT  = document.getElementById('srv-twin');
   const btnQ  = document.getElementById('srv-queen');
   const btnTr = document.getElementById('srv-triple');
+  const btnD  = document.getElementById('srv-doble');
   function selTipo(t) {
     tipoCama = t;
     btnT.style.borderColor  = t==='twin'  ?'#00c9b1':'#e0e6ef'; btnT.style.background  = t==='twin'  ?'#f0fdf9':'#f8fafc';
     btnQ.style.borderColor  = t==='queen' ?'#7c3aed':'#e0e6ef'; btnQ.style.background  = t==='queen' ?'#faf5ff':'#f8fafc';
     if(btnTr){btnTr.style.borderColor = t==='triple'?'#f59e0b':'#e0e6ef'; btnTr.style.background = t==='triple'?'#fffbeb':'#f8fafc';}
+    if(btnD){btnD.style.borderColor   = t==='doble' ?'#ec4899':'#e0e6ef'; btnD.style.background  = t==='doble' ?'#fdf2f8':'#f8fafc';}
   }
   btnT.addEventListener('click',  () => selTipo('twin'));
   btnQ.addEventListener('click',  () => selTipo('queen'));
   btnTr?.addEventListener('click', () => selTipo('triple'));
+  btnD?.addEventListener('click',  () => selTipo('doble'));
  
   // Cantidades frigobar
   const cantidades = {};
@@ -2408,6 +2417,14 @@ async function showReservaModal(habId) {
     </div>
     <input type="hidden" id="res-tarifa-val" value="${tfNoche}">
 
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px">🛏 Tipo de Habitación</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="res-tipo-btn" data-tipo="queen"  style="flex:1;padding:10px 6px;border:2px solid #7c3aed;border-radius:10px;background:#faf5ff;cursor:pointer;font-size:12px;font-weight:700;color:#7c3aed">🛏 Queen</button>
+      <button class="res-tipo-btn" data-tipo="twin"   style="flex:1;padding:10px 6px;border:2px solid #e0e6ef;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:12px;font-weight:700;color:#374151">🛏🛏 Twin</button>
+      <button class="res-tipo-btn" data-tipo="triple" style="flex:1;padding:10px 6px;border:2px solid #e0e6ef;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:12px;font-weight:700;color:#374151">🛏🛏🛏 Triple</button>
+      <button class="res-tipo-btn" data-tipo="doble"  style="flex:1;padding:10px 6px;border:2px solid #e0e6ef;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:12px;font-weight:700;color:#374151">🛏+🛏 Doble</button>
+    </div>
+
     <div class="form-col" style="margin-bottom:12px">
       <label>Notas</label>
       <input type="text" id="res-notas" placeholder="Observaciones...">
@@ -2433,6 +2450,7 @@ async function showReservaModal(habId) {
     <button class="confirm-btn" id="res-confirm" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">📋 Confirmar Reserva</button>
   `);
 
+  let resTipoHab    = hab?.tipo || 'queen';
   let resTipoTarifa = 'noche';
   let resTarifaMonto = tfNoche;
 
@@ -2469,6 +2487,21 @@ async function showReservaModal(habId) {
     });
   });
 
+  // Botones tipo habitación
+  document.querySelectorAll('.res-tipo-btn').forEach(btn => {
+    // Marcar el tipo actual de la hab
+    if (btn.dataset.tipo === resTipoHab) {
+      btn.style.borderColor = '#7c3aed'; btn.style.background = '#faf5ff'; btn.style.color = '#7c3aed';
+    }
+    btn.addEventListener('click', () => {
+      resTipoHab = btn.dataset.tipo;
+      document.querySelectorAll('.res-tipo-btn').forEach(b => {
+        b.style.borderColor = '#e0e6ef'; b.style.background = '#f8fafc'; b.style.color = '#374151';
+      });
+      btn.style.borderColor = '#7c3aed'; btn.style.background = '#faf5ff'; btn.style.color = '#7c3aed';
+    });
+  });
+
   ['res-in','res-out'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
   document.getElementById('res-close').addEventListener('click', closeModal);
 
@@ -2481,6 +2514,7 @@ async function showReservaModal(habId) {
     const r = await apiFetch('POST', '/reservas', {
       habitacion_id:  habIdReal,
       nombre_huesped: nombre,
+      tipo_habitacion: resTipoHab,
       documento:      document.getElementById('res-doc').value,
       entrada:        document.getElementById('res-in').value,
       salida:         document.getElementById('res-out').value,
