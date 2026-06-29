@@ -1311,9 +1311,7 @@ function showHabModal(hab) {
           <input type="text" id="he-nombre" value="${hab.nombre||''}" placeholder="Ej: Hab. Jardín...">
         </div>
         <div class="form-row">
-          <div class="form-col"><label>Capacidad (pers.)</label><input type="number" id="he-cap" value="${hab.capacidad||2}" min="1" max="10"></div>
-          <div class="form-col"><label>Precio noche ($)</label><input type="number" id="he-pnoche" value="${hab.precio_noche||50000}"></div>
-          <div class="form-col"><label>Precio hora ($)</label><input type="number" id="he-phora" value="${hab.precio_hora||15000}"></div>
+
         </div>
         <button class="btn-primary" id="btn-save-hab" style="width:100%">💾 Guardar cambios</button>
       </div>
@@ -1326,7 +1324,7 @@ function showHabModal(hab) {
     </div>
     <div class="status-info" style="background:${s.bg||'#f8fafc'}">
       <span style="font-weight:800;color:${s.color||'#374151'};font-size:15px">${s.icon} ${s.label}</span>
-      <span style="color:#64748b;font-size:12px">· ${tipoLabel} · ${hab.capacidad} pers. · ${fmt(hab.precio_noche)}/noche</span>
+      <span style="color:#64748b;font-size:12px">· ${tipoLabel} · ${hab.capacidad} pers.</span>
     </div>
     ${hab.nota&&!['libre','lista','limpia'].includes(hab.status)?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:''}
  
@@ -1393,7 +1391,7 @@ function showHabModal(hab) {
   document.getElementById('btn-save-tipo')?.addEventListener('click', async () => {
     const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
       nombre: hab.nombre||'', tipo: tipoCamaSeleccionada,
-      capacidad: hab.capacidad, precio_noche: hab.precio_noche, precio_hora: hab.precio_hora
+      capacidad: hab.capacidad
     });
     if (r?.ok) { toast('Tipo de cama guardado ✓'); closeModal(); await refreshHabs(); }
     else toast(r?.error||'Error', false);
@@ -1436,7 +1434,7 @@ function showHabModal(hab) {
         const nota = document.getElementById('hab-nota')?.value || hab.nota || '';
         // Guardar tipo de cama si cambió
         if (tipoCamaSeleccionada !== (esTriple?'triple':esDoble?'doble':esTwin?'twin':'queen')) {
-          await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
+          await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad });
         }
         const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:t.s, nota });
         if (r?.ok) toast('Estado actualizado: ' + t.label);
@@ -1451,7 +1449,7 @@ function showHabModal(hab) {
   document.getElementById('hab-save-nota')?.addEventListener('click', async () => {
     const nota = document.getElementById('hab-nota').value;
     if (tipoCamaSeleccionada !== (esTriple?'triple':esDoble?'doble':esTwin?'twin':'queen')) {
-      await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad, precio_noche:hab.precio_noche, precio_hora:hab.precio_hora });
+      await apiFetch('PUT', `/habitaciones/${hab.id}`, { nombre:hab.nombre||'', tipo:tipoCamaSeleccionada, capacidad:hab.capacidad });
     }
     const r = await apiFetch('PUT', `/habitaciones/${hab.id}/status`, { status:hab.status, nota });
     if (r?.ok) toast('Guardado');
@@ -1474,9 +1472,7 @@ function showHabModal(hab) {
     const r = await apiFetch('PUT', `/habitaciones/${hab.id}`, {
       nombre:      document.getElementById('he-nombre').value,
       tipo:        tipoCamaSeleccionada,
-      capacidad:   parseInt(document.getElementById('he-cap').value)||2,
-      precio_noche:parseMonto(document.getElementById('he-pnoche').value),
-      precio_hora: parseMonto(document.getElementById('he-phora').value),
+      capacidad:   hab.capacidad||2,
     });
     if (r?.ok) { toast('Habitación actualizada'); closeModal(); await refreshHabs(); }
     else toast(r?.error||'Error', false);
