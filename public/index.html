@@ -1382,6 +1382,7 @@ function showHabModal(hab) {
     btnQueen.style.borderColor   = tipo==='queen' ?'#7c3aed':'#e0e6ef';
     btnQueen.style.background    = tipo==='queen' ?'#faf5ff':'#f8fafc';
     if(btnTriple){btnTriple.style.borderColor = tipo==='triple'?'#f59e0b':'#e0e6ef'; btnTriple.style.background = tipo==='triple'?'#fffbeb':'#f8fafc';}
+    if(btnDoble){btnDoble.style.borderColor   = tipo==='doble' ?'#ec4899':'#e0e6ef'; btnDoble.style.background  = tipo==='doble' ?'#fdf2f8':'#f8fafc';}
   }
   btnTwin?.addEventListener('click',   () => selectTipo('twin'));
   btnQueen?.addEventListener('click',  () => selectTipo('queen'));
