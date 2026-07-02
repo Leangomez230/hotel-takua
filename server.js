@@ -176,12 +176,15 @@ app.get('/api/habitaciones', auth, async (req, res) => {
       return {
         ...h,
         reserva_activa: reserva ? {
-          nombre_huesped: reserva.nombre_huesped,
-          entrada:        reserva.entrada,
-          salida:         reserva.salida,
-          notas:          reserva.notas,
-          noches:         reserva.noches,
-          estado:         reserva.estado,
+          nombre_huesped:  reserva.nombre_huesped,
+          entrada:         reserva.entrada,
+          salida:          reserva.salida,
+          notas:           reserva.notas,
+          noches:          reserva.noches,
+          estado:          reserva.estado,
+          saldo_pendiente: reserva.saldo_pendiente,
+          momento_cobro:   reserva.momento_cobro,
+          precio_total:    reserva.precio_total,
         } : null,
         reserva_vencida: reservaVencida ? {
           nombre_huesped: reservaVencida.nombre_huesped,
