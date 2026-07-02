@@ -320,7 +320,7 @@ app.post('/api/huespedes', auth, async (req, res) => {
 });
 
 // ── CHECK-IN ─────────────────────────────────────────────────────────
-app.post('/api/checkin', auth, adminOrRecep, async (req, res) => {
+app.post('/api/checkin', auth, adminRecepMucama, async (req, res) => {
   try {
     const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches,
             precio_total, metodo_pago, notas, reserva_id, saldo_cobrado,
