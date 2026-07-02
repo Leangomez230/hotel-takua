@@ -176,15 +176,12 @@ app.get('/api/habitaciones', auth, async (req, res) => {
       return {
         ...h,
         reserva_activa: reserva ? {
-          nombre_huesped:  reserva.nombre_huesped,
-          entrada:         reserva.entrada,
-          salida:          reserva.salida,
-          notas:           reserva.notas,
-          noches:          reserva.noches,
-          estado:          reserva.estado,
-          saldo_pendiente: reserva.saldo_pendiente,
-          momento_cobro:   reserva.momento_cobro,
-          precio_total:    reserva.precio_total,
+          nombre_huesped: reserva.nombre_huesped,
+          entrada:        reserva.entrada,
+          salida:         reserva.salida,
+          notas:          reserva.notas,
+          noches:         reserva.noches,
+          estado:         reserva.estado,
         } : null,
         reserva_vencida: reservaVencida ? {
           nombre_huesped: reservaVencida.nombre_huesped,
@@ -568,9 +565,13 @@ app.get('/api/habitaciones/:id/debug', auth, adminOrRecep, async (req, res) => {
 // Obtener reserva vigente de una habitación (para precarga en checkin)
 app.get('/api/habitaciones/:id/reserva', auth, adminRecepMucama, async (req, res) => {
   try {
+    // Priorizar reservas con entrada <= ahora (vencidas/tardías) sobre futuras
     const reserva = await db.getOne(
       `SELECT * FROM reservas WHERE habitacion_id=$1
-       AND estado IN ('futura','activa') ORDER BY created_at DESC LIMIT 1`,
+       AND estado IN ('futura','activa')
+       ORDER BY
+         CASE WHEN entrada <= NOW() THEN 0 ELSE 1 END ASC,
+         entrada ASC`,
       [req.params.id]
     );
     res.json(reserva || null);
