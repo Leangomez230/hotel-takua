@@ -570,7 +570,7 @@ app.get('/api/habitaciones/:id/reserva', auth, adminRecepMucama, async (req, res
       `SELECT * FROM reservas WHERE habitacion_id=$1
        AND estado IN ('futura','activa')
        ORDER BY
-         (entrada > NOW())::int ASC,
+         (entrada::timestamp > NOW())::int ASC,
          entrada ASC`,
       [req.params.id]
     );
