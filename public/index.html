@@ -2102,32 +2102,43 @@ async function showCheckinModal(habId) {
   const iso = d => d.toISOString().slice(0,16);
   const pn  = hab?.precio_noche||50000;
 
-  // Buscar reserva existente
-  const reserva  = await apiFetch('GET', `/habitaciones/${habIdReal}/reserva`);
-  const tarifasCfg = await apiFetch('GET', '/config/tarifas') || {};
-  const tfNoche = tarifasCfg.precio_noche || pn;
-  const tfHora  = tarifasCfg.precio_hora  || hab?.precio_hora || 20000;
-  const tfDia   = tarifasCfg.precio_dia   || Math.round(pn * 1.5);
+  // Traer todas las reservas vinculadas y tarifas
+  const [reservasVinculadas, tarifasCfg] = await Promise.all([
+    apiFetch('GET', `/habitaciones/${habIdReal}/reservas`),
+    apiFetch('GET', '/config/tarifas')
+  ]);
+  const reservas = reservasVinculadas || [];
+  const tfNoche = tarifasCfg?.precio_noche || pn;
+  const tfHora  = tarifasCfg?.precio_hora  || hab?.precio_hora || 20000;
+  const tfDia   = tarifasCfg?.precio_dia   || Math.round(pn * 1.5);
 
-  // Prellenar con datos de la reserva si existe
-  const nombre0  = reserva?.nombre_huesped || '';
-  const doc0     = reserva?.documento || '';
-  const entrada0 = reserva ? new Date(reserva.entrada).toISOString().slice(0,16) : iso(now);
-  const salida0  = reserva ? new Date(reserva.salida).toISOString().slice(0,16)  : iso(tom);
-  const noches0  = reserva?.noches || 1;
-  const total0   = reserva?.precio_total || pn;
-  const senia0   = reserva?.monto_senia || 0;
-  const saldo0   = reserva?.saldo_pendiente ?? total0;
-  const metodo0  = reserva?.metodo_pago || 'Efectivo';
+  // Empezar sin reserva seleccionada
+  let reserva = null;
+  const nombre0 = '', doc0 = '';
+  const entrada0 = iso(now), salida0 = iso(tom);
+  const total0 = tfNoche, saldo0 = tfNoche;
+  const metodo0 = 'Efectivo';
 
-  const bannerReserva = reserva ? `
-    <div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
-      📋 <strong>Reserva existente vinculada</strong>
-      <div style="margin-top:4px;color:#1d4ed8">
-        Total: <strong>${fmt(total0)}</strong>
-        ${senia0>0?` · Seña cobrada: <strong style="color:#16a34a">${fmt(senia0)}</strong>`:''}
-        · <strong style="color:${saldo0>0?'#dc2626':'#16a34a'}">Saldo: ${fmt(saldo0)}</strong>
-      </div>
+  // Banner con listado de reservas vinculadas
+  const fmtDtCorto = dt => {
+    const d = new Date(dt);
+    return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) + ' ' +
+           d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  };
+  const bannerReserva = reservas.length > 0 ? `
+    <div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:800;color:#1d4ed8;margin-bottom:8px">📋 Reservas vinculadas — seleccioná una para precargar los datos</div>
+      ${reservas.map((r,i) => {
+        const senia = r.monto_senia||0;
+        const saldo = r.saldo_pendiente||r.precio_total||0;
+        return `<div style="background:#fff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1e293b">${r.nombre_huesped}</div>
+            <div style="font-size:11px;color:#64748b">${fmtDtCorto(r.entrada)} → ${fmtDtCorto(r.salida)} · ${fmt(r.precio_total||0)}${senia>0?' · Seña: '+fmt(senia):''}${saldo>0?' · <span style="color:#dc2626">Saldo: '+fmt(saldo)+'</span>':''}</div>
+          </div>
+          <button id="ci-usar-res-${i}" data-idx="${i}" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">Usar esta</button>
+        </div>`;
+      }).join('')}
     </div>` : '';
 
   openModal(`
@@ -2357,6 +2368,31 @@ async function showCheckinModal(habId) {
       gi.style.display = 'block';
       gi.textContent = `✅ Huésped encontrado — ${h.visitas} visitas previas`;
     }
+  });
+
+  // Listeners para botones "Usar esta reserva"
+  let senia0 = 0;
+  const cargarReserva = (r) => {
+    reserva = r;
+    senia0 = r.monto_senia || 0;
+    document.getElementById('ci-doc').value    = r.documento || '';
+    document.getElementById('ci-nombre').value = r.nombre_huesped || '';
+    document.getElementById('ci-tel').value    = r.telefono || '';
+    document.getElementById('ci-in').value     = new Date(r.entrada).toISOString().slice(0,16);
+    document.getElementById('ci-out').value    = new Date(r.salida).toISOString().slice(0,16);
+    ciTarifaMonto = r.precio_total / Math.max(1, r.noches||1);
+    recalc();
+    // Marcar visualmente la reserva seleccionada
+    document.querySelectorAll('[id^="ci-usar-res-"]').forEach(b => {
+      b.style.background = '#94a3b8';
+      b.textContent = 'Usar esta';
+    });
+    const idx = reservas.indexOf(r);
+    const btn = document.getElementById(`ci-usar-res-${idx}`);
+    if (btn) { btn.style.background = '#16a34a'; btn.textContent = '✓ Seleccionada'; }
+  };
+  reservas.forEach((r, i) => {
+    document.getElementById(`ci-usar-res-${i}`)?.addEventListener('click', () => cargarReserva(r));
   });
 
   document.getElementById('ci-close').addEventListener('click', closeModal);
