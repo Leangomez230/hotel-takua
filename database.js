@@ -503,6 +503,7 @@ try {
   // Migración: cantidad_personas y momento_cobro en reservas
   await query('ALTER TABLE reservas ADD COLUMN IF NOT EXISTS cantidad_personas INTEGER DEFAULT 1');
   await query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS momento_cobro TEXT DEFAULT 'ahora'");
+  await query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS acompanantes TEXT DEFAULT '[]'");
   console.log('✅ Migración cantidad_personas y momento_cobro lista');
 
   console.log('✅ Base de datos PostgreSQL lista');
