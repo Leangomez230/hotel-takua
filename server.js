@@ -562,16 +562,25 @@ app.get('/api/habitaciones/:id/debug', auth, adminOrRecep, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Obtener TODAS las reservas vigentes de una habitación (para listado en checkin)
+app.get('/api/habitaciones/:id/reservas', auth, adminRecepMucama, async (req, res) => {
+  try {
+    const reservas = await db.getAll(
+      `SELECT * FROM reservas WHERE habitacion_id=$1
+       AND estado IN ('futura','activa')
+       ORDER BY (entrada::timestamp > NOW())::int ASC, entrada ASC`,
+      [req.params.id]
+    );
+    res.json(reservas || []);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Obtener reserva vigente de una habitación (para precarga en checkin)
 app.get('/api/habitaciones/:id/reserva', auth, adminRecepMucama, async (req, res) => {
   try {
-    // Priorizar reservas con entrada <= ahora (vencidas/tardías) sobre futuras
     const reserva = await db.getOne(
       `SELECT * FROM reservas WHERE habitacion_id=$1
-       AND estado IN ('futura','activa')
-       ORDER BY
-         (entrada::timestamp > NOW())::int ASC,
-         entrada ASC`,
+       AND estado IN ('futura','activa') ORDER BY created_at DESC LIMIT 1`,
       [req.params.id]
     );
     res.json(reserva || null);
