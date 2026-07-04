@@ -324,7 +324,7 @@ app.post('/api/checkin', auth, adminRecepMucama, async (req, res) => {
   try {
     const { habitacion_id, documento, tipo_doc, nombre, telefono, entrada, salida, noches,
             precio_total, metodo_pago, notas, reserva_id, saldo_cobrado,
-            cantidad_personas, momento_cobro, tipo_tarifa } = req.body;
+            cantidad_personas, momento_cobro, tipo_tarifa, acompanantes } = req.body;
     if (!habitacion_id) return res.status(400).json({ error: 'Falta habitacion_id' });
     if (!nombre)        return res.status(400).json({ error: 'Falta el nombre del huésped' });
     if (!entrada)       return res.status(400).json({ error: 'Falta la fecha de entrada' });
@@ -381,11 +381,11 @@ app.post('/api/checkin', auth, adminRecepMucama, async (req, res) => {
       // ── Checkin directo sin reserva previa ───────────────
       const reserva = await db.query(
         `INSERT INTO reservas (habitacion_id,huesped_id,nombre_huesped,documento,entrada,salida,noches,
-          precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente,cantidad_personas,momento_cobro)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activa',0,0,$11,$12) RETURNING id`,
+          precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente,cantidad_personas,momento_cobro,acompanantes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activa',0,0,$11,$12,$13) RETURNING id`,
         [habitacion_id, huespedId, nombre, documento||'', entrada, salida,
          noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'',
-         cantidad_personas||1, momento_cobro||'ahora']
+         cantidad_personas||1, momento_cobro||'ahora', JSON.stringify(acompanantes||[])]
       );
       finalReservaId = reserva.rows[0].id;
       // Registrar cobro total en caja solo si paga ahora
