@@ -2117,6 +2117,7 @@ async function showCheckinModal(habId) {
   const nombre0 = '', doc0 = '';
   const entrada0 = iso(now), salida0 = iso(tom);
   const noches0 = 1, total0 = tfNoche, saldo0 = tfNoche;
+  let senia0 = 0;
   const metodo0 = 'Efectivo';
 
   // Banner con listado de reservas vinculadas
@@ -2371,7 +2372,6 @@ async function showCheckinModal(habId) {
   });
 
   // Listeners para botones "Usar esta reserva"
-  let senia0 = 0;
   const cargarReserva = (r) => {
     reserva = r;
     senia0 = r.monto_senia || 0;
