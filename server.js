@@ -619,17 +619,29 @@ app.get('/api/reservas/calendario', auth, async (req, res) => {
 
 app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
   try {
-    const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia, saldo_pendiente } = req.body;
+    const { nombre_huesped, documento, entrada, salida, noches, precio_total, metodo_pago, notas, monto_senia } = req.body;
     const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
     if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-    const seniaAnterior = Number(reserva.monto_senia||0);
-    const senia = Number(monto_senia??reserva.monto_senia??0);
-    const saldo  = Number(saldo_pendiente??Math.max(0,(precio_total||0)-senia));
+
+    // FIX duplicado caja: el saldo_pendiente se ajusta por DIFERENCIA (delta),
+    // nunca se recalcula desde cero como precio_total - monto_senia.
+    // Esto evita que editar una reserva (nombre, fechas, notas, etc.) pise el
+    // saldo_pendiente=0 que quedó bien seteado tras un check-in ya cobrado en su totalidad,
+    // lo cual generaba un cobro duplicado en el check-out ("Saldo Checkout" repetía el monto del "Check-in").
+    const precioAnterior = Number(reserva.precio_total||0);
+    const saldoAnterior  = Number(reserva.saldo_pendiente||0);
+    const seniaAnterior  = Number(reserva.monto_senia||0);
+    const senia = Number(monto_senia ?? seniaAnterior);
+    const nuevoTotal = Number(precio_total ?? precioAnterior);
+    const difSenia = senia - seniaAnterior;          // cambio en lo cobrado como seña
+    const difTotal = nuevoTotal - precioAnterior;    // cambio en el precio total
+    const saldo = Math.max(0, saldoAnterior - difSenia + difTotal);
+
     await db.query(
       `UPDATE reservas SET nombre_huesped=$1,documento=$2,entrada=$3,salida=$4,
        noches=$5,precio_total=$6,metodo_pago=$7,notas=$8,monto_senia=$9,saldo_pendiente=$10 WHERE id=$11`,
       [nombre_huesped, documento||'', entrada, salida,
-       noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'', senia, saldo, req.params.id]
+       noches||1, nuevoTotal, metodo_pago||'Efectivo', notas||'', senia, saldo, req.params.id]
     );
     await db.query(
       "UPDATE habitaciones SET nota=$1,updated_at=NOW() WHERE id=$2 AND status IN ('reservada','lista')",
@@ -637,7 +649,6 @@ app.put('/api/reservas/:id', auth, adminOrRecep, async (req, res) => {
     );
 
     // #3 — Si cambió la seña, registrar ajuste en caja habitaciones
-    const difSenia = senia - seniaAnterior;
     if (difSenia !== 0) {
       const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
       if (turnoHab) {
