@@ -1449,7 +1449,7 @@ app.put('/api/restaurante/salon', auth, adminOnly, async (req, res) => {
 app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
   try {
     const menu = await db.getAll('SELECT * FROM menu_restaurante ORDER BY categoria,nombre');
-    // Para cada producto, verificar si tiene stock vinculado
+    // Para cada producto, verificar stock vinculado y combo items
     for (const item of menu) {
       if (item.es_bebida) {
         const invProd = await db.getOne('SELECT stock FROM productos WHERE menu_id=$1 AND activo=1', [item.id]);
@@ -1457,6 +1457,12 @@ app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
           item.stock_inv = Number(invProd.stock)||0;
           item.sin_stock = item.stock_inv <= 0;
         }
+      }
+      if (item.es_combo) {
+        item.combo_items = await db.getAll(
+          'SELECT * FROM menu_combo_items WHERE producto_id=$1 ORDER BY orden, id',
+          [item.id]
+        );
       }
     }
     res.json(menu);
@@ -1505,8 +1511,53 @@ app.delete('/api/restaurante/menu/:id', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── COMBOS ────────────────────────────────────────────────────────────
 
-// ── NOTIFICACIONES SISTEMA (centro de notificaciones in-app) ─────────
+// GET componentes de un combo
+app.get('/api/restaurante/menu/:id/combo', auth, authRestaurante, async (req, res) => {
+  try {
+    const rows = await db.getAll(
+      'SELECT * FROM menu_combo_items WHERE producto_id=$1 ORDER BY orden, id',
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST guardar componentes (reemplaza todos)
+app.post('/api/restaurante/menu/:id/combo', auth, async (req, res) => {
+  try {
+    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
+    const { items } = req.body; // [{nombre, a_cocina}]
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'items debe ser un array' });
+    await db.query('DELETE FROM menu_combo_items WHERE producto_id=$1', [req.params.id]);
+    for (let i = 0; i < items.length; i++) {
+      const { nombre, a_cocina } = items[i];
+      if (!nombre?.trim()) continue;
+      await db.query(
+        'INSERT INTO menu_combo_items (producto_id, nombre, a_cocina, orden) VALUES ($1,$2,$3,$4)',
+        [req.params.id, nombre.trim(), a_cocina ? 1 : 0, i]
+      );
+    }
+    // Marcar el producto como combo (o no) en menu_restaurante
+    const esCombo = items.filter(i => i.nombre?.trim()).length > 0 ? 1 : 0;
+    await db.query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS es_combo INTEGER DEFAULT 0');
+    await db.query('UPDATE menu_restaurante SET es_combo=$1 WHERE id=$2', [esCombo, req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE — quitar definición de combo
+app.delete('/api/restaurante/menu/:id/combo', auth, async (req, res) => {
+  try {
+    if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
+    await db.query('DELETE FROM menu_combo_items WHERE producto_id=$1', [req.params.id]);
+    await db.query('UPDATE menu_restaurante SET es_combo=0 WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
 
 // GET: notificaciones del usuario según su rol (últimas 50)
 app.get('/api/notificaciones', auth, async (req, res) => {
