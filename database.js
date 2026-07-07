@@ -506,6 +506,18 @@ try {
   await query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS acompanantes TEXT DEFAULT '[]'");
   console.log('✅ Migración cantidad_personas y momento_cobro lista');
 
+  // Combos: componentes de un producto del menú
+  await query(`
+    CREATE TABLE IF NOT EXISTS menu_combo_items (
+      id SERIAL PRIMARY KEY,
+      producto_id INTEGER NOT NULL REFERENCES menu_restaurante(id) ON DELETE CASCADE,
+      nombre TEXT NOT NULL,
+      a_cocina INTEGER NOT NULL DEFAULT 1,
+      orden INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+  console.log('✅ Tabla menu_combo_items lista');
+
   console.log('✅ Base de datos PostgreSQL lista');
 }
 
