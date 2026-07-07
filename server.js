@@ -477,7 +477,7 @@ app.post('/api/reservas/:id/cambiar-habitacion', auth, async (req, res) => {
     if (!habDestino) return res.status(404).json({ error: 'Habitación destino no encontrada' });
 
     // Actualizar reserva
-    await db.query('UPDATE reservas SET habitacion_id=$1, updated_at=NOW() WHERE id=$2',
+    await db.query('UPDATE reservas SET habitacion_id=$1 WHERE id=$2',
       [nueva_habitacion_id, reservaId]);
 
     // Liberar hab origen (si no tiene más reservas activas/futuras)
