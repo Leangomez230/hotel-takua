@@ -445,6 +445,70 @@ app.post('/api/config/tarifas', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── CAMBIAR HABITACIÓN DE RESERVA (futura o activa) ─────────────────
+app.post('/api/reservas/:id/cambiar-habitacion', auth, async (req, res) => {
+  if (!['admin','recepcionista','mucama'].includes(req.user.rol))
+    return res.status(403).json({ error: 'Sin permisos' });
+  try {
+    const reservaId = req.params.id;
+    const { nueva_habitacion_id, motivo, estado_origen } = req.body;
+    if (!nueva_habitacion_id) return res.status(400).json({ error: 'Falta habitación destino' });
+
+    // Obtener la reserva
+    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [reservaId]);
+    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
+    if (!['futura','activa','confirmada'].includes(reserva.estado))
+      return res.status(400).json({ error: 'Solo se pueden mover reservas activas o futuras' });
+
+    // Verificar que la hab destino no tenga conflicto de fechas
+    const conflicto = await db.getOne(
+      `SELECT id FROM reservas
+       WHERE habitacion_id=$1
+         AND estado IN ('futura','activa','confirmada')
+         AND id != $2
+         AND entrada::timestamp < $4::timestamp
+         AND salida::timestamp  > $3::timestamp`,
+      [nueva_habitacion_id, reservaId, reserva.entrada, reserva.salida]
+    );
+    if (conflicto) return res.status(400).json({ error: 'La habitación destino tiene un conflicto de fechas' });
+
+    const habOrigen  = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [reserva.habitacion_id]);
+    const habDestino = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [nueva_habitacion_id]);
+    if (!habDestino) return res.status(404).json({ error: 'Habitación destino no encontrada' });
+
+    // Actualizar reserva
+    await db.query('UPDATE reservas SET habitacion_id=$1, updated_at=NOW() WHERE id=$2',
+      [nueva_habitacion_id, reservaId]);
+
+    // Liberar hab origen (si no tiene más reservas activas/futuras)
+    const otraReserva = await db.getOne(
+      `SELECT id FROM reservas WHERE habitacion_id=$1 AND estado IN ('futura','activa','confirmada') AND id!=$2`,
+      [reserva.habitacion_id, reservaId]
+    );
+    if (!otraReserva) {
+      const nuevoEstado = estado_origen === 'mantenimiento' ? 'mantenimiento' : 'libre';
+      await db.query(
+        "UPDATE habitaciones SET status=$1, nota='', updated_at=NOW() WHERE id=$2",
+        [nuevoEstado, reserva.habitacion_id]
+      );
+    }
+
+    // Marcar hab destino como reservada
+    await db.query(
+      "UPDATE habitaciones SET status='reservada', nota=$1, updated_at=NOW() WHERE id=$2",
+      [reserva.nombre_huesped, nueva_habitacion_id]
+    );
+
+    // Log
+    const logMsg = `Reserva #${reservaId} movida de Hab. ${habOrigen?.numero} → Hab. ${habDestino?.numero}${motivo?' ('+motivo+')':''}`;
+    await logAction(req.user.id, req.user.nombre, 'CAMBIO_HAB_RESERVA', logMsg);
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, nueva_habitacion_id,
+      `🔄 Cambio de hab. — ${reserva.nombre_huesped}: ${habOrigen?.numero} → ${habDestino?.numero}${motivo?' · '+motivo:''}`);
+
+    res.json({ ok: true, nombre_huesped: reserva.nombre_huesped, hab_destino: habDestino.numero });
+  } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
 // ── CHECK-OUT ────────────────────────────────────────────────────────
 app.post('/api/checkout/:habitacion_id', auth, adminRecepMucama, async (req, res) => {
   try {
