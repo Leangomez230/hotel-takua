@@ -506,6 +506,10 @@ try {
   await query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS acompanantes TEXT DEFAULT '[]'");
   console.log('✅ Migración cantidad_personas y momento_cobro lista');
 
+  // Migración: plataforma de origen de la reserva (Airbnb, Booking, Expedia, Directo, etc.)
+  await query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS plataforma TEXT DEFAULT 'Directo'");
+  console.log('✅ Migración plataforma en reservas lista');
+
   // Combos: componentes de un producto del menú
   await query(`
     CREATE TABLE IF NOT EXISTS menu_combo_items (
