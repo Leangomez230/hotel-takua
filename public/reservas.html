@@ -100,39 +100,49 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2035;color:#fff;padding:12px 22px;border-radius:12px;font-weight:700;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);pointer-events:none}
 
 /* ── LISTA (cards) ── */
-.lista-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.lista-tab{padding:8px 16px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s}
-.lista-tab:hover{border-color:#cbd5e1}
-.lista-tab .cnt{background:#f1f5f9;color:#64748b;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:800}
-.lista-tab.activo{background:#1a2035;border-color:#1a2035;color:#fff}
-.lista-tab.activo .cnt{background:rgba(255,255,255,.18);color:#fff}
+.lista-tabs{display:inline-flex;gap:2px;margin-bottom:16px;background:#eef1f5;border-radius:12px;padding:4px}
+.lista-tab{padding:8px 16px;border-radius:9px;border:none;background:transparent;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s}
+.lista-tab:hover{color:#1a2035}
+.lista-tab .cnt{background:#dcfce7;color:#16a34a;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:800;min-width:18px;text-align:center}
+.lista-tab.activo{background:#fff;color:#1a2035;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 
 .lista-filtros{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
 .lista-search{flex:1;min-width:220px;position:relative}
-.lista-search input{width:100%;padding:10px 14px 10px 34px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:'Nunito',sans-serif;font-size:13px;box-sizing:border-box}
+.lista-search input{width:100%;padding:10px 14px 10px 34px;border-radius:10px;border:1.5px solid #e6eaf0;font-family:'Nunito',sans-serif;font-size:13px;box-sizing:border-box;background:#fff}
 .lista-search input:focus{outline:none;border-color:var(--accent)}
-.lista-search-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none}
-.lista-select{padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;color:#374151;background:#fff;cursor:pointer}
+.lista-search-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;opacity:.5}
+.lista-select{padding:9px 14px;border-radius:10px;border:1.5px solid #e6eaf0;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;color:#374151;background:#fff;cursor:pointer}
+.lista-count{font-size:12px;color:#94a3b8;font-weight:700;white-space:nowrap;padding:0 4px}
 
-.res-cards{display:flex;flex-direction:column;gap:12px}
-.res-card{background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 1px 8px rgba(0,0,0,.06);border:1px solid #f1f5f9}
-.rc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.rc-nombre{font-size:16px;font-weight:800;color:#1a2035}
-.rc-meta{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.res-cards{display:flex;flex-direction:column;gap:10px}
+.res-card{background:#fff;border-radius:16px;padding:16px 20px;box-shadow:0 1px 6px rgba(0,0,0,.05);border:1px solid #f1f5f9}
+.rc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:2px}
+.rc-nombre-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rc-nombre{font-size:15px;font-weight:800;color:#1a2035}
+.rc-sub{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap;font-size:11px;color:#94a3b8;font-weight:600}
 .rc-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
-.rc-actions{display:flex;gap:6px;flex-wrap:wrap}
-.rc-btn{border:1.5px solid transparent;border-radius:8px;padding:7px 11px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:'Nunito',sans-serif;font-weight:700;transition:filter .15s}
-.rc-btn:hover{filter:brightness(0.96)}
-.rc-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;padding-top:12px;border-top:1px solid #f8fafc}
-.rc-field-lbl{font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.rc-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.rc-icon-btn{border:1.5px solid #e6eaf0;background:#fff;border-radius:9px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:all .15s;flex-shrink:0}
+.rc-icon-btn:hover{background:#f8fafc;border-color:#cbd5e1}
+.rc-icon-btn.danger{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+.rc-icon-btn.danger:hover{background:#ffe4e6}
+.rc-btn-entrada{border:none;border-radius:9px;padding:0 14px;height:32px;background:#111827;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Nunito',sans-serif;white-space:nowrap}
+.rc-btn-entrada:hover{background:#000}
+.rc-btn-text{border:1.5px solid #e6eaf0;border-radius:9px;padding:0 12px;height:32px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Nunito',sans-serif;white-space:nowrap;background:#fff}
+.rc-btn-text:hover{filter:brightness(.97)}
+.rc-divider{border-top:1px solid #f1f5f9;margin:12px 0}
+.rc-body{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.rc-body2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:12px}
+.rc-field-lbl{font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
 .rc-field-val{font-size:13px;font-weight:700;color:#1a2035}
-.rc-total{font-size:17px;font-weight:900;color:#1a2035}
+.rc-field-sub{font-size:11px;color:#94a3b8;font-weight:600;margin-top:1px}
+.rc-total{font-size:16px;font-weight:900;color:#1a2035}
 .res-cards-empty{text-align:center;padding:48px 20px;color:#94a3b8;background:#fff;border-radius:16px}
 
 @media(max-width:640px){
   .lista-filtros{flex-direction:column;align-items:stretch}
-  .rc-actions{width:100%}
-  .rc-btn{flex:1;justify-content:center}
+  .rc-body{grid-template-columns:1fr 1fr}
+  .rc-body2{grid-template-columns:1fr}
 }
 
 @media(max-width:900px){
@@ -781,6 +791,7 @@ async function renderLista() {
           <option value="senia">Con seña</option>
           <option value="pendiente">Pendiente</option>
         </select>
+        <span class="lista-count" id="lista-count"></span>
       </div>
       <div class="res-cards" id="res-cards"></div>`;
     document.getElementById('lista-buscar').addEventListener('input', e => {
@@ -841,6 +852,8 @@ function pintarCards() {
       return true;
     });
   }
+  const countEl = document.getElementById('lista-count');
+  if (countEl) countEl.textContent = `${datos.length} reserva${datos.length===1?'':'s'}`;
   if (!datos.length) {
     cont.innerHTML = `<div class="res-cards-empty">Sin reservas en esta categoría</div>`;
     return;
@@ -849,46 +862,85 @@ function pintarCards() {
   cont.innerHTML = datos.map(r => cardReservaHTML(r, isAdminOrRecep)).join('');
 }
 
+function fmtDateCorta(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  const hh = String(h).padStart(2,'0');
+  const min = String(d.getMinutes()).padStart(2,'0');
+  return `${dd}/${mm}/${yyyy} ${hh}:${min} ${ampm}`;
+}
+
 function cardReservaHTML(r, isAdminOrRecep) {
   const hab = G.habitaciones.find(h=>String(h.id)===String(r.habitacion_id)) || {};
   const pago = infoPago(r);
   const esVencida = r.estado==='futura' && new Date(r.entrada) < new Date();
   const acciones = [];
   if (isAdminOrRecep) {
-    acciones.push(`<button class="rc-btn" style="background:#eff6ff;color:#2563eb" onclick="verReservaLista(${r.id})" title="Ver / editar">✏️ Editar</button>`);
+    acciones.push(`<button class="rc-icon-btn" onclick="verReservaLista(${r.id})" title="Editar">✏️</button>`);
     if (['futura','activa'].includes(r.estado)) {
-      acciones.push(`<button class="rc-btn" style="background:#f5f3ff;color:#7c3aed" onclick="abrirCambioHabDirecto(${r.id})" title="Cambiar habitación">🔄</button>`);
+      acciones.push(`<button class="rc-icon-btn" onclick="abrirCambioHabDirecto(${r.id})" title="Cambiar habitación">🔄</button>`);
     }
     if (r.estado === 'futura') {
-      acciones.push(`<button class="rc-btn" style="background:#111827;color:#fff" onclick="entradaDesdeCard('${r.habitacion_id}')" title="Hacer check-in">✓ Entrada</button>`);
-      acciones.push(`<button class="rc-btn" style="background:#fff1f2;color:#be123c" onclick="cancelarReserva(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Cancelar reserva">✕</button>`);
+      acciones.push(`<button class="rc-btn-entrada" onclick="entradaDesdeCard('${r.habitacion_id}')" title="Hacer check-in">✓ Entrada</button>`);
+      acciones.push(`<button class="rc-icon-btn danger" onclick="cancelarReserva(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Cancelar reserva">✕</button>`);
     }
     if (r.estado === 'cancelada') {
-      acciones.push(`<button class="rc-btn" style="background:#dcfce7;color:#166534" onclick="reactivarReserva(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Reactivar reserva">↺ Reactivar</button>`);
-      acciones.push(`<button class="rc-btn" style="background:#fff1f2;color:#be123c" onclick="eliminarReserva(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Eliminar definitivamente">🗑️</button>`);
+      acciones.push(`<button class="rc-btn-text" style="background:#dcfce7;border-color:#bbf7d0;color:#166534" onclick="reactivarReserva(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Reactivar reserva">↺ Reactivar</button>`);
+      acciones.push(`<button class="rc-icon-btn danger" onclick="eliminarReserva(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Eliminar definitivamente">🗑️</button>`);
     }
   } else {
-    acciones.push(`<button class="rc-btn" style="background:#eff6ff;color:#2563eb" onclick="verReservaLista(${r.id})" title="Ver detalle">👁 Ver</button>`);
+    acciones.push(`<button class="rc-btn-text" onclick="verReservaLista(${r.id})" title="Ver detalle">👁 Ver</button>`);
   }
+
+  const tipoLabel = TIPOS[hab.tipo] || hab.tipo || '';
 
   return `<div class="res-card">
     <div class="rc-top">
       <div>
-        <div class="rc-nombre">${r.nombre_huesped}</div>
-        <div class="rc-meta">
-          ${badgePlataforma(r.plataforma)}
+        <div class="rc-nombre-row">
+          <span class="rc-nombre">${r.nombre_huesped}</span>
           <span class="rc-badge" style="background:${pago.bg};color:${pago.color}">${pago.label}</span>
           ${esVencida?'<span class="rc-badge" style="background:#fef3c7;color:#b45309">⚠ Vencida</span>':''}
+        </div>
+        <div class="rc-sub">
+          ${badgePlataforma(r.plataforma)}
+          ${r.created_at?`<span>· Creada el ${fmtDateCorta(r.created_at)}</span>`:''}
         </div>
       </div>
       <div class="rc-actions">${acciones.join('')}</div>
     </div>
+    <div class="rc-divider"></div>
     <div class="rc-body">
-      <div><div class="rc-field-lbl">Habitación</div><div class="rc-field-val">${r.hab_numero||hab.numero||r.habitacion_id} · ${r.ala||hab.ala||''}</div></div>
-      <div><div class="rc-field-lbl">Entrada</div><div class="rc-field-val">${fmtDate(r.entrada)}</div></div>
-      <div><div class="rc-field-lbl">Salida</div><div class="rc-field-val">${fmtDate(r.salida)}</div></div>
-      <div><div class="rc-field-lbl">Total</div><div class="rc-total">${fmt(r.precio_total)}</div></div>
-      <div><div class="rc-field-lbl">Método</div><div class="rc-field-val">${r.metodo_pago||'—'}</div></div>
+      <div>
+        <div class="rc-field-lbl">Habitación</div>
+        <div class="rc-field-val">${r.hab_numero||hab.numero||r.habitacion_id} · ${(r.ala||hab.ala||'').toUpperCase()}</div>
+        ${tipoLabel?`<div class="rc-field-sub">${tipoLabel}</div>`:''}
+      </div>
+      <div>
+        <div class="rc-field-lbl">Entrada / Salida</div>
+        <div class="rc-field-val" style="font-weight:700">${fmtDateCorta(r.entrada)}</div>
+        <div class="rc-field-sub">→ ${fmtDateCorta(r.salida)}</div>
+      </div>
+      <div>
+        <div class="rc-field-lbl">Precio Total</div>
+        <div class="rc-total">${fmt(r.precio_total)}</div>
+      </div>
+    </div>
+    <div class="rc-body2">
+      <div>
+        <div class="rc-field-lbl">Estado de Pago</div>
+        <div class="rc-field-val" style="color:${pago.color==='#fff'?'#111827':pago.color}">${pago.label}</div>
+      </div>
+      <div>
+        <div class="rc-field-lbl">Método de Pago</div>
+        <div class="rc-field-val">${r.metodo_pago||'—'}</div>
+      </div>
     </div>
   </div>`;
 }
