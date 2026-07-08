@@ -1211,6 +1211,13 @@ async function renderHabitaciones() {
   if (currentUser?.rol === 'mantenimiento') {
     setTimeout(() => applyMantMapAlerts(), 100);
   }
+  // Si venimos desde reservas.html con "Entrada" en una card, abrir esa habitación directamente
+  const pendingHabId = sessionStorage.getItem('takua_open_hab');
+  if (pendingHabId) {
+    sessionStorage.removeItem('takua_open_hab');
+    const hab = habitaciones.find(h => String(h.id) === String(pendingHabId));
+    if (hab) setTimeout(() => showHabModal(hab), 150);
+  }
 }
  
 // ══════════════════════════════════════
@@ -2478,6 +2485,18 @@ async function showReservaModal(habId) {
       </div>
     </div>
     <div class="form-row">
+      <div class="form-col"><label>Plataforma</label>
+        <select id="res-plataforma">
+          <option value="Directo">🏨 Directo</option>
+          <option value="Airbnb">🅰️ Airbnb</option>
+          <option value="Booking">🅱️ Booking</option>
+          <option value="Expedia">✈️ Expedia</option>
+          <option value="Hostelworld">🎒 Hostelworld</option>
+          <option value="Otro">🔗 Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-col"><label>Entrada</label>
         <input type="datetime-local" id="res-in" value="${iso(now)}">
       </div>
@@ -2641,6 +2660,7 @@ async function showReservaModal(habId) {
       cantidad_personas: resPersonas,
       acompanantes:    getAcompRes(),
       documento:      document.getElementById('res-doc').value,
+      plataforma:     document.getElementById('res-plataforma').value,
       entrada:        document.getElementById('res-in').value,
       salida:         document.getElementById('res-out').value,
       noches:         n,
