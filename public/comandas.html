@@ -1005,11 +1005,11 @@ function renderCajero(el){
       </div>
       <div class="metrica-card mc-cobradas">
         <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">COMANDAS</div>
-        <div class="mc-val">${cerradas.length}</div>
+        <div class="mc-val">${abiertas.length + enCuenta.length}</div>
       </div>
       <div class="metrica-card mc-comen">
         <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">COMENSALES</div>
-        <div class="mc-val">${totalComen}</div>
+        <div class="mc-val">${[...abiertas,...enCuenta].reduce((s,c)=>s+(c.comensales||0),0)}</div>
       </div>
       <div class="metrica-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8)">
         <div class="mc-lbl">HOTEL</div><div class="mc-ttl">HUÉSPEDES</div>
@@ -1241,12 +1241,12 @@ function renderAdmin(el){
       <div class="metrica-card mc-cobradas">
         <div class="mc-lbl">${hayTurno}</div>
         <div class="mc-ttl">COMANDAS</div>
-        <div class="mc-val">${cerradas.length}</div>
+        <div class="mc-val">${S.comandas.filter(c=>c.estado==='abierta'||c.estado==='cuenta').length}</div>
       </div>
       <div class="metrica-card mc-comen">
         <div class="mc-lbl">${hayTurno}</div>
         <div class="mc-ttl">COMENSALES</div>
-        <div class="mc-val">${totalComen}</div>
+        <div class="mc-val">${S.comandas.filter(c=>c.estado==='abierta'||c.estado==='cuenta').reduce((s,c)=>s+(c.comensales||0),0)}</div>
       </div>
       <div class="metrica-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8)">
         <div class="mc-lbl">HOTEL</div>
