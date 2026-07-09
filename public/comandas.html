@@ -2777,10 +2777,22 @@ function imprimirTicket(tipo) {
       `).join('')}
 
       <div style="border-top:3px solid #000;margin:8px 0"></div>
-      ${showTotal ? `
-        <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold">
-          <span>TOTAL</span><span>${fmt(cmd.total)}</span>
-        </div>` : ''}
+      ${showTotal ? (() => {
+        const subtotal = Number(cmd.total)||0;
+        const totalFinal = Number(cmd.total_final||cmd.total)||0;
+        const desc = subtotal - totalFinal;
+        return `
+          ${desc > 0 ? `
+            <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px">
+              <span>Subtotal</span><span>${fmt(subtotal)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px;color:#e85d04">
+              <span>Descuento (${cmd.descuento||''}%)</span><span>- ${fmt(desc)}</span>
+            </div>` : ''}
+          <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold">
+            <span>TOTAL</span><span>${fmt(totalFinal)}</span>
+          </div>`;
+      })() : ''}
       <div style="text-align:center;margin-top:15px;font-weight:bold">
         ${esCocina ? '* Ticket de cocina *' : '¡Gracias por su visita!'}
       </div>
