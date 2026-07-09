@@ -746,7 +746,9 @@ async function loadAll(silencioso=false){
     }
     if(['admin','cajero'].includes(ME.rol)){
       const habs = await api('GET','/api/habitaciones').catch(()=>[]);
-      S.huespedes = Array.isArray(habs) ? habs.filter(h=>h.status==='ocupada').length : 0;
+      S.huespedes = Array.isArray(habs)
+        ? habs.filter(h=>h.status==='ocupada').reduce((s,h)=>s+(h.reserva_activa?.cantidad_personas||1),0)
+        : 0;
     }
   }catch(e){toast('Error cargando datos','err');}
   finally{loading(false);}
