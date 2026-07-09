@@ -359,10 +359,13 @@ app.post('/api/checkin', auth, adminRecepMucama, async (req, res) => {
       await db.query(
         `UPDATE reservas SET estado='activa', nombre_huesped=$1, documento=$2, entrada=$3, salida=$4,
          noches=$5, precio_total=$6, metodo_pago=$7, notas=$8, huesped_id=$9,
-         saldo_pendiente=GREATEST(0, saldo_pendiente-$10)
-         WHERE id=$11`,
+         cantidad_personas=$10, acompanantes=$11,
+         saldo_pendiente=GREATEST(0, saldo_pendiente-$12)
+         WHERE id=$13`,
         [nombre, documento||'', entrada, salida, noches||1, precio_total||0,
-         metodo_pago||'Efectivo', notas||'', huespedId, saldo, reserva_id]
+         metodo_pago||'Efectivo', notas||'', huespedId,
+         cantidad_personas||1, JSON.stringify(acompanantes||[]),
+         saldo, reserva_id]
       );
       finalReservaId = reserva_id;
       // Registrar saldo cobrado en caja si corresponde
