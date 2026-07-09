@@ -182,6 +182,7 @@ app.get('/api/habitaciones', auth, async (req, res) => {
           notas:          reserva.notas,
           noches:         reserva.noches,
           estado:         reserva.estado,
+          cantidad_personas: reserva.cantidad_personas || 1,
         } : null,
         reserva_vencida: reservaVencida ? {
           nombre_huesped: reservaVencida.nombre_huesped,
@@ -1296,7 +1297,7 @@ app.get('/api/dashboard', auth, async (req, res) => {
     // Ingresos proyectados desde reservas activas (aunque movimientos esté vacío)
     const reservasActivas = await db.getAll(
       `SELECT r.precio_total, r.noches, r.entrada, r.salida, r.nombre_huesped,
-              h.numero, h.ala
+              r.cantidad_personas, h.numero, h.ala
        FROM reservas r
        LEFT JOIN habitaciones h ON r.habitacion_id = h.id
        WHERE r.estado IN ('activa','checkin','ocupada','confirmada')`
@@ -1330,7 +1331,7 @@ app.get('/api/dashboard', auth, async (req, res) => {
       balance: ingresos - egresos,
       alertas_stock: parseInt(alertas.c),
       caja_abierta: !!caja,
-      reservas_activas: reservasActivas.length,
+      reservas_activas: reservasActivas.reduce((s,r) => s + (parseInt(r.cantidad_personas)||1), 0),
       huespedes_actuales: reservasActivas.map(r => ({
         nombre: r.nombre_huesped, numero: r.numero, ala: r.ala,
         salida: r.salida, precio_total: r.precio_total
