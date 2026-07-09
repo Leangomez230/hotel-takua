@@ -753,6 +753,11 @@ async function loadAll(silencioso=false){
     if(ME.rol==='admin'){
       S.usuarios=await api('GET','/api/portal/usuarios').catch(()=>[]);
     }
+    // Huéspedes hospedados (para KPI en restaurante)
+    if(['admin','cajero'].includes(ME.rol)){
+      const habs = await api('GET','/api/habitaciones').catch(()=>[]);
+      S.huespedes = Array.isArray(habs) ? habs.filter(h=>h.status==='ocupada').length : 0;
+    }
   }catch(e){toast('Error cargando datos','err');}
   finally{loading(false);}
 }
@@ -1014,9 +1019,9 @@ function renderCajero(el){
         <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">COMENSALES</div>
         <div class="mc-val">${totalComen}</div>
       </div>
-      <div class="metrica-card mc-desc">
-        <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">DESCUENTOS</div>
-        <div class="mc-val">${fmt(totalDesc)}</div>
+      <div class="metrica-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8)">
+        <div class="mc-lbl">HOTEL</div><div class="mc-ttl">HUÉSPEDES</div>
+        <div class="mc-val">${S.huespedes||0}</div>
       </div>
     </div>
 
