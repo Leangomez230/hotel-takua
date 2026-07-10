@@ -2143,9 +2143,13 @@ async function showCheckinModal(habId) {
         const senia = r.monto_senia||0;
         const saldo = r.saldo_pendiente||r.precio_total||0;
         return `<div style="background:#fff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#1e293b">${r.nombre_huesped}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span style="font-size:13px;font-weight:700;color:#1e293b">${r.nombre_huesped}</span>
+              ${r.plataforma&&r.plataforma!=='Directo'?`<span style="background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${r.plataforma}</span>`:''}
+            </div>
             <div style="font-size:11px;color:#64748b">${fmtDtCorto(r.entrada)} → ${fmtDtCorto(r.salida)} · ${fmt(r.precio_total||0)}${senia>0?' · Seña: '+fmt(senia):''}${saldo>0?' · <span style="color:#dc2626">Saldo: '+fmt(saldo)+'</span>':''}</div>
+            ${r.notas?`<div style="font-size:10px;color:#92400e;background:#fef9c3;border-radius:4px;padding:2px 6px;margin-top:3px;font-style:italic">📝 ${r.notas}</div>`:''}
           </div>
           <button id="ci-usar-res-${i}" data-idx="${i}" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">Usar esta</button>
         </div>`;
@@ -2433,14 +2437,36 @@ async function showCheckinModal(habId) {
       b.style.cursor = 'not-allowed';
     });
     document.getElementById('ci-monto-manual').style.display = 'none';
-    // Mostrar aviso de tarifa bloqueada
+    // Mostrar aviso de tarifa bloqueada + botón editar
     const tarifaWrap = document.querySelector('.ci-tarifa-btn')?.closest('div')?.parentElement;
     if (tarifaWrap && !document.getElementById('ci-tarifa-aviso')) {
       const aviso = document.createElement('div');
       aviso.id = 'ci-tarifa-aviso';
-      aviso.style.cssText = 'background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:10px';
-      aviso.textContent = '📋 Tarifa definida en la reserva — no se puede modificar';
+      aviso.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:10px';
+      aviso.innerHTML = '<span>📋 Tarifa definida en la reserva</span><button id="ci-editar-tarifa" style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">✏️ Editar tarifa</button>';
       tarifaWrap.insertBefore(aviso, tarifaWrap.querySelector('div[style*="grid-template-columns"]'));
+      document.getElementById('ci-editar-tarifa').addEventListener('click', () => {
+        // Habilitar botones de tarifa
+        document.querySelectorAll('.ci-tarifa-btn').forEach(b => {
+          b.disabled = false; b.style.opacity = '1'; b.style.cursor = 'pointer';
+        });
+        // Mostrar campo personalizado
+        document.getElementById('ci-monto-manual').style.display = 'block';
+        const inp = document.getElementById('ci-tarifa');
+        if (inp) inp.focus();
+        // Cambiar aviso
+        aviso.innerHTML = '<span>✏️ Seleccioná nueva tarifa o ingresá monto personalizado</span>';
+        aviso.style.background = '#eff6ff';
+        aviso.style.borderColor = '#93c5fd';
+        aviso.style.color = '#1d4ed8';
+        ciTipoTarifa = 'personalizado';
+        const tarInput = document.getElementById('ci-tarifa');
+        if (tarInput) {
+          tarInput.value = ciTarifaMonto;
+          tarInput.addEventListener('input', () => { ciTarifaMonto = parseMonto(tarInput.value)||0; recalc(); });
+        }
+        recalc();
+      });
     }
     recalc();
     // Marcar visualmente la reserva seleccionada
