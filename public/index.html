@@ -673,7 +673,7 @@ function goTo(page) {
   if (isMantenimiento && !['dashboard','habitaciones'].includes(page)) { goTo('dashboard'); return; }
   const pages={dashboard:renderDashboard, habitaciones:renderHabitaciones, reservas:renderReservas,
     inventario:renderInventario,
-    caja:renderCaja, config:renderConfig};
+    caja:renderCaja};
   if (pages[page]) pages[page]();
 }
  
@@ -2143,13 +2143,9 @@ async function showCheckinModal(habId) {
         const senia = r.monto_senia||0;
         const saldo = r.saldo_pendiente||r.precio_total||0;
         return `<div style="background:#fff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-              <span style="font-size:13px;font-weight:700;color:#1e293b">${r.nombre_huesped}</span>
-              ${r.plataforma&&r.plataforma!=='Directo'?`<span style="background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${r.plataforma}</span>`:''}
-            </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1e293b">${r.nombre_huesped}</div>
             <div style="font-size:11px;color:#64748b">${fmtDtCorto(r.entrada)} → ${fmtDtCorto(r.salida)} · ${fmt(r.precio_total||0)}${senia>0?' · Seña: '+fmt(senia):''}${saldo>0?' · <span style="color:#dc2626">Saldo: '+fmt(saldo)+'</span>':''}</div>
-            ${r.notas?`<div style="font-size:10px;color:#92400e;background:#fef9c3;border-radius:4px;padding:2px 6px;margin-top:3px;font-style:italic">📝 ${r.notas}</div>`:''}
           </div>
           <button id="ci-usar-res-${i}" data-idx="${i}" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">Usar esta</button>
         </div>`;
@@ -2285,9 +2281,7 @@ async function showCheckinModal(habId) {
           <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:8px">
             <span>Noches / Unidades:</span><span id="ci-n">${noches0}</span>
           </div>
-          <div id="ci-senia-row" style="${senia0>0?'':'display:none'}; display:flex;justify-content:space-between;color:#16a34a;margin-bottom:8px">
-            <span>Seña cobrada:</span><span id="ci-senia-val">- ${fmt(senia0)}</span>
-          </div>
+          ${senia0>0?`<div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:8px"><span>Seña cobrada:</span><span>- ${fmt(senia0)}</span></div>`:''}
           <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;border-top:1.5px solid #e2e8f0;padding-top:8px;color:#1d4ed8">
             <span>TOTAL</span><span id="ci-saldo">${fmt(saldo0)}</span>
           </div>
@@ -2323,12 +2317,6 @@ async function showCheckinModal(habId) {
     document.getElementById('ci-tot').textContent = fmtExacto(total);
     if (document.getElementById('ci-saldo'))
       document.getElementById('ci-saldo').textContent = ciMomentoCobro === 'ahora' ? fmtExacto(saldo) : '$ 0 (paga al salir)';
-    // Actualizar label del botón confirmar según seña
-    const confirmBtn = document.getElementById('ci-confirm');
-    if (confirmBtn && senia0 > 0 && ciMomentoCobro === 'ahora')
-      confirmBtn.textContent = `✅ Confirmar y Cobrar saldo ${fmtExacto(saldo)}`;
-    else if (confirmBtn)
-      confirmBtn.textContent = '✅ Confirmar y Cobrar';
   };
 
   // Botones tipo tarifa
@@ -2403,71 +2391,16 @@ async function showCheckinModal(habId) {
     }
   });
 
-  // Auto-seleccionar la primera reserva si hay exactamente una
-  if (reservas.length === 1) {
-    // slight delay para que el DOM esté listo
-    setTimeout(() => cargarReserva(reservas[0]), 100);
-  }
-
   // Listeners para botones "Usar esta reserva"
   const cargarReserva = (r) => {
     reserva = r;
     senia0 = r.monto_senia || 0;
-    // Actualizar fila de seña en el resumen
-    const seniaRow = document.getElementById('ci-senia-row');
-    const seniaVal = document.getElementById('ci-senia-val');
-    if (seniaRow && seniaVal) {
-      if (senia0 > 0) {
-        seniaRow.style.display = 'flex';
-        seniaVal.textContent = '- ' + fmt(senia0);
-      } else {
-        seniaRow.style.display = 'none';
-      }
-    }
     document.getElementById('ci-doc').value    = r.documento || '';
     document.getElementById('ci-nombre').value = r.nombre_huesped || '';
     document.getElementById('ci-tel').value    = r.telefono || '';
     document.getElementById('ci-in').value     = new Date(r.entrada).toISOString().slice(0,16);
     document.getElementById('ci-out').value    = new Date(r.salida).toISOString().slice(0,16);
     ciTarifaMonto = r.precio_total / Math.max(1, r.noches||1);
-    // Deshabilitar botones de tarifa — precio definido en la reserva
-    document.querySelectorAll('.ci-tarifa-btn').forEach(b => {
-      b.disabled = true;
-      b.style.opacity = '0.4';
-      b.style.cursor = 'not-allowed';
-    });
-    document.getElementById('ci-monto-manual').style.display = 'none';
-    // Mostrar aviso de tarifa bloqueada + botón editar
-    const tarifaWrap = document.querySelector('.ci-tarifa-btn')?.closest('div')?.parentElement;
-    if (tarifaWrap && !document.getElementById('ci-tarifa-aviso')) {
-      const aviso = document.createElement('div');
-      aviso.id = 'ci-tarifa-aviso';
-      aviso.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:10px';
-      aviso.innerHTML = '<span>📋 Tarifa definida en la reserva</span><button id="ci-editar-tarifa" style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">✏️ Editar tarifa</button>';
-      tarifaWrap.insertBefore(aviso, tarifaWrap.querySelector('div[style*="grid-template-columns"]'));
-      document.getElementById('ci-editar-tarifa').addEventListener('click', () => {
-        // Habilitar botones de tarifa
-        document.querySelectorAll('.ci-tarifa-btn').forEach(b => {
-          b.disabled = false; b.style.opacity = '1'; b.style.cursor = 'pointer';
-        });
-        // Mostrar campo personalizado
-        document.getElementById('ci-monto-manual').style.display = 'block';
-        const inp = document.getElementById('ci-tarifa');
-        if (inp) inp.focus();
-        // Cambiar aviso
-        aviso.innerHTML = '<span>✏️ Seleccioná nueva tarifa o ingresá monto personalizado</span>';
-        aviso.style.background = '#eff6ff';
-        aviso.style.borderColor = '#93c5fd';
-        aviso.style.color = '#1d4ed8';
-        ciTipoTarifa = 'personalizado';
-        const tarInput = document.getElementById('ci-tarifa');
-        if (tarInput) {
-          tarInput.value = ciTarifaMonto;
-          tarInput.addEventListener('input', () => { ciTarifaMonto = parseMonto(tarInput.value)||0; recalc(); });
-        }
-        recalc();
-      });
-    }
     recalc();
     // Marcar visualmente la reserva seleccionada
     document.querySelectorAll('[id^="ci-usar-res-"]').forEach(b => {
@@ -2487,11 +2420,6 @@ async function showCheckinModal(habId) {
   document.getElementById('ci-confirm').addEventListener('click', async () => {
     const nombre = document.getElementById('ci-nombre').value.trim();
     if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
-    // Si hay reservas vinculadas y no se seleccionó ninguna, advertir
-    if (reservas.length > 0 && !reserva) {
-      const ok = confirm('⚠️ No seleccionaste ninguna reserva vinculada.\nSe creará un nuevo ingreso independiente.\n¿Continuar de todas formas?');
-      if (!ok) return;
-    }
     const { inn, out } = getInnOut();
     let noches = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
     if (ciTipoTarifa === 'hora' || ciTipoTarifa === 'dia') noches = 1;
