@@ -46,8 +46,9 @@
       show: ['admin'],
       bottom: true },
     { id:'sb-config',       icon:'⚙️', label:'Config',
-      href: indexHref('config'), click: indexClick('config'),
+      href: '/config.html',
       show: ['admin'],
+      active: on('config.html'),
       bottom: true },
   ];
 
