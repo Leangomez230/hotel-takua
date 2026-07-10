@@ -2996,6 +2996,7 @@ function showMov(tipo) {
 // FINANZAS
 // ══════════════════════════════════════
 
+
 // ── Utilidad acompañantes ──────────────────────────────────────────
 function buildAcompBlock(containerId, btnId) {
   const lista = [];
@@ -3015,6 +3016,419 @@ function buildAcompBlock(containerId, btnId) {
   return () => lista;
 }
 
+
+// ══════════════════════════════════════
+// QR MODAL
+// ══════════════════════════════════════
+function showQRModal(hab) {
+  const isAdmin = currentUser?.rol === 'admin';
+  const url = `${window.location.origin}/huesped.html?hab=${hab.numero}`;
+ 
+  openModal(`
+    <div class="modal-hd">
+      <h3>📱 QR Huésped — Hab. ${hab.numero}</h3>
+      <button class="modal-close" id="qr-close">✕</button>
+    </div>
+    <div style="text-align:center;padding:10px 0 16px">
+      <div id="qr-canvas" style="display:inline-block;padding:12px;background:#fff;border-radius:12px;border:2px solid #e0e6ef"></div>
+      <div style="margin-top:12px;font-size:13px;color:#64748b">Escaneá este QR para acceder al panel de servicios</div>
+      <div style="margin-top:6px;font-size:11px;color:#94a3b8;word-break:break-all">${url}</div>
+    </div>
+    ${isAdmin ? `
+    <div style="border-top:1px solid #f1f5f9;padding-top:14px;margin-top:4px">
+      <div class="stitle">Contraseña de la puerta</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="qr-pwd" placeholder="Ej: 1234" maxlength="8" inputmode="numeric"
+          style="flex:1;border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 12px;font-size:16px;font-family:'Nunito',sans-serif;letter-spacing:4px;font-weight:700">
+        <button class="btn-primary" id="qr-save-pwd" style="white-space:nowrap">💾 Guardar</button>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px">Esta contraseña la usa el huésped para acceder al panel QR</div>
+    </div>` : ''}
+    <button class="confirm-btn" id="qr-copy" style="margin-top:14px;background:linear-gradient(135deg,#1a2035,#2d3a5a)">
+      📋 Copiar enlace
+    </button>
+  `);
+ 
+  document.getElementById('qr-close').addEventListener('click', closeModal);
+ 
+  // Generar QR
+  setTimeout(() => {
+    const canvas = document.getElementById('qr-canvas');
+    if (canvas && window.QRCode) {
+      new QRCode(canvas, { text: url, width: 200, height: 200, colorDark: '#1a2035', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+    }
+  }, 100);
+ 
+  // Copiar enlace
+  document.getElementById('qr-copy').addEventListener('click', () => {
+    navigator.clipboard.writeText(url).then(() => toast('Enlace copiado')).catch(() => {
+      prompt('Copiá este enlace:', url);
+    });
+  });
+ 
+  // Guardar contraseña (solo admin)
+  if (isAdmin) {
+    // Cargar contraseña actual
+    apiFetch('GET', `/habitaciones/${hab.id}/password`).then(r => {
+      if (r?.password) {
+        const input = document.getElementById('qr-pwd');
+        if (input) input.value = r.password;
+      }
+    });
+    document.getElementById('qr-save-pwd')?.addEventListener('click', async () => {
+      const pwd = document.getElementById('qr-pwd').value.trim();
+      if (!pwd) { toast('Ingresá una contraseña', false); return; }
+      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/password`, { password: pwd });
+      if (r?.ok) toast('Contraseña guardada');
+      else toast(r?.error||'Error', false);
+    });
+  }
+}
+ 
+// ══════════════════════════════════════
+// HISTORIAL
+// ══════════════════════════════════════
+async function loadLog() {
+  const log=await apiFetch('GET','/log')||[];
+  openModal(`
+    <div class="modal-hd"><h3>📋 Historial</h3><button class="modal-close" id="log-c">✕</button></div>
+    <div style="max-height:420px;overflow-y:auto">
+      ${log.map(e=>`<div style="border-left:3px solid #e0e6ef;padding-left:10px;margin-bottom:12px">
+        <div style="font-size:10px;color:#94a3b8">${fmtDate(e.created_at)} · ${e.usuario_nombre||'Sistema'}</div>
+        <div style="font-size:13px;font-weight:700">${e.accion}</div>
+        <div style="font-size:12px;color:#64748b">${e.detalle}</div>
+      </div>`).join('')||'<div style="text-align:center;color:#94a3b8;padding:20px">Sin acciones</div>'}
+    </div>
+  `);
+  document.getElementById('log-c').addEventListener('click',closeModal);
+}
+ 
+// ── SONIDO DE NOTIFICACIÓN ──
+let soundEnabled = localStorage.getItem('takua_sound') !== 'off';
+let lastSolCount = -1;
+let notifPermission = Notification?.permission || 'default';
+ 
+// Pedir permiso de notificaciones del sistema
+// En Android DEBE ser llamado desde un gesto del usuario (click)
+async function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  notifPermission = Notification.permission;
+  if (Notification.permission === 'granted') return;
+  if (Notification.permission !== 'denied') {
+    try {
+      const perm = await Notification.requestPermission();
+      notifPermission = perm;
+      if (perm === 'granted') {
+        // Test notification via SW
+        sendSystemNotif('Hotel Takuá', '🔔 Notificaciones activadas', 'takua-test');
+      }
+    } catch(e) { console.log('Notif permission error:', e); }
+  }
+}
+ 
+function sendSystemNotif(titulo, cuerpo, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+ 
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    // MÉTODO CORRECTO PARA ANDROID:
+    // Enviamos mensaje al SW — el SW usa event.waitUntil() que mantiene
+    // el proceso vivo el tiempo necesario para mostrar la notificación en la barra
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SHOW_NOTIF',
+      title: titulo,
+      body: cuerpo,
+      tag: tag || 'takua-sol'
+    });
+  } else {
+    // Fallback: intentar directo con el SW registrado
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(titulo, {
+        body: cuerpo,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        vibrate: [200, 100, 200],
+        tag: tag || 'takua-sol',
+        renotify: true,
+      });
+    }).catch(() => {
+      // Último fallback: desktop sin SW activo
+      try { new Notification(titulo, { body: cuerpo, icon: '/icon-192.png' }); } catch(e) {}
+    });
+  }
+}
+ 
+function updateSoundBtn() {
+  const btn = document.getElementById('btn-sound');
+  if (!btn) return;
+  btn.textContent = soundEnabled ? '🔔' : '🔕';
+  btn.title = soundEnabled ? 'Sonido activo — toca para apagar' : 'Sonido apagado — toca para activar';
+  btn.style.opacity = soundEnabled ? '1' : '0.5';
+}
+ 
+function playNotifSound() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[880,0,0.25,0.3],[660,0.28,0.35,0.22]].forEach(([f,s,d,v]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = f; o.type = 'sine';
+      g.gain.setValueAtTime(0, ctx.currentTime+s);
+      g.gain.linearRampToValueAtTime(v, ctx.currentTime+s+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+s+d);
+      o.start(ctx.currentTime+s); o.stop(ctx.currentTime+s+d+0.1);
+    });
+  } catch(e) {}
+}
+ 
+document.getElementById('btn-sound')?.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('takua_sound', soundEnabled ? 'on' : 'off');
+  updateSoundBtn();
+  if (soundEnabled) {
+    playNotifSound();
+    // Pedir permiso de notificaciones (Android requiere gesto del usuario)
+    requestNotifPermission();
+  }
+  toast(soundEnabled ? '🔔 Sonido y notificaciones activados' : '🔕 Sonido silenciado');
+});
+ 
+async function registerPeriodicSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    // Background Sync: se ejecuta cuando hay conexión aunque la app esté cerrada
+    if ('periodicSync' in reg) {
+      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+      if (status.state === 'granted') {
+        await reg.periodicSync.register('check-solicitudes-periodic', { minInterval: 60 * 1000 }); // cada 1 min
+        console.log('Periodic sync registrado');
+      }
+    }
+  } catch(e) { console.log('Periodic sync no disponible:', e.message); }
+}
+ 
+// Solicitudes con sonido y mucama
+async function loadSolicitudesAll() {
+  const isMantenimiento = currentUser?.rol === 'mantenimiento';
+
+  // Mantenimiento no ve solicitudes de huéspedes — solo alertas del mapa
+  if (isMantenimiento) {
+    applyMantMapAlerts();
+    return;
+  }
+
+  const sols = await apiFetch('GET', '/solicitudes') || [];
+  const pendientes = sols.filter(s => s.estado === 'pendiente');
+  const isMucama = currentUser?.rol === 'mucama';
+
+  // Sonido + notificación del sistema cuando hay nuevas
+  if (lastSolCount >= 0 && pendientes.length > lastSolCount) {
+    playNotifSound();
+    const nueva = pendientes[pendientes.length - 1];
+    if (nueva) {
+      const tipo = nueva.tipo === 'servicio' ? '🧹 Limpieza solicitada' : '🍫 Pedido de frigobar';
+      sendSystemNotif(`Hotel Takuá — Hab. ${nueva.numero} Ala ${nueva.ala}`, tipo+(nueva.detalle?': '+nueva.detalle:''), 'takua-sol');
+    }
+  }
+  lastSolCount = pendientes.length;
+
+  applyMapAlerts(pendientes);
+
+  if (isMucama) {
+    renderMucamaSolicitudes(pendientes);
+  } else {
+    loadSolicitudes(pendientes);
+  }
+}
+ 
+function applyMapAlerts(pendientes) {
+  const habsConSol = new Set(pendientes.map(s => s.habitacion_id));
+  document.querySelectorAll('.rcard[data-hid]').forEach(card => {
+    const hid = card.dataset.hid;
+    if (habsConSol.has(hid)) {
+      card.classList.add('tiene-solicitud');
+      if (!card.querySelector('.sol-badge-card')) {
+        const badge = document.createElement('div');
+        badge.className = 'sol-badge-card';
+        badge.textContent = '🔔';
+        card.insertBefore(badge, card.firstChild);
+      }
+    } else {
+      card.classList.remove('tiene-solicitud');
+      card.querySelector('.sol-badge-card')?.remove();
+    }
+  });
+}
+ 
+function renderMucamaSolicitudes(pendientes) {
+  const el = document.getElementById('mucama-sols');
+  if (!el) return;
+  if (!pendientes.length) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `
+    <div class="section-card" style="border:2px solid #fca5a5;background:#fff7f7">
+      <div class="sc-head" style="margin-bottom:10px">
+        <h2 style="display:flex;align-items:center;gap:8px;font-size:16px;color:#dc2626">
+          🔔 Solicitudes pendientes
+          <span style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:800">${pendientes.length}</span>
+        </h2>
+      </div>
+      ${pendientes.map(s=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;
+                  background:#fff;border-radius:12px;border:1px solid #fecdd3;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="font-size:32px;flex-shrink:0">${s.tipo==='servicio'?'🧹':'🍫'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:800;color:#1e293b">Hab. ${s.numero} — Ala ${s.ala}</div>
+          <div style="font-size:13px;color:#64748b;margin-top:1px">${s.tipo==='servicio'?'Limpieza solicitada':'Pedido de frigobar'}</div>
+          ${s.detalle?`<div style="font-size:12px;font-style:italic;color:#374151;margin-top:2px">"${s.detalle}"</div>`:''}
+        </div>
+        <button data-sol-id="${s.id}"
+          style="flex-shrink:0;background:#16a34a;color:#fff;border:none;border-radius:10px;
+                 padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+          ✅ Atendido
+        </button>
+      </div>`).join('')}
+    </div>`;
+
+  // Bind botones atendido
+  el.querySelectorAll('[data-sol-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = '...';
+      const r = await apiFetch('PUT', `/solicitudes/${btn.dataset.solId}`, { estado: 'atendida' });
+      if (r?.ok) {
+        toast('Solicitud marcada como atendida ✓');
+        loadSolicitudesAll();
+      } else {
+        toast('Error al actualizar', false);
+        btn.disabled = false;
+        btn.textContent = '✅ Atendido';
+      }
+    });
+  });
+}
+ 
+ 
+// ══════════════════════════════════════
+// ══════════════════════════════════════
+// LIBRO DE NOVEDADES
+// ══════════════════════════════════════
+
+// ── BADGE LIBRO ───────────────────────────────────────────────────────
+function _libroLastReadKey() {
+  return 'libro_last_read_' + (currentUser?.id || 'x');
+}
+
+function _libroMarcarLeido() {
+  localStorage.setItem(_libroLastReadKey(), new Date().toISOString());
+  _libroActualizarBadge(0);
+}
+
+function _libroActualizarBadge(count) {
+  const badge = document.getElementById('libro-badge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function _libroCheckBadge() {
+  const data = await apiFetch('GET', '/libro-novedades');
+  if (!Array.isArray(data) || !data.length) { _libroActualizarBadge(0); return; }
+  const lastRead = localStorage.getItem(_libroLastReadKey());
+  const since = lastRead ? new Date(lastRead) : null;
+  const nuevos = since
+    ? data.filter(m => new Date(m.created_at) > since && String(m.usuario_id) !== String(currentUser?.id)).length
+    : data.filter(m => String(m.usuario_id) !== String(currentUser?.id)).length;
+  _libroActualizarBadge(nuevos);
+}
+
+function _libroStartPolling() {
+  _libroCheckBadge();
+  _libroBadgeInterval = setInterval(_libroCheckBadge, 60000);
+}
+// ─────────────────────────────────────────────────────────────────────
+
+function abrirLibro() {
+  document.getElementById('libro-overlay').classList.add('open');
+  const footer = document.getElementById('libro-footer');
+  if (footer) footer.style.display = isMucama ? '' : 'none';
+  _libroMarcarLeido();
+  cargarLibro();
+  _libroInterval = setInterval(cargarLibro, 15000);
+}
+
+function cerrarLibro(e) {
+  if (e && e.target !== document.getElementById('libro-overlay')) return;
+  document.getElementById('libro-overlay').classList.remove('open');
+  clearInterval(_libroInterval);
+}
+
+async function cargarLibro() {
+  const body = document.getElementById('libro-body');
+  const data = await apiFetch('GET', '/libro-novedades');
+  if (!data) return;
+
+  const hoy = new Date().toLocaleDateString('es-AR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('libro-turno-label').textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
+
+  if (!data.length) {
+    body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:32px;font-size:13px">Sin novedades hoy</div>';
+    return;
+  }
+
+  // Agrupar por fecha
+  let html = '';
+  let fechaActual = '';
+  data.forEach(m => {
+    const fecha = new Date(m.created_at).toLocaleDateString('es-AR', {weekday:'long',day:'numeric',month:'long'});
+    if (fecha !== fechaActual) {
+      fechaActual = fecha;
+      html += `<div class="libro-fecha-sep"><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)}</span></div>`;
+    }
+    const hora = new Date(m.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    const esManual = m.tipo === 'manual';
+    html += `<div class="libro-msg ${esManual?'manual':'auto'}">
+      <div class="lm-autor">${m.usuario_nombre}</div>
+      ${m.habitacion_id ? `<div class="lm-hab">Hab. ${m.habitacion_id}</div>` : ''}
+      <div>${m.mensaje}</div>
+      <div class="lm-hora">${hora}</div>
+    </div>`;
+  });
+
+  const wasAtBottom = body.scrollHeight - body.scrollTop <= body.clientHeight + 50;
+  body.innerHTML = html;
+  if (wasAtBottom) body.scrollTop = body.scrollHeight;
+}
+
+async function enviarNovedad() {
+  const input = document.getElementById('libro-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const r = await apiFetch('POST', '/libro-novedades', { mensaje: msg, tipo: 'manual' });
+  if (r?.ok) {
+    input.value = '';
+    input.style.height = '42px';
+    await cargarLibro();
+    const body = document.getElementById('libro-body');
+    body.scrollTop = body.scrollHeight;
+  } else {
+    toast('Error al enviar', false);
+  }
+}
+
+// Registrar evento automático en el libro
+async function registrarLibro(mensaje, habitacion_id='') {
+  await apiFetch('POST', '/libro-novedades', {
+    mensaje, tipo: 'auto', habitacion_id
+  });
+}
 
 // ══════════════════════════════════════
 // INIT
