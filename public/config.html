@@ -93,20 +93,14 @@ const TOKEN_KEY = 'takua_token';
 let currentUser = null;
 
 // ── Auth ──────────────────────────────────────────────────────────────
-async function init() {
+function init() {
   const token = localStorage.getItem(TOKEN_KEY);
-  if (!token) { location.href = '/portal.html'; return; }
-  try {
-    const r = await fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
-    if (!r.ok) { location.href = '/portal.html'; return; }
-    currentUser = await r.json();
-    // Solo admin
-    if (currentUser.rol !== 'admin') { location.href = '/index.html'; return; }
-    document.getElementById('user-av').textContent = currentUser.nombre?.[0]?.toUpperCase() || 'A';
-    document.getElementById('tb-sub').textContent = currentUser.nombre + ' · ' + currentUser.rol;
-    if (window.initSidebar) initSidebar(currentUser);
-    renderConfig();
-  } catch(e) { location.href = '/portal.html'; }
+  currentUser = JSON.parse(localStorage.getItem('takua_user') || 'null');
+  if (!token || !currentUser) { location.href = '/portal.html'; return; }
+  if (currentUser.rol !== 'admin') { location.href = '/index.html'; return; }
+  document.getElementById('user-av').textContent = (currentUser.nombre?.[0] || 'A').toUpperCase();
+  document.getElementById('tb-sub').textContent = currentUser.nombre + ' · ' + currentUser.rol;
+  renderConfig();
 }
 
 async function apiFetch(method, path, body) {
