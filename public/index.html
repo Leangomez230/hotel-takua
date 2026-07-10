@@ -2391,6 +2391,12 @@ async function showCheckinModal(habId) {
     }
   });
 
+  // Auto-seleccionar la primera reserva si hay exactamente una
+  if (reservas.length === 1) {
+    // slight delay para que el DOM esté listo
+    setTimeout(() => cargarReserva(reservas[0]), 100);
+  }
+
   // Listeners para botones "Usar esta reserva"
   const cargarReserva = (r) => {
     reserva = r;
@@ -2420,6 +2426,11 @@ async function showCheckinModal(habId) {
   document.getElementById('ci-confirm').addEventListener('click', async () => {
     const nombre = document.getElementById('ci-nombre').value.trim();
     if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
+    // Si hay reservas vinculadas y no se seleccionó ninguna, advertir
+    if (reservas.length > 0 && !reserva) {
+      const ok = confirm('⚠️ No seleccionaste ninguna reserva vinculada.\nSe creará un nuevo ingreso independiente.\n¿Continuar de todas formas?');
+      if (!ok) return;
+    }
     const { inn, out } = getInnOut();
     let noches = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
     if (ciTipoTarifa === 'hora' || ciTipoTarifa === 'dia') noches = 1;
