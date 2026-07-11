@@ -32,10 +32,10 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--ink);font-
 .content{padding:20px 24px;max-width:980px}
 
 /* ── Section tabs (mismo lenguaje visual que reservas.html) ── */
-.cfg-tabs{display:inline-flex;gap:2px;margin-bottom:18px;background:#eef1f5;border-radius:12px;padding:4px}
-.cfg-tab{padding:9px 18px;border-radius:9px;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:13px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s}
-.cfg-tab:hover{color:var(--ink)}
-.cfg-tab.activo{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.cfg-tabs{display:inline-flex;gap:2px;margin-bottom:18px;background:#eef1f5;border-radius:12px;padding:4px;flex-wrap:wrap}
+.cfg-tab{padding:9px 18px;border-radius:9px;border:1.5px solid transparent;background:rgba(255,255,255,.55);font-family:inherit;font-weight:700;font-size:13px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s}
+.cfg-tab:hover{color:var(--ink);background:rgba(255,255,255,.9);border-color:#e2e8f0}
+.cfg-tab.activo{background:#fff;color:var(--ink);border-color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .cfg-pane{display:none}
 .cfg-pane.activo{display:block;animation:fadein .15s ease}
 @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -86,14 +86,53 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .confirm-btn{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:16px}
 .confirm-btn:disabled{opacity:.6;cursor:default}
 
-/* ── Tarifas ──────────────────────────────────────────────── */
-.info-box{background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#0369a1;line-height:1.7}
+/* ── Tarifas generales (Noche/Día/Hora — usadas en check-in) ─ */
 .tarifas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:6px}
 .tarifa-card{background:#f8fafc;border-radius:10px;padding:14px;border:1.5px solid #e2e8f0}
 .tarifa-card .lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
 .tarifa-card .amount{display:flex;align-items:center;gap:6px}
 .tarifa-card .amount span{font-size:14px;color:var(--faint)}
 .tarifa-card input{padding:8px;border-radius:8px;font-size:15px;font-weight:700}
+
+/* ── Tarifas: layout de dos columnas ─────────────────────── */
+.tarifas-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.info-box{background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#0369a1;line-height:1.7}
+.list-hint{font-size:11.5px;color:var(--faint);margin:-6px 0 12px}
+.list-count{font-size:12px;font-weight:700;color:var(--muted)}
+
+/* Filas reordenables (tipos de habitación / plataformas) */
+.reorder-row{display:flex;align-items:center;gap:10px;background:#f8fafc;border:1.5px solid #eef1f5;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.reorder-arrows{display:flex;flex-direction:column;gap:1px}
+.reorder-arrows button{width:20px;height:16px;border:none;background:none;color:var(--faint);cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.reorder-arrows button:hover{background:#e2e8f0;color:var(--ink)}
+.reorder-arrows button:disabled{opacity:.3;cursor:default}
+.reorder-arrows button:disabled:hover{background:none}
+
+.tipo-info{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tipo-info .nombre{font-weight:800;font-size:13.5px;color:var(--ink)}
+.tipo-info .precio{font-weight:800;font-size:13.5px;color:var(--accent2);white-space:nowrap}
+
+.plat-avatar{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;overflow:hidden}
+.plat-avatar img{width:100%;height:100%;object-fit:cover}
+.plat-info{flex:1;min-width:0}
+.plat-info .nombre{font-weight:800;font-size:13.5px;color:var(--ink);display:block}
+.plat-info .comision{font-size:11.5px;color:var(--faint)}
+
+/* Formulario "Nueva plataforma" */
+.plat-form-row{margin-bottom:14px}
+.plat-color-logo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.color-swatch-wrap input[type=color]{-webkit-appearance:none;appearance:none;width:100%;height:41px;border:1.5px solid #e2e8f0;border-radius:10px;padding:3px;cursor:pointer;background:#fff}
+.color-swatch-wrap input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.color-swatch-wrap input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
+.logo-upload-row{display:flex;align-items:center;gap:10px}
+.logo-preview{width:41px;height:41px;border-radius:10px;border:1.5px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;color:#fff;font-weight:800;font-size:14px}
+.logo-preview img{width:100%;height:100%;object-fit:cover}
+.btn-upload{border:1.5px solid #e2e8f0;background:#f8fafc;border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-upload:hover{background:#f1f5f9;color:var(--ink)}
+.upload-hint{font-size:10.5px;color:var(--faint);margin-top:4px}
+.comision-row{display:flex;align-items:center;gap:6px}
+.comision-row input{max-width:100px}
+.comision-row span{font-size:14px;color:var(--faint);font-weight:700}
 
 /* ── Notificaciones broadcast ─────────────────────────────── */
 .notif-card{border:1.5px solid #fcd34d;background:#fffbeb}
@@ -130,6 +169,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   .form-row{grid-template-columns:1fr}
   .stat-cards{grid-template-columns:1fr 1fr}
   .tarifas-grid{grid-template-columns:1fr}
+  .tarifas-layout{grid-template-columns:1fr}
+  .plat-color-logo{grid-template-columns:1fr}
   .info-grid{grid-template-columns:1fr}
   .cfg-tabs{overflow-x:auto;max-width:100%}
   .content{padding:16px}
@@ -231,6 +272,47 @@ function cambiarCfgTab(id) {
 
 const ROL_COLOR = { admin:'pb', recepcionista:'pg', mucama:'py', mantenimiento:'pgr', mozo:'pp', cajero:'po' };
 const ROL_LABEL = { admin:'Admin', recepcionista:'Recepción', mucama:'Mucama', mantenimiento:'Mantenimiento', mozo:'Mozo', cajero:'Cajero' };
+let TIPOS = [];
+let PLATAFORMAS = [];
+
+function renderTiposRows(tipos) {
+  if (!tipos.length) return `<p class="empty-state" style="padding:24px 0">No hay tipos cargados</p>`;
+  return tipos.map((t,i) => `
+    <div class="reorder-row">
+      <div class="reorder-arrows">
+        <button onclick="moverTipo(${t.id},'up')" ${i===0?'disabled':''}>▲</button>
+        <button onclick="moverTipo(${t.id},'down')" ${i===tipos.length-1?'disabled':''}>▼</button>
+      </div>
+      <div class="tipo-info">
+        <span class="nombre">${t.nombre}</span>
+        <span class="precio">$${Number(t.tarifa_base).toLocaleString('es-AR')}</span>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn edit" onclick="abrirModalTipo(${t.id})">✏️</button>
+        <button class="icon-btn del" onclick="eliminarTipo(${t.id},'${t.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderPlataformasRows(plats) {
+  if (!plats.length) return `<p class="empty-state" style="padding:24px 0">No hay plataformas cargadas</p>`;
+  return plats.map((p,i) => `
+    <div class="reorder-row">
+      <div class="reorder-arrows">
+        <button onclick="moverPlataforma(${p.id},'up')" ${i===0?'disabled':''}>▲</button>
+        <button onclick="moverPlataforma(${p.id},'down')" ${i===plats.length-1?'disabled':''}>▼</button>
+      </div>
+      <div class="plat-avatar" style="background:${p.color}">${p.logo_url ? `<img src="${p.logo_url}" alt="${p.nombre}">` : (p.nombre[0]||'?').toUpperCase()}</div>
+      <div class="plat-info">
+        <span class="nombre">${p.nombre}</span>
+        <span class="comision">Comisión: ${Number(p.comision_pct)}%</span>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn edit" onclick="abrirModalPlataforma(${p.id})">✏️</button>
+        <button class="icon-btn del" onclick="eliminarPlataforma(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
 
 // ── RENDER CONFIG ─────────────────────────────────────────────────────
 async function renderConfig() {
@@ -261,6 +343,9 @@ async function renderConfig() {
   const tfNoche = tarifas.precio_noche || 50000;
   const tfHora  = tarifas.precio_hora  || 20000;
   const tfDia   = tarifas.precio_dia   || 75000;
+
+  TIPOS = await apiFetch('GET', '/config/tipos-habitacion') || [];
+  PLATAFORMAS = await apiFetch('GET', '/config/plataformas') || [];
 
   document.getElementById('content').innerHTML = `
     <div class="cfg-tabs" id="cfg-tabs">
@@ -312,6 +397,62 @@ async function renderConfig() {
           </div>
         </div>
         <button id="btn-guardar-tarifas" class="confirm-btn" style="max-width:220px">💾 Guardar tarifas</button>
+      </div>
+
+      <div class="tarifas-layout">
+        <!-- Tipos de habitación -->
+        <div class="section-card">
+          <div class="sc-head">
+            <div>
+              <h2>🛏️ Tipos de habitación</h2>
+              <p class="sc-sub">Tarifa base por tipo</p>
+            </div>
+            <button class="btn-primary" id="btn-ntipo">+ Nuevo tipo</button>
+          </div>
+          <p class="list-hint">Usa las flechas para ordenar</p>
+          <div id="tipos-list"></div>
+        </div>
+
+        <!-- Plataformas -->
+        <div class="section-card">
+          <div class="sc-head"><h2>🔗 Nueva plataforma</h2></div>
+          <div class="plat-form-row">
+            <label>Nombre *</label>
+            <input type="text" id="plat-nombre" placeholder="Airbnb, Booking, Expedia, Directo...">
+          </div>
+          <div class="plat-color-logo">
+            <div class="color-swatch-wrap">
+              <label>Color</label>
+              <input type="color" id="plat-color" value="#6d5df6">
+            </div>
+            <div>
+              <label>Logo (opcional)</label>
+              <div class="logo-upload-row">
+                <div class="logo-preview" id="plat-logo-preview">?</div>
+                <button type="button" class="btn-upload" id="btn-plat-logo">📷 Subir logo</button>
+                <input type="file" id="plat-logo-file" accept="image/png,image/jpeg,image/webp" style="display:none">
+              </div>
+              <div class="upload-hint">JPG, PNG o WEBP · máx 5MB</div>
+            </div>
+          </div>
+          <div class="plat-form-row">
+            <label>Comisión que cobra la plataforma</label>
+            <div class="comision-row">
+              <input type="number" id="plat-comision" placeholder="0" min="0" max="100" step="0.1">
+              <span>%</span>
+            </div>
+            <p class="list-hint" style="margin-top:6px">Ej: tarifa base $100.000 + 5% de comisión → se cobra $105.000 en reservas de esta plataforma.</p>
+          </div>
+          <button class="confirm-btn" id="btn-agregar-plat">+ Agregar plataforma</button>
+
+          <div style="margin-top:20px">
+            <div class="sc-head" style="margin-bottom:4px">
+              <h2 style="font-size:14px">Tus plataformas <span class="list-count" id="plat-count"></span></h2>
+            </div>
+            <p class="list-hint">Usa las flechas para ordenar</p>
+            <div id="plataformas-list"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -375,6 +516,49 @@ async function renderConfig() {
     btn.disabled = false;
     if (r?.ok) toast('Tarifas guardadas ✓');
     else toast(r?.error || 'Error al guardar', false);
+  });
+
+  // Tipos de habitación
+  document.getElementById('tipos-list').innerHTML = renderTiposRows(TIPOS);
+  document.getElementById('btn-ntipo').addEventListener('click', () => abrirModalTipo(null));
+
+  // Plataformas — lista + formulario "nueva plataforma"
+  document.getElementById('plataformas-list').innerHTML = renderPlataformasRows(PLATAFORMAS);
+  document.getElementById('plat-count').textContent = `(${PLATAFORMAS.length})`;
+
+  let nuevaPlatLogo = '';
+  const platPreview = document.getElementById('plat-logo-preview');
+  const platColorInput = document.getElementById('plat-color');
+  platPreview.style.background = platColorInput.value;
+  document.getElementById('plat-nombre').addEventListener('input', e => {
+    if (!nuevaPlatLogo) platPreview.textContent = (e.target.value[0] || '?').toUpperCase();
+  });
+  platColorInput.addEventListener('input', e => {
+    platPreview.style.background = e.target.value;
+  });
+  document.getElementById('btn-plat-logo').addEventListener('click', () => document.getElementById('plat-logo-file').click());
+  document.getElementById('plat-logo-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast('El logo debe pesar menos de 5MB', false); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      nuevaPlatLogo = ev.target.result;
+      platPreview.innerHTML = `<img src="${nuevaPlatLogo}" alt="">`;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('btn-agregar-plat').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const nombre = document.getElementById('plat-nombre').value.trim();
+    const color = platColorInput.value;
+    const comision_pct = Number(document.getElementById('plat-comision').value) || 0;
+    if (!nombre) { toast('Completá el nombre de la plataforma', false); return; }
+    btn.disabled = true;
+    const r = await apiFetch('POST', '/config/plataformas', { nombre, color, logo_url: nuevaPlatLogo, comision_pct });
+    btn.disabled = false;
+    if (r?.ok) { toast('Plataforma agregada ✓'); renderConfig(); }
+    else toast(r?.error || 'Error al agregar', false);
   });
 
   document.getElementById('btn-enviar-notif-broadcast')?.addEventListener('click', async () => {
@@ -477,6 +661,138 @@ async function eliminarUsuario(id, nombre) {
   const r = await apiFetch('DELETE', `/portal/usuarios/${id}`);
   if (r?.ok) { toast('Usuario eliminado'); renderConfig(); }
   else toast(r?.error || 'Error al eliminar', false);
+}
+
+// ── TIPOS DE HABITACIÓN ──────────────────────────────────────────────
+function abrirModalTipo(id) {
+  const t = id ? TIPOS.find(x => x.id === id) : null;
+  const esEdicion = !!t;
+  openModal(`
+    <div class="modal-hd">
+      <h3>${esEdicion ? '✏️ Editar tipo' : '➕ Nuevo tipo de habitación'}</h3>
+      <button class="modal-close" id="mt-c">✕</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <label>Nombre</label>
+      <input type="text" id="mt-nombre" value="${t?.nombre || ''}" placeholder="Queen, Twin, Triple...">
+    </div>
+    <div style="margin-bottom:12px">
+      <label>Tarifa base</label>
+      <input type="number" id="mt-tarifa" value="${t?.tarifa_base || ''}" placeholder="100000">
+    </div>
+    <button class="confirm-btn" id="mt-ok">${esEdicion ? '💾 Guardar cambios' : '✅ Crear tipo'}</button>
+  `);
+  document.getElementById('mt-c').addEventListener('click', closeModal);
+  document.getElementById('mt-ok').addEventListener('click', async () => {
+    const nombre = document.getElementById('mt-nombre').value.trim();
+    const tarifa_base = Number(document.getElementById('mt-tarifa').value) || 0;
+    if (!nombre) { toast('Completá el nombre', false); return; }
+    const r = esEdicion
+      ? await apiFetch('PUT', `/config/tipos-habitacion/${t.id}`, { nombre, tarifa_base })
+      : await apiFetch('POST', '/config/tipos-habitacion', { nombre, tarifa_base });
+    if (r?.ok) { toast(esEdicion ? 'Tipo actualizado ✓' : 'Tipo creado ✓'); closeModal(); renderConfig(); }
+    else toast(r?.error || 'Error al guardar', false);
+  });
+}
+
+async function eliminarTipo(id, nombre) {
+  if (!confirm(`¿Eliminar el tipo "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  const r = await apiFetch('DELETE', `/config/tipos-habitacion/${id}`);
+  if (r?.ok) { toast('Tipo eliminado'); renderConfig(); }
+  else toast(r?.error || 'Error al eliminar', false);
+}
+
+async function moverTipo(id, dir) {
+  const idx = TIPOS.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= TIPOS.length) return;
+  [TIPOS[idx], TIPOS[swapIdx]] = [TIPOS[swapIdx], TIPOS[idx]];
+  document.getElementById('tipos-list').innerHTML = renderTiposRows(TIPOS);
+  await apiFetch('POST', '/config/tipos-habitacion/reordenar', { ids: TIPOS.map(t => t.id) });
+}
+
+// ── PLATAFORMAS ───────────────────────────────────────────────────────
+function abrirModalPlataforma(id) {
+  const p = PLATAFORMAS.find(x => x.id === id);
+  if (!p) return;
+  let logoData = p.logo_url || '';
+  openModal(`
+    <div class="modal-hd">
+      <h3>✏️ Editar plataforma</h3>
+      <button class="modal-close" id="mp-c">✕</button>
+    </div>
+    <div class="plat-form-row">
+      <label>Nombre *</label>
+      <input type="text" id="mp-nombre" value="${p.nombre}">
+    </div>
+    <div class="plat-color-logo">
+      <div class="color-swatch-wrap">
+        <label>Color</label>
+        <input type="color" id="mp-color" value="${p.color}">
+      </div>
+      <div>
+        <label>Logo (opcional)</label>
+        <div class="logo-upload-row">
+          <div class="logo-preview" id="mp-logo-preview" style="background:${p.color}">${logoData ? `<img src="${logoData}" alt="">` : (p.nombre[0]||'?').toUpperCase()}</div>
+          <button type="button" class="btn-upload" id="mp-btn-logo">📷 Subir logo</button>
+          <input type="file" id="mp-logo-file" accept="image/png,image/jpeg,image/webp" style="display:none">
+        </div>
+        <div class="upload-hint">JPG, PNG o WEBP · máx 5MB</div>
+      </div>
+    </div>
+    <div class="plat-form-row">
+      <label>Comisión que cobra la plataforma</label>
+      <div class="comision-row">
+        <input type="number" id="mp-comision" value="${p.comision_pct}" min="0" max="100" step="0.1">
+        <span>%</span>
+      </div>
+    </div>
+    <button class="confirm-btn" id="mp-ok">💾 Guardar cambios</button>
+  `);
+  const mpPreview = document.getElementById('mp-logo-preview');
+  document.getElementById('mp-c').addEventListener('click', closeModal);
+  document.getElementById('mp-btn-logo').addEventListener('click', () => document.getElementById('mp-logo-file').click());
+  document.getElementById('mp-color').addEventListener('input', e => {
+    if (!logoData) mpPreview.style.background = e.target.value;
+  });
+  document.getElementById('mp-logo-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast('El logo debe pesar menos de 5MB', false); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      logoData = ev.target.result;
+      mpPreview.innerHTML = `<img src="${logoData}" alt="">`;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('mp-ok').addEventListener('click', async () => {
+    const nombre = document.getElementById('mp-nombre').value.trim();
+    const color = document.getElementById('mp-color').value;
+    const comision_pct = Number(document.getElementById('mp-comision').value) || 0;
+    if (!nombre) { toast('Completá el nombre', false); return; }
+    const r = await apiFetch('PUT', `/config/plataformas/${p.id}`, { nombre, color, logo_url: logoData, comision_pct });
+    if (r?.ok) { toast('Plataforma actualizada ✓'); closeModal(); renderConfig(); }
+    else toast(r?.error || 'Error al guardar', false);
+  });
+}
+
+async function eliminarPlataforma(id, nombre) {
+  if (!confirm(`¿Eliminar la plataforma "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  const r = await apiFetch('DELETE', `/config/plataformas/${id}`);
+  if (r?.ok) { toast('Plataforma eliminada'); renderConfig(); }
+  else toast(r?.error || 'Error al eliminar', false);
+}
+
+async function moverPlataforma(id, dir) {
+  const idx = PLATAFORMAS.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= PLATAFORMAS.length) return;
+  [PLATAFORMAS[idx], PLATAFORMAS[swapIdx]] = [PLATAFORMAS[swapIdx], PLATAFORMAS[idx]];
+  document.getElementById('plataformas-list').innerHTML = renderPlataformasRows(PLATAFORMAS);
+  await apiFetch('POST', '/config/plataformas/reordenar', { ids: PLATAFORMAS.map(p => p.id) });
 }
 
 init();
