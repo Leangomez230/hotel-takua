@@ -522,6 +522,48 @@ try {
   `);
   console.log('✅ Tabla menu_combo_items lista');
 
+  // Tipos de habitación (catálogo con tarifa base)
+  await query(`
+    CREATE TABLE IF NOT EXISTS tipos_habitacion (
+      id SERIAL PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      tarifa_base REAL NOT NULL DEFAULT 0,
+      orden INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  const countTipos = await getOne('SELECT COUNT(*) as c FROM tipos_habitacion');
+  if (Number(countTipos.c) === 0) {
+    const seedTipos = [['Queen', 100000], ['Twin', 90000], ['Triple', 120000], ['Doble', 95000]];
+    for (let i = 0; i < seedTipos.length; i++) {
+      await query('INSERT INTO tipos_habitacion (nombre,tarifa_base,orden) VALUES ($1,$2,$3)', [seedTipos[i][0], seedTipos[i][1], i]);
+    }
+    console.log('✅ Tipos de habitación por defecto creados (Queen/Twin/Triple/Doble)');
+  }
+  console.log('✅ Tabla tipos_habitacion lista');
+
+  // Plataformas de reserva (Airbnb, Booking, Expedia, Directo...) con comisión
+  await query(`
+    CREATE TABLE IF NOT EXISTS plataformas (
+      id SERIAL PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT '#6d5df6',
+      logo_url TEXT DEFAULT '',
+      comision_pct REAL NOT NULL DEFAULT 0,
+      orden INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  const countPlat = await getOne('SELECT COUNT(*) as c FROM plataformas');
+  if (Number(countPlat.c) === 0) {
+    const seedPlat = [['Directo', '#00c9b1', 0], ['Airbnb', '#ff385c', 3], ['Booking', '#003580', 15], ['Expedia', '#febb02', 15]];
+    for (let i = 0; i < seedPlat.length; i++) {
+      await query('INSERT INTO plataformas (nombre,color,comision_pct,orden) VALUES ($1,$2,$3,$4)', [seedPlat[i][0], seedPlat[i][1], seedPlat[i][2], i]);
+    }
+    console.log('✅ Plataformas por defecto creadas (Directo/Airbnb/Booking/Expedia)');
+  }
+  console.log('✅ Tabla plataformas lista');
+
   console.log('✅ Base de datos PostgreSQL lista');
 }
 
