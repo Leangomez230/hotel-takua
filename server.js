@@ -449,6 +449,108 @@ app.post('/api/config/tarifas', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── TIPOS DE HABITACIÓN ──────────────────────────────────────────────
+app.get('/api/config/tipos-habitacion', auth, async (req, res) => {
+  try {
+    res.json(await db.getAll('SELECT * FROM tipos_habitacion ORDER BY orden, id'));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/config/tipos-habitacion', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, tarifa_base } = req.body;
+    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const max = await db.getOne('SELECT COALESCE(MAX(orden),-1) as m FROM tipos_habitacion');
+    const r = await db.query(
+      'INSERT INTO tipos_habitacion (nombre,tarifa_base,orden) VALUES ($1,$2,$3) RETURNING id',
+      [nombre.trim(), Number(tarifa_base) || 0, Number(max.m) + 1]
+    );
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_TIPO_HAB_CREAR', nombre);
+    res.json({ ok: true, id: r.rows[0].id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/config/tipos-habitacion/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, tarifa_base } = req.body;
+    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    await db.query('UPDATE tipos_habitacion SET nombre=$1, tarifa_base=$2 WHERE id=$3',
+      [nombre.trim(), Number(tarifa_base) || 0, req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_TIPO_HAB_EDITAR', nombre);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/config/tipos-habitacion/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await db.query('DELETE FROM tipos_habitacion WHERE id=$1', [req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_TIPO_HAB_ELIMINAR', `id:${req.params.id}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/config/tipos-habitacion/reordenar', auth, adminOnly, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids inválido' });
+    for (let i = 0; i < ids.length; i++) {
+      await db.query('UPDATE tipos_habitacion SET orden=$1 WHERE id=$2', [i, ids[i]]);
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PLATAFORMAS DE RESERVA ───────────────────────────────────────────
+app.get('/api/config/plataformas', auth, async (req, res) => {
+  try {
+    res.json(await db.getAll('SELECT * FROM plataformas ORDER BY orden, id'));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/config/plataformas', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, color, logo_url, comision_pct } = req.body;
+    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const max = await db.getOne('SELECT COALESCE(MAX(orden),-1) as m FROM plataformas');
+    const r = await db.query(
+      'INSERT INTO plataformas (nombre,color,logo_url,comision_pct,orden) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [nombre.trim(), color || '#6d5df6', logo_url || '', Number(comision_pct) || 0, Number(max.m) + 1]
+    );
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_PLATAFORMA_CREAR', nombre);
+    res.json({ ok: true, id: r.rows[0].id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/config/plataformas/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, color, logo_url, comision_pct } = req.body;
+    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    await db.query('UPDATE plataformas SET nombre=$1, color=$2, logo_url=$3, comision_pct=$4 WHERE id=$5',
+      [nombre.trim(), color || '#6d5df6', logo_url || '', Number(comision_pct) || 0, req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_PLATAFORMA_EDITAR', nombre);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/config/plataformas/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await db.query('DELETE FROM plataformas WHERE id=$1', [req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_PLATAFORMA_ELIMINAR', `id:${req.params.id}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/config/plataformas/reordenar', auth, adminOnly, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids inválido' });
+    for (let i = 0; i < ids.length; i++) {
+      await db.query('UPDATE plataformas SET orden=$1 WHERE id=$2', [i, ids[i]]);
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── CAMBIAR HABITACIÓN DE RESERVA (futura o activa) ─────────────────
 app.post('/api/reservas/:id/cambiar-habitacion', auth, async (req, res) => {
   if (!['admin','recepcionista','mucama'].includes(req.user.rol))
