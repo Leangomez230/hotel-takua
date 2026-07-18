@@ -3083,9 +3083,16 @@ function showQRModal(hab) {
       </div>
       <div style="font-size:11px;color:#94a3b8;margin-top:6px">Esta contraseña la usa el huésped para acceder al panel QR</div>
     </div>` : ''}
-    <button class="confirm-btn" id="qr-copy" style="margin-top:14px;background:linear-gradient(135deg,#1a2035,#2d3a5a)">
-      📋 Copiar enlace
-    </button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+      <button class="confirm-btn" id="qr-copy" style="background:linear-gradient(135deg,#1a2035,#2d3a5a);margin-top:0">
+        📋 Copiar enlace
+      </button>
+      ${hab.reserva_activa?.nombre_huesped ? `
+      <button id="qr-whatsapp" style="background:linear-gradient(135deg,#25d366,#128c7e);border:none;border-radius:12px;padding:13px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.116 1.528 5.845L0 24l6.335-1.505A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.79 9.79 0 01-5.12-1.448l-.368-.218-3.76.893.944-3.653-.24-.375A9.818 9.818 0 012.182 12C2.182 6.58 6.58 2.182 12 2.182S21.818 6.58 21.818 12 17.42 21.818 12 21.818z"/></svg>
+        WhatsApp
+      </button>` : ''}
+    </div>
   `);
  
   document.getElementById('qr-close').addEventListener('click', closeModal);
@@ -3098,6 +3105,16 @@ function showQRModal(hab) {
     }
   }, 100);
  
+  // WhatsApp
+  document.getElementById('qr-whatsapp')?.addEventListener('click', () => {
+    const nombre = hab.reserva_activa?.nombre_huesped || 'huésped';
+    const msg = `¡Hola ${nombre}! 🏨 Bienvenido/a al Hotel Takuá.\n\nPodés acceder a tu panel de servicios desde este enlace:\n${url}\n\nContraseña: el número de tu habitación.\n\n¡Que disfrutes tu estadía! 😊`;
+    const tel = hab.reserva_activa?.telefono || '';
+    const telLimpio = tel.replace(/[^0-9]/g, '');
+    const waUrl = `https://wa.me/${telLimpio}?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+  });
+
   // Copiar enlace
   document.getElementById('qr-copy').addEventListener('click', () => {
     navigator.clipboard.writeText(url).then(() => toast('Enlace copiado')).catch(() => {
