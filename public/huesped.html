@@ -44,6 +44,18 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
 .info-row .lbl{color:#64748b}
 .info-row .val{font-weight:700;color:#1a2035}
 
+/* NO MOLESTAR */
+.dnd-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.dnd-label{display:flex;align-items:center;gap:12px;min-width:0}
+.dnd-icon{font-size:24px;flex-shrink:0}
+.dnd-text{min-width:0}
+.dnd-text .dnd-title{font-size:14px;font-weight:800;color:#1a2035}
+.dnd-text .dnd-sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.dnd-switch{position:relative;width:52px;height:30px;border-radius:999px;background:#e2e8f0;border:none;cursor:pointer;flex-shrink:0;padding:0;transition:background .25s}
+.dnd-switch .dnd-knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .25s}
+.dnd-switch.on{background:#dc2626}
+.dnd-switch.on .dnd-knob{transform:translateX(22px)}
+
 /* BOTONES PRINCIPALES */
 .main-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
 .main-btn{border:none;border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;font-family:'Nunito',sans-serif;text-align:left;transition:transform .12s}
@@ -133,6 +145,20 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
       <div class="info-row"><span class="lbl">Total estadía</span><span class="val" id="pago-total">—</span></div>
       <div class="info-row"><span class="lbl">Pagado (seña)</span><span class="val" id="pago-senia">—</span></div>
       <div class="info-row"><span class="lbl" id="pago-saldo-lbl">Saldo pendiente</span><span class="val" id="pago-saldo">—</span></div>
+    </div>
+
+    <!-- No Molestar -->
+    <div class="card">
+      <div class="dnd-row">
+        <div class="dnd-label">
+          <div class="dnd-icon" id="dnd-emoji">🔔</div>
+          <div class="dnd-text">
+            <div class="dnd-title">No Molestar</div>
+            <div class="dnd-sub" id="dnd-sub">La mucama no ingresará a tu habitación</div>
+          </div>
+        </div>
+        <button class="dnd-switch" id="dnd-switch" aria-label="Activar o desactivar No Molestar"><span class="dnd-knob"></span></button>
+      </div>
     </div>
 
     <!-- Botones principales -->
@@ -249,7 +275,20 @@ function renderInfo(data) {
     document.getElementById('g-noches').textContent = data.reserva.noches + ' noche' + (data.reserva.noches>1?'s':'');
     document.getElementById('reserva-card').style.display = 'block';
     renderPago(data.reserva);
+    renderDnd(data.reserva);
   }
+}
+
+function renderDnd(reserva) {
+  setDndUI(!!reserva?.no_molestar);
+}
+
+function setDndUI(activo) {
+  document.getElementById('dnd-switch').classList.toggle('on', activo);
+  document.getElementById('dnd-emoji').textContent = activo ? '🔕' : '🔔';
+  document.getElementById('dnd-sub').textContent = activo
+    ? 'Activado — la mucama no ingresará'
+    : 'La mucama no ingresará a tu habitación';
 }
 
 function renderPago(reserva) {
@@ -294,6 +333,20 @@ async function loadInfo() {
       </div>`).join('');
   }
 }
+
+// ── NO MOLESTAR ──
+document.getElementById('dnd-switch').addEventListener('click', async () => {
+  const activoActual = document.getElementById('dnd-switch').classList.contains('on');
+  const nuevoEstado = !activoActual;
+  setDndUI(nuevoEstado); // actualización optimista
+  const r = await apiFetch('PUT', '/no-molestar', { activo: nuevoEstado });
+  if (r?.ok) {
+    toast(nuevoEstado ? 'No Molestar activado' : 'No Molestar desactivado');
+  } else {
+    setDndUI(activoActual); // revertir si falló
+    toast(r?.error || 'No se pudo actualizar', false);
+  }
+});
 
 // ── SOLICITAR SERVICIO ──
 document.getElementById('btn-servicio').addEventListener('click', () => {
