@@ -189,6 +189,7 @@ app.get('/api/habitaciones', auth, async (req, res) => {
           saldo_pendiente:   reserva.saldo_pendiente,
           momento_cobro:     reserva.momento_cobro,
           precio_total:      reserva.precio_total,
+          no_molestar:       !!reserva.no_molestar,
         } : null,
         reserva_vencida: reservaVencida ? {
           nombre_huesped: reservaVencida.nombre_huesped,
@@ -1494,6 +1495,19 @@ app.get('/api/huesped/info', authHuesped, async (req, res) => {
     const solicitudes = await db.getAll("SELECT * FROM solicitudes_huesped WHERE habitacion_id=$1 ORDER BY created_at DESC LIMIT 5", [req.huesped.hab_id]);
     res.json({ habitacion: hab, reserva, productos, solicitudes });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/huesped/no-molestar', authHuesped, async (req, res) => {
+  try {
+    const activo = !!req.body.activo;
+    const reserva = await db.getOne(
+      "SELECT id FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1",
+      [req.huesped.hab_id]
+    );
+    if (!reserva) return res.status(404).json({ error: 'No hay reserva activa en esta habitación' });
+    await db.query('UPDATE reservas SET no_molestar=$1 WHERE id=$2', [activo, reserva.id]);
+    res.json({ ok: true, no_molestar: activo });
+  } catch(e) { console.error('No molestar:', e); res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/huesped/solicitud', authHuesped, async (req, res) => {
