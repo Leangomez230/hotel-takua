@@ -758,6 +758,14 @@ function buildCard(h) {
   } else {
     badgeHTML = `<span class="sbadge ${s.badge}">${s.label.toUpperCase()}</span>`;
   }
+
+  const noMolestar = !!(h.reserva_activa?.no_molestar);
+  if (noMolestar) {
+    badgeHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+      <span class="sbadge" style="background:#dc2626;color:#fff;animation:pulse 1.5s infinite">🔕 NO MOLESTAR</span>
+      ${badgeHTML}
+    </div>`;
+  }
  
   // ── Ícono principal ──
   let icon = s.icon;
@@ -875,7 +883,6 @@ function buildCard(h) {
   }
  
   const isAdminOrRecep = currentUser && ['admin','recepcionista'].includes(currentUser.rol);
-  const noMolestar = !!(h.reserva_activa?.no_molestar);
   const habIconBg    = noMolestar ? '#dc262622' : `${iconColor}22`;
   const habIconSvg = noMolestar
     ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -899,7 +906,7 @@ function buildCard(h) {
   return `<div class="rcard ${h.status}${cardBg}" data-hid="${h.id}">
     <div class="rcard-top">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:${habIconBg};flex-shrink:0${noMolestar?';animation:pulse-alert 1.5s ease-out infinite':''}" title="${noMolestar?'No molestar':''}">
+        <div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:${habIconBg};flex-shrink:0" title="${noMolestar?'No molestar':''}">
           ${habIconSvg}
         </div>
         <div style="display:flex;flex-direction:column;justify-content:center">
