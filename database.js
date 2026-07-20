@@ -238,6 +238,10 @@ await query(`
   );
 `);
 
+// Migración: vincular cada solicitud a la reserva/huésped que la generó (no solo a la habitación)
+await query('ALTER TABLE solicitudes_huesped ADD COLUMN IF NOT EXISTS reserva_id INTEGER');
+console.log('✅ Migración reserva_id en solicitudes_huesped lista');
+
 // Migración: columnas vuelto en comandas
 try {
   await query('ALTER TABLE comandas ADD COLUMN IF NOT EXISTS monto_recibido REAL DEFAULT 0');
