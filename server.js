@@ -1492,7 +1492,9 @@ app.get('/api/huesped/info', authHuesped, async (req, res) => {
     const hab = await db.getOne('SELECT id,numero,tipo,nombre,ala,status FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
     const reserva = await db.getOne("SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [req.huesped.hab_id]);
     const productos = await db.getAll("SELECT id,nombre,categoria,precio,stock FROM productos WHERE activo=1 AND stock>0 ORDER BY categoria,nombre");
-    const solicitudes = await db.getAll("SELECT * FROM solicitudes_huesped WHERE habitacion_id=$1 ORDER BY created_at DESC LIMIT 5", [req.huesped.hab_id]);
+    const solicitudes = reserva
+      ? await db.getAll("SELECT * FROM solicitudes_huesped WHERE habitacion_id=$1 AND reserva_id=$2 ORDER BY created_at DESC LIMIT 5", [req.huesped.hab_id, reserva.id])
+      : [];
     res.json({ habitacion: hab, reserva, productos, solicitudes });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1534,8 +1536,9 @@ app.post('/api/huesped/solicitud', authHuesped, async (req, res) => {
         }
       }
     }
-    await db.query('INSERT INTO solicitudes_huesped (habitacion_id,tipo,detalle,consumos,estado) VALUES ($1,$2,$3,$4,$5)',
-      [req.huesped.hab_id, tipo||'servicio', detalle||'', JSON.stringify(consumosCompletos), 'pendiente']);
+    const reservaActiva = await db.getOne("SELECT id FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [req.huesped.hab_id]);
+    await db.query('INSERT INTO solicitudes_huesped (habitacion_id,reserva_id,tipo,detalle,consumos,estado) VALUES ($1,$2,$3,$4,$5,$6)',
+      [req.huesped.hab_id, reservaActiva?.id || null, tipo||'servicio', detalle||'', JSON.stringify(consumosCompletos), 'pendiente']);
 
     // Push notification a recepcionistas y mucamas
     const hab = await db.getOne('SELECT numero FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
