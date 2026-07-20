@@ -510,6 +510,10 @@ try {
   await query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS plataforma TEXT DEFAULT 'Directo'");
   console.log('✅ Migración plataforma en reservas lista');
 
+  // Migración: No Molestar (activado por el huésped desde su panel)
+  await query('ALTER TABLE reservas ADD COLUMN IF NOT EXISTS no_molestar BOOLEAN DEFAULT false');
+  console.log('✅ Migración no_molestar en reservas lista');
+
   // Combos: componentes de un producto del menú
   await query(`
     CREATE TABLE IF NOT EXISTS menu_combo_items (
