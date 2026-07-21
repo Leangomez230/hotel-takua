@@ -159,7 +159,7 @@ function toast(msg, ok=true) {
   setTimeout(()=>t.remove(),3000);
 }
 
-const METODO_ICONS = {Efectivo:'💵',Tarjeta:'💳',Transferencia:'🏦',Débito:'💳',Otro:'📋'};
+const METODO_ICONS = {Efectivo:'💵','Tarjeta débito':'💳','Tarjeta crédito':'💳',Transferencia:'🏦',QR:'📱','Pago Mixto':'🔀',Otro:'📋'};
 
 // ── ESTADO ────────────────────────────────────────────
 const G = { tab:'hoy', desdePeriodo:'', hastaPeriodo:'' };
@@ -881,6 +881,13 @@ function modalEditarMovimiento(origen, regId) {
   const m = _buscarMovHist(origen, regId);
   if (!m) { toast('No se encontró el movimiento', false); return; }
   const esHab = m.origen === 'habitacion';
+  const METODOS_BASE = ['Efectivo','Transferencia','Tarjeta débito','Tarjeta crédito','QR','Pago Mixto','Otro'];
+  const metodoActual = m.metodo_pago || '';
+  // Si el valor guardado no es uno de los canónicos (ej. un "Pago Mixto (Ef: $X / Tg: $Y)" compuesto),
+  // lo agregamos como primera opción para que quede visible y seleccionado — nunca lo pisamos en silencio.
+  const metodosOpts = (!metodoActual || METODOS_BASE.includes(metodoActual))
+    ? METODOS_BASE
+    : [metodoActual, ...METODOS_BASE];
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px';
   overlay.innerHTML = `
@@ -904,8 +911,8 @@ function modalEditarMovimiento(origen, regId) {
       </select>
       <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px">Método de pago</label>
       <select id="em-metodo" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;margin-bottom:16px">
-        ${['Efectivo','Transferencia','Débito','Tarjeta','Tarjeta débito','Tarjeta crédito','QR','Otro'].map(op=>
-          `<option ${m.metodo_pago===op?'selected':''}>${op}</option>`).join('')}
+        ${metodosOpts.map(op=>
+          `<option ${metodoActual===op?'selected':''}>${op.replace(/"/g,'&quot;')}</option>`).join('')}
       </select>` : '<div style="margin-bottom:4px"></div>'}
 
       <div style="display:flex;gap:8px;margin-top:4px">
