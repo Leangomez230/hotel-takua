@@ -881,11 +881,18 @@ function modalEditarMovimiento(origen, regId) {
   const m = _buscarMovHist(origen, regId);
   if (!m) { toast('No se encontró el movimiento', false); return; }
   const esHab = m.origen === 'habitacion';
-  const METODOS_BASE = ['Efectivo','Transferencia','Tarjeta débito','Tarjeta crédito','QR','Pago Mixto','Otro'];
+  const METODOS_BASE = ['Efectivo','Transferencia','Tarjeta débito','Tarjeta crédito','QR','Otro'];
   const metodoActual = m.metodo_pago || '';
-  // Si el valor guardado no es uno de los canónicos (ej. un "Pago Mixto (Ef: $X / Tg: $Y)" compuesto),
-  // lo agregamos como primera opción para que quede visible y seleccionado — nunca lo pisamos en silencio.
-  const metodosOpts = (!metodoActual || METODOS_BASE.includes(metodoActual))
+  const esMixtoActual = /^Pago Mixto/i.test(metodoActual);
+  // Si es un pago mixto ya cargado, intentamos recuperar los montos Efectivo/Tarjeta del texto compuesto
+  let mixtoEfPre = '', mixtoTgPre = '';
+  if (esMixtoActual) {
+    const mm = metodoActual.match(/Ef:\s*\$?\s*([\d.,]+)\s*\/\s*Tg:\s*\$?\s*([\d.,]+)/i);
+    if (mm) { mixtoEfPre = mm[1].replace(/[.,]/g,''); mixtoTgPre = mm[2].replace(/[.,]/g,''); }
+  }
+  // Si el valor guardado no es uno de los canónicos ni un mixto, lo agregamos como primera opción
+  // para que quede visible y seleccionado — nunca lo pisamos en silencio.
+  const metodosOpts = (!metodoActual || esMixtoActual || METODOS_BASE.includes(metodoActual))
     ? METODOS_BASE
     : [metodoActual, ...METODOS_BASE];
   const overlay = document.createElement('div');
@@ -909,11 +916,31 @@ function modalEditarMovimiento(origen, regId) {
         <option value="ingreso" ${m.tipo==='ingreso'?'selected':''}>Ingreso</option>
         <option value="egreso" ${m.tipo==='egreso'?'selected':''}>Egreso</option>
       </select>
-      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px">Método de pago</label>
-      <select id="em-metodo" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;margin:0">Método de pago</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748b;cursor:pointer">
+          <input type="checkbox" id="em-mixto" ${esMixtoActual?'checked':''} style="width:15px;height:15px;cursor:pointer;accent-color:#3b82f6">
+          Pago Mixto
+        </label>
+      </div>
+      <select id="em-metodo" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;margin-bottom:8px">
         ${metodosOpts.map(op=>
           `<option ${metodoActual===op?'selected':''}>${op.replace(/"/g,'&quot;')}</option>`).join('')}
-      </select>` : '<div style="margin-bottom:4px"></div>'}
+      </select>
+      <div id="em-mixto-wrap" style="display:${esMixtoActual?'block':'none'};margin-bottom:16px;background:#f0f9ff;border-radius:8px;padding:10px;font-size:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <label style="font-size:11px">Monto en Efectivo</label>
+            <input type="number" id="em-mixto-ef" placeholder="$ 0" value="${mixtoEfPre}"
+              style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px">Monto en Tarjeta/Transf.</label>
+            <input type="number" id="em-mixto-tg" placeholder="$ 0" value="${mixtoTgPre}"
+              style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+      </div>` : '<div style="margin-bottom:4px"></div>'}
 
       <div style="display:flex;gap:8px;margin-top:4px">
         <button onclick="this.closest('div[style*=fixed]').remove()"
@@ -923,13 +950,20 @@ function modalEditarMovimiento(origen, regId) {
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  overlay.querySelector('#em-mixto')?.addEventListener('change', function() {
+    overlay.querySelector('#em-mixto-wrap').style.display = this.checked ? 'block' : 'none';
+  });
   overlay.querySelector('#em-confirm').addEventListener('click', async () => {
     const concepto = overlay.querySelector('#em-concepto').value.trim();
     const monto = parseFloat(overlay.querySelector('#em-monto').value) || 0;
     if (!concepto) { toast('Ingresá un concepto', false); return; }
     if (!monto)    { toast('Ingresá un monto', false); return; }
+    const esMixto = overlay.querySelector('#em-mixto')?.checked;
+    const metodoPago = esMixto
+      ? `Pago Mixto (Ef: ${fmt(Number(overlay.querySelector('#em-mixto-ef')?.value)||0)} / Tg: ${fmt(Number(overlay.querySelector('#em-mixto-tg')?.value)||0)})`
+      : (overlay.querySelector('#em-metodo')?.value || 'Efectivo');
     const body = esHab
-      ? { tipo: overlay.querySelector('#em-tipo').value, concepto, monto, metodo_pago: overlay.querySelector('#em-metodo').value }
+      ? { tipo: overlay.querySelector('#em-tipo').value, concepto, monto, metodo_pago: metodoPago }
       : { concepto, monto };
     const endpoint = esHab ? `/caja-global/movimiento-habitacion/${m.reg_id}` : `/caja-global/retiro/${m.reg_id}`;
     const r = await api('PUT', endpoint, body);
