@@ -2194,6 +2194,84 @@ app.put('/api/restaurante/comandas/:id/cerrar', auth, authRestaurante, async (re
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Cargar comanda a habitación
+app.post('/api/restaurante/comandas/:id/cargar-habitacion', auth, authRestaurante, async (req, res) => {
+  try {
+    const { habitacion_id } = req.body;
+    if (!habitacion_id) return res.status(400).json({ error: 'habitacion_id requerido' });
+
+    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
+    if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'Ya está cerrada' });
+
+    // Obtener reserva activa de esa habitación
+    const reserva = await db.getOne(
+      `SELECT * FROM reservas WHERE habitacion_id=$1
+       AND estado IN ('activa','checkin','ocupada','confirmada')
+       ORDER BY entrada DESC LIMIT 1`,
+      [String(habitacion_id)]
+    );
+    if (!reserva) return res.status(404).json({ error: 'No hay huésped activo en esa habitación' });
+
+    const totalFinal = cmd.total; // sin descuento — el cargo va completo
+
+    // Cerrar la comanda como "Habitación"
+    await db.query(
+      `UPDATE comandas SET estado='cerrada', metodo_pago='Habitación', descuento=0,
+       total_final=$1, cajero_id=$2, cajero_nombre=$3, cerrada_at=NOW(),
+       monto_recibido=$1, vuelto=0 WHERE id=$4`,
+      [totalFinal, req.user.id, req.user.nombre, cmd.id]
+    );
+    await db.query("UPDATE mesas_restaurante SET status='libre',updated_at=NOW() WHERE id=$1", [cmd.mesa_id]);
+
+    // Registrar cargo en tabla dedicada
+    const items = await db.getAll('SELECT * FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
+    const desc = items.map(i=>`${i.cantidad}x ${i.nombre}`).join(', ');
+    await db.query(
+      `INSERT INTO cargos_restaurante (reserva_id, habitacion_id, comanda_id, descripcion, monto, creado_por_id, creado_por_nombre)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [reserva.id, String(habitacion_id), cmd.id, desc || 'Consumo restaurante', totalFinal, req.user.id, req.user.nombre]
+    );
+
+    // Sumar al saldo pendiente de la reserva
+    await db.query(
+      'UPDATE reservas SET saldo_pendiente = saldo_pendiente + $1 WHERE id=$2',
+      [totalFinal, reserva.id]
+    );
+
+    await logAction(req.user.id, req.user.nombre, 'CARGO_HABITACION',
+      `Comanda ${cmd.id} → Hab ${habitacion_id} (${reserva.nombre_huesped}) $${totalFinal}`);
+
+    res.json({ ok: true, total_final: totalFinal, huesped: reserva.nombre_huesped });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET habitaciones ocupadas para selector en cobro
+app.get('/api/restaurante/habitaciones-ocupadas', auth, authRestaurante, async (req, res) => {
+  try {
+    const rows = await db.getAll(
+      `SELECT h.id, h.numero, h.ala, r.nombre_huesped, r.id as reserva_id, r.saldo_pendiente
+       FROM habitaciones h
+       JOIN reservas r ON r.habitacion_id = h.id
+       WHERE h.status = 'ocupada'
+       AND r.estado IN ('activa','checkin','ocupada','confirmada')
+       ORDER BY h.ala, h.numero`
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET cargos de restaurante de una reserva
+app.get('/api/reservas/:id/cargos-restaurante', auth, async (req, res) => {
+  try {
+    const rows = await db.getAll(
+      'SELECT * FROM cargos_restaurante WHERE reserva_id=$1 ORDER BY created_at DESC',
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Cambiar mesa
 app.put('/api/restaurante/comandas/:id/cambiar-mesa', auth, authRestaurante, async (req, res) => {
   try {
