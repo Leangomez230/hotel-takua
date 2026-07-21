@@ -147,6 +147,16 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
       <div class="info-row"><span class="lbl" id="pago-saldo-lbl">Saldo pendiente</span><span class="val" id="pago-saldo">—</span></div>
     </div>
 
+    <!-- Cargos de restaurante -->
+    <div class="card" id="cargos-rest-card" style="display:none">
+      <div class="card-title">🍽️ Consumos en restaurante</div>
+      <div id="cargos-rest-list"></div>
+      <div class="info-row" style="margin-top:8px;border-top:1px solid #f1f5f9;padding-top:8px">
+        <span class="lbl" style="font-weight:700">Total</span>
+        <span class="val" id="cargos-rest-total" style="font-weight:800;color:#0f4c75">—</span>
+      </div>
+    </div>
+
     <!-- No Molestar -->
     <div class="card">
       <div class="dnd-row">
@@ -276,6 +286,7 @@ function renderInfo(data) {
     document.getElementById('reserva-card').style.display = 'block';
     renderPago(data.reserva);
     renderDnd(data.reserva);
+    cargarCargosRestaurante(data.reserva.id);
   }
 }
 
@@ -289,6 +300,27 @@ function setDndUI(activo) {
   document.getElementById('dnd-sub').textContent = activo
     ? 'Activado — la mucama no ingresará'
     : 'La mucama no ingresará a tu habitación';
+}
+
+async function cargarCargosRestaurante(reservaId) {
+  if (!reservaId) return;
+  const cargos = await apiFetch('GET', `/reservas/${reservaId}/cargos-restaurante`).catch(()=>[]);
+  const card = document.getElementById('cargos-rest-card');
+  const list = document.getElementById('cargos-rest-list');
+  const totalEl = document.getElementById('cargos-rest-total');
+  if (!card || !list || !cargos?.length) return;
+
+  const total = cargos.reduce((s,c)=>s+Number(c.monto||0),0);
+  list.innerHTML = cargos.map(c=>`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+      <div>
+        <div style="color:#1e293b;font-weight:600">${c.descripcion}</div>
+        <div style="font-size:11px;color:#94a3b8">${new Date(c.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div style="font-weight:700;color:#0f4c75;white-space:nowrap;margin-left:12px">${fmt(Number(c.monto))}</div>
+    </div>`).join('');
+  totalEl.textContent = fmt(total);
+  card.style.display = 'block';
 }
 
 function renderPago(reserva) {
