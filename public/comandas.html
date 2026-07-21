@@ -2238,21 +2238,6 @@ function renderModalCobrar(cmd){
         <span style="font-size:11px;color:#94a3b8">(varios métodos)</span>
       </label>
 
-      <!-- Cargar a habitación -->
-      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;user-select:none">
-        <input type="checkbox" id="cob-hab-chk" onchange="toggleCargoHabitacion()"
-          style="width:17px;height:17px;accent-color:#0f4c75;cursor:pointer">
-        <span style="font-size:13px;font-weight:700;color:#0f4c75">🏨 Cargar a habitación</span>
-      </label>
-      <div id="cob-hab-panel" style="display:none;margin-top:10px;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Seleccioná la habitación</div>
-        <select id="cob-hab-sel"
-          style="width:100%;padding:10px 14px;border-radius:8px;border:1.5px solid #93c5fd;font-size:14px;background:#fff;font-family:inherit">
-          <option value="">Cargando habitaciones…</option>
-        </select>
-        <div id="cob-hab-info" style="margin-top:8px;font-size:12px;color:#1e40af;min-height:18px"></div>
-      </div>
-
       <!-- Panel pago mixto (oculto por defecto) -->
       <div id="cob-mixto-panel" style="display:none;margin-top:10px;background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:12px">
         <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Distribución del pago</div>
@@ -2345,74 +2330,6 @@ function selMetodo(idx){
 
 var _mixtoFilas = []; // [{metodo, monto}]
 
-// ── CARGO A HABITACIÓN ───────────────────────────────────────────────
-var _habsOcupadas = [];
-
-async function toggleCargoHabitacion(){
-  const on = document.getElementById('cob-hab-chk')?.checked;
-  const panel = document.getElementById('cob-hab-panel');
-  const mixtoChk = document.getElementById('cob-mixto-chk');
-  const metosGrid = document.getElementById('cob-metodos-grid');
-  const boxEfectivo = document.getElementById('cob-efectivo-box');
-  if(!panel) return;
-
-  if(on){
-    // Desactivar pago mixto si estaba activo
-    if(mixtoChk?.checked){ mixtoChk.checked=false; togglePagoMixto(0); }
-    if(metosGrid) metosGrid.style.opacity='0.35';
-    if(boxEfectivo) boxEfectivo.style.display='none';
-    panel.style.display='block';
-
-    // Cargar habitaciones ocupadas
-    const sel = document.getElementById('cob-hab-sel');
-    sel.innerHTML='<option value="">Cargando…</option>';
-    try {
-      _habsOcupadas = await api('GET','/api/restaurante/habitaciones-ocupadas') || [];
-      if(!_habsOcupadas.length){
-        sel.innerHTML='<option value="">Sin huéspedes hospedados</option>';
-      } else {
-        sel.innerHTML = '<option value="">— Elegí una habitación —</option>' +
-          _habsOcupadas.map(h=>`<option value="${h.id}">${h.ala}${h.numero} — ${h.nombre_huesped}</option>`).join('');
-      }
-    } catch(e) {
-      sel.innerHTML='<option value="">Error al cargar</option>';
-    }
-    sel.onchange = () => {
-      const h = _habsOcupadas.find(x=>String(x.id)===sel.value);
-      const info = document.getElementById('cob-hab-info');
-      if(h && info) info.textContent = `Huésped: ${h.nombre_huesped} · Hab. ${h.ala}${h.numero}`;
-      else if(info) info.textContent='';
-    };
-  } else {
-    panel.style.display='none';
-    if(metosGrid) metosGrid.style.opacity='1';
-    // Restaurar box efectivo si el método es efectivo
-    if(METODOS[S._metodoIdx||0]==='Efectivo' && boxEfectivo) boxEfectivo.style.display='';
-  }
-}
-
-async function cargarAHabitacion(cmdId){
-  const habId = document.getElementById('cob-hab-sel')?.value;
-  if(!habId){ toast('Seleccioná una habitación','err'); return; }
-  const h = _habsOcupadas.find(x=>String(x.id)===habId);
-  const btn = document.querySelector('#m-cobrar-body .btn-green');
-  if(btn){ btn.disabled=true; btn.textContent='Cargando…'; }
-  loading(true);
-  try{
-    const r = await api('POST',`/api/restaurante/comandas/${cmdId}/cargar-habitacion`,{habitacion_id:habId});
-    if(r?.ok){
-      toast(`✅ Cargado a Hab. ${h?.ala||''}${h?.numero||''} — ${r.huesped||''}  (${fmt(r.total_final)})`,'ok');
-      _extraItems=[]; _mixtoFilas=[];
-      closeModal('m-cobrar');
-      await loadAll(); renderMain();
-    } else {
-      toast(r?.error||'Error al cargar a habitación','err');
-      if(btn){ btn.disabled=false; btn.textContent='✓ Cobrar y cerrar'; }
-    }
-  }catch(e){ toast(e.message,'err'); if(btn){ btn.disabled=false; btn.textContent='✓ Cobrar y cerrar'; } }
-  finally{ loading(false); }
-}
-
 function togglePagoMixto(totalFinal){
   const on = document.getElementById('cob-mixto-chk')?.checked;
   const panel = document.getElementById('cob-mixto-panel');
@@ -2420,13 +2337,12 @@ function togglePagoMixto(totalFinal){
   const metosGrid = document.getElementById('cob-metodos-grid');
   if(!panel) return;
   if(on){
-    // Desactivar cargo a habitación si estaba activo
-    const habChk = document.getElementById('cob-hab-chk');
-    if(habChk?.checked){ habChk.checked=false; toggleCargoHabitacion(); }
     panel.style.display = 'block';
     boxEfectivo.style.display = 'none';
+    // atenuar grid de métodos (solo referencia visual)
     if(metosGrid) metosGrid.style.opacity = '0.4';
     _mixtoFilas = [];
+    // Agregar 2 filas iniciales
     agregarFilaMixto();
     agregarFilaMixto();
     actualizarMixto(totalFinal);
@@ -2434,6 +2350,7 @@ function togglePagoMixto(totalFinal){
     panel.style.display = 'none';
     _mixtoFilas = [];
     if(metosGrid) metosGrid.style.opacity = '1';
+    // Mostrar box efectivo si el método seleccionado es efectivo
     if(METODOS[S._metodoIdx||0]==='Efectivo') boxEfectivo.style.display='';
     else boxEfectivo.style.display='none';
   }
@@ -2541,11 +2458,6 @@ function updVuelto(totalFinal){
 }
 
 async function confirmarCobro(cmdId,totalOrig){
-  // Modo cargo a habitación — delega a función específica
-  if(document.getElementById('cob-hab-chk')?.checked){
-    return cargarAHabitacion(cmdId);
-  }
-
   if (!S.turno || S.turno.estado !== 'abierto') {
     toast('⚠️ No hay turno de caja abierto', 'err'); return;
   }
@@ -2876,12 +2788,9 @@ function imprimirTicket(tipo) {
             </div>
             <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px;color:#e85d04">
               <span>Descuento (${cmd.descuento||''}%)</span><span>- ${fmt(desc)}</span>
-            <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold">
+            </div>` : ''}
+          <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold">
             <span>TOTAL</span><span>${fmt(totalFinal)}</span>
-          </div>
-          <div style="border-top:1px dashed #000;margin:8px 0"></div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;color:#555">
-            <span>Propina sugerida (10%)</span><span>${fmt(Math.round(totalFinal * 0.10))}</span>
           </div>`;
       })() : ''}
       <div style="text-align:center;margin-top:15px;font-weight:bold">
