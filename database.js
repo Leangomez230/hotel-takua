@@ -546,6 +546,11 @@ try {
   `);
   console.log('✅ Tabla menu_combo_items lista');
 
+  // Migración: vínculo de componente de combo con bebida de inventario (para descuento automático de stock)
+  await query('ALTER TABLE menu_combo_items ADD COLUMN IF NOT EXISTS vinculo_menu_id INTEGER REFERENCES menu_restaurante(id) ON DELETE SET NULL');
+  await query('ALTER TABLE menu_combo_items ADD COLUMN IF NOT EXISTS cantidad NUMERIC DEFAULT 1');
+  console.log('✅ Migración vínculo de inventario en combos lista');
+
   // Tipos de habitación (catálogo con tarifa base)
   await query(`
     CREATE TABLE IF NOT EXISTS tipos_habitacion (
