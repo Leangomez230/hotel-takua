@@ -491,6 +491,22 @@ try {
   `);
   console.log('✅ Tabla notificaciones_sistema lista');
 
+  // Cargos de restaurante a habitación
+  await query(`
+    CREATE TABLE IF NOT EXISTS cargos_restaurante (
+      id SERIAL PRIMARY KEY,
+      reserva_id INTEGER NOT NULL REFERENCES reservas(id) ON DELETE CASCADE,
+      habitacion_id TEXT NOT NULL,
+      comanda_id INTEGER REFERENCES comandas(id),
+      descripcion TEXT NOT NULL DEFAULT 'Consumo restaurante',
+      monto REAL NOT NULL,
+      creado_por_id INTEGER,
+      creado_por_nombre TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('✅ Tabla cargos_restaurante lista');
+
   // Migración: tabla config_hotel
   await query(`
     CREATE TABLE IF NOT EXISTS config_hotel (
