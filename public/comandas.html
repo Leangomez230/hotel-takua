@@ -1608,7 +1608,10 @@ async function editarProducto(id){
   const cats=[...new Set(S.menu.map(m=>m.categoria))];
 
   const comboExistente = await api('GET',`/api/restaurante/menu/${id}/combo`).catch(()=>[]);
-  _comboItems = Array.isArray(comboExistente) ? comboExistente.map(c=>({nombre:c.nombre, a_cocina:c.a_cocina==1})) : [];
+  _comboItems = Array.isArray(comboExistente) ? comboExistente.map(c=>({
+    nombre:c.nombre, a_cocina:c.a_cocina==1,
+    vinculo_menu_id:c.vinculo_menu_id||null, cantidad:Number(c.cantidad)||1
+  })) : [];
 
   document.getElementById('m-edit-prod-body').innerHTML=`
     <div style="margin-bottom:12px">
@@ -1665,7 +1668,7 @@ function toggleComboSection(){
   if(on && _comboItems.length===0){
     const nombre=document.getElementById('ep-nombre')?.value||'';
     const partes=nombre.split('+').map(s=>s.trim()).filter(Boolean);
-    _comboItems=partes.length>1 ? partes.map(n=>({nombre:n,a_cocina:true})) : [{nombre:'',a_cocina:true}];
+    _comboItems=partes.length>1 ? partes.map(n=>({nombre:n,a_cocina:true,vinculo_menu_id:null,cantidad:1})) : [{nombre:'',a_cocina:true,vinculo_menu_id:null,cantidad:1}];
     renderComboRows();
   }
 }
@@ -1677,26 +1680,40 @@ function renderComboRows(){
     cont.innerHTML=`<div style="font-size:12px;color:#c4b5fd;text-align:center;padding:8px">Sin componentes aún</div>`;
     return;
   }
+  const bebidas=(S.menu||[]).filter(m=>m.es_bebida==1);
   cont.innerHTML=_comboItems.map((c,i)=>`
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-      <input type="text" value="${c.nombre.replace(/"/g,'&quot;')}" placeholder="Nombre del componente"
-        oninput="_comboItems[${i}].nombre=this.value"
-        style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #c4b5fd;font-size:13px"/>
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;
-        background:${c.a_cocina?'#f0fdf4':'#f8fafc'};border:1.5px solid ${c.a_cocina?'#86efac':'#e2e8f0'};
-        border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;
-        color:${c.a_cocina?'#166534':'#94a3b8'};white-space:nowrap">
-        <input type="checkbox" ${c.a_cocina?'checked':''} onchange="_comboItems[${i}].a_cocina=this.checked;renderComboRows()"
-          style="accent-color:#16a34a;cursor:pointer"> 🍳 Cocina
-      </label>
-      <button onclick="_comboItems.splice(${i},1);renderComboRows()"
-        style="background:#fee2e2;border:none;border-radius:8px;color:#dc2626;font-size:14px;
-        font-weight:700;padding:6px 10px;cursor:pointer;flex-shrink:0">✕</button>
+    <div style="border:1.5px solid #ede9fe;border-radius:10px;padding:8px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <input type="text" value="${c.nombre.replace(/"/g,'&quot;')}" placeholder="Nombre del componente"
+          oninput="_comboItems[${i}].nombre=this.value"
+          style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #c4b5fd;font-size:13px"/>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;
+          background:${c.a_cocina?'#f0fdf4':'#f8fafc'};border:1.5px solid ${c.a_cocina?'#86efac':'#e2e8f0'};
+          border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;
+          color:${c.a_cocina?'#166534':'#94a3b8'};white-space:nowrap">
+          <input type="checkbox" ${c.a_cocina?'checked':''} onchange="_comboItems[${i}].a_cocina=this.checked;renderComboRows()"
+            style="accent-color:#16a34a;cursor:pointer"> 🍳 Cocina
+        </label>
+        <button onclick="_comboItems.splice(${i},1);renderComboRows()"
+          style="background:#fee2e2;border:none;border-radius:8px;color:#dc2626;font-size:14px;
+          font-weight:700;padding:6px 10px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <select onchange="_comboItems[${i}].vinculo_menu_id=this.value?Number(this.value):null"
+          style="flex:2;padding:6px 8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:12px;background:#fff;font-family:inherit;color:#475569">
+          <option value="">Sin vincular a inventario</option>
+          ${bebidas.map(b=>`<option value="${b.id}" ${Number(c.vinculo_menu_id)===b.id?'selected':''}>🔗 ${b.nombre}</option>`).join('')}
+        </select>
+        <input type="number" min="1" step="1" value="${c.cantidad||1}" title="Unidades de stock a descontar por combo vendido"
+          oninput="_comboItems[${i}].cantidad=Number(this.value)||1"
+          style="width:56px;padding:6px 8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:12px;text-align:center"/>
+        <span style="font-size:10px;color:#94a3b8;white-space:nowrap">unid./combo</span>
+      </div>
     </div>`).join('');
 }
 
 function agregarFilaCombo(){
-  _comboItems.push({nombre:'',a_cocina:true});
+  _comboItems.push({nombre:'',a_cocina:true,vinculo_menu_id:null,cantidad:1});
   renderComboRows();
   const inputs=document.querySelectorAll('#ep-combo-rows input[type="text"]');
   if(inputs.length) inputs[inputs.length-1].focus();
@@ -1744,7 +1761,7 @@ function toggleNuevoComboSection(){
   if(on && _nuevoComboItems.length===0){
     const nombre=document.getElementById('mp-nombre')?.value||'';
     const partes=nombre.split('+').map(s=>s.trim()).filter(Boolean);
-    _nuevoComboItems=partes.length>1 ? partes.map(n=>({nombre:n,a_cocina:true})) : [{nombre:'',a_cocina:true},{nombre:'',a_cocina:true}];
+    _nuevoComboItems=partes.length>1 ? partes.map(n=>({nombre:n,a_cocina:true,vinculo_menu_id:null,cantidad:1})) : [{nombre:'',a_cocina:true,vinculo_menu_id:null,cantidad:1},{nombre:'',a_cocina:true,vinculo_menu_id:null,cantidad:1}];
     renderNuevoComboRows();
   }
 }
@@ -1752,26 +1769,40 @@ function toggleNuevoComboSection(){
 function renderNuevoComboRows(){
   const cont=document.getElementById('mp-combo-rows');
   if(!cont) return;
+  const bebidas=(S.menu||[]).filter(m=>m.es_bebida==1);
   cont.innerHTML=_nuevoComboItems.map((c,i)=>`
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-      <input type="text" value="${c.nombre.replace(/"/g,'&quot;')}" placeholder="Nombre del componente"
-        oninput="_nuevoComboItems[${i}].nombre=this.value"
-        style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #c4b5fd;font-size:13px"/>
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;
-        background:${c.a_cocina?'#f0fdf4':'#f8fafc'};border:1.5px solid ${c.a_cocina?'#86efac':'#e2e8f0'};
-        border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;
-        color:${c.a_cocina?'#166534':'#94a3b8'};white-space:nowrap">
-        <input type="checkbox" ${c.a_cocina?'checked':''} onchange="_nuevoComboItems[${i}].a_cocina=this.checked;renderNuevoComboRows()"
-          style="accent-color:#16a34a;cursor:pointer"> 🍳 Cocina
-      </label>
-      <button onclick="_nuevoComboItems.splice(${i},1);renderNuevoComboRows()"
-        style="background:#fee2e2;border:none;border-radius:8px;color:#dc2626;font-size:14px;
-        font-weight:700;padding:6px 10px;cursor:pointer;flex-shrink:0">✕</button>
+    <div style="border:1.5px solid #ede9fe;border-radius:10px;padding:8px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <input type="text" value="${c.nombre.replace(/"/g,'&quot;')}" placeholder="Nombre del componente"
+          oninput="_nuevoComboItems[${i}].nombre=this.value"
+          style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #c4b5fd;font-size:13px"/>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;
+          background:${c.a_cocina?'#f0fdf4':'#f8fafc'};border:1.5px solid ${c.a_cocina?'#86efac':'#e2e8f0'};
+          border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;
+          color:${c.a_cocina?'#166534':'#94a3b8'};white-space:nowrap">
+          <input type="checkbox" ${c.a_cocina?'checked':''} onchange="_nuevoComboItems[${i}].a_cocina=this.checked;renderNuevoComboRows()"
+            style="accent-color:#16a34a;cursor:pointer"> 🍳 Cocina
+        </label>
+        <button onclick="_nuevoComboItems.splice(${i},1);renderNuevoComboRows()"
+          style="background:#fee2e2;border:none;border-radius:8px;color:#dc2626;font-size:14px;
+          font-weight:700;padding:6px 10px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <select onchange="_nuevoComboItems[${i}].vinculo_menu_id=this.value?Number(this.value):null"
+          style="flex:2;padding:6px 8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:12px;background:#fff;font-family:inherit;color:#475569">
+          <option value="">Sin vincular a inventario</option>
+          ${bebidas.map(b=>`<option value="${b.id}" ${Number(c.vinculo_menu_id)===b.id?'selected':''}>🔗 ${b.nombre}</option>`).join('')}
+        </select>
+        <input type="number" min="1" step="1" value="${c.cantidad||1}" title="Unidades de stock a descontar por combo vendido"
+          oninput="_nuevoComboItems[${i}].cantidad=Number(this.value)||1"
+          style="width:56px;padding:6px 8px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:12px;text-align:center"/>
+        <span style="font-size:10px;color:#94a3b8;white-space:nowrap">unid./combo</span>
+      </div>
     </div>`).join('');
 }
 
 function agregarFilaNuevoCombo(){
-  _nuevoComboItems.push({nombre:'',a_cocina:true});
+  _nuevoComboItems.push({nombre:'',a_cocina:true,vinculo_menu_id:null,cantidad:1});
   renderNuevoComboRows();
   const inputs=document.querySelectorAll('#mp-combo-rows input[type="text"]');
   if(inputs.length) inputs[inputs.length-1].focus();
