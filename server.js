@@ -2765,12 +2765,12 @@ app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
     const d = desde || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
     const h = hasta  || new Date().toISOString().split('T')[0];
 
-    // Comandas restaurante
+    // Comandas restaurante (no editable desde el historial — venta con ítems propios)
     const cmds = await db.getAll(
       `SELECT 'restaurante' as fuente, 'ingreso' as tipo, total_final as monto,
               metodo_pago, concat('Mesa ', mesa_id) as concepto,
               cajero_nombre as usuario, cerrada_at as fecha,
-              id as comanda_id, mesa_id
+              id as comanda_id, mesa_id, id as reg_id, 'comanda' as origen
        FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2
        ORDER BY cerrada_at DESC LIMIT $3`,
       [d+' 00:00:00', h+' 23:59:59', lim]
@@ -2779,7 +2779,8 @@ app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
     const retRest = await db.getAll(
       `SELECT 'restaurante' as fuente, 'egreso' as tipo, monto,
               'Efectivo' as metodo_pago, motivo as concepto,
-              usuario_nombre as usuario, created_at as fecha
+              usuario_nombre as usuario, created_at as fecha,
+              id as reg_id, 'retiro' as origen
        FROM caja_retiros WHERE created_at BETWEEN $1 AND $2
        ORDER BY created_at DESC`,
       [d+' 00:00:00', h+' 23:59:59']
@@ -2787,7 +2788,8 @@ app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
     // Movimientos habitaciones
     const movHab = await db.getAll(
       `SELECT 'habitaciones' as fuente, tipo, monto, metodo_pago, concepto,
-              usuario_nombre as usuario, created_at as fecha
+              usuario_nombre as usuario, created_at as fecha,
+              id as reg_id, 'habitacion' as origen
        FROM movimientos_habitaciones WHERE created_at BETWEEN $1 AND $2
        ORDER BY created_at DESC`,
       [d+' 00:00:00', h+' 23:59:59']
@@ -2798,6 +2800,63 @@ app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
       .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
 
     res.json({ desde: d, hasta: h, movimientos: todo });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Editar / eliminar movimientos desde el Historial (solo admin) ────
+// Corrige errores de carga: método de pago o monto mal ingresados.
+app.put('/api/caja-global/movimiento-habitacion/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { tipo, concepto, monto, metodo_pago } = req.body;
+    const mov = await db.getOne('SELECT * FROM movimientos_habitaciones WHERE id=$1', [req.params.id]);
+    if (!mov) return res.status(404).json({ error: 'Movimiento no encontrado' });
+    if (!concepto || !concepto.trim()) return res.status(400).json({ error: 'El concepto no puede estar vacío' });
+    if (isNaN(Number(monto)) || Number(monto) <= 0) return res.status(400).json({ error: 'Monto inválido' });
+
+    await db.query(
+      `UPDATE movimientos_habitaciones SET tipo=$1, concepto=$2, monto=$3, metodo_pago=$4 WHERE id=$5`,
+      [tipo==='egreso'?'egreso':'ingreso', concepto.trim(), Number(monto), metodo_pago||'Efectivo', req.params.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'EDITAR_MOVIMIENTO_CAJA',
+      `Hab. movimiento #${req.params.id}: "${mov.concepto}" $${mov.monto} → "${concepto.trim()}" $${monto} (${metodo_pago||'Efectivo'})`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/caja-global/movimiento-habitacion/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const mov = await db.getOne('SELECT * FROM movimientos_habitaciones WHERE id=$1', [req.params.id]);
+    if (!mov) return res.status(404).json({ error: 'Movimiento no encontrado' });
+    await db.query('DELETE FROM movimientos_habitaciones WHERE id=$1', [req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_MOVIMIENTO_CAJA',
+      `Hab. movimiento #${req.params.id}: "${mov.concepto}" $${mov.monto} (${mov.metodo_pago||'Efectivo'})`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/caja-global/retiro/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { concepto, monto } = req.body;
+    const ret = await db.getOne('SELECT * FROM caja_retiros WHERE id=$1', [req.params.id]);
+    if (!ret) return res.status(404).json({ error: 'Retiro no encontrado' });
+    if (!concepto || !concepto.trim()) return res.status(400).json({ error: 'El motivo no puede estar vacío' });
+    if (isNaN(Number(monto)) || Number(monto) <= 0) return res.status(400).json({ error: 'Monto inválido' });
+
+    await db.query('UPDATE caja_retiros SET motivo=$1, monto=$2 WHERE id=$3', [concepto.trim(), Number(monto), req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'EDITAR_RETIRO_CAJA',
+      `Retiro #${req.params.id}: "${ret.motivo}" $${ret.monto} → "${concepto.trim()}" $${monto}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/caja-global/retiro/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const ret = await db.getOne('SELECT * FROM caja_retiros WHERE id=$1', [req.params.id]);
+    if (!ret) return res.status(404).json({ error: 'Retiro no encontrado' });
+    await db.query('DELETE FROM caja_retiros WHERE id=$1', [req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_RETIRO_CAJA',
+      `Retiro #${req.params.id}: "${ret.motivo}" $${ret.monto}`);
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
