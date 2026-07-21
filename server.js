@@ -1805,15 +1805,15 @@ app.get('/api/restaurante/menu/:id/combo', auth, authRestaurante, async (req, re
 app.post('/api/restaurante/menu/:id/combo', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { items } = req.body; // [{nombre, a_cocina}]
+    const { items } = req.body; // [{nombre, a_cocina, vinculo_menu_id, cantidad}]
     if (!Array.isArray(items)) return res.status(400).json({ error: 'items debe ser un array' });
     await db.query('DELETE FROM menu_combo_items WHERE producto_id=$1', [req.params.id]);
     for (let i = 0; i < items.length; i++) {
-      const { nombre, a_cocina } = items[i];
+      const { nombre, a_cocina, vinculo_menu_id, cantidad } = items[i];
       if (!nombre?.trim()) continue;
       await db.query(
-        'INSERT INTO menu_combo_items (producto_id, nombre, a_cocina, orden) VALUES ($1,$2,$3,$4)',
-        [req.params.id, nombre.trim(), a_cocina ? 1 : 0, i]
+        'INSERT INTO menu_combo_items (producto_id, nombre, a_cocina, orden, vinculo_menu_id, cantidad) VALUES ($1,$2,$3,$4,$5,$6)',
+        [req.params.id, nombre.trim(), a_cocina ? 1 : 0, i, vinculo_menu_id || null, Number(cantidad)||1]
       );
     }
     // Marcar el producto como combo (o no) en menu_restaurante
@@ -2059,6 +2059,22 @@ app.get('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Descuenta stock de inventario vinculado a un ítem del menú (bebida) y registra el movimiento.
+// menuId: id en menu_restaurante de la bebida; cantidad: unidades a descontar.
+async function descontarStockBebida(menuId, cantidad, cmdId, motivo, userId, userNombre) {
+  if (!menuId || !cantidad) return;
+  const invProd = await db.getOne('SELECT * FROM productos WHERE menu_id=$1 AND activo=1', [menuId]);
+  if (!invProd) return;
+  const stockAntes = Number(invProd.stock) || 0;
+  const stockDespues = Math.max(0, stockAntes - cantidad);
+  await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, invProd.id]);
+  await db.query(
+    `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,referencia,usuario_id,usuario_nombre,stock_antes,stock_despues)
+     VALUES ($1,'consumo',$2,$3,'Comanda #'||$4,$5,$6,$7,$8)`,
+    [invProd.id, cantidad, motivo, cmdId, userId, userNombre, stockAntes, stockDespues]
+  );
+}
+
 app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
   try {
     const { producto_id, cantidad, nota } = req.body;
@@ -2094,19 +2110,20 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
     const tot = await db.getOne('SELECT SUM(precio*cantidad) as t FROM comanda_items WHERE comanda_id=$1', [cmd.id]);
     await db.query('UPDATE comandas SET total=$1 WHERE id=$2', [tot.t||0, cmd.id]);
 
-    // Descontar stock si el producto tiene vinculo con inventario
+    // Descontar stock si el producto tiene vinculo con inventario (venta directa de bebida)
     if (prod.es_bebida && prod.id) {
-      const invProd = await db.getOne('SELECT * FROM productos WHERE menu_id=$1 AND activo=1', [prod.id]);
-      if (invProd) {
-        const cant = (itemExistente ? cantidad||1 : cantidad||1);
-        const stockAntes = Number(invProd.stock)||0;
-        const stockDespues = Math.max(0, stockAntes - cant);
-        await db.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, invProd.id]);
-        await db.query(
-          `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,referencia,usuario_id,usuario_nombre,stock_antes,stock_despues)
-           VALUES ($1,'consumo',$2,'Consumo comanda','Comanda #'||$3,$4,$5,$6,$7)`,
-          [invProd.id, cant, cmd.id, req.user.id, req.user.nombre, stockAntes, stockDespues]
-        );
+      await descontarStockBebida(prod.id, cantidad||1, cmd.id, 'Consumo comanda', req.user.id, req.user.nombre);
+    }
+
+    // Si es un combo, descontar stock de los componentes vinculados a inventario (ej. bebida incluida)
+    if (prod.es_combo) {
+      const componentesVinculados = await db.getAll(
+        'SELECT * FROM menu_combo_items WHERE producto_id=$1 AND vinculo_menu_id IS NOT NULL',
+        [prod.id]
+      );
+      for (const comp of componentesVinculados) {
+        const cantComponente = (Number(comp.cantidad)||1) * (cantidad||1);
+        await descontarStockBebida(comp.vinculo_menu_id, cantComponente, cmd.id, 'Consumo combo', req.user.id, req.user.nombre);
       }
     }
 
