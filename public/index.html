@@ -2008,7 +2008,6 @@ function showCambiarHabModal(hab) {
 // CHECK-OUT
 // ══════════════════════════════════════
 async function showCheckoutModal(hab) {
-  // Obtener reserva activa con saldo
   const reserva = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
   const saldo   = Number(reserva?.saldo_pendiente || 0);
   const nombre  = reserva?.nombre_huesped || hab.nota || '—';
@@ -2016,7 +2015,13 @@ async function showCheckoutModal(hab) {
   const total0  = Number(reserva?.precio_total || 0);
   const senia0  = Number(reserva?.monto_senia || 0);
 
-  // Si hay saldo a cobrar, verificar que haya turno abierto
+  // Cargar cargos de restaurante de esta reserva
+  let cargosRest = [];
+  if (reserva?.id) {
+    cargosRest = await apiFetch('GET', `/reservas/${reserva.id}/cargos-restaurante`).catch(()=>[]) || [];
+  }
+  const totalCargosRest = cargosRest.reduce((s,c)=>s+Number(c.monto||0),0);
+
   if (saldo > 0) {
     const turnoHab = await apiFetch('GET', '/caja-hab/turno/activo').catch(()=>null);
     if (!turnoHab) {
@@ -2051,6 +2056,24 @@ async function showCheckoutModal(hab) {
         <div style="font-size:13px;color:#16a34a;font-weight:700">✅ Reserva ya saldada</div>
        </div>`;
 
+  const cargosRestHTML = cargosRest.length ? `
+    <div style="border-top:1.5px solid #e2e8f0;margin:14px 0;padding-top:14px">
+      <div style="font-size:12px;font-weight:700;color:#0f4c75;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px">
+        🍽️ Cargos de restaurante
+      </div>
+      ${cargosRest.map(c=>`
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+          <div>
+            <div style="color:#1e293b">${c.descripcion}</div>
+            <div style="font-size:11px;color:#94a3b8">${new Date(c.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <div style="font-weight:700;color:#0f4c75;white-space:nowrap;margin-left:8px">${fmt(Number(c.monto))}</div>
+        </div>`).join('')}
+      <div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:800;font-size:14px;color:#0f4c75">
+        <span>Total restaurante</span><span>${fmt(totalCargosRest)}</span>
+      </div>
+    </div>` : '';
+
   openModal(`
     <div class="modal-hd">
       <h3>Check-out — Hab. ${hab.numero} Ala ${hab.ala}</h3>
@@ -2062,6 +2085,7 @@ async function showCheckoutModal(hab) {
       ${senia0>0 ? `<span style="color:#16a34a"> · Seña cobrada: ${fmt(senia0)}</span>` : ''}
     </div>
     ${bannerSaldo}
+    ${cargosRestHTML}
     <div class="form-row" id="co-metodo-row" style="${saldo===0?'display:none':''}">
       <div class="form-col"><label>Método de pago del saldo</label>
         <select id="co-pago">
@@ -2111,7 +2135,6 @@ async function showCheckoutModal(hab) {
       monto_extra:        extra,
       concepto_extra:     concepto,
     };
-    // Si hay extra con método diferente, usar el del extra
     if (extra > 0) body.metodo_pago_extra = document.getElementById('co-pago-extra')?.value;
 
     const r = await apiFetch('POST', `/checkout/${hab.id}`, body);
