@@ -2155,235 +2155,516 @@ async function showCheckinModal(habId) {
   const habIdReal = hab?.id ?? habId;
   const now = new Date(), tom = new Date(now); tom.setDate(tom.getDate()+1);
   const iso = d => d.toISOString().slice(0,16);
-  const pn  = hab?.precio_noche||50000;
+  const pn = hab?.precio_noche || 50000;
 
-  // Traer todas las reservas vinculadas y tarifas
   const [reservasVinculadas, tarifasCfg] = await Promise.all([
     apiFetch('GET', `/habitaciones/${habIdReal}/reservas`),
     apiFetch('GET', '/config/tarifas')
   ]);
   const reservas = reservasVinculadas || [];
   const tfNoche = tarifasCfg?.precio_noche || pn;
-  const tfHora  = tarifasCfg?.precio_hora  || hab?.precio_hora || 20000;
+  const tfHora  = tarifasCfg?.precio_hora  || 20000;
   const tfDia   = tarifasCfg?.precio_dia   || Math.round(pn * 1.5);
 
-  // Empezar sin reserva seleccionada
+  // Estado compartido entre pasos
+  let ciStep = reservas.length > 0 ? 1 : 2;
   let reserva = null;
-  const nombre0 = '', doc0 = '';
-  const entrada0 = iso(now), salida0 = iso(tom);
-  const noches0 = 1, total0 = tfNoche, saldo0 = tfNoche;
   let senia0 = 0;
-  const metodo0 = 'Efectivo';
+  let ciPersonas = 1;
+  let ciTipoTarifa = 'noche';
+  let ciTarifaMonto = tfNoche;
+  let ciMomentoCobro = 'ahora';
+  let acompanantes = [];
 
-  // Banner con listado de reservas vinculadas
   const fmtDtCorto = dt => {
     const d = new Date(dt);
     return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) + ' ' +
            d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
   };
-  const bannerReserva = reservas.length > 0 ? `
-    <div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:800;color:#1d4ed8;margin-bottom:8px">📋 Reservas vinculadas — seleccioná una para precargar los datos</div>
-      ${reservas.map((r,i) => {
-        const senia = r.monto_senia||0;
-        const saldo = r.saldo_pendiente||r.precio_total||0;
-        return `<div style="background:#fff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-              <span style="font-size:13px;font-weight:700;color:#1e293b">${r.nombre_huesped}</span>
-              ${r.plataforma&&r.plataforma!=='Directo'?`<span style="background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${r.plataforma}</span>`:''}
-            </div>
-            <div style="font-size:11px;color:#64748b">${fmtDtCorto(r.entrada)} → ${fmtDtCorto(r.salida)} · ${fmt(r.precio_total||0)}${senia>0?' · Seña: '+fmt(senia):''}${saldo>0?' · <span style="color:#dc2626">Saldo: '+fmt(saldo)+'</span>':''}</div>
-            ${r.notas?`<div style="font-size:10px;color:#92400e;background:#fef9c3;border-radius:4px;padding:2px 6px;margin-top:3px;font-style:italic">📝 ${r.notas}</div>`:''}
-          </div>
-          <button id="ci-usar-res-${i}" data-idx="${i}" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">Usar esta</button>
-        </div>`;
-      }).join('')}
-    </div>` : '';
 
+  // ── Renderizar modal con pasos ──────────────────────────────────────
   openModal(`
-    <div class="modal-hd">
-      <h3>Ocupar — Habitación #${hab?.numero}</h3>
-      <button class="modal-close" id="ci-close">✕</button>
-    </div>
-    ${bannerReserva}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <style>
+      .ci-wizard { font-family:'Nunito',sans-serif; }
+      /* Barra de progreso */
+      .ci-steps { display:flex; align-items:center; margin-bottom:24px; gap:0; }
+      .ci-step-item { display:flex; flex-direction:column; align-items:center; flex:1; position:relative; }
+      .ci-step-item:not(:last-child)::after {
+        content:''; position:absolute; top:16px; left:calc(50% + 16px);
+        width:calc(100% - 32px); height:2px; background:#e2e8f0; z-index:0; transition:background .3s;
+      }
+      .ci-step-item.done:not(:last-child)::after { background:var(--accent,#00c9b1); }
+      .ci-step-circle {
+        width:32px; height:32px; border-radius:50%; border:2px solid #e2e8f0;
+        background:#f8fafc; color:#94a3b8; font-size:13px; font-weight:800;
+        display:flex; align-items:center; justify-content:center; position:relative; z-index:1;
+        transition:all .3s ease;
+      }
+      .ci-step-item.active .ci-step-circle { background:var(--accent,#00c9b1); border-color:var(--accent,#00c9b1); color:#fff; box-shadow:0 0 0 4px rgba(0,201,177,.2); }
+      .ci-step-item.done .ci-step-circle   { background:var(--accent,#00c9b1); border-color:var(--accent,#00c9b1); color:#fff; }
+      .ci-step-label { font-size:10px; font-weight:700; color:#94a3b8; margin-top:5px; text-align:center; transition:color .3s; }
+      .ci-step-item.active .ci-step-label  { color:#1a2035; }
+      .ci-step-item.done .ci-step-label    { color:var(--accent,#00c9b1); }
+      /* Slides */
+      .ci-slides-wrap { overflow:hidden; }
+      .ci-slides { display:flex; transition:transform .35s cubic-bezier(.4,0,.2,1); }
+      .ci-slide { min-width:100%; box-sizing:border-box; padding:2px 1px; }
+      /* Botones nav */
+      .ci-nav { display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1.5px solid #f1f5f9; }
+      .ci-btn-prev { background:#f1f5f9; border:none; border-radius:10px; padding:11px 20px; font-size:14px; font-weight:700; color:#64748b; cursor:pointer; font-family:'Nunito',sans-serif; transition:background .2s; }
+      .ci-btn-prev:hover { background:#e2e8f0; }
+      .ci-btn-next { background:var(--accent,#00c9b1); border:none; border-radius:10px; padding:11px 24px; font-size:14px; font-weight:700; color:#fff; cursor:pointer; font-family:'Nunito',sans-serif; transition:all .2s; box-shadow:0 2px 8px rgba(0,201,177,.3); }
+      .ci-btn-next:hover { filter:brightness(1.05); }
+      .ci-btn-next:disabled { opacity:.5; cursor:not-allowed; }
+      /* Tarifa cards */
+      .ci-tf-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+      .ci-tf-btn { border:2px solid #e2e8f0; border-radius:12px; padding:14px 12px; background:#f8fafc; cursor:pointer; text-align:left; transition:all .2s; }
+      .ci-tf-btn:hover { border-color:#00c9b1; background:#f0fdf9; }
+      .ci-tf-btn.active { border-color:#3b82f6; background:#eff6ff; }
+      .ci-tf-label { font-size:10px; color:#64748b; font-weight:600; margin-bottom:4px; }
+      .ci-tf-price { font-size:16px; font-weight:900; color:#1e293b; }
+      .ci-tf-btn.active .ci-tf-price { color:#1d4ed8; }
+      /* Reserva cards en paso 1 */
+      .ci-res-card { background:#fff; border:1.5px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:8px; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      .ci-res-card:hover { border-color:#93c5fd; background:#f0f9ff; }
+      .ci-res-card.selected { border-color:#00c9b1; background:#f0fdf9; box-shadow:0 0 0 3px rgba(0,201,177,.15); }
+      .ci-res-sin { border:2px dashed #e2e8f0; border-radius:12px; padding:14px; text-align:center; cursor:pointer; transition:all .2s; color:#64748b; font-weight:700; font-size:13px; margin-top:4px; }
+      .ci-res-sin:hover { border-color:#94a3b8; background:#f8fafc; }
+      .ci-res-sin.selected { border-color:#7c3aed; background:#faf5ff; color:#7c3aed; }
+      /* Resumen tarifa */
+      .ci-resumen { background:#f8fafc; border-radius:12px; padding:14px; font-size:13px; margin-top:4px; }
+      .ci-resumen-row { display:flex; justify-content:space-between; color:#64748b; margin-bottom:5px; }
+      .ci-resumen-total { display:flex; justify-content:space-between; font-weight:900; font-size:17px; color:#1d4ed8; border-top:1.5px solid #e2e8f0; padding-top:10px; margin-top:6px; }
+      /* Acomp */
+      .ci-acomp-item { display:flex; align-items:center; gap:8px; background:#f8fafc; border-radius:10px; padding:8px 10px; margin-bottom:6px; }
+      .ci-acomp-item input { flex:1; border:1.5px solid #e2e8f0; border-radius:8px; padding:7px 10px; font-size:13px; font-family:'Nunito',sans-serif; }
+      /* Cobro buttons */
+      .ci-cobro-btn { flex:1; padding:12px; border-radius:10px; border:2px solid #e2e8f0; background:#f8fafc; cursor:pointer; font-size:13px; font-weight:700; transition:all .2s; }
+    </style>
 
-      <!-- COLUMNA IZQUIERDA: Huésped -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👤 Huésped</div>
-        <div class="form-row">
-          <div class="form-col"><label>Tipo Documento</label>
-            <select id="ci-tdoc" style="width:100%">
-              <option>DNI</option><option>Pasaporte</option><option>Carnet</option>
-            </select>
-          </div>
-          <div class="form-col"><label>N° Documento</label>
-            <input type="text" id="ci-doc" placeholder="12345678" value="${doc0}">
-          </div>
+    <div class="ci-wizard">
+      <!-- Header -->
+      <div class="modal-hd" style="margin-bottom:20px">
+        <div>
+          <h3 style="font-size:16px;font-weight:900;color:#1a2035">🏨 Check-in — Hab. ${hab?.numero}</h3>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">${hab?.ala} · ${hab?.tipo?.toUpperCase?.() || ''}</div>
         </div>
-        <div id="ci-ginfo" style="display:none" class="info-box"></div>
-        <div class="form-row">
-          <div class="form-col"><label>Nombre Completo</label>
-            <input type="text" id="ci-nombre" placeholder="Juan García" value="${nombre0}">
-          </div>
-          <div class="form-col"><label>Celular (Opcional)</label>
-            <input type="text" id="ci-tel" placeholder="+54 9 11...">
-          </div>
+        <button class="modal-close" id="ci-close">✕</button>
+      </div>
+
+      <!-- Barra de pasos -->
+      <div class="ci-steps" id="ci-steps-bar">
+        ${reservas.length > 0 ? `
+        <div class="ci-step-item active" data-s="1">
+          <div class="ci-step-circle">1</div>
+          <div class="ci-step-label">Reserva</div>
+        </div>` : ''}
+        <div class="ci-step-item ${reservas.length === 0 ? 'active' : ''}" data-s="2">
+          <div class="ci-step-circle">${reservas.length > 0 ? '2' : '1'}</div>
+          <div class="ci-step-label">Huésped</div>
         </div>
-        <div class="form-row">
-          <div class="form-col"><label>Entrada</label>
-            <input type="datetime-local" id="ci-in" value="${entrada0}">
-          </div>
-          <div class="form-col"><label>Salida</label>
-            <input type="datetime-local" id="ci-out" value="${salida0}">
-          </div>
+        <div class="ci-step-item" data-s="3">
+          <div class="ci-step-circle">${reservas.length > 0 ? '3' : '2'}</div>
+          <div class="ci-step-label">Acomp.</div>
         </div>
-        <div class="form-row" style="align-items:center">
-          <div class="form-col"><label>Cantidad de Personas</label>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
-              <button id="ci-pers-minus" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">−</button>
-              <span id="ci-pers" style="font-size:18px;font-weight:800;min-width:24px;text-align:center">1</span>
-              <button id="ci-pers-plus" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">+</button>
-            </div>
-          </div>
-          <div class="form-col"><label>Notas / Cochera</label>
-            <input type="text" id="ci-notas" placeholder="Ej: ART-158, solicitudes...">
-          </div>
+        <div class="ci-step-item" data-s="4">
+          <div class="ci-step-circle">${reservas.length > 0 ? '4' : '3'}</div>
+          <div class="ci-step-label">Tarifa</div>
         </div>
-        <div style="margin-top:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <label style="margin:0">👥 Acompañantes <span style="color:#94a3b8;font-weight:400">(opcional)</span></label>
-            <button id="ci-acomp-add" style="background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#374151">+ Agregar</button>
-          </div>
-          <div id="ci-acomp-list"></div>
+        <div class="ci-step-item" data-s="5">
+          <div class="ci-step-circle">${reservas.length > 0 ? '5' : '4'}</div>
+          <div class="ci-step-label">Cobro</div>
         </div>
       </div>
 
-      <!-- COLUMNA DERECHA: Tarifa y Cobro -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">💰 Tipo de Tarifa</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-          <button class="ci-tarifa-btn" data-tipo="noche" data-monto="${tfNoche}" style="border:2px solid #3b82f6;border-radius:10px;padding:10px;background:#eff6ff;cursor:pointer;text-align:left">
-            <div style="font-size:10px;color:#64748b;font-weight:600">🌙 Por Noche</div>
-            <div style="font-size:15px;font-weight:800;color:#1d4ed8">${fmt(tfNoche)}</div>
-          </button>
-          <button class="ci-tarifa-btn" data-tipo="hora" data-monto="${tfHora}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
-            <div style="font-size:10px;color:#64748b;font-weight:600">⏱ Por Horas</div>
-            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(tfHora)} <span style="font-size:9px;font-weight:500">hasta 6h</span></div>
-          </button>
-          <button class="ci-tarifa-btn" data-tipo="dia" data-monto="${tfDia}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
-            <div style="font-size:10px;color:#64748b;font-weight:600">📅 Por Día (24h)</div>
-            <div style="font-size:15px;font-weight:800;color:#374151">${fmt(tfDia)}</div>
-          </button>
-          <button class="ci-tarifa-btn" data-tipo="personalizado" data-monto="0" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;cursor:pointer;text-align:left">
-            <div style="font-size:10px;color:#64748b;font-weight:600">✏️ Personalizado</div>
-            <div style="font-size:12px;color:#94a3b8;font-weight:500">Monto manual</div>
-          </button>
-        </div>
-        <div id="ci-monto-manual" style="display:none;margin-bottom:10px">
-          <label>Monto personalizado ($)</label>
-          <input type="number" id="ci-tarifa" value="${reserva ? Math.round(total0/noches0) : tfNoche}" placeholder="0">
-        </div>
-        
+      <!-- Slides -->
+      <div class="ci-slides-wrap">
+        <div class="ci-slides" id="ci-slides">
 
-        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⏰ Momento de Cobro</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-          <button id="ci-cobro-ahora" style="border:2px solid #16a34a;border-radius:10px;padding:10px 8px;background:#f0fdf4;cursor:pointer;font-size:13px;font-weight:700;color:#15803d">
-            💳 Paga Ahora
-          </button>
-          <button id="ci-cobro-salir" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 8px;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;color:#64748b">
-            🕐 Paga al Salir
-          </button>
-        </div>
+          <!-- PASO 1: Reserva vinculada (solo si hay reservas) -->
+          ${reservas.length > 0 ? `
+          <div class="ci-slide" id="ci-slide-1">
+            <div style="font-size:13px;color:#64748b;margin-bottom:14px">Seleccioná una reserva existente o continuá con un ingreso nuevo.</div>
+            ${reservas.map((r,i) => {
+              const senia = r.monto_senia||0;
+              const saldo = r.saldo_pendiente||r.precio_total||0;
+              return `<div class="ci-res-card" id="ci-res-card-${i}" data-idx="${i}">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                    <span style="font-size:14px;font-weight:800;color:#1e293b">${r.nombre_huesped}</span>
+                    ${r.plataforma&&r.plataforma!=='Directo'?`<span style="background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${r.plataforma}</span>`:''}
+                  </div>
+                  <div style="font-size:12px;color:#64748b">${fmtDtCorto(r.entrada)} → ${fmtDtCorto(r.salida)} · ${fmt(r.precio_total||0)}${senia>0?' · Seña: '+fmt(senia):''}${saldo>0?' · <span style=color:#dc2626>Saldo: '+fmt(saldo)+'</span>':''}</div>
+                  ${r.notas?`<div style="font-size:10px;color:#92400e;background:#fef9c3;border-radius:4px;padding:2px 6px;margin-top:4px;font-style:italic">📝 ${r.notas}</div>`:''}
+                </div>
+                <div id="ci-res-check-${i}" style="width:24px;height:24px;border-radius:50%;border:2px solid #e2e8f0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px"></div>
+              </div>`;
+            }).join('')}
+            <div class="ci-res-sin" id="ci-res-sin">➕ Ingreso sin reserva</div>
+          </div>` : ''}
 
-        <div id="ci-metodo-wrap" style="margin-bottom:12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <label style="margin:0">Método de Pago <span style="color:#ef4444">*</span></label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748b;cursor:pointer">
-              <input type="checkbox" id="ci-mixto" style="width:15px;height:15px;cursor:pointer;accent-color:#3b82f6">
-              Pago Mixto
-            </label>
-          </div>
-          <select id="ci-pago" style="width:100%">
-            ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia','QR']
-              .map(m=>`<option ${m===metodo0?'selected':''}>${m}</option>`).join('')}
-          </select>
-          <div id="ci-mixto-wrap" style="display:none;margin-top:8px;background:#f0f9ff;border-radius:8px;padding:10px;font-size:12px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <div>
-                <label style="font-size:11px">Monto en Efectivo</label>
-                <input type="number" id="ci-mixto-ef" placeholder="$ 0" style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px">
+          <!-- PASO 2: Datos del huésped -->
+          <div class="ci-slide" id="ci-slide-2">
+            <div id="ci-ginfo" style="display:none;background:#dcfce7;border:1.5px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:#166534;margin-bottom:12px"></div>
+            <div class="form-row">
+              <div class="form-col"><label>Tipo Documento</label>
+                <select id="ci-tdoc"><option>DNI</option><option>Pasaporte</option><option>Carnet</option></select>
               </div>
-              <div>
-                <label style="font-size:11px">Monto en Tarjeta/Transf.</label>
-                <input type="number" id="ci-mixto-tg" placeholder="$ 0" style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px">
+              <div class="form-col"><label>N° Documento</label>
+                <input type="text" id="ci-doc" placeholder="12345678">
               </div>
             </div>
+            <div class="form-row">
+              <div class="form-col"><label>Nombre Completo *</label>
+                <input type="text" id="ci-nombre" placeholder="Juan García">
+              </div>
+              <div class="form-col"><label>Celular</label>
+                <input type="text" id="ci-tel" placeholder="+54 9 11...">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-col"><label>Entrada</label>
+                <input type="datetime-local" id="ci-in">
+              </div>
+              <div class="form-col"><label>Salida</label>
+                <input type="datetime-local" id="ci-out">
+              </div>
+            </div>
+            <div class="form-col"><label>Notas / Cochera</label>
+              <input type="text" id="ci-notas" placeholder="Ej: ART-158, solicitudes...">
+            </div>
           </div>
-        </div>
 
-        <div style="background:#f8fafc;border-radius:10px;padding:12px;font-size:13px">
-          <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:4px">
-            <span>Habitación:</span><span id="ci-tot">${fmt(total0)}</span>
+          <!-- PASO 3: Acompañantes -->
+          <div class="ci-slide" id="ci-slide-3">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <div>
+                <div style="font-size:14px;font-weight:800;color:#1a2035">Cantidad de personas</div>
+                <div style="font-size:12px;color:#94a3b8;margin-top:2px">Total de huéspedes que se alojarán</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <button id="ci-pers-minus" style="width:36px;height:36px;border-radius:50%;border:2px solid #e2e8f0;background:#f8fafc;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151">−</button>
+                <span id="ci-pers" style="font-size:24px;font-weight:900;min-width:30px;text-align:center;color:#1a2035">1</span>
+                <button id="ci-pers-plus" style="width:36px;height:36px;border-radius:50%;border:2px solid #e2e8f0;background:#f8fafc;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151">+</button>
+              </div>
+            </div>
+            <div style="border-top:1.5px solid #f1f5f9;padding-top:16px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div style="font-size:14px;font-weight:800;color:#1a2035">👥 Acompañantes <span style="color:#94a3b8;font-weight:400;font-size:12px">(opcional)</span></div>
+                <button id="ci-acomp-add" style="background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;color:#374151">+ Agregar</button>
+              </div>
+              <div id="ci-acomp-list"></div>
+              <div style="font-size:11px;color:#94a3b8;text-align:center;padding:8px" id="ci-acomp-empty">No se agregaron acompañantes</div>
+            </div>
           </div>
-          <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:8px">
-            <span>Noches / Unidades:</span><span id="ci-n">${noches0}</span>
+
+          <!-- PASO 4: Tarifa -->
+          <div class="ci-slide" id="ci-slide-4">
+            <div id="ci-tarifa-aviso-wrap"></div>
+            <div class="ci-tf-grid">
+              <button class="ci-tf-btn active" data-tipo="noche" data-monto="${tfNoche}">
+                <div class="ci-tf-label">🌙 Por Noche</div>
+                <div class="ci-tf-price">${fmt(tfNoche)}</div>
+              </button>
+              <button class="ci-tf-btn" data-tipo="hora" data-monto="${tfHora}">
+                <div class="ci-tf-label">⏱ Por Horas <span style="font-weight:400;font-size:9px">hasta 6h</span></div>
+                <div class="ci-tf-price">${fmt(tfHora)}</div>
+              </button>
+              <button class="ci-tf-btn" data-tipo="dia" data-monto="${tfDia}">
+                <div class="ci-tf-label">📅 Por Día (24h)</div>
+                <div class="ci-tf-price">${fmt(tfDia)}</div>
+              </button>
+              <button class="ci-tf-btn" data-tipo="personalizado" data-monto="0">
+                <div class="ci-tf-label">✏️ Personalizado</div>
+                <div class="ci-tf-price" style="font-size:13px;color:#94a3b8">Monto manual</div>
+              </button>
+            </div>
+            <div id="ci-monto-manual" style="display:none;margin-bottom:12px">
+              <label>Monto ($)</label>
+              <input type="number" id="ci-tarifa" placeholder="0" style="font-size:18px;font-weight:800">
+            </div>
+            <div class="ci-resumen">
+              <div class="ci-resumen-row"><span>Habitación:</span><span id="ci-tot">${fmt(tfNoche)}</span></div>
+              <div class="ci-resumen-row"><span>Noches / Unidades:</span><span id="ci-n">1</span></div>
+              <div class="ci-resumen-row" id="ci-senia-row" style="display:none;color:#16a34a"><span>Seña cobrada:</span><span id="ci-senia-val"></span></div>
+              <div class="ci-resumen-total"><span>TOTAL</span><span id="ci-saldo">${fmt(tfNoche)}</span></div>
+            </div>
           </div>
-          ${senia0>0?`<div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:8px"><span>Seña cobrada:</span><span>- ${fmt(senia0)}</span></div>`:''}
-          <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;border-top:1.5px solid #e2e8f0;padding-top:8px;color:#1d4ed8">
-            <span>TOTAL</span><span id="ci-saldo">${fmt(saldo0)}</span>
+
+          <!-- PASO 5: Cobro -->
+          <div class="ci-slide" id="ci-slide-5">
+            <div style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">⏰ Momento de cobro</div>
+            <div style="display:flex;gap:10px;margin-bottom:20px">
+              <button id="ci-cobro-ahora" class="ci-cobro-btn" style="border-color:#16a34a;background:#f0fdf4;color:#15803d">
+                💳 Paga Ahora
+              </button>
+              <button id="ci-cobro-salir" class="ci-cobro-btn" style="color:#64748b">
+                🕐 Paga al Salir
+              </button>
+            </div>
+            <div id="ci-metodo-wrap">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="margin:0">Método de Pago *</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748b;cursor:pointer">
+                  <input type="checkbox" id="ci-mixto" style="width:15px;height:15px;cursor:pointer;accent-color:#3b82f6">
+                  Pago Mixto
+                </label>
+              </div>
+              <select id="ci-pago">
+                ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia','QR'].map(m=>`<option>${m}</option>`).join('')}
+              </select>
+              <div id="ci-mixto-wrap" style="display:none;margin-top:8px;background:#f0f9ff;border-radius:8px;padding:10px;font-size:12px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div><label style="font-size:11px">Monto en Efectivo</label>
+                    <input type="number" id="ci-mixto-ef" placeholder="$ 0"></div>
+                  <div><label style="font-size:11px">Monto en Tarjeta/Transf.</label>
+                    <input type="number" id="ci-mixto-tg" placeholder="$ 0"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Resumen final -->
+            <div class="ci-resumen" style="margin-top:16px">
+              <div class="ci-resumen-row"><span>Total estadía:</span><span id="ci-tot-final">—</span></div>
+              <div class="ci-resumen-row" id="ci-senia-row-final" style="display:none;color:#16a34a"><span>Seña cobrada:</span><span id="ci-senia-val-final"></span></div>
+              <div class="ci-resumen-total" id="ci-cobro-row"><span>A cobrar ahora:</span><span id="ci-saldo-final">—</span></div>
+            </div>
           </div>
-        </div>
+
+        </div><!-- /ci-slides -->
+      </div><!-- /ci-slides-wrap -->
+
+      <!-- Navegación -->
+      <div class="ci-nav">
+        <button class="ci-btn-prev" id="ci-prev">← Anterior</button>
+        <div style="font-size:12px;color:#94a3b8;font-weight:600" id="ci-step-counter"></div>
+        <button class="ci-btn-next" id="ci-next">Siguiente →</button>
       </div>
     </div>
-
-    <button class="confirm-btn" id="ci-confirm" style="margin-top:16px">✅ Confirmar y Cobrar</button>
   `, { wide: true });
 
-  // Estado del modal
-  let ciTipoTarifa = 'noche';
-  let ciTarifaMonto = tfNoche;
-  let ciMomentoCobro = 'ahora';
-  let ciPersonas = 1;
+  // ── LÓGICA DE PASOS ──────────────────────────────────────────────────
+  const totalSteps = reservas.length > 0 ? 5 : 4;
+  const stepNumbers = reservas.length > 0 ? [1,2,3,4,5] : [2,3,4,5];
 
-  const getInnOut = () => {
-    return {
-      inn: document.getElementById('ci-in')?.value,
-      out: document.getElementById('ci-out')?.value
-    };
-  };
+  const getInnOut = () => ({
+    inn: document.getElementById('ci-in')?.value,
+    out: document.getElementById('ci-out')?.value
+  });
 
   const recalc = () => {
     const { inn, out } = getInnOut();
     if (!inn || !out) return;
     let n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
-    if (ciTipoTarifa === 'hora') n = 1;
-    if (ciTipoTarifa === 'dia')  n = 1;
+    if (ciTipoTarifa === 'hora' || ciTipoTarifa === 'dia') n = 1;
     const total = n * ciTarifaMonto;
-    const saldo = Math.max(0, total - senia0);
-    document.getElementById('ci-n').textContent   = n;
-    document.getElementById('ci-tot').textContent = fmtExacto(total);
-    if (document.getElementById('ci-saldo'))
-      document.getElementById('ci-saldo').textContent = ciMomentoCobro === 'ahora' ? fmtExacto(saldo) : '$ 0 (paga al salir)';
+    const saldo = ciMomentoCobro === 'ahora' ? Math.max(0, total - senia0) : 0;
+    ['ci-n'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=n; });
+    ['ci-tot','ci-tot-final'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=fmtExacto(total); });
+    ['ci-saldo','ci-saldo-final'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=ciMomentoCobro==='ahora'?fmtExacto(saldo):'$ 0 (paga al salir)'; });
+    if (senia0 > 0) {
+      ['ci-senia-row','ci-senia-row-final'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='flex'; });
+      ['ci-senia-val','ci-senia-val-final'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='- '+fmt(senia0); });
+    }
+    const cobroRow = document.getElementById('ci-cobro-row');
+    if (cobroRow) cobroRow.querySelector('span').textContent = ciMomentoCobro==='ahora' ? 'A cobrar ahora:' : 'Se cobrará al salir';
+    const confirmBtn = document.getElementById('ci-next');
+    if (confirmBtn && ciStep === (reservas.length>0?5:4)) {
+      confirmBtn.textContent = senia0>0&&ciMomentoCobro==='ahora' ? `✅ Confirmar y Cobrar ${fmtExacto(saldo)}` : '✅ Confirmar y Cobrar';
+    }
   };
 
-  // Botones tipo tarifa
-  document.querySelectorAll('.ci-tarifa-btn').forEach(btn => {
+  // Inicializar fechas
+  document.getElementById('ci-in').value = iso(now);
+  document.getElementById('ci-out').value = iso(tom);
+
+  // ── Actualizar barra de progreso ──────────────────────────────────
+  const updateStepBar = () => {
+    const items = document.querySelectorAll('.ci-step-item');
+    items.forEach(item => {
+      const s = parseInt(item.dataset.s);
+      item.classList.remove('active','done');
+      if (s === ciStep) item.classList.add('active');
+      else if (s < ciStep) item.classList.add('done');
+      const circle = item.querySelector('.ci-step-circle');
+      if (circle && s < ciStep) circle.textContent = '✓';
+      else if (circle) circle.textContent = reservas.length>0 ? s : s-1;
+    });
+    const counter = document.getElementById('ci-step-counter');
+    if (counter) counter.textContent = `${stepNumbers.indexOf(ciStep)+1} / ${totalSteps}`;
+  };
+
+  // ── Mover slides ──────────────────────────────────────────────────
+  const goToSlide = (step) => {
+    const slides = document.getElementById('ci-slides');
+    const slideEls = slides.querySelectorAll('.ci-slide');
+    const idx = Array.from(slideEls).findIndex(s => s.id === `ci-slide-${step}`);
+    if (slides && idx >= 0) slides.style.transform = `translateX(-${idx * 100}%)`;
+    const prev = document.getElementById('ci-prev');
+    const next = document.getElementById('ci-next');
+    const lastStep = reservas.length > 0 ? 5 : 4;
+    if (prev) prev.style.display = (step === stepNumbers[0]) ? 'none' : 'block';
+    if (next) {
+      next.textContent = step === lastStep ? '✅ Confirmar y Cobrar' : 'Siguiente →';
+      next.style.background = step === lastStep ? 'linear-gradient(135deg,#16a34a,#22c55e)' : 'var(--accent,#00c9b1)';
+    }
+    updateStepBar();
+    recalc();
+  };
+
+  // ── Validar paso actual ───────────────────────────────────────────
+  const validateStep = () => {
+    if (ciStep === 1) {
+      // Reserva: debe haber selección (reserva o sin reserva)
+      const sinSel = document.getElementById('ci-res-sin')?.classList.contains('selected');
+      const conRes = reservas.some((_,i) => document.getElementById(`ci-res-card-${i}`)?.classList.contains('selected'));
+      if (!sinSel && !conRes) { toast('Seleccioná una reserva o elegí "Ingreso sin reserva"', false); return false; }
+      return true;
+    }
+    if (ciStep === 2) {
+      const nombre = document.getElementById('ci-nombre')?.value.trim();
+      if (!nombre) { toast('Ingresá el nombre del huésped', false); document.getElementById('ci-nombre')?.focus(); return false; }
+      const inn = document.getElementById('ci-in')?.value;
+      const out = document.getElementById('ci-out')?.value;
+      if (!inn || !out) { toast('Completá las fechas de entrada y salida', false); return false; }
+      if (new Date(out) <= new Date(inn)) { toast('La salida debe ser posterior a la entrada', false); return false; }
+      return true;
+    }
+    return true;
+  };
+
+  // ── Iniciar en el paso correcto ───────────────────────────────────
+  goToSlide(ciStep);
+  document.getElementById('ci-prev').style.display = 'none';
+
+  // ── Navegación ────────────────────────────────────────────────────
+  document.getElementById('ci-prev').addEventListener('click', () => {
+    const idx = stepNumbers.indexOf(ciStep);
+    if (idx > 0) { ciStep = stepNumbers[idx-1]; goToSlide(ciStep); }
+  });
+
+  document.getElementById('ci-next').addEventListener('click', async () => {
+    const lastStep = reservas.length > 0 ? 5 : 4;
+    if (!validateStep()) return;
+    if (ciStep === lastStep) {
+      await doCheckin();
+      return;
+    }
+    const idx = stepNumbers.indexOf(ciStep);
+    ciStep = stepNumbers[idx+1];
+    goToSlide(ciStep);
+  });
+
+  document.getElementById('ci-close').addEventListener('click', closeModal);
+
+  // ── PASO 1: Selección de reserva ──────────────────────────────────
+  const seleccionarReserva = (r, idx) => {
+    reserva = r;
+    senia0 = r?.monto_senia || 0;
+    // UI
+    document.querySelectorAll('.ci-res-card').forEach((c,i) => {
+      c.classList.remove('selected');
+      const ch = document.getElementById(`ci-res-check-${i}`);
+      if (ch) { ch.textContent=''; ch.style.borderColor='#e2e8f0'; ch.style.background=''; }
+    });
+    document.getElementById('ci-res-sin')?.classList.remove('selected');
+    if (idx !== null) {
+      document.getElementById(`ci-res-card-${idx}`)?.classList.add('selected');
+      const ch = document.getElementById(`ci-res-check-${idx}`);
+      if (ch) { ch.textContent='✓'; ch.style.borderColor='#00c9b1'; ch.style.background='#00c9b1'; ch.style.color='#fff'; }
+    }
+    // Precargar datos en paso 2
+    if (r) {
+      setTimeout(() => {
+        document.getElementById('ci-doc').value    = r.documento || '';
+        document.getElementById('ci-nombre').value = r.nombre_huesped || '';
+        document.getElementById('ci-tel').value    = r.telefono || '';
+        document.getElementById('ci-in').value     = new Date(r.entrada).toISOString().slice(0,16);
+        document.getElementById('ci-out').value    = new Date(r.salida).toISOString().slice(0,16);
+        ciTarifaMonto = r.precio_total / Math.max(1, r.noches||1);
+        // Bloquear tarifa en paso 4
+        const avisoCont = document.getElementById('ci-tarifa-aviso-wrap');
+        if (avisoCont && !avisoCont.innerHTML) {
+          avisoCont.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:#92400e;margin-bottom:12px">
+            <span>📋 Tarifa definida en la reserva</span>
+            <button id="ci-editar-tarifa" style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">✏️ Editar</button>
+          </div>`;
+          document.querySelectorAll('.ci-tf-btn').forEach(b => { b.disabled=true; b.style.opacity='.4'; b.style.cursor='not-allowed'; });
+          document.getElementById('ci-editar-tarifa')?.addEventListener('click', () => {
+            document.querySelectorAll('.ci-tf-btn').forEach(b => { b.disabled=false; b.style.opacity='1'; b.style.cursor='pointer'; });
+            document.getElementById('ci-monto-manual').style.display='block';
+            const inp = document.getElementById('ci-tarifa');
+            if (inp) { inp.value=ciTarifaMonto; inp.addEventListener('input', () => { ciTarifaMonto=parseMonto(inp.value)||0; recalc(); }); }
+            avisoCont.innerHTML=`<div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:12px">✏️ Seleccioná nueva tarifa o ingresá monto personalizado</div>`;
+            ciTipoTarifa='personalizado'; recalc();
+          });
+        }
+        recalc();
+      }, 50);
+    }
+  };
+
+  reservas.forEach((r,i) => {
+    document.getElementById(`ci-res-card-${i}`)?.addEventListener('click', () => seleccionarReserva(r, i));
+  });
+  document.getElementById('ci-res-sin')?.addEventListener('click', () => {
+    reserva = null; senia0 = 0;
+    document.querySelectorAll('.ci-res-card').forEach((c,i) => {
+      c.classList.remove('selected');
+      const ch = document.getElementById(`ci-res-check-${i}`);
+      if (ch) { ch.textContent=''; ch.style.borderColor='#e2e8f0'; ch.style.background=''; ch.style.color=''; }
+    });
+    document.getElementById('ci-res-sin').classList.add('selected');
+    // Limpiar aviso de tarifa
+    const avisoCont = document.getElementById('ci-tarifa-aviso-wrap');
+    if (avisoCont) avisoCont.innerHTML = '';
+    document.querySelectorAll('.ci-tf-btn').forEach(b => { b.disabled=false; b.style.opacity='1'; b.style.cursor='pointer'; });
+    recalc();
+  });
+
+  // Auto-seleccionar si hay una sola reserva
+  if (reservas.length === 1) setTimeout(() => seleccionarReserva(reservas[0], 0), 100);
+
+  // ── PASO 2: Autocompletado doc ────────────────────────────────────
+  document.getElementById('ci-doc').addEventListener('input', async () => {
+    const doc = document.getElementById('ci-doc').value;
+    if (doc.length < 6) return;
+    const h = await apiFetch('GET', `/huespedes/doc/${doc}`);
+    if (h) {
+      if (!document.getElementById('ci-nombre').value) document.getElementById('ci-nombre').value = h.nombre;
+      if (!document.getElementById('ci-tel').value) document.getElementById('ci-tel').value = h.telefono||'';
+      const gi = document.getElementById('ci-ginfo');
+      if (gi) { gi.style.display='block'; gi.textContent=`✅ Huésped encontrado — ${h.visitas} visitas previas`; }
+    }
+  });
+  ['ci-in','ci-out'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
+
+  // ── PASO 3: Personas y acompañantes ──────────────────────────────
+  document.getElementById('ci-pers-minus').addEventListener('click', () => {
+    if (ciPersonas > 1) { ciPersonas--; document.getElementById('ci-pers').textContent = ciPersonas; }
+  });
+  document.getElementById('ci-pers-plus').addEventListener('click', () => {
+    ciPersonas++; document.getElementById('ci-pers').textContent = ciPersonas;
+  });
+  const getAcompCI = buildAcompBlock('ci-acomp-list', 'ci-acomp-add');
+  // Ocultar "empty" al agregar
+  document.getElementById('ci-acomp-add')?.addEventListener('click', () => {
+    const empty = document.getElementById('ci-acomp-empty');
+    if (empty) empty.style.display = 'none';
+  });
+
+  // ── PASO 4: Tarifa ────────────────────────────────────────────────
+  document.querySelectorAll('.ci-tf-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      ciTipoTarifa  = btn.dataset.tipo;
+      if (btn.disabled) return;
+      ciTipoTarifa = btn.dataset.tipo;
       ciTarifaMonto = Number(btn.dataset.monto);
-      document.querySelectorAll('.ci-tarifa-btn').forEach(b => {
-        b.style.borderColor = '#e2e8f0'; b.style.background = '#f8fafc';
-        b.querySelector('div:last-child').style.color = '#374151';
-      });
-      btn.style.borderColor = '#3b82f6'; btn.style.background = '#eff6ff';
-      btn.querySelector('div:last-child').style.color = '#1d4ed8';
+      document.querySelectorAll('.ci-tf-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
       const wrap = document.getElementById('ci-monto-manual');
-      const inp  = document.getElementById('ci-tarifa');
       if (ciTipoTarifa === 'personalizado') {
         wrap.style.display = 'block';
-        inp.addEventListener('input', () => { ciTarifaMonto = parseMonto(inp.value)||0; recalc(); });
+        const inp = document.getElementById('ci-tarifa');
+        if (inp) inp.addEventListener('input', () => { ciTarifaMonto=parseMonto(inp.value)||0; recalc(); });
       } else {
         wrap.style.display = 'none';
       }
@@ -2391,154 +2672,63 @@ async function showCheckinModal(habId) {
     });
   });
 
-  // Momento de cobro
-  document.getElementById('ci-cobro-ahora').addEventListener('click', () => {
-    ciMomentoCobro = 'ahora';
-    document.getElementById('ci-cobro-ahora').style.cssText += 'border-color:#16a34a;background:#f0fdf4;color:#15803d';
-    document.getElementById('ci-cobro-salir').style.cssText += 'border-color:#e2e8f0;background:#f8fafc;color:#64748b';
-    document.getElementById('ci-metodo-wrap').style.display = 'block';
+  // ── PASO 5: Cobro ─────────────────────────────────────────────────
+  const selCobro = (modo) => {
+    ciMomentoCobro = modo;
+    const btnAhora = document.getElementById('ci-cobro-ahora');
+    const btnSalir = document.getElementById('ci-cobro-salir');
+    const metWrap  = document.getElementById('ci-metodo-wrap');
+    if (btnAhora) { btnAhora.style.borderColor=modo==='ahora'?'#16a34a':'#e2e8f0'; btnAhora.style.background=modo==='ahora'?'#f0fdf4':'#f8fafc'; btnAhora.style.color=modo==='ahora'?'#15803d':'#64748b'; }
+    if (btnSalir) { btnSalir.style.borderColor=modo==='salir'?'#f59e0b':'#e2e8f0'; btnSalir.style.background=modo==='salir'?'#fffbeb':'#f8fafc'; btnSalir.style.color=modo==='salir'?'#b45309':'#64748b'; }
+    if (metWrap) metWrap.style.display = modo==='ahora' ? 'block' : 'none';
     recalc();
-  });
-  document.getElementById('ci-cobro-salir').addEventListener('click', () => {
-    ciMomentoCobro = 'salir';
-    document.getElementById('ci-cobro-salir').style.cssText += 'border-color:#f59e0b;background:#fffbeb;color:#b45309';
-    document.getElementById('ci-cobro-ahora').style.cssText += 'border-color:#e2e8f0;background:#f8fafc;color:#64748b';
-    document.getElementById('ci-metodo-wrap').style.display = 'none';
-    recalc();
-  });
-
-  // Personas +/-
-  document.getElementById('ci-pers-minus').addEventListener('click', () => {
-    if (ciPersonas > 1) { ciPersonas--; document.getElementById('ci-pers').textContent = ciPersonas; }
-  });
-  document.getElementById('ci-pers-plus').addEventListener('click', () => {
-    ciPersonas++; document.getElementById('ci-pers').textContent = ciPersonas;
-  });
-
-  // Acompañantes checkin
-  const getAcompCI = buildAcompBlock('ci-acomp-list', 'ci-acomp-add');
-
-  // Pago mixto toggle
+  };
+  document.getElementById('ci-cobro-ahora').addEventListener('click', () => selCobro('ahora'));
+  document.getElementById('ci-cobro-salir').addEventListener('click', () => selCobro('salir'));
   document.getElementById('ci-mixto').addEventListener('change', function() {
     document.getElementById('ci-mixto-wrap').style.display = this.checked ? 'block' : 'none';
   });
 
-  // Fechas
-  ['ci-in','ci-out'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
-
-  // Autocompletado huésped por documento
-  document.getElementById('ci-doc').addEventListener('input', async () => {
-    const doc = document.getElementById('ci-doc').value;
-    if (doc.length < 6) return;
-    const h = await apiFetch('GET', `/huespedes/doc/${doc}`);
-    if (h) {
-      document.getElementById('ci-nombre').value = h.nombre;
-      document.getElementById('ci-tel').value    = h.telefono || '';
-      const gi = document.getElementById('ci-ginfo');
-      gi.style.display = 'block';
-      gi.textContent = `✅ Huésped encontrado — ${h.visitas} visitas previas`;
-    }
-  });
-
-  // Auto-seleccionar la primera reserva si hay exactamente una
-  if (reservas.length === 1) {
-    setTimeout(() => cargarReserva(reservas[0]), 100);
-  }
-
-  // Listeners para botones "Usar esta reserva"
-  const cargarReserva = (r) => {
-    reserva = r;
-    senia0 = r.monto_senia || 0;
-    document.getElementById('ci-doc').value    = r.documento || '';
-    document.getElementById('ci-nombre').value = r.nombre_huesped || '';
-    document.getElementById('ci-tel').value    = r.telefono || '';
-    document.getElementById('ci-in').value     = new Date(r.entrada).toISOString().slice(0,16);
-    document.getElementById('ci-out').value    = new Date(r.salida).toISOString().slice(0,16);
-    ciTarifaMonto = r.precio_total / Math.max(1, r.noches||1);
-    // Deshabilitar botones de tarifa — precio definido en la reserva
-    document.querySelectorAll('.ci-tarifa-btn').forEach(b => {
-      b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'not-allowed';
-    });
-    document.getElementById('ci-monto-manual').style.display = 'none';
-    const tarifaWrap = document.querySelector('.ci-tarifa-btn')?.closest('div')?.parentElement;
-    if (tarifaWrap && !document.getElementById('ci-tarifa-aviso')) {
-      const aviso = document.createElement('div');
-      aviso.id = 'ci-tarifa-aviso';
-      aviso.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:10px';
-      aviso.innerHTML = '<span>📋 Tarifa definida en la reserva</span><button id="ci-editar-tarifa" style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">✏️ Editar tarifa</button>';
-      tarifaWrap.insertBefore(aviso, tarifaWrap.querySelector('div[style*="grid-template-columns"]'));
-      document.getElementById('ci-editar-tarifa').addEventListener('click', () => {
-        document.querySelectorAll('.ci-tarifa-btn').forEach(b => {
-          b.disabled = false; b.style.opacity = '1'; b.style.cursor = 'pointer';
-        });
-        document.getElementById('ci-monto-manual').style.display = 'block';
-        aviso.innerHTML = '<span>✏️ Seleccioná nueva tarifa o ingresá monto personalizado</span>';
-        aviso.style.background = '#eff6ff'; aviso.style.borderColor = '#93c5fd'; aviso.style.color = '#1d4ed8';
-        ciTipoTarifa = 'personalizado';
-        const tarInput = document.getElementById('ci-tarifa');
-        if (tarInput) { tarInput.value = ciTarifaMonto; tarInput.addEventListener('input', () => { ciTarifaMonto = parseMonto(tarInput.value)||0; recalc(); }); }
-        recalc();
-      });
-    }
-    recalc();
-    // Marcar visualmente la reserva seleccionada
-    document.querySelectorAll('[id^="ci-usar-res-"]').forEach(b => {
-      b.style.background = '#94a3b8';
-      b.textContent = 'Usar esta';
-    });
-    const idx = reservas.indexOf(r);
-    const btn = document.getElementById(`ci-usar-res-${idx}`);
-    if (btn) { btn.style.background = '#16a34a'; btn.textContent = '✓ Seleccionada'; }
-  };
-  reservas.forEach((r, i) => {
-    document.getElementById(`ci-usar-res-${i}`)?.addEventListener('click', () => cargarReserva(r));
-  });
-
-  document.getElementById('ci-close').addEventListener('click', closeModal);
-
-  document.getElementById('ci-confirm').addEventListener('click', async () => {
-    const nombre = document.getElementById('ci-nombre').value.trim();
+  // ── CONFIRMAR CHECK-IN ────────────────────────────────────────────
+  const doCheckin = async () => {
+    const nombre = document.getElementById('ci-nombre')?.value.trim();
     if (!nombre) { toast('Ingresá el nombre del huésped', false); return; }
-    if (reservas.length > 0 && !reserva) {
-      const ok = confirm('⚠️ No seleccionaste ninguna reserva vinculada.\nSe creará un nuevo ingreso independiente.\n¿Continuar de todas formas?');
-      if (!ok) return;
-    }
     const { inn, out } = getInnOut();
     let noches = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
-    if (ciTipoTarifa === 'hora' || ciTipoTarifa === 'dia') noches = 1;
+    if (ciTipoTarifa==='hora'||ciTipoTarifa==='dia') noches=1;
     const total = noches * ciTarifaMonto;
-    const saldo = ciMomentoCobro === 'ahora' ? Math.max(0, total - senia0) : 0;
+    const saldo = ciMomentoCobro==='ahora' ? Math.max(0, total-senia0) : 0;
+    const btn = document.getElementById('ci-next');
+    if (btn) { btn.disabled=true; btn.textContent='Procesando...'; }
     const body = {
       habitacion_id:     habIdReal,
-      documento:         document.getElementById('ci-doc').value,
-      tipo_doc:          document.getElementById('ci-tdoc').value,
+      documento:         document.getElementById('ci-doc')?.value || '',
+      tipo_doc:          document.getElementById('ci-tdoc')?.value || 'DNI',
       nombre,
-      telefono:          document.getElementById('ci-tel').value,
+      telefono:          document.getElementById('ci-tel')?.value || '',
       entrada:           inn,
       salida:            out,
       noches,
       precio_total:      total,
-      metodo_pago:       ciMomentoCobro === 'ahora'
+      metodo_pago:       ciMomentoCobro==='ahora'
         ? (document.getElementById('ci-mixto')?.checked
             ? `Pago Mixto (Ef: ${fmt(Number(document.getElementById('ci-mixto-ef')?.value)||0)} / Tg: ${fmt(Number(document.getElementById('ci-mixto-tg')?.value)||0)})`
-            : (document.getElementById('ci-pago')?.value || 'Efectivo'))
+            : (document.getElementById('ci-pago')?.value||'Efectivo'))
         : 'Paga al Salir',
-      notas:             document.getElementById('ci-notas').value,
+      notas:             document.getElementById('ci-notas')?.value || '',
       cantidad_personas: ciPersonas,
       momento_cobro:     ciMomentoCobro,
       acompanantes:      getAcompCI(),
       tipo_tarifa:       ciTipoTarifa,
     };
-    if (reserva) {
-      body.reserva_id    = reserva.id;
-      body.saldo_cobrado = saldo;
-    }
+    if (reserva) { body.reserva_id=reserva.id; body.saldo_cobrado=saldo; }
     const r = await apiFetch('POST', '/checkin', body);
-    if (r?.ok) { toast('Check-in realizado'); closeModal(); await refreshHabs(); }
-    else toast(r?.error || 'Error en check-in', false);
-  });
+    if (r?.ok) { toast('✅ Check-in realizado'); closeModal(); await refreshHabs(); }
+    else { toast(r?.error||'Error en check-in', false); if(btn){btn.disabled=false;btn.textContent='✅ Confirmar y Cobrar';} }
+  };
 }
- 
+
+
 // ══════════════════════════════════════
 // RESERVA
 // ══════════════════════════════════════
