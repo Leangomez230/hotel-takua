@@ -491,6 +491,17 @@ async function renderConfig() {
 
     <!-- ═══ SISTEMA ═══ -->
     <div class="cfg-pane${cfgTabActiva==='sistema'?' activo':''}" id="pane-sistema">
+      <!-- CLAVES DE HABITACIONES -->
+      <div class="section-card">
+        <div class="sc-head">
+          <h2>🔑 Claves de Habitaciones</h2>
+          <div style="font-size:12px;color:#94a3b8">Los huéspedes ingresan con su N° de hab. y esta clave</div>
+        </div>
+        <div id="cfg-claves-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+          <div style="text-align:center;padding:20px;color:#94a3b8">Cargando...</div>
+        </div>
+      </div>
+
       <div class="section-card">
         <div class="sc-head"><h2>🏨 Hotel Takuá</h2></div>
         <div class="info-grid">
@@ -502,6 +513,34 @@ async function renderConfig() {
       </div>
     </div>
   `;
+
+  // Cargar y renderizar claves de habitaciones
+  const habs = await apiFetch('GET', '/habitaciones') || [];
+  const clavesGrid = document.getElementById('cfg-claves-grid');
+  if (clavesGrid && habs.length) {
+    // Agrupar por ala
+    const alas = {};
+    habs.forEach(h => { if (!alas[h.ala]) alas[h.ala] = []; alas[h.ala].push(h); });
+    clavesGrid.innerHTML = Object.entries(alas).map(([ala, hlist]) => `
+      <div style="grid-column:1/-1;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin:8px 0 4px">Ala ${ala}</div>
+      ${hlist.sort((a,b)=>Number(a.numero)-Number(b.numero)).map(h => `
+        <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div>
+            <div style="font-size:15px;font-weight:800;color:#1a2035">Hab. ${h.numero}</div>
+            <div style="font-size:11px;color:#94a3b8">${h.tipo?.toUpperCase?.()}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="text" value="${h.password_puerta||''}" maxlength="8" inputmode="numeric"
+              id="pwd-${h.id}"
+              style="width:80px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:15px;font-weight:700;font-family:'Nunito',sans-serif;text-align:center;letter-spacing:3px">
+            <button onclick="guardarClave('${h.id}','pwd-${h.id}')"
+              style="background:var(--accent,#00c9b1);color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+              💾
+            </button>
+          </div>
+        </div>`).join('')}
+    `).join('');
+  }
 
   // Listeners
   document.getElementById('btn-nuser').addEventListener('click', () => abrirModalUsuario(null));
@@ -579,6 +618,20 @@ async function renderConfig() {
     }
     btn.disabled = false; btn.textContent = '📢 Enviar notificación';
   });
+}
+
+// ── CLAVES ───────────────────────────────────────────────────────────
+async function guardarClave(habId, inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const password = input.value.trim();
+  if (!password) { toast('Ingresá una clave', false); input.focus(); return; }
+  const r = await apiFetch('PUT', `/habitaciones/${habId}/password`, { password });
+  if (r?.ok) {
+    toast(`Clave guardada ✓`);
+    input.style.borderColor = '#00c9b1';
+    setTimeout(() => input.style.borderColor = '#e2e8f0', 2000);
+  } else toast(r?.error || 'Error al guardar', false);
 }
 
 // ── USUARIOS ──────────────────────────────────────────────────────────
