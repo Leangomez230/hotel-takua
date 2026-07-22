@@ -17,6 +17,29 @@
  
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+<style>
+.flatpickr-calendar { border-radius:16px !important; box-shadow:0 8px 40px rgba(0,0,0,.18) !important; border:none !important; font-family:'Nunito',sans-serif !important; overflow:hidden; }
+.flatpickr-day.selected, .flatpickr-day.selected:hover { background:var(--accent,#00c9b1) !important; border-color:var(--accent,#00c9b1) !important; }
+.flatpickr-day:hover { background:#f0fdf9 !important; border-color:#e2e8f0 !important; }
+.flatpickr-day.today { border-color:var(--accent,#00c9b1) !important; }
+.flatpickr-day.today:hover { background:var(--accent,#00c9b1) !important; color:#fff !important; }
+.flatpickr-months { background:var(--accent,#00c9b1) !important; padding:8px 0 4px; }
+.flatpickr-month { color:#fff !important; }
+.flatpickr-current-month { color:#fff !important; font-size:14px !important; font-weight:800 !important; }
+.flatpickr-current-month select { color:#fff !important; font-weight:700 !important; }
+.flatpickr-prev-month svg, .flatpickr-next-month svg { fill:#fff !important; }
+.flatpickr-weekday { color:rgba(255,255,255,.8) !important; font-weight:700 !important; font-size:11px !important; background:var(--accent,#00c9b1) !important; }
+.flatpickr-weekdays { background:var(--accent,#00c9b1) !important; }
+.numInputWrapper:hover { background:rgba(255,255,255,.1) !important; }
+.flatpickr-time input { font-family:'Nunito',sans-serif !important; font-weight:700 !important; font-size:16px !important; }
+.flatpickr-time .flatpickr-time-separator { color:#94a3b8 !important; }
+.flatpickr-input { cursor:pointer !important; }
+.flatpickr-input[readonly] { cursor:pointer !important; background:#fff !important; }
+</style>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--room-cols:5}
@@ -2324,10 +2347,10 @@ async function showCheckinModal(habId) {
             </div>
             <div class="form-row">
               <div class="form-col"><label>Entrada</label>
-                <input type="datetime-local" id="ci-in">
+                <input type="text" id="ci-in" placeholder="dd/mm/aaaa hh:mm" readonly>
               </div>
               <div class="form-col"><label>Salida</label>
-                <input type="datetime-local" id="ci-out">
+                <input type="text" id="ci-out" placeholder="dd/mm/aaaa hh:mm" readonly>
               </div>
             </div>
             <div class="form-col"><label>Notas / Cochera</label>
@@ -2443,13 +2466,34 @@ async function showCheckinModal(habId) {
   `, { wide: true });
 
   // ── LÓGICA DE PASOS ──────────────────────────────────────────────────
+  // Inicializar Flatpickr en campos de fecha
+  const fpConfig = {
+    enableTime: true,
+    time_24hr: true,
+    dateFormat: 'Y-m-dTH:i',
+    altInput: true,
+    altFormat: 'd/m/Y H:i',
+    locale: 'es',
+    disableMobile: false,
+    minuteIncrement: 15,
+    defaultHour: 15,
+    defaultMinute: 0,
+  };
+  const fpIn  = flatpickr('#ci-in',  { ...fpConfig, defaultHour: 15 });
+  const fpOut = flatpickr('#ci-out', { ...fpConfig, defaultHour: 11, defaultMinute: 0,
+    onChange: () => recalc()
+  });
+  fpIn.config.onChange.push(() => recalc());
+
+  // Sobreescribir getInnOut para leer de flatpickr
+  const getInnOut = () => ({
+    inn: fpIn.input.value,
+    out: fpOut.input.value
+  });
   const totalSteps = reservas.length > 0 ? 5 : 4;
   const stepNumbers = reservas.length > 0 ? [1,2,3,4,5] : [2,3,4,5];
 
-  const getInnOut = () => ({
-    inn: document.getElementById('ci-in')?.value,
-    out: document.getElementById('ci-out')?.value
-  });
+  // getInnOut redefinido abajo con flatpickr
 
   const recalc = () => {
     const { inn, out } = getInnOut();
@@ -2771,10 +2815,10 @@ async function showReservaModal(habId) {
     </div>
     <div class="form-row">
       <div class="form-col"><label>Entrada</label>
-        <input type="datetime-local" id="res-in" value="${iso(now)}">
+        <input type="text" id="res-in" placeholder="dd/mm/aaaa HH:MM">
       </div>
       <div class="form-col"><label>Salida</label>
-        <input type="datetime-local" id="res-out" value="${iso(tom)}">
+        <input type="text" id="res-out" placeholder="dd/mm/aaaa HH:MM">
       </div>
     </div>
 
@@ -2854,12 +2898,21 @@ async function showReservaModal(habId) {
   `);
 
   let resTipoHab    = hab?.tipo || 'queen';
+  // Inicializar flatpickr en modal de reservas
+  const resFpConfig = {
+    enableTime: true, time_24hr: true,
+    dateFormat: 'Y-m-dTH:i', altInput: true, altFormat: 'd/m/Y H:i',
+    locale: 'es', disableMobile: false, minuteIncrement: 15,
+  };
+  const resFpIn  = flatpickr('#res-in',  { ...resFpConfig, defaultDate: now, defaultHour:15, defaultMinute:0, onChange: () => recalc() });
+  const resFpOut = flatpickr('#res-out', { ...resFpConfig, defaultDate: tom, defaultHour:11, defaultMinute:0, onChange: () => recalc() });
+
   let resTipoTarifa = 'noche';
   let resTarifaMonto = tfNoche;
 
   const recalc = () => {
-    const inn = document.getElementById('res-in')?.value;
-    const out = document.getElementById('res-out')?.value;
+    const inn = resFpIn?.input?.value;
+    const out = resFpOut?.input?.value;
     if (!inn || !out) return;
     let n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
     if (resTipoTarifa === 'hora' || resTipoTarifa === 'dia') n = 1;
@@ -2917,13 +2970,13 @@ async function showReservaModal(habId) {
   // Acompañantes reservas
   const getAcompRes = buildAcompBlock('res-acomp-list', 'res-acomp-add');
 
-  ['res-in','res-out'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
+  // Flatpickr maneja el onChange de fechas
   document.getElementById('res-close').addEventListener('click', closeModal);
 
   document.getElementById('res-confirm').addEventListener('click', async () => {
     const nombre = document.getElementById('res-nombre').value.trim();
     if (!nombre) { toast('Ingresá el nombre', false); return; }
-    let n = Math.max(1, Math.ceil((new Date(document.getElementById('res-out').value) - new Date(document.getElementById('res-in').value))/86400000));
+    let n = Math.max(1, Math.ceil((new Date(resFpOut?.input?.value) - new Date(resFpIn?.input?.value))/86400000));
     if (resTipoTarifa === 'hora' || resTipoTarifa === 'dia') n = 1;
     const total = n * resTarifaMonto;
     const r = await apiFetch('POST', '/reservas', {
@@ -2934,8 +2987,8 @@ async function showReservaModal(habId) {
       acompanantes:    getAcompRes(),
       documento:      document.getElementById('res-doc').value,
       plataforma:     document.getElementById('res-plataforma').value,
-      entrada:        document.getElementById('res-in').value,
-      salida:         document.getElementById('res-out').value,
+      entrada:        resFpIn?.input?.value,
+      salida:         resFpOut?.input?.value,
       noches:         n,
       precio_total:   total,
       metodo_pago:    'A definir en check-in',
@@ -3032,8 +3085,8 @@ async function editarReserva(id) {
     </div>
     <div class="stitle">Fechas</div>
     <div class="form-row">
-      <div class="form-col"><label>Entrada</label><input type="datetime-local" id="er-entrada" value="${toLocal(r.entrada)}"></div>
-      <div class="form-col"><label>Salida</label><input type="datetime-local" id="er-salida" value="${toLocal(r.salida)}"></div>
+      <div class="form-col"><label>Entrada</label><input type="text" id="er-entrada" placeholder="dd/mm/aaaa HH:MM"></div>
+      <div class="form-col"><label>Salida</label><input type="text" id="er-salida" placeholder="dd/mm/aaaa HH:MM"></div>
     </div>
     <div class="stitle">Pago</div>
     <div class="form-row">
@@ -3064,6 +3117,11 @@ async function editarReserva(id) {
     <button class="confirm-btn" id="er-save">💾 Guardar cambios</button>
   `);
 
+  // Inicializar flatpickr en editar reserva
+  const erFpCfg = { enableTime:true, time_24hr:true, dateFormat:'Y-m-dTH:i', altInput:true, altFormat:'d/m/Y H:i', locale:'es', minuteIncrement:15 };
+  const erFpIn  = flatpickr('#er-entrada', { ...erFpCfg, defaultDate: r.entrada });
+  const erFpOut = flatpickr('#er-salida',  { ...erFpCfg, defaultDate: r.salida  });
+
   // Recalcular saldo en tiempo real
   window.erRecalc = () => {
     const total = parseMonto(document.getElementById('er-total').value);
@@ -3075,8 +3133,8 @@ async function editarReserva(id) {
 
   document.getElementById('er-close').addEventListener('click', closeModal);
   document.getElementById('er-save').addEventListener('click', async () => {
-    const entrada = document.getElementById('er-entrada').value;
-    const salida  = document.getElementById('er-salida').value;
+    const entrada = erFpIn?.input?.value;
+    const salida  = erFpOut?.input?.value;
     if (!entrada||!salida) { toast('Completá las fechas', false); return; }
     const noches = Math.max(1, Math.round((new Date(salida)-new Date(entrada))/86400000));
     const precio_total = parseMonto(document.getElementById('er-total').value);
@@ -3293,6 +3351,23 @@ function buildAcompBlock(containerId, btnId) {
 // ══════════════════════════════════════
 // QR MODAL
 // ══════════════════════════════════════
+// ── Inicializar Flatpickr en modal de reservas/edición ──────────────
+function initFlatpickrFechas(idIn, idOut, valIn, valOut) {
+  const cfg = {
+    enableTime: true,
+    time_24hr: true,
+    dateFormat: 'Y-m-dTH:i',
+    altInput: true,
+    altFormat: 'd/m/Y H:i',
+    locale: 'es',
+    minuteIncrement: 15,
+    disableMobile: false,
+  };
+  const fpI = flatpickr('#'+idIn,  { ...cfg, defaultDate: valIn,  defaultHour:15, defaultMinute:0 });
+  const fpO = flatpickr('#'+idOut, { ...cfg, defaultDate: valOut, defaultHour:11, defaultMinute:0 });
+  return { fpIn: fpI, fpOut: fpO };
+}
+
 function showQRModal(hab) {
   const isAdmin = currentUser?.rol === 'admin';
   const url = `${window.location.origin}/huesped.html?hab=${hab.numero}`;
