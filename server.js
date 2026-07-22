@@ -8,11 +8,13 @@ const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'takua_secret_2024';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) { console.error('FATAL: JWT_SECRET no está definido en variables de entorno'); process.exit(1); }
 
 // ── VAPID ────────────────────────────────────────────────────────────
-const VAPID_PUBLIC  = process.env.VAPID_PUBLIC  || 'BGgqRVlRquUxbONf-LOZDc9dsvh9mMh-Al37U9B7XM108NA6LteBSzfmCogTbXAVbNuJULyBaymGOHwpqyjgay8';
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE || '5fhOAg_7L6Nnbprwb7JiFcwhMR8qn5Tm80JVDHAn2xo';
+const VAPID_PUBLIC  = process.env.VAPID_PUBLIC;
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE;
+if (!VAPID_PUBLIC || !VAPID_PRIVATE) { console.error('FATAL: VAPID_PUBLIC / VAPID_PRIVATE no están definidas en variables de entorno'); process.exit(1); }
 webpush.setVapidDetails('mailto:hotel@takua.com', VAPID_PUBLIC, VAPID_PRIVATE);
 
 // Enviar push a todos los usuarios de ciertos roles
@@ -38,7 +40,21 @@ async function sendPushToRoles(roles, payload) {
   } catch(e) { console.error('Error enviando push:', e.message); }
 }
 
-app.use(cors());
+const ALLOWED_ORIGINS = [
+  'https://hoteltakua.com.ar',
+  'https://www.hoteltakua.com.ar',
+  'https://gestion.hoteltakua.com.ar',
+  'https://hotel-takua.up.railway.app',  // Railway preview (mantener durante desarrollo)
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permitir requests sin origin (mobile apps, Postman, Railway health checks)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origen no permitido — ${origin}`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -1453,7 +1469,7 @@ app.get('/api/dashboard', auth, async (req, res) => {
 });
 
 // ── DEBUG ────────────────────────────────────────────────────────────
-app.get('/api/debug/habitaciones', async (req, res) => {
+app.get('/api/debug/habitaciones', auth, adminOnly, async (req, res) => {
   try {
     const habs = await db.getAll("SELECT id,numero,ala,status,tipo FROM habitaciones ORDER BY ala,numero");
     res.json({ total: habs.length, habitaciones: habs });
