@@ -1558,6 +1558,22 @@ app.get('/api/huesped/info', authHuesped, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET cargos de restaurante de la reserva activa del huésped autenticado (portal huesped.html)
+app.get('/api/huesped/cargos-restaurante', authHuesped, async (req, res) => {
+  try {
+    const reserva = await db.getOne(
+      "SELECT id FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1",
+      [req.huesped.hab_id]
+    );
+    if (!reserva) return res.json([]);
+    const cargos = await db.getAll(
+      'SELECT * FROM cargos_restaurante WHERE reserva_id=$1 ORDER BY created_at DESC',
+      [reserva.id]
+    );
+    res.json(cargos);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.put('/api/huesped/no-molestar', authHuesped, async (req, res) => {
   try {
     const activo = !!req.body.activo;
