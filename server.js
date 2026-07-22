@@ -830,6 +830,49 @@ app.get('/api/reservas/lista', auth, async (req, res) => {
 });
 
 // Cancelar una reserva confirmada (soft-cancel, conserva el historial)
+// ── PAGO PARCIAL DURANTE ESTADÍA ──────────────────────────────────────
+app.post('/api/reservas/:id/pago-parcial', auth, adminRecepMucama, async (req, res) => {
+  try {
+    const { monto, metodo_pago } = req.body;
+    if (!monto || monto <= 0) return res.status(400).json({ error: 'Monto inválido' });
+
+    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
+    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
+
+    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [reserva.habitacion_id]);
+
+    // Descontar del saldo pendiente
+    const nuevoSaldo = Math.max(0, (reserva.saldo_pendiente || 0) - monto);
+    await db.query('UPDATE reservas SET saldo_pendiente=$1 WHERE id=$2', [nuevoSaldo, reserva.id]);
+
+    // Registrar en caja habitaciones si hay turno abierto
+    const turno = await db.getOne(
+      "SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1"
+    );
+    if (turno) {
+      const habId = isNaN(Number(reserva.habitacion_id)) ? null : Number(reserva.habitacion_id);
+      await db.query(
+        `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+         VALUES ($1,'ingreso','Pago durante estadía',$2,$3,$4,$5,$6,$7,$8)`,
+        [turno.id, monto, metodo_pago||'Efectivo',
+         `Hab.${hab?.numero} - ${reserva.nombre_huesped}`,
+         req.user.id, req.user.nombre,
+         habId, hab?.numero]
+      );
+    }
+
+    // Libro de novedades
+    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, reserva.habitacion_id,
+      `💳 Pago recibido — Hab. ${hab?.numero} (${reserva.nombre_huesped}): ${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(monto)} · ${metodo_pago||'Efectivo'}. Saldo restante: ${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(nuevoSaldo)}`
+    );
+
+    await logAction(req.user.id, req.user.nombre, 'PAGO_PARCIAL',
+      `Hab.${hab?.numero} - ${reserva.nombre_huesped} - $${monto} - Saldo restante: $${nuevoSaldo}`);
+
+    res.json({ ok: true, saldo_pendiente: nuevoSaldo });
+  } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/reservas/:id/cancelar', auth, adminOrRecep, async (req, res) => {
   try {
     const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
