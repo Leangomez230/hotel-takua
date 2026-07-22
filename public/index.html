@@ -1418,6 +1418,9 @@ function showHabModal(hab) {
           <button id="btn-pago-parcial" style="margin-top:10px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;padding:9px 20px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;width:100%">
             💳 Registrar pago
           </button>` : ''}
+          <button id="btn-imprimir-checkin" style="margin-top:8px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 20px;color:#374151;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;width:100%">
+            🖨️ Imprimir Check-in
+          </button>
         </div>`;
     })() : (hab.nota&&!['libre','lista'].includes(hab.status)?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:'')}
  
@@ -1538,6 +1541,32 @@ function showHabModal(hab) {
     });
   });
  
+  // Imprimir check-in desde modal de hab ocupada
+  document.getElementById('btn-imprimir-checkin')?.addEventListener('click', async () => {
+    const r = hab.reserva_activa;
+    if (!r) { toast('No hay datos de reserva disponibles', false); return; }
+    // Buscar datos completos de la reserva
+    const resCompleta = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
+    imprimirCheckin({
+      hab:         hab.numero,
+      tipoHab:     hab.tipo?.toUpperCase?.() || '',
+      nombre:      r.nombre_huesped,
+      tipoDoc:     resCompleta?.tipo_doc || 'DNI',
+      doc:         resCompleta?.documento || '',
+      telefono:    resCompleta?.telefono || '',
+      entrada:     r.entrada,
+      salida:      r.salida,
+      noches:      r.noches || 1,
+      total:       r.precio_total || 0,
+      senia:       resCompleta?.monto_senia || 0,
+      metodo:      resCompleta?.metodo_pago || '—',
+      momento:     r.momento_cobro || 'ahora',
+      personas:    r.cantidad_personas || 1,
+      acompanantes:[],
+      notas:       r.notas || '',
+    });
+  });
+
   // Pago parcial durante estadía
   document.getElementById('btn-pago-parcial')?.addEventListener('click', () => {
     const r = hab.reserva_activa;
@@ -2813,7 +2842,37 @@ async function showCheckinModal(habId) {
     };
     if (reserva) { body.reserva_id=reserva.id; body.saldo_cobrado=saldo; }
     const r = await apiFetch('POST', '/checkin', body);
-    if (r?.ok) { toast('✅ Check-in realizado'); closeModal(); await refreshHabs(); }
+    if (r?.ok) {
+      closeModal();
+      await refreshHabs();
+      // Ofrecer imprimir check-in
+      const datosImprimir = {
+        hab:         hab?.numero,
+        tipoHab:     hab?.tipo?.toUpperCase?.() || '',
+        nombre:      body.nombre,
+        tipoDoc:     body.tipo_doc,
+        doc:         body.documento,
+        telefono:    body.telefono,
+        entrada:     body.entrada,
+        salida:      body.salida,
+        noches:      body.noches,
+        total:       body.precio_total,
+        senia:       senia0,
+        metodo:      body.metodo_pago,
+        momento:     body.momento_cobro,
+        personas:    body.cantidad_personas,
+        acompanantes:body.acompanantes||[],
+        notas:       body.notas,
+      };
+      // Mini toast con opción de imprimir
+      const toastEl = document.getElementById('toast');
+      if (toastEl) {
+        toastEl.innerHTML = '✅ Check-in realizado &nbsp;<button onclick="imprimirCheckin(window._lastCheckin)" style="background:#fff;color:#1a2035;border:none;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:800;cursor:pointer;margin-left:8px">🖨️ Imprimir</button>';
+        toastEl.className = 'toast show';
+        window._lastCheckin = datosImprimir;
+        setTimeout(() => { toastEl.className = 'toast'; toastEl.innerHTML = ''; }, 6000);
+      }
+    }
     else { toast(r?.error||'Error en check-in', false); if(btn){btn.disabled=false;btn.textContent='✅ Confirmar y Cobrar';} }
   };
 }
@@ -3398,6 +3457,160 @@ function buildAcompBlock(containerId, btnId) {
 // QR MODAL
 // ══════════════════════════════════════
 // ── Inicializar Flatpickr en modal de reservas/edición ──────────────
+// ══════════════════════════════════════
+// IMPRIMIR CHECK-IN
+// ══════════════════════════════════════
+function imprimirCheckin(datos) {
+  // datos: { hab, nombre, tipoDoc, doc, telefono, entrada, salida, noches,
+  //          total, saldo, metodo, momento, personas, acompanantes, notas }
+  const fmtDt = dt => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
+           d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  };
+  const ahora = new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const acompList = (datos.acompanantes||[]).filter(a=>a.nombre||a.doc);
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Check-in Hab. ${datos.hab} — ${datos.nombre}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family: 'Arial', sans-serif; font-size:13px; color:#1a2035; background:#fff; padding:32px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1a2035; padding-bottom:14px; margin-bottom:20px; }
+  .hotel-name { font-size:22px; font-weight:900; color:#1a2035; letter-spacing:.5px; }
+  .hotel-sub  { font-size:11px; color:#64748b; margin-top:3px; }
+  .checkin-title { font-size:16px; font-weight:800; color:#00c9b1; text-align:right; }
+  .checkin-date  { font-size:11px; color:#64748b; text-align:right; margin-top:3px; }
+  .section { margin-bottom:18px; }
+  .section-title { font-size:11px; font-weight:800; color:#00c9b1; text-transform:uppercase; letter-spacing:.08em; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:10px; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px 16px; }
+  .field label { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; display:block; margin-bottom:3px; }
+  .field .val { font-size:13px; font-weight:700; color:#1a2035; border-bottom:1px solid #e2e8f0; padding-bottom:4px; min-height:22px; }
+  .field .val-blank { font-size:13px; border-bottom:1.5px solid #94a3b8; padding-bottom:4px; min-height:22px; }
+  .hab-badge { display:inline-block; background:#1a2035; color:#fff; border-radius:8px; padding:6px 16px; font-size:18px; font-weight:900; letter-spacing:2px; margin-bottom:6px; }
+  .total-box { background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:14px 18px; margin-bottom:18px; }
+  .total-row { display:flex; justify-content:space-between; font-size:13px; color:#64748b; margin-bottom:5px; }
+  .total-row.big { font-size:16px; font-weight:900; color:#1a2035; border-top:1.5px solid #e2e8f0; padding-top:8px; margin-top:4px; }
+  .monto-blank { border:1.5px solid #94a3b8; border-radius:6px; padding:8px 14px; min-width:160px; height:36px; display:inline-block; }
+  .firma-section { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:20px; }
+  .firma-box { border-top:1.5px solid #1a2035; padding-top:6px; text-align:center; font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; height:70px; display:flex; align-items:flex-end; justify-content:center; }
+  .dni-box { border:2px dashed #e2e8f0; border-radius:10px; min-height:80px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:11px; font-weight:700; text-align:center; padding:10px; }
+  .acomp-row { display:flex; gap:16px; margin-bottom:6px; }
+  .acomp-row .val { flex:1; border-bottom:1px solid #e2e8f0; padding-bottom:3px; font-size:12px; color:#1a2035; }
+  .momento-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+  .momento-ahora { background:#dcfce7; color:#166534; }
+  .momento-salir { background:#fef9c3; color:#92400e; }
+  @media print {
+    body { padding:18px; }
+    @page { size:A4; margin:15mm; }
+  }
+</style>
+</head>
+<body>
+  <!-- ENCABEZADO -->
+  <div class="header">
+    <div>
+      <div class="hotel-name">🏨 Hotel Takuá</div>
+      <div class="hotel-sub">La Punta, San Luis, Argentina</div>
+    </div>
+    <div>
+      <div class="checkin-title">REGISTRO DE CHECK-IN</div>
+      <div class="checkin-date">Fecha de emisión: ${ahora}</div>
+    </div>
+  </div>
+
+  <!-- HABITACIÓN -->
+  <div class="section">
+    <div class="section-title">Habitación</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div>
+        <div class="hab-badge">HAB. ${datos.hab}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px">${datos.tipoHab||''}</div>
+      </div>
+      <div class="grid-3" style="flex:1">
+        <div class="field"><label>Entrada</label><div class="val">${fmtDt(datos.entrada)}</div></div>
+        <div class="field"><label>Salida</label><div class="val">${fmtDt(datos.salida)}</div></div>
+        <div class="field"><label>Noches / Unidades</label><div class="val">${datos.noches||1}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATOS DEL HUÉSPED -->
+  <div class="section">
+    <div class="section-title">Datos del Huésped</div>
+    <div class="grid-2" style="margin-bottom:10px">
+      <div class="field"><label>Nombre Completo</label><div class="val">${datos.nombre||''}</div></div>
+      <div class="field"><label>Teléfono</label><div class="val">${datos.telefono||''}</div></div>
+    </div>
+    <div class="grid-3">
+      <div class="field"><label>Tipo Documento</label><div class="val">${datos.tipoDoc||'DNI'}</div></div>
+      <div class="field"><label>N° Documento</label><div class="val">${datos.doc||''}</div></div>
+      <div class="field"><label>Personas</label><div class="val">${datos.personas||1}</div></div>
+    </div>
+    ${datos.notas ? `<div class="field" style="margin-top:10px"><label>Notas / Cochera</label><div class="val">${datos.notas}</div></div>` : ''}
+  </div>
+
+  ${acompList.length > 0 ? `
+  <!-- ACOMPAÑANTES -->
+  <div class="section">
+    <div class="section-title">Acompañantes</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:4px">
+      <span>Nombre</span><span>Documento</span>
+    </div>
+    ${acompList.map(a=>`
+    <div class="acomp-row">
+      <div class="val">${a.nombre||''}</div>
+      <div class="val">${a.doc||''}</div>
+    </div>`).join('')}
+  </div>` : ''}
+
+  <!-- TARIFA Y COBRO -->
+  <div class="total-box">
+    <div class="total-row"><span>Total estadía</span><span style="font-weight:700">${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(datos.total||0)}</span></div>
+    ${datos.senia > 0 ? `<div class="total-row"><span>Seña cobrada</span><span style="color:#16a34a;font-weight:700">- ${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(datos.senia)}</span></div>` : ''}
+    <div class="total-row"><span>Método de pago</span><span style="font-weight:700">${datos.metodo||'—'}</span></div>
+    <div class="total-row"><span>Momento de cobro</span>
+      <span><span class="momento-badge ${datos.momento==='ahora'?'momento-ahora':'momento-salir'}">${datos.momento==='ahora'?'✅ Pagó al ingresar':'🕐 Paga al salir'}</span></span>
+    </div>
+    <div class="total-row big">
+      <span>Monto cobrado</span>
+      <span>
+        ${datos.momento==='ahora'
+          ? new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(Math.max(0,(datos.total||0)-(datos.senia||0)))
+          : '<span class="monto-blank"></span>'}
+      </span>
+    </div>
+  </div>
+
+  <!-- FIRMA Y FOTOCOPIA DNI -->
+  <div class="firma-section">
+    <div class="firma-box">Firma del Huésped</div>
+    <div class="firma-box">Firma del Recepcionista</div>
+  </div>
+
+  <!-- ESPACIO FOTOCOPIA DNI -->
+  <div class="section">
+    <div class="section-title">Fotocopia / Imagen DNI</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="dni-box">📄 Frente del DNI</div>
+      <div class="dni-box">📄 Dorso del DNI</div>
+    </div>
+  </div>
+
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 600);
+}
+
 function initFlatpickrFechas(idIn, idOut, valIn, valOut) {
   const cfg = {
     enableTime: true,
