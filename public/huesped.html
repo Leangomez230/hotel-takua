@@ -304,7 +304,7 @@ function setDndUI(activo) {
 
 async function cargarCargosRestaurante(reservaId) {
   if (!reservaId) return;
-  const cargos = await apiFetch('GET', `/reservas/${reservaId}/cargos-restaurante`).catch(()=>[]);
+  const cargos = await apiFetch('GET', `/cargos-restaurante`).catch(()=>[]);
   const card = document.getElementById('cargos-rest-card');
   const list = document.getElementById('cargos-rest-list');
   const totalEl = document.getElementById('cargos-rest-total');
