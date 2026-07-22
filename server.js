@@ -2294,10 +2294,10 @@ app.get('/api/restaurante/habitaciones-ocupadas', auth, authRestaurante, async (
   try {
     const rows = await db.getAll(
       `SELECT h.id, h.numero, h.ala, r.nombre_huesped, r.id as reserva_id, r.saldo_pendiente
-       FROM habitaciones h
-       JOIN reservas r ON r.habitacion_id = h.id
-       WHERE h.status = 'ocupada'
-       AND r.estado IN ('activa','checkin','ocupada','confirmada')
+       FROM reservas r
+       JOIN habitaciones h ON h.id = r.habitacion_id
+       WHERE r.estado IN ('activa','checkin','ocupada','confirmada')
+       AND DATE(r.salida) >= CURRENT_DATE
        ORDER BY h.ala, h.numero`
     );
     res.json(rows);
