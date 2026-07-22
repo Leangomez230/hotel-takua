@@ -1012,9 +1012,24 @@ function renderCajero(el){
       <div class="metrica-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8)">
         <div class="mc-lbl">HOTEL</div><div class="mc-ttl">HUÉSPEDES</div>
         <div class="mc-val">${S.huespedes||0}</div>
-      </div>      <!-- Columna lateral IZQUIERDA: Caja -->
+      </div>
+    </div>
+
+    <div class="layout-2col">
+      <!-- Columna lateral IZQUIERDA: Caja + Historial -->
       <div class="col-side">
         ${cajaHTML}
+
+        <!-- Historial -->
+        <div class="desplegable" id="desp-hist">
+          <button class="desp-btn" onclick="toggleDesp('hist');loadHist()">
+            <div class="desp-left"><span class="desp-icon">📊</span>
+              <div><div class="desp-title">Historial de comandas</div><div class="desp-sub">Últimas cerradas</div></div>
+            </div>
+            <div class="desp-arrow" id="arr-hist">▼</div>
+          </button>
+          <div class="desp-body" id="body-hist"><div class="desp-content" id="hist-content"></div></div>
+        </div>
       </div>
 
       <!-- Columna principal DERECHA: Mesas en cuenta + Mapa + Menú -->
