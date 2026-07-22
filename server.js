@@ -3239,11 +3239,14 @@ app.delete('/api/movimientos-manuales/:id', auth, adminOnly, async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Escuchar el puerto de inmediato — así Railway ve el contenedor "healthy" al toque,
+// sin importar cuánto tarden las migraciones. La DB se sigue inicializando en paralelo.
+app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT}`));
+
 db.initDB().then(() => {
-  app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT}`));
   scheduleReset();
   sincronizarReservas(); // ejecutar al arrancar también
 }).catch(e => {
-  console.error('Error iniciando DB:', e);
+  console.error('FATAL: Error iniciando DB:', e);
   process.exit(1);
 });
