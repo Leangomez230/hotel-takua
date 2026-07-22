@@ -1414,6 +1414,10 @@ function showHabModal(hab) {
             <div style="font-size:12px;font-weight:700;color:#ef4444">${fmtDt(r.salida)}</div>
           </div>
           ${r.notas?`<div style="margin-top:8px;font-size:11px;color:#64748b;background:#f8fafc;border-radius:8px;padding:4px 10px">📝 ${r.notas}</div>`:''}
+          ${(saldoPend > 0 || pagaAlSalir) ? `
+          <button id="btn-pago-parcial" style="margin-top:10px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;padding:9px 20px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;width:100%">
+            💳 Registrar pago
+          </button>` : ''}
         </div>`;
     })() : (hab.nota&&!['libre','lista'].includes(hab.status)?`<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:#374151;margin-bottom:10px">📝 ${hab.nota}</div>`:'')}
  
@@ -1534,6 +1538,61 @@ function showHabModal(hab) {
     });
   });
  
+  // Pago parcial durante estadía
+  document.getElementById('btn-pago-parcial')?.addEventListener('click', () => {
+    const r = hab.reserva_activa;
+    if (!r) return;
+    const saldoPend = r.saldo_pendiente || 0;
+    const pagaAlSalir = r.momento_cobro === 'salir';
+    const montoSugerido = saldoPend > 0 ? saldoPend : (r.precio_total || 0);
+
+    openModal(`
+      <div class="modal-hd">
+        <h3>💳 Registrar pago — Hab. ${hab.numero}</h3>
+        <button class="modal-close" id="pp-close">✕</button>
+      </div>
+      <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px">
+        <strong>${r.nombre_huesped}</strong>
+        ${saldoPend > 0 ? ` · Saldo pendiente: <strong style="color:#dc2626">${fmt(saldoPend)}</strong>` : ` · Total: <strong>${fmt(r.precio_total||0)}</strong>`}
+      </div>
+      <div class="form-col" style="margin-bottom:12px">
+        <label>Monto a cobrar ($)</label>
+        <input type="number" id="pp-monto" value="${montoSugerido}" style="font-size:18px;font-weight:800;text-align:center">
+      </div>
+      <div class="form-col" style="margin-bottom:16px">
+        <label>Método de pago</label>
+        <select id="pp-metodo">
+          ${['Efectivo','Tarjeta débito','Tarjeta crédito','Transferencia','QR'].map(m=>`<option>${m}</option>`).join('')}
+        </select>
+      </div>
+      <button class="confirm-btn" id="pp-confirm">💳 Confirmar pago</button>
+    `);
+
+    document.getElementById('pp-close').addEventListener('click', () => {
+      // Volver al modal de hab
+      closeModal();
+      showHabModal(hab);
+    });
+
+    document.getElementById('pp-confirm').addEventListener('click', async () => {
+      const monto = parseMonto(document.getElementById('pp-monto').value);
+      if (!monto || monto <= 0) { toast('Ingresá un monto válido', false); return; }
+      const metodo = document.getElementById('pp-metodo').value;
+      // Buscar reserva activa
+      const res = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
+      if (!res?.id) { toast('No se encontró la reserva', false); return; }
+      const result = await apiFetch('POST', `/reservas/${res.id}/pago-parcial`, { monto, metodo_pago: metodo });
+      if (result?.ok) {
+        const nuevoSaldo = result.saldo_pendiente;
+        toast(nuevoSaldo > 0 ? `✅ Pago registrado. Saldo restante: ${fmt(nuevoSaldo)}` : '✅ Pago completo — sin saldo pendiente');
+        closeModal();
+        await refreshHabs();
+      } else {
+        toast(result?.error || 'Error al registrar pago', false);
+      }
+    });
+  });
+
   // Guardar nota
   document.getElementById('hab-save-nota')?.addEventListener('click', async () => {
     const nota = document.getElementById('hab-nota').value;
