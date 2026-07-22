@@ -745,10 +745,8 @@ async function loadAll(silencioso=false){
       S.usuarios=await api('GET','/api/portal/usuarios').catch(()=>[]);
     }
     if(['admin','cajero'].includes(ME.rol)){
-      const habs = await api('GET','/api/habitaciones').catch(()=>[]);
-      S.huespedes = Array.isArray(habs)
-        ? habs.filter(h=>h.status==='ocupada').reduce((s,h)=>s+(h.reserva_activa?.cantidad_personas||1),0)
-        : 0;
+      const dash = await api('GET','/api/dashboard').catch(()=>null);
+      S.huespedes = dash?.reservas_activas || 0;
     }
   }catch(e){toast('Error cargando datos','err');}
   finally{loading(false);}
