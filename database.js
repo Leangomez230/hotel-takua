@@ -34,8 +34,23 @@ async function run(text, params) {
   return result;
 }
 
+// Versionado de schema: subir este número cada vez que se agregue una migración nueva.
+// Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
+// y arranca al instante — evita repetir 60+ queries en cada deploy.
+const SCHEMA_VERSION = 1;
+
 // Inicializar tablas
 async function initDB() {
+  // Chequeo rápido de versión — si ya está al día, no corre ninguna migración.
+  await query(`CREATE TABLE IF NOT EXISTS schema_meta (clave TEXT PRIMARY KEY, valor TEXT)`);
+  const versionRow = await getOne("SELECT valor FROM schema_meta WHERE clave='schema_version'");
+  const versionActual = versionRow ? Number(versionRow.valor) : 0;
+  if (versionActual >= SCHEMA_VERSION) {
+    console.log(`✅ Schema al día (v${versionActual}) — arranque rápido, sin migraciones`);
+    return;
+  }
+  console.log(`🔧 Aplicando migraciones (schema v${versionActual} → v${SCHEMA_VERSION})...`);
+
   await query(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id SERIAL PRIMARY KEY,
@@ -600,6 +615,14 @@ try {
   console.log('✅ Tabla plataformas lista');
 
   console.log('✅ Base de datos PostgreSQL lista');
+
+  // Marcar el schema como al día para que el próximo arranque sea instantáneo
+  await query(
+    `INSERT INTO schema_meta (clave,valor) VALUES ('schema_version',$1)
+     ON CONFLICT (clave) DO UPDATE SET valor=$1`,
+    [String(SCHEMA_VERSION)]
+  );
+  console.log(`✅ Schema marcado como v${SCHEMA_VERSION}`);
 }
 
 module.exports = { query, getOne, getAll, run, initDB };
