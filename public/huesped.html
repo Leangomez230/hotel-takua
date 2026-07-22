@@ -131,6 +131,15 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
   </div>
 
   <div class="section">
+    <!-- Clave de habitación -->
+    <div class="card" id="clave-card" style="display:none">
+      <div class="card-title">🔑 Tu clave de habitación</div>
+      <div style="text-align:center;padding:6px 0">
+        <div id="g-clave" style="font-size:34px;font-weight:900;letter-spacing:8px;color:#0f4c75;font-family:'Nunito',sans-serif">••••</div>
+      </div>
+      <div style="font-size:12px;color:#94a3b8;text-align:center;margin-top:2px">Es la misma clave del picaporte y con la que ingresaste a esta página</div>
+    </div>
+
     <!-- Reserva info -->
     <div class="card" id="reserva-card" style="display:none">
       <div class="card-title">Tu estadía</div>
@@ -278,6 +287,10 @@ function renderInfo(data) {
   const tipos = {twin:'🛏🛏 Twin', queen:'🛏 Queen', simple:'🛏🛏 Twin', doble:'🛏🛏 Twin', suite:'🛏 Queen'};
   document.getElementById('g-num').textContent = 'Habitación ' + hab.numero;
   document.getElementById('g-info').textContent = `Ala ${hab.ala} · ${tipos[hab.tipo]||hab.tipo}`;
+  if (hab.password_puerta) {
+    document.getElementById('g-clave').textContent = hab.password_puerta;
+    document.getElementById('clave-card').style.display = 'block';
+  }
   if (data.reserva) {
     document.getElementById('g-name').textContent = '👤 ' + data.reserva.nombre_huesped;
     document.getElementById('g-entrada').textContent = fmtDate(data.reserva.entrada);
