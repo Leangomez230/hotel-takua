@@ -593,7 +593,7 @@ function _aplicarFiltrosInv() {
   rows.forEach(tr => {
     const matchQ   = !q   || tr.dataset.nombre.includes(q) || tr.dataset.cat.includes(q) || tr.dataset.prov.includes(q);
     const matchMod = mod==='todos' || tr.dataset.mod===mod;
-    const matchCat = cat==='todas' || tr.dataset.cat===cat;
+    const matchCat = cat==='todas' || tr.dataset.cat===cat.toLowerCase();
     const show = matchQ && matchMod && matchCat;
     tr.style.display = show ? '' : 'none';
     if (show) visible++;
