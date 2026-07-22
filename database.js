@@ -256,6 +256,12 @@ try {
   console.log('✅ Columna es_bebida lista');
 } catch(e) { console.log('es_bebida ya existe'); }
 
+// Migración: activo en menu_restaurante (permite "borrado suave" cuando el producto tiene comandas históricas)
+try {
+  await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS activo INTEGER DEFAULT 1');
+  console.log('✅ Columna activo (menu_restaurante) lista');
+} catch(e) { console.log('activo (menu_restaurante) ya existe'); }
+
 // Migración: inventario extendido
 try {
   await query("ALTER TABLE productos ADD COLUMN IF NOT EXISTS unidad TEXT DEFAULT 'unidad'");
