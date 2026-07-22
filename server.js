@@ -830,55 +830,12 @@ app.get('/api/reservas/lista', auth, async (req, res) => {
 });
 
 // Cancelar una reserva confirmada (soft-cancel, conserva el historial)
-// ── PAGO PARCIAL DURANTE ESTADÍA ──────────────────────────────────────
-app.post('/api/reservas/:id/pago-parcial', auth, adminRecepMucama, async (req, res) => {
-  try {
-    const { monto, metodo_pago } = req.body;
-    if (!monto || monto <= 0) return res.status(400).json({ error: 'Monto inválido' });
-
-    const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
-    if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-
-    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [reserva.habitacion_id]);
-
-    // Descontar del saldo pendiente
-    const nuevoSaldo = Math.max(0, (reserva.saldo_pendiente || 0) - monto);
-    await db.query('UPDATE reservas SET saldo_pendiente=$1 WHERE id=$2', [nuevoSaldo, reserva.id]);
-
-    // Registrar en caja habitaciones si hay turno abierto
-    const turno = await db.getOne(
-      "SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1"
-    );
-    if (turno) {
-      const habId = isNaN(Number(reserva.habitacion_id)) ? null : Number(reserva.habitacion_id);
-      await db.query(
-        `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
-         VALUES ($1,'ingreso','Pago durante estadía',$2,$3,$4,$5,$6,$7,$8)`,
-        [turno.id, monto, metodo_pago||'Efectivo',
-         `Hab.${hab?.numero} - ${reserva.nombre_huesped}`,
-         req.user.id, req.user.nombre,
-         habId, hab?.numero]
-      );
-    }
-
-    // Libro de novedades
-    await registrarLibro(req.user.id, req.user.nombre, req.user.rol, reserva.habitacion_id,
-      `💳 Pago recibido — Hab. ${hab?.numero} (${reserva.nombre_huesped}): ${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(monto)} · ${metodo_pago||'Efectivo'}. Saldo restante: ${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(nuevoSaldo)}`
-    );
-
-    await logAction(req.user.id, req.user.nombre, 'PAGO_PARCIAL',
-      `Hab.${hab?.numero} - ${reserva.nombre_huesped} - $${monto} - Saldo restante: $${nuevoSaldo}`);
-
-    res.json({ ok: true, saldo_pendiente: nuevoSaldo });
-  } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
-});
-
 app.post('/api/reservas/:id/cancelar', auth, adminOrRecep, async (req, res) => {
   try {
     const reserva = await db.getOne('SELECT * FROM reservas WHERE id=$1', [req.params.id]);
     if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada' });
-    if (reserva.estado !== 'futura')
-      return res.status(400).json({ error: 'Solo se pueden cancelar reservas confirmadas (no vencidas ni con check-in ya hecho).' });
+    if (!['futura','confirmada','activa'].includes(reserva.estado))
+      return res.status(400).json({ error: 'No se puede cancelar una reserva en estado: ' + reserva.estado });
     await db.query("UPDATE reservas SET estado='cancelada' WHERE id=$1", [req.params.id]);
     const otraReserva = await db.getOne(
       "SELECT id FROM reservas WHERE habitacion_id=$1 AND estado IN ('activa','futura')",
@@ -1531,7 +1488,7 @@ app.post('/api/huesped/login', async (req, res) => {
       return res.status(403).json({ error: 'No hay huésped activo en esta habitación' });
     const reserva = await db.getOne("SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [habitacion_id]);
     const token = jwt.sign({ hab_id: habitacion_id, rol: 'huesped' }, JWT_SECRET, { expiresIn: '24h' });
-    res.json({ token, habitacion: { id: hab.id, numero: hab.numero, tipo: hab.tipo, nombre: hab.nombre, ala: hab.ala, password_puerta: hab.password_puerta }, reserva: reserva || null });
+    res.json({ token, habitacion: { id: hab.id, numero: hab.numero, tipo: hab.tipo, nombre: hab.nombre, ala: hab.ala }, reserva: reserva || null });
   } catch(e) { console.error('Huesped login:', e); res.status(500).json({ error: e.message }); }
 });
 
@@ -1548,29 +1505,13 @@ function authHuesped(req, res, next) {
 
 app.get('/api/huesped/info', authHuesped, async (req, res) => {
   try {
-    const hab = await db.getOne('SELECT id,numero,tipo,nombre,ala,status,password_puerta FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
+    const hab = await db.getOne('SELECT id,numero,tipo,nombre,ala,status FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
     const reserva = await db.getOne("SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [req.huesped.hab_id]);
     const productos = await db.getAll("SELECT id,nombre,categoria,precio,stock FROM productos WHERE activo=1 AND stock>0 ORDER BY categoria,nombre");
     const solicitudes = reserva
       ? await db.getAll("SELECT * FROM solicitudes_huesped WHERE habitacion_id=$1 AND reserva_id=$2 ORDER BY created_at DESC LIMIT 5", [req.huesped.hab_id, reserva.id])
       : [];
     res.json({ habitacion: hab, reserva, productos, solicitudes });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET cargos de restaurante de la reserva activa del huésped autenticado (portal huesped.html)
-app.get('/api/huesped/cargos-restaurante', authHuesped, async (req, res) => {
-  try {
-    const reserva = await db.getOne(
-      "SELECT id FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1",
-      [req.huesped.hab_id]
-    );
-    if (!reserva) return res.json([]);
-    const cargos = await db.getAll(
-      'SELECT * FROM cargos_restaurante WHERE reserva_id=$1 ORDER BY created_at DESC',
-      [reserva.id]
-    );
-    res.json(cargos);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -2436,13 +2377,13 @@ app.post('/api/restaurante/turno/retiro', auth, authRestaurante, async (req, res
     if (!monto || monto <= 0) return res.status(400).json({ error: 'Monto inválido' });
     const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
     if (!turno) return res.status(400).json({ error: 'No hay turno abierto' });
-    const r = await db.query(
+    await db.query(
       `INSERT INTO caja_retiros (turno_id, monto, motivo, usuario_id, usuario_nombre)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5)`,
       [turno.id, monto, motivo||'Sin motivo', req.user.id, req.user.nombre]
     );
     await logAction(req.user.id, req.user.nombre, 'RETIRO_CAJA', `$${monto} — ${motivo||'Sin motivo'}`);
-    res.json({ ok: true, retiro: r.rows[0], cajero_nombre: turno.cajero_nombre });
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
