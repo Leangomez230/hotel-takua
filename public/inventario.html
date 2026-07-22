@@ -223,8 +223,11 @@ async function render() {
   const valorTotal= G.productos.reduce((s,p)=>s+(Number(p.stock)*Number(p.costo||0)),0);
 
   const alertHTML = G.alertas.length ? '<div class="alert-stock">'
-    +'<div style="font-weight:800;color:#dc2626;font-size:14px;margin-bottom:10px">⚠️ '
+    +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">'
+    +'<div style="font-weight:800;color:#dc2626;font-size:14px">⚠️ '
     +G.alertas.length+' producto'+(G.alertas.length>1?'s':'')+' con stock bajo o agotado</div>'
+    +'<button class="btn-secondary" onclick="imprimirAlertas()" style="background:#1e293b;color:#fff;border-color:#1e293b;padding:5px 12px;font-size:12px">🖨️ Imprimir listado</button>'
+    +'</div>'
     +G.alertas.map(a=>'<div class="alert-row"><span>'
       +'<span class="mod-badge '+(MOD_CLASS[a.modulo]||'mod-general')+'">'+(MOD_ICON[a.modulo]||'📋')+' '+(a.modulo||'general')+'</span>'
       +' <strong style="margin-left:6px">'+a.nombre+'</strong>'
@@ -622,6 +625,63 @@ function setFiltroCat(cat, btn) {
   document.querySelectorAll('.filtro-pill[onclick^="setFiltroCat"]').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   _aplicarFiltrosInv();
+}
+
+// ── IMPRIMIR ALERTAS DE STOCK ──────────────────────────
+function imprimirAlertas() {
+  if (!G.alertas.length) { toast('No hay productos con stock bajo o agotado', false); return; }
+
+  const fecha = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  const filas = G.alertas.map(a => {
+    const agotado = Number(a.stock) <= 0;
+    return `<tr>
+      <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9">
+        <strong>${a.nombre}</strong>
+      </td>
+      <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">
+        <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:#f1f5f9">${MOD_ICON[a.modulo]||'📋'} ${a.modulo||'general'}</span>
+      </td>
+      <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${a.categoria||'—'}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;font-weight:800;color:${agotado?'#dc2626':'#d97706'}">${a.stock} ${a.unidad||'u'}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8">${a.stock_minimo} ${a.unidad||'u'}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;font-weight:700;color:${agotado?'#dc2626':'#d97706'}">${agotado?'AGOTADO':'BAJO'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>Alertas de stock — Hotel Takuá</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;font-size:12px;color:#1a2035;padding:16px}
+    h1{font-size:16px;font-weight:900;margin-bottom:2px}
+    .sub{font-size:11px;color:#64748b;margin-bottom:14px}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;padding:7px 10px;font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid #1a2035}
+    @page{margin:12mm}
+  </style>
+  </head><body>
+  <h1>⚠️ Alertas de stock — Hotel Takuá</h1>
+  <div class="sub">${fecha} · ${G.alertas.length} producto${G.alertas.length>1?'s':''} con stock bajo o agotado</div>
+  <table>
+    <thead><tr>
+      <th>Producto</th><th>Módulo</th><th>Categoría</th><th>Stock</th><th>Mínimo</th><th>Estado</th>
+    </tr></thead>
+    <tbody>${filas}</tbody>
+  </table>
+  <div style="margin-top:16px;font-size:10px;color:#94a3b8;text-align:center">Hotel Takuá · ${fecha}</div>
+  </body></html>`;
+
+  const id = 'inv-alertas-print-frame';
+  let frame = document.getElementById(id);
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.id = id;
+    frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none';
+    document.body.appendChild(frame);
+  }
+  frame.srcdoc = html;
+  frame.onload = () => { frame.contentWindow.focus(); frame.contentWindow.print(); };
 }
 
 // ── IMPRIMIR INVENTARIO ───────────────────────────────
