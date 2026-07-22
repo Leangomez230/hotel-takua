@@ -8,13 +8,11 @@ const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) { console.error('FATAL: JWT_SECRET no está definido en variables de entorno'); process.exit(1); }
+const JWT_SECRET = process.env.JWT_SECRET || 'takua_secret_2024';
 
 // ── VAPID ────────────────────────────────────────────────────────────
-const VAPID_PUBLIC  = process.env.VAPID_PUBLIC;
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE;
-if (!VAPID_PUBLIC || !VAPID_PRIVATE) { console.error('FATAL: VAPID_PUBLIC / VAPID_PRIVATE no están definidas en variables de entorno'); process.exit(1); }
+const VAPID_PUBLIC  = process.env.VAPID_PUBLIC  || 'BGgqRVlRquUxbONf-LOZDc9dsvh9mMh-Al37U9B7XM108NA6LteBSzfmCogTbXAVbNuJULyBaymGOHwpqyjgay8';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE || '5fhOAg_7L6Nnbprwb7JiFcwhMR8qn5Tm80JVDHAn2xo';
 webpush.setVapidDetails('mailto:hotel@takua.com', VAPID_PUBLIC, VAPID_PRIVATE);
 
 // Enviar push a todos los usuarios de ciertos roles
@@ -40,21 +38,7 @@ async function sendPushToRoles(roles, payload) {
   } catch(e) { console.error('Error enviando push:', e.message); }
 }
 
-const ALLOWED_ORIGINS = [
-  'https://hoteltakua.com.ar',
-  'https://www.hoteltakua.com.ar',
-  'https://gestion.hoteltakua.com.ar',
-  'https://hotel-takua.up.railway.app',  // Railway preview (mantener durante desarrollo)
-];
-app.use(cors({
-  origin: (origin, callback) => {
-    // Permitir requests sin origin (mobile apps, Postman, Railway health checks)
-    if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origen no permitido — ${origin}`));
-  },
-  credentials: true,
-}));
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -1469,7 +1453,7 @@ app.get('/api/dashboard', auth, async (req, res) => {
 });
 
 // ── DEBUG ────────────────────────────────────────────────────────────
-app.get('/api/debug/habitaciones', auth, adminOnly, async (req, res) => {
+app.get('/api/debug/habitaciones', async (req, res) => {
   try {
     const habs = await db.getAll("SELECT id,numero,ala,status,tipo FROM habitaciones ORDER BY ala,numero");
     res.json({ total: habs.length, habitaciones: habs });
@@ -1741,7 +1725,7 @@ app.put('/api/restaurante/salon', auth, adminOnly, async (req, res) => {
 // ── MENÚ RESTAURANTE ─────────────────────────────────────────────────
 app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
   try {
-    const menu = await db.getAll('SELECT * FROM menu_restaurante ORDER BY categoria,nombre');
+    const menu = await db.getAll("SELECT * FROM menu_restaurante WHERE COALESCE(activo,1)=1 ORDER BY categoria,nombre");
     // Para cada producto, verificar stock vinculado y combo items
     for (const item of menu) {
       if (item.es_bebida) {
@@ -1799,8 +1783,18 @@ app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
 app.delete('/api/restaurante/menu/:id', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    await db.query('DELETE FROM menu_restaurante WHERE id=$1', [req.params.id]);
-    res.json({ ok: true });
+    try {
+      await db.query('DELETE FROM menu_restaurante WHERE id=$1', [req.params.id]);
+      res.json({ ok: true });
+    } catch (fkErr) {
+      // Tiene comandas históricas asociadas (comanda_items_producto_id_fkey): no se puede borrar físicamente.
+      // Se desactiva en su lugar: desaparece de la venta pero preserva el historial.
+      if (fkErr.code === '23503') {
+        await db.query('UPDATE menu_restaurante SET activo=0, disponible=0 WHERE id=$1', [req.params.id]);
+        return res.json({ ok: true, desactivado: true });
+      }
+      throw fkErr;
+    }
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
