@@ -151,8 +151,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .rnum{font-size:26px;font-weight:900;color:#1a2035;line-height:1;margin-bottom:2px}
 .rname{font-size:10px;font-weight:700;color:#64748b;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rtipo{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
-.qr-btn{display:flex;align-items:center;gap:3px;background:rgba(0,0,0,.06);border:none;border-radius:6px;padding:3px 7px;font-size:9px;font-weight:700;color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif;position:absolute;bottom:8px;left:8px}
-.qr-btn:hover{background:rgba(0,0,0,.12);color:#1a2035}
  
 /* ALERTA SOLICITUD HUÉSPED */
 @keyframes pulse-alert {
@@ -418,6 +416,8 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
             font-size:10px;font-weight:800;line-height:18px;text-align:center;padding:0 4px;
             box-shadow:0 1px 4px rgba(0,0,0,.25);font-family:'Nunito',sans-serif"></span>
         </button>
+        <button class="tb-btn" id="btn-qr-general" title="QR Huéspedes" onclick="showQRGeneral()"
+          style="font-size:14px;padding:6px 10px">📱 QR</button>
         <button class="tb-btn" id="btn-notif" title="Notificaciones"
           onclick="toggleNotifCenter()"
           style="font-size:16px;padding:6px 10px;position:relative">🔔
@@ -941,9 +941,7 @@ function buildCard(h) {
       ${badgeHTML}
     </div>
     ${body}
-    ${isAdminOrRecep?`<button class="qr-btn" data-hid="${h.id}" data-num="${h.numero}" title="Ver QR">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 13h7v7H3v-7zm2 2v3h3v-3H5zm11-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm-4-4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-8h2v2h-2v-2z"/></svg> QR
-    </button>`:''}
+
   </div>`;
 }
  
@@ -958,18 +956,9 @@ function renderMap(container, habs) {
   // Bind clicks — esto es clave: después de insertar el HTML
   container.querySelectorAll('.rcard[data-hid]').forEach(card=>{
     card.addEventListener('click', e=>{
-      // Si tocaron el botón QR, no abrir modal de hab
-      if (e.target.closest('.qr-btn')) return;
+
       const hab=habitaciones.find(h=>String(h.id)===String(card.dataset.hid));
       if (hab) showHabModal(hab);
-    });
-  });
-  // QR buttons
-  container.querySelectorAll('.qr-btn[data-hid]').forEach(btn=>{
-    btn.addEventListener('click', e=>{
-      e.stopPropagation();
-      const hab = habitaciones.find(h=>String(h.id)===String(btn.dataset.hid));
-      if (hab) showQRModal(hab);
     });
   });
 }
@@ -3368,773 +3357,109 @@ function initFlatpickrFechas(idIn, idOut, valIn, valOut) {
   return { fpIn: fpI, fpOut: fpO };
 }
 
-function showQRModal(hab) {
-  const isAdmin = currentUser?.rol === 'admin';
-  const url = `${window.location.origin}/huesped.html?hab=${hab.numero}`;
- 
+function showQRGeneral() {
+  const url = `${window.location.origin}/huesped.html`;
+
   openModal(`
     <div class="modal-hd">
-      <h3>📱 QR Huésped — Hab. ${hab.numero}</h3>
+      <h3>📱 QR General — Panel Huéspedes</h3>
       <button class="modal-close" id="qr-close">✕</button>
     </div>
-    <div style="text-align:center;padding:10px 0 16px">
-      <div id="qr-canvas" style="display:inline-block;padding:12px;background:#fff;border-radius:12px;border:2px solid #e0e6ef"></div>
-      <div style="margin-top:12px;font-size:13px;color:#64748b">Escaneá este QR para acceder al panel de servicios</div>
-      <div style="margin-top:6px;font-size:11px;color:#94a3b8;word-break:break-all">${url}</div>
+    <div style="text-align:center;padding:16px 0 20px">
+      <div id="qr-canvas" style="display:inline-block;padding:16px;background:#fff;border-radius:16px;border:2px solid #e0e6ef;box-shadow:0 4px 20px rgba(0,0,0,.08)"></div>
+      <div style="margin-top:14px;font-size:14px;font-weight:700;color:#1a2035">Hotel Takuá — Panel de Huéspedes</div>
+      <div style="margin-top:4px;font-size:12px;color:#64748b">El huésped ingresa su número de habitación y la clave de la puerta</div>
+      <div style="margin-top:8px;font-size:11px;color:#94a3b8;word-break:break-all;background:#f8fafc;border-radius:8px;padding:6px 10px;display:inline-block">${url}</div>
     </div>
-    ${isAdmin ? `
-    <div style="border-top:1px solid #f1f5f9;padding-top:14px;margin-top:4px">
-      <div class="stitle">Contraseña de la puerta</div>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="qr-pwd" placeholder="Ej: 1234" maxlength="8" inputmode="numeric"
-          style="flex:1;border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 12px;font-size:16px;font-family:'Nunito',sans-serif;letter-spacing:4px;font-weight:700">
-        <button class="btn-primary" id="qr-save-pwd" style="white-space:nowrap">💾 Guardar</button>
-      </div>
-      <div style="font-size:11px;color:#94a3b8;margin-top:6px">Esta contraseña la usa el huésped para acceder al panel QR</div>
-    </div>` : ''}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
-      <button class="confirm-btn" id="qr-copy" style="background:linear-gradient(135deg,#1a2035,#2d3a5a);margin-top:0">
-        📋 Copiar enlace
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px">
+      <button class="confirm-btn" id="qr-copy" style="background:linear-gradient(135deg,#1a2035,#2d3a5a);margin-top:0;font-size:13px">
+        📋 Copiar link
       </button>
-      ${hab.reserva_activa?.nombre_huesped ? `
-      <button id="qr-whatsapp" style="background:linear-gradient(135deg,#25d366,#128c7e);border:none;border-radius:12px;padding:13px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.116 1.528 5.845L0 24l6.335-1.505A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.79 9.79 0 01-5.12-1.448l-.368-.218-3.76.893.944-3.653-.24-.375A9.818 9.818 0 012.182 12C2.182 6.58 6.58 2.182 12 2.182S21.818 6.58 21.818 12 17.42 21.818 12 21.818z"/></svg>
-        WhatsApp
-      </button>` : ''}
+      <button id="qr-download" style="background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:12px;padding:13px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif">
+        ⬇️ Descargar
+      </button>
+      <button id="qr-print" style="background:linear-gradient(135deg,#0891b2,#06b6d4);border:none;border-radius:12px;padding:13px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif">
+        🖨️ Imprimir
+      </button>
     </div>
   `);
- 
+
   document.getElementById('qr-close').addEventListener('click', closeModal);
- 
+
   // Generar QR
+  let qrInstance = null;
   setTimeout(() => {
     const canvas = document.getElementById('qr-canvas');
     if (canvas && window.QRCode) {
-      new QRCode(canvas, { text: url, width: 200, height: 200, colorDark: '#1a2035', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+      qrInstance = new QRCode(canvas, {
+        text: url, width: 256, height: 256,
+        colorDark: '#1a2035', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
     }
   }, 100);
- 
-  // WhatsApp
-  document.getElementById('qr-whatsapp')?.addEventListener('click', () => {
-    const nombre = hab.reserva_activa?.nombre_huesped || 'huésped';
-    const msg = `¡Hola ${nombre}! 🏨 Bienvenido/a al Hotel Takuá.\n\nPodés acceder a tu panel de servicios desde este enlace:\n${url}\n\nContraseña: el número de tu habitación.\n\n¡Que disfrutes tu estadía! 😊`;
-    const tel = hab.reserva_activa?.telefono || '';
-    const telLimpio = tel.replace(/[^0-9]/g, '');
-    const waUrl = `https://wa.me/${telLimpio}?text=${encodeURIComponent(msg)}`;
-    window.open(waUrl, '_blank');
-  });
 
-  // Copiar enlace
+  // Copiar link
   document.getElementById('qr-copy').addEventListener('click', () => {
-    navigator.clipboard.writeText(url).then(() => toast('Enlace copiado')).catch(() => {
-      prompt('Copiá este enlace:', url);
-    });
+    navigator.clipboard.writeText(url).then(() => toast('Enlace copiado ✓')).catch(() => prompt('Copiá este enlace:', url));
   });
- 
-  // Guardar contraseña (solo admin)
-  if (isAdmin) {
-    // Cargar contraseña actual
-    apiFetch('GET', `/habitaciones/${hab.id}/password`).then(r => {
-      if (r?.password) {
-        const input = document.getElementById('qr-pwd');
-        if (input) input.value = r.password;
-      }
-    });
-    document.getElementById('qr-save-pwd')?.addEventListener('click', async () => {
-      const pwd = document.getElementById('qr-pwd').value.trim();
-      if (!pwd) { toast('Ingresá una contraseña', false); return; }
-      const r = await apiFetch('PUT', `/habitaciones/${hab.id}/password`, { password: pwd });
-      if (r?.ok) toast('Contraseña guardada');
-      else toast(r?.error||'Error', false);
-    });
-  }
-}
- 
-// ══════════════════════════════════════
-// HISTORIAL
-// ══════════════════════════════════════
-async function loadLog() {
-  const log=await apiFetch('GET','/log')||[];
-  openModal(`
-    <div class="modal-hd"><h3>📋 Historial</h3><button class="modal-close" id="log-c">✕</button></div>
-    <div style="max-height:420px;overflow-y:auto">
-      ${log.map(e=>`<div style="border-left:3px solid #e0e6ef;padding-left:10px;margin-bottom:12px">
-        <div style="font-size:10px;color:#94a3b8">${fmtDate(e.created_at)} · ${e.usuario_nombre||'Sistema'}</div>
-        <div style="font-size:13px;font-weight:700">${e.accion}</div>
-        <div style="font-size:12px;color:#64748b">${e.detalle}</div>
-      </div>`).join('')||'<div style="text-align:center;color:#94a3b8;padding:20px">Sin acciones</div>'}
-    </div>
-  `);
-  document.getElementById('log-c').addEventListener('click',closeModal);
-}
- 
-// ── SONIDO DE NOTIFICACIÓN ──
-let soundEnabled = localStorage.getItem('takua_sound') !== 'off';
-let lastSolCount = -1;
-let notifPermission = Notification?.permission || 'default';
- 
-// Pedir permiso de notificaciones del sistema
-// En Android DEBE ser llamado desde un gesto del usuario (click)
-async function requestNotifPermission() {
-  if (!('Notification' in window)) return;
-  notifPermission = Notification.permission;
-  if (Notification.permission === 'granted') return;
-  if (Notification.permission !== 'denied') {
-    try {
-      const perm = await Notification.requestPermission();
-      notifPermission = perm;
-      if (perm === 'granted') {
-        // Test notification via SW
-        sendSystemNotif('Hotel Takuá', '🔔 Notificaciones activadas', 'takua-test');
-      }
-    } catch(e) { console.log('Notif permission error:', e); }
-  }
-}
- 
-function sendSystemNotif(titulo, cuerpo, tag) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
- 
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    // MÉTODO CORRECTO PARA ANDROID:
-    // Enviamos mensaje al SW — el SW usa event.waitUntil() que mantiene
-    // el proceso vivo el tiempo necesario para mostrar la notificación en la barra
-    navigator.serviceWorker.controller.postMessage({
-      type: 'SHOW_NOTIF',
-      title: titulo,
-      body: cuerpo,
-      tag: tag || 'takua-sol'
-    });
-  } else {
-    // Fallback: intentar directo con el SW registrado
-    navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification(titulo, {
-        body: cuerpo,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        vibrate: [200, 100, 200],
-        tag: tag || 'takua-sol',
-        renotify: true,
-      });
-    }).catch(() => {
-      // Último fallback: desktop sin SW activo
-      try { new Notification(titulo, { body: cuerpo, icon: '/icon-192.png' }); } catch(e) {}
-    });
-  }
-}
- 
-function updateSoundBtn() {
-  const btn = document.getElementById('btn-sound');
-  if (!btn) return;
-  btn.textContent = soundEnabled ? '🔔' : '🔕';
-  btn.title = soundEnabled ? 'Sonido activo — toca para apagar' : 'Sonido apagado — toca para activar';
-  btn.style.opacity = soundEnabled ? '1' : '0.5';
-}
- 
-function playNotifSound() {
-  if (!soundEnabled) return;
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [[880,0,0.25,0.3],[660,0.28,0.35,0.22]].forEach(([f,s,d,v]) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.value = f; o.type = 'sine';
-      g.gain.setValueAtTime(0, ctx.currentTime+s);
-      g.gain.linearRampToValueAtTime(v, ctx.currentTime+s+0.02);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+s+d);
-      o.start(ctx.currentTime+s); o.stop(ctx.currentTime+s+d+0.1);
-    });
-  } catch(e) {}
-}
- 
-document.getElementById('btn-sound')?.addEventListener('click', () => {
-  soundEnabled = !soundEnabled;
-  localStorage.setItem('takua_sound', soundEnabled ? 'on' : 'off');
-  updateSoundBtn();
-  if (soundEnabled) {
-    playNotifSound();
-    // Pedir permiso de notificaciones (Android requiere gesto del usuario)
-    requestNotifPermission();
-  }
-  toast(soundEnabled ? '🔔 Sonido y notificaciones activados' : '🔕 Sonido silenciado');
-});
- 
-async function registerPeriodicSync() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    // Background Sync: se ejecuta cuando hay conexión aunque la app esté cerrada
-    if ('periodicSync' in reg) {
-      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
-      if (status.state === 'granted') {
-        await reg.periodicSync.register('check-solicitudes-periodic', { minInterval: 60 * 1000 }); // cada 1 min
-        console.log('Periodic sync registrado');
-      }
-    }
-  } catch(e) { console.log('Periodic sync no disponible:', e.message); }
-}
- 
-// Solicitudes con sonido y mucama
-async function loadSolicitudesAll() {
-  const isMantenimiento = currentUser?.rol === 'mantenimiento';
 
-  // Mantenimiento no ve solicitudes de huéspedes — solo alertas del mapa
-  if (isMantenimiento) {
-    applyMantMapAlerts();
-    return;
-  }
-
-  const sols = await apiFetch('GET', '/solicitudes') || [];
-  const pendientes = sols.filter(s => s.estado === 'pendiente');
-  const isMucama = currentUser?.rol === 'mucama';
-
-  // Sonido + notificación del sistema cuando hay nuevas
-  if (lastSolCount >= 0 && pendientes.length > lastSolCount) {
-    playNotifSound();
-    const nueva = pendientes[pendientes.length - 1];
-    if (nueva) {
-      const tipo = nueva.tipo === 'servicio' ? '🧹 Limpieza solicitada' : '🍫 Pedido de frigobar';
-      sendSystemNotif(`Hotel Takuá — Hab. ${nueva.numero} Ala ${nueva.ala}`, tipo+(nueva.detalle?': '+nueva.detalle:''), 'takua-sol');
-    }
-  }
-  lastSolCount = pendientes.length;
-
-  applyMapAlerts(pendientes);
-
-  if (isMucama) {
-    renderMucamaSolicitudes(pendientes);
-  } else {
-    loadSolicitudes(pendientes);
-  }
-}
- 
-function applyMapAlerts(pendientes) {
-  const habsConSol = new Set(pendientes.map(s => s.habitacion_id));
-  document.querySelectorAll('.rcard[data-hid]').forEach(card => {
-    const hid = card.dataset.hid;
-    if (habsConSol.has(hid)) {
-      card.classList.add('tiene-solicitud');
-      if (!card.querySelector('.sol-badge-card')) {
-        const badge = document.createElement('div');
-        badge.className = 'sol-badge-card';
-        badge.textContent = '🔔';
-        card.insertBefore(badge, card.firstChild);
-      }
-    } else {
-      card.classList.remove('tiene-solicitud');
-      card.querySelector('.sol-badge-card')?.remove();
-    }
-  });
-}
- 
-function renderMucamaSolicitudes(pendientes) {
-  const el = document.getElementById('mucama-sols');
-  if (!el) return;
-  if (!pendientes.length) {
-    el.innerHTML = '';
-    return;
-  }
-  el.innerHTML = `
-    <div class="section-card" style="border:2px solid #fca5a5;background:#fff7f7">
-      <div class="sc-head" style="margin-bottom:10px">
-        <h2 style="display:flex;align-items:center;gap:8px;font-size:16px;color:#dc2626">
-          🔔 Solicitudes pendientes
-          <span style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:800">${pendientes.length}</span>
-        </h2>
-      </div>
-      ${pendientes.map(s=>`
-      <div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;
-                  background:#fff;border-radius:12px;border:1px solid #fecdd3;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-        <div style="font-size:32px;flex-shrink:0">${s.tipo==='servicio'?'🧹':'🍫'}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:800;color:#1e293b">Hab. ${s.numero} — Ala ${s.ala}</div>
-          <div style="font-size:13px;color:#64748b;margin-top:1px">${s.tipo==='servicio'?'Limpieza solicitada':'Pedido de frigobar'}</div>
-          ${s.detalle?`<div style="font-size:12px;font-style:italic;color:#374151;margin-top:2px">"${s.detalle}"</div>`:''}
-        </div>
-        <button data-sol-id="${s.id}"
-          style="flex-shrink:0;background:#16a34a;color:#fff;border:none;border-radius:10px;
-                 padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
-          ✅ Atendido
-        </button>
-      </div>`).join('')}
-    </div>`;
-
-  // Bind botones atendido
-  el.querySelectorAll('[data-sol-id]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      btn.textContent = '...';
-      const r = await apiFetch('PUT', `/solicitudes/${btn.dataset.solId}`, { estado: 'atendida' });
-      if (r?.ok) {
-        toast('Solicitud marcada como atendida ✓');
-        loadSolicitudesAll();
+  // Descargar QR como imagen PNG
+  document.getElementById('qr-download').addEventListener('click', () => {
+    setTimeout(() => {
+      const canvas = document.querySelector('#qr-canvas canvas') || document.querySelector('#qr-canvas img');
+      if (!canvas) { toast('Generando QR...', false); return; }
+      let dataUrl;
+      if (canvas.tagName === 'CANVAS') {
+        dataUrl = canvas.toDataURL('image/png');
       } else {
-        toast('Error al actualizar', false);
-        btn.disabled = false;
-        btn.textContent = '✅ Atendido';
+        // Es un img, convertir a canvas
+        const c = document.createElement('canvas');
+        c.width = canvas.width || 256; c.height = canvas.height || 256;
+        c.getContext('2d').drawImage(canvas, 0, 0);
+        dataUrl = c.toDataURL('image/png');
       }
-    });
-  });
-}
- 
- 
-// ══════════════════════════════════════
-// ══════════════════════════════════════
-// LIBRO DE NOVEDADES
-// ══════════════════════════════════════
-
-// ── BADGE LIBRO ───────────────────────────────────────────────────────
-function _libroLastReadKey() {
-  return 'libro_last_read_' + (currentUser?.id || 'x');
-}
-
-function _libroMarcarLeido() {
-  localStorage.setItem(_libroLastReadKey(), new Date().toISOString());
-  _libroActualizarBadge(0);
-}
-
-function _libroActualizarBadge(count) {
-  const badge = document.getElementById('libro-badge');
-  if (!badge) return;
-  if (count > 0) {
-    badge.textContent = count > 99 ? '99+' : count;
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
-  }
-}
-
-async function _libroCheckBadge() {
-  const data = await apiFetch('GET', '/libro-novedades');
-  if (!Array.isArray(data) || !data.length) { _libroActualizarBadge(0); return; }
-  const lastRead = localStorage.getItem(_libroLastReadKey());
-  const since = lastRead ? new Date(lastRead) : null;
-  const nuevos = since
-    ? data.filter(m => new Date(m.created_at) > since && String(m.usuario_id) !== String(currentUser?.id)).length
-    : data.filter(m => String(m.usuario_id) !== String(currentUser?.id)).length;
-  _libroActualizarBadge(nuevos);
-}
-
-function _libroStartPolling() {
-  _libroCheckBadge();
-  _libroBadgeInterval = setInterval(_libroCheckBadge, 60000);
-}
-// ─────────────────────────────────────────────────────────────────────
-
-function abrirLibro() {
-  document.getElementById('libro-overlay').classList.add('open');
-  const footer = document.getElementById('libro-footer');
-  if (footer) footer.style.display = isMucama ? '' : 'none';
-  _libroMarcarLeido();
-  cargarLibro();
-  _libroInterval = setInterval(cargarLibro, 15000);
-}
-
-function cerrarLibro(e) {
-  if (e && e.target !== document.getElementById('libro-overlay')) return;
-  document.getElementById('libro-overlay').classList.remove('open');
-  clearInterval(_libroInterval);
-}
-
-async function cargarLibro() {
-  const body = document.getElementById('libro-body');
-  const data = await apiFetch('GET', '/libro-novedades');
-  if (!data) return;
-
-  const hoy = new Date().toLocaleDateString('es-AR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('libro-turno-label').textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
-
-  if (!data.length) {
-    body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:32px;font-size:13px">Sin novedades hoy</div>';
-    return;
-  }
-
-  // Agrupar por fecha
-  let html = '';
-  let fechaActual = '';
-  data.forEach(m => {
-    const fecha = new Date(m.created_at).toLocaleDateString('es-AR', {weekday:'long',day:'numeric',month:'long'});
-    if (fecha !== fechaActual) {
-      fechaActual = fecha;
-      html += `<div class="libro-fecha-sep"><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)}</span></div>`;
-    }
-    const hora = new Date(m.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-    const esManual = m.tipo === 'manual';
-    html += `<div class="libro-msg ${esManual?'manual':'auto'}">
-      <div class="lm-autor">${m.usuario_nombre}</div>
-      ${m.habitacion_id ? `<div class="lm-hab">Hab. ${m.habitacion_id}</div>` : ''}
-      <div>${m.mensaje}</div>
-      <div class="lm-hora">${hora}</div>
-    </div>`;
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'QR-Hotel-Takua.png';
+      a.click();
+      toast('QR descargado ✓');
+    }, 200);
   });
 
-  const wasAtBottom = body.scrollHeight - body.scrollTop <= body.clientHeight + 50;
-  body.innerHTML = html;
-  if (wasAtBottom) body.scrollTop = body.scrollHeight;
-}
-
-async function enviarNovedad() {
-  const input = document.getElementById('libro-input');
-  const msg = input.value.trim();
-  if (!msg) return;
-  const r = await apiFetch('POST', '/libro-novedades', { mensaje: msg, tipo: 'manual' });
-  if (r?.ok) {
-    input.value = '';
-    input.style.height = '42px';
-    await cargarLibro();
-    const body = document.getElementById('libro-body');
-    body.scrollTop = body.scrollHeight;
-  } else {
-    toast('Error al enviar', false);
-  }
-}
-
-// Registrar evento automático en el libro
-async function registrarLibro(mensaje, habitacion_id='') {
-  await apiFetch('POST', '/libro-novedades', {
-    mensaje, tipo: 'auto', habitacion_id
+  // Imprimir QR
+  document.getElementById('qr-print').addEventListener('click', () => {
+    setTimeout(() => {
+      const canvas = document.querySelector('#qr-canvas canvas') || document.querySelector('#qr-canvas img');
+      if (!canvas) { toast('Generando QR...', false); return; }
+      let src;
+      if (canvas.tagName === 'CANVAS') {
+        src = canvas.toDataURL('image/png');
+      } else {
+        src = canvas.src;
+      }
+      const win = window.open('', '_blank');
+      win.document.write(`
+        <html><head><title>QR Hotel Takuá</title>
+        <style>
+          body{font-family:Arial,sans-serif;text-align:center;padding:40px;color:#1a2035}
+          img{width:280px;height:280px;border:2px solid #e0e6ef;border-radius:16px;padding:12px}
+          h2{font-size:22px;margin-bottom:8px}
+          p{font-size:14px;color:#64748b;margin:4px 0}
+          @media print{body{padding:20px}}
+        </style></head>
+        <body>
+          <h2>🏨 Hotel Takuá</h2>
+          <p>Escaneá para acceder al panel de huéspedes</p>
+          <br>
+          <img src="${src}">
+          <br><br>
+          <p style="font-size:12px;color:#94a3b8">${url}</p>
+          <p style="font-size:13px;margin-top:12px">Ingresá tu número de habitación y la clave de la puerta</p>
+        </body></html>
+      `);
+      win.document.close();
+      setTimeout(() => win.print(), 500);
+    }, 200);
   });
 }
-
-// ══════════════════════════════════════
-// INIT
-// ══════════════════════════════════════
-if (token && currentUser) {
-  startApp();
-  // Si viene con hash (desde comandas), navegar a esa sección
-  const hash = window.location.hash.replace('#','');
-  if (hash && ['dashboard','habitaciones','reservas','huespedes','tienda','inventario','caja','finanzas','config'].includes(hash)) {
-    setTimeout(() => { goTo(hash); }, 100);
-  }
-} else { window.location.href = "/portal.html"; }
- 
-// ── SONIDO DE NOTIFICACIÓN ────────────────────────────
-function playNotifSound() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Dos beeps cortos tipo "ding"
-    [0, 0.25].forEach(delay => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime + delay);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + delay + 0.15);
-      gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 0.2);
-    });
-  } catch(e) {}
-}
-
-// Escuchar mensajes del SW (cuando llega push con la app abierta)
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data?.type === 'PLAY_SOUND') playNotifSound();
-  });
-}
-
-// ── SERVICE WORKER + PUSH SUBSCRIPTION ──────────────
-const ROLES_PUSH = ['recepcionista','mucama','admin','mantenimiento'];
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
-
-// ── CENTRO DE NOTIFICACIONES ──────────────────────────────────────────
-
-var notifCenterOpen = false;
-var notifData = [];
-
-async function cargarNotificaciones() {
-  if (!currentUser) return;
-  const data = await apiFetch('GET', '/notificaciones');
-  if (!Array.isArray(data)) return;
-  notifData = data;
-  actualizarBadge();
-  if (notifCenterOpen) renderNotifList();
-}
-
-function actualizarBadge() {
-  const badge = document.getElementById('notif-badge');
-  const sinLeer = notifData.filter(n => !n.leida).length;
-  if (!badge) return;
-  if (sinLeer > 0) {
-    badge.textContent = sinLeer > 99 ? '99+' : sinLeer;
-    badge.style.display = 'block';
-  } else {
-    badge.style.display = 'none';
-  }
-}
-
-function toggleNotifCenter() {
-  const center = document.getElementById('notif-center');
-  const btn = document.getElementById('btn-notif');
-  if (!center || !btn) return;
-  notifCenterOpen = !notifCenterOpen;
-  if (notifCenterOpen) {
-    const rect = btn.getBoundingClientRect();
-    const w = Math.min(340, window.innerWidth - 16);
-    center.style.width = w + 'px';
-    center.style.top = (rect.bottom + 8) + 'px';
-    center.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
-    center.style.left = 'auto';
-    center.style.display = 'flex';
-    cargarNotificaciones();
-    actualizarPushRow();
-  } else {
-    center.style.display = 'none';
-  }
-}
-
-function cerrarNotifCenter() {
-  notifCenterOpen = false;
-  const center = document.getElementById('notif-center');
-  if (center) center.style.display = 'none';
-}
-
-// Cerrar al click fuera
-document.addEventListener('click', function(e) {
-  const center = document.getElementById('notif-center');
-  const btn = document.getElementById('btn-notif');
-  if (!center || !btn) return;
-  if (notifCenterOpen && !center.contains(e.target) && !btn.contains(e.target)) {
-    cerrarNotifCenter();
-  }
-});
-
-function renderNotifList() {
-  const el = document.getElementById('notif-list');
-  if (!el) return;
-  if (!notifData.length) {
-    el.innerHTML = `<div style="padding:30px 16px;text-align:center;color:#94a3b8;font-size:13px">
-      Sin notificaciones</div>`;
-    return;
-  }
-  el.innerHTML = notifData.map(n => {
-    const fecha = new Date(n.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    return `<div data-nid="${n.id}" onclick="marcarLeida(${n.id}, this)"
-      style="padding:12px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer;
-      background:${n.leida ? '#fff' : '#f0f9ff'};transition:background .2s">
-      <div style="display:flex;align-items:flex-start;gap:10px">
-        ${n.leida ? '' : '<div style="width:8px;height:8px;border-radius:50%;background:#3b82f6;flex-shrink:0;margin-top:5px"></div>'}
-        ${n.leida ? '<div style="width:8px;flex-shrink:0"></div>' : ''}
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:${n.leida?'600':'800'};color:#1a2035;margin-bottom:2px">${escHtml(n.titulo)}</div>
-          <div style="font-size:12px;color:#475569;line-height:1.4">${escHtml(n.cuerpo)}</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:4px">${fecha}${n.creado_por_nombre ? ' · ' + escHtml(n.creado_por_nombre) : ''}</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function marcarLeida(id, el) {
-  const n = notifData.find(x => x.id === id);
-  if (n && !n.leida) {
-    n.leida = true;
-    actualizarBadge();
-    if (el) el.style.background = '#fff';
-    const dot = el?.querySelector('div[style*="border-radius:50%"]');
-    if (dot) dot.style.display = 'none';
-    await apiFetch('PUT', `/notificaciones/${id}/leer`);
-  }
-}
-
-async function leerTodasNotifs() {
-  notifData.forEach(n => n.leida = true);
-  actualizarBadge();
-  renderNotifList();
-  await apiFetch('PUT', '/notificaciones/leer-todas');
-}
-
-async function actualizarPushRow() {
-  const row = document.getElementById('notif-push-row');
-  if (!row || !ROLES_PUSH.includes(currentUser?.rol)) { row && (row.style.display='none'); return; }
-  if (!('Notification' in window) || !('PushManager' in window)) { row.style.display='none'; return; }
-  if (Notification.permission === 'granted') {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) { row.style.display='none'; return; }
-    } catch(e) {}
-  }
-  row.style.display = 'block';
-}
-
-async function activarNotificacionesDesdeCenter() {
-  const btn = document.querySelector('#notif-push-row button');
-  if (btn) { btn.textContent = '⏳ Activando…'; btn.disabled = true; }
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') {
-      toast('Permiso denegado — activalo desde la configuración del navegador', false);
-    } else {
-      await suscribirPush();
-      toast('🔔 Notificaciones push activadas');
-      document.getElementById('notif-push-row').style.display = 'none';
-    }
-  } catch(e) { toast('Error al activar: ' + e.message, false); }
-  if (btn) { btn.textContent = '🔔 Activar notificaciones push'; btn.disabled = false; }
-}
-
-// Actualiza el ícono del botón según el estado actual (compatibilidad)
-async function actualizarEstadoNotif() {
-  const btn = document.getElementById('btn-notif');
-  if (!btn) return;
-  if (!ROLES_PUSH.includes(currentUser?.rol)) { btn.style.display='none'; return; }
-  btn.style.display = '';
-  actualizarPushRow();
-}
-
-// El usuario tocó el botón — ahora abre el centro, esta función queda como fallback
-async function activarNotificaciones() { toggleNotifCenter(); }
-
-// Polling de notificaciones cada 30s
-var _notifInterval = null;
-function startNotifPolling() {
-  cargarNotificaciones();
-  if (_notifInterval) clearInterval(_notifInterval);
-  _notifInterval = setInterval(cargarNotificaciones, 30000);
-}
-
-
-
-async function suscribirPush() {
-  if (!ROLES_PUSH.includes(currentUser?.rol)) return;
-  const reg = await navigator.serviceWorker.ready;
-  const resp = await apiFetch('GET', '/push/vapid-public');
-  if (!resp?.publicKey) throw new Error('No se pudo obtener la clave del servidor');
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(resp.publicKey)
-  });
-  const subJSON = sub.toJSON();
-  await apiFetch('POST', '/push/suscribir', {
-    endpoint: subJSON.endpoint,
-    keys: { p256dh: subJSON.keys.p256dh, auth: subJSON.keys.auth }
-  });
-}
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(async () => {
-        console.log('SW registrado');
-        // Auto-suscribir solo si ya tiene permiso previo (no pedir prompt automático)
-        if (Notification.permission === 'granted' && ROLES_PUSH.includes(currentUser?.rol)) {
-          try { await suscribirPush(); } catch(e) {}
-        }
-        actualizarEstadoNotif();
-      })
-      .catch(e => console.log('SW error:', e));
-  });
-}
- 
-// ── INSTALAR PWA ──
-let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  if (window.innerWidth <= 900) {
-    const banner = document.getElementById('install-banner');
-    if (banner) banner.style.display = 'flex';
-  }
-});
-window.addEventListener('appinstalled', () => {
-  const banner = document.getElementById('install-banner');
-  if (banner) banner.style.display = 'none';
-  deferredPrompt = null;
-});
-function installPWA() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
-  }
-}
-</script>
- 
-<!-- Banner instalar app -->
-<div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1a2035;color:#fff;padding:14px 20px;z-index:9999;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.3)">
-  <div style="display:flex;align-items:center;gap:12px">
-    <img src="/icon-192.png" style="width:40px;height:40px;border-radius:10px">
-    <div>
-      <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:14px">Hotel Takuá</div>
-      <div style="font-family:'Nunito',sans-serif;font-size:12px;color:#94a3b8">Instalá la app en tu dispositivo</div>
-    </div>
-  </div>
-  <div style="display:flex;gap:8px">
-    <button onclick="document.getElementById('install-banner').style.display='none'"
-      style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-family:'Nunito',sans-serif;cursor:pointer">
-      Ahora no
-    </button>
-    <button onclick="installPWA()"
-      style="background:#00c9b1;border:none;color:#fff;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer">
-      📲 Instalar
-    </button>
-  </div>
-</div>
- 
-<script src="/sidebar.js"></script>
-
-<!-- ══ MODAL SOLICITUD MANTENIMIENTO (admin/recep) ══ -->
-<div id="overlay-sol-mant-idx" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-end;justify-content:center">
-  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -8px 40px rgba(0,0,0,.2);animation:slideUp .22s ease">
-    <div style="display:flex;justify-content:center;padding:10px 0 4px"><div style="width:40px;height:4px;border-radius:2px;background:#e2e8f0"></div></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px">
-      <span style="font-weight:800;font-size:17px">🔧 Solicitar Mantenimiento</span>
-      <button onclick="cerrarModalSolMantIndex()" style="background:#f1f5f9;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;color:#64748b;display:flex;align-items:center;justify-content:center">✕</button>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:0 20px 24px">
-      <p style="font-size:13px;color:#64748b;margin-bottom:14px">Describí el problema o tarea. El equipo de mantenimiento recibirá una alerta.</p>
-      <label style="display:block;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Descripción *</label>
-      <textarea id="idx-sol-mant-desc" rows="4"
-        placeholder="Ej: Pérdida de agua en el baño del pasillo, luz quemada en recepción…"
-        style="resize:vertical;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;font-family:inherit;font-size:14px;outline:none;color:#1a2035;box-sizing:border-box"
-        oninput="this.style.borderColor='#00c9b1'"></textarea>
-      <button id="btn-enviar-sol-mant-idx" onclick="enviarSolMantIndex()"
-        style="margin-top:14px;width:100%;background:#d97706;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer">
-        🔧 Enviar solicitud
-      </button>
-    </div>
-  </div>
-</div>
-<script>
-function abrirModalSolMantIndex() {
-  document.getElementById('idx-sol-mant-desc').value = '';
-  document.getElementById('idx-sol-mant-desc').style.borderColor = '#e2e8f0';
-  const ov = document.getElementById('overlay-sol-mant-idx');
-  ov.style.display = 'flex';
-  setTimeout(() => document.getElementById('idx-sol-mant-desc').focus(), 300);
-}
-function cerrarModalSolMantIndex() {
-  document.getElementById('overlay-sol-mant-idx').style.display = 'none';
-}
-document.getElementById('overlay-sol-mant-idx').addEventListener('click', function(e) {
-  if (e.target === this) cerrarModalSolMantIndex();
-});
-async function enviarSolMantIndex() {
-  const desc = document.getElementById('idx-sol-mant-desc').value.trim();
-  if (!desc) {
-    document.getElementById('idx-sol-mant-desc').style.borderColor = '#ef4444';
-    document.getElementById('idx-sol-mant-desc').focus();
-    return;
-  }
-  const btn = document.getElementById('btn-enviar-sol-mant-idx');
-  btn.disabled = true; btn.textContent = 'Enviando…';
-  const r = await apiFetch('POST', '/mantenimiento/solicitudes', { descripcion: desc, origen: 'recepcion' });
-  if (r?.ok) {
-    cerrarModalSolMantIndex();
-    toast('✅ Solicitud enviada a mantenimiento');
-  } else {
-    toast(r?.error || 'Error al enviar', false);
-  }
-  btn.disabled = false; btn.textContent = '🔧 Enviar solicitud';
-}
-</script>
-</body>
-</html>
