@@ -2518,8 +2518,8 @@ async function showCheckinModal(habId) {
   };
 
   // Inicializar fechas
-  document.getElementById('ci-in').value = iso(now);
-  document.getElementById('ci-out').value = iso(tom);
+  fpIn.setDate(now);
+  fpOut.setDate(tom);
 
   // ── Actualizar barra de progreso ──────────────────────────────────
   const updateStepBar = () => {
@@ -2622,8 +2622,8 @@ async function showCheckinModal(habId) {
         document.getElementById('ci-doc').value    = r.documento || '';
         document.getElementById('ci-nombre').value = r.nombre_huesped || '';
         document.getElementById('ci-tel').value    = r.telefono || '';
-        document.getElementById('ci-in').value     = new Date(r.entrada).toISOString().slice(0,16);
-        document.getElementById('ci-out').value    = new Date(r.salida).toISOString().slice(0,16);
+        fpIn.setDate(new Date(r.entrada));
+        fpOut.setDate(new Date(r.salida));
         ciTarifaMonto = r.precio_total / Math.max(1, r.noches||1);
         // Bloquear tarifa en paso 4
         const avisoCont = document.getElementById('ci-tarifa-aviso-wrap');
