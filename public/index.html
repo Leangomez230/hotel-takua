@@ -1228,7 +1228,7 @@ let solInterval = null;
 function startSolPolling() {
   if (solInterval) clearInterval(solInterval);
   solInterval = setInterval(() => {
-    if (currentPage === 'dashboard') loadSolicitudesAll();
+    loadSolicitudesAll();
   }, 30000);
 }
  
