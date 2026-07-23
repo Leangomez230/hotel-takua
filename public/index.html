@@ -1567,8 +1567,9 @@ function showHabModal(hab) {
       noches:      r.noches || 1,
       total:       r.precio_total || 0,
       senia:       resCompleta?.monto_senia || 0,
-      metodo:      resCompleta?.metodo_pago || '—',
-      momento:     r.momento_cobro || 'ahora',
+      // Si metodo_pago es 'Paga al Salir', inferir momento correcto
+      metodo:      (resCompleta?.metodo_pago === 'Paga al Salir') ? '' : (resCompleta?.metodo_pago || '—'),
+      momento:     (resCompleta?.metodo_pago === 'Paga al Salir' || r.momento_cobro === 'salir') ? 'salir' : (r.momento_cobro || 'ahora'),
       personas:    r.cantidad_personas || 1,
       acompanantes:[],
       notas:       r.notas || '',
