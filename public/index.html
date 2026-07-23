@@ -2866,7 +2866,7 @@ async function showCheckinModal(habId) {
         noches:      body.noches,
         total:       body.precio_total,
         senia:       senia0,
-        metodo:      body.metodo_pago,
+        metodo:      ciMomentoCobro==='salir' ? '' : body.metodo_pago,
         momento:     body.momento_cobro,
         personas:    body.cantidad_personas,
         acompanantes:body.acompanantes||[],
@@ -3581,18 +3581,19 @@ function imprimirCheckin(datos) {
   <div class="total-box">
     <div class="total-row"><span>Total estadía</span><span style="font-weight:700">${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(datos.total||0)}</span></div>
     ${datos.senia > 0 ? `<div class="total-row"><span>Seña cobrada</span><span style="color:#16a34a;font-weight:700">- ${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(datos.senia)}</span></div>` : ''}
-    <div class="total-row"><span>Método de pago</span><span style="font-weight:700">${datos.metodo||'—'}</span></div>
     <div class="total-row"><span>Momento de cobro</span>
       <span><span class="momento-badge ${datos.momento==='ahora'?'momento-ahora':'momento-salir'}">${datos.momento==='ahora'?'✅ Pagó al ingresar':'🕐 Paga al salir'}</span></span>
     </div>
+    ${datos.momento==='ahora' ? `
+    <div class="total-row"><span>Método de pago</span><span style="font-weight:700">${datos.metodo||'—'}</span></div>
     <div class="total-row big">
       <span>Monto cobrado</span>
-      <span>
-        ${datos.momento==='ahora'
-          ? new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(Math.max(0,(datos.total||0)-(datos.senia||0)))
-          : '<span class="monto-blank"></span>'}
-      </span>
-    </div>
+      <span>${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(Math.max(0,(datos.total||0)-(datos.senia||0)))}</span>
+    </div>` : `
+    <div class="total-row big">
+      <span>Monto cobrado (a definir al salir)</span>
+      <span class="monto-blank"></span>
+    </div>`}
   </div>
 
   <!-- TÉRMINOS Y CONDICIONES -->
