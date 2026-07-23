@@ -504,6 +504,7 @@ let isMucama   = currentUser?.rol === 'mucama';
 let isAdminUser = currentUser?.rol === 'admin';
 let currentPage = 'dashboard';
 let habitaciones = [];
+let lastSolCount = -1; // contador de solicitudes pendientes para detectar nuevas (sonido/notificación)
 let cart = [];
 let currentAla = 'todas';
 let roomCols = 0;
