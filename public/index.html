@@ -2810,11 +2810,14 @@ async function showCheckinModal(habId) {
     if (metWrap) metWrap.style.display = modo==='ahora' ? 'block' : 'none';
     recalc();
   };
-  document.getElementById('ci-cobro-ahora').addEventListener('click', () => selCobro('ahora'));
-  document.getElementById('ci-cobro-salir').addEventListener('click', () => selCobro('salir'));
-  document.getElementById('ci-mixto').addEventListener('change', function() {
-    document.getElementById('ci-mixto-wrap').style.display = this.checked ? 'block' : 'none';
-  });
+  // Listeners paso 5 — con setTimeout para asegurar DOM listo
+  setTimeout(() => {
+    document.getElementById('ci-cobro-ahora')?.addEventListener('click', () => selCobro('ahora'));
+    document.getElementById('ci-cobro-salir')?.addEventListener('click', () => selCobro('salir'));
+    document.getElementById('ci-mixto')?.addEventListener('change', function() {
+      document.getElementById('ci-mixto-wrap').style.display = this.checked ? 'block' : 'none';
+    });
+  }, 50);
 
   // ── CONFIRMAR CHECK-IN ────────────────────────────────────────────
   const doCheckin = async () => {
@@ -2866,7 +2869,7 @@ async function showCheckinModal(habId) {
         noches:      body.noches,
         total:       body.precio_total,
         senia:       senia0,
-        metodo:      ciMomentoCobro==='salir' ? '' : body.metodo_pago,
+        metodo:      body.momento_cobro==='salir' ? '' : body.metodo_pago,
         momento:     body.momento_cobro,
         personas:    body.cantidad_personas,
         acompanantes:body.acompanantes||[],
