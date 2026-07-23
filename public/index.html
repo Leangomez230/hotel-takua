@@ -3594,9 +3594,10 @@ function imprimirCheckin(datos) {
       <span>Monto cobrado</span>
       <span>${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(Math.max(0,(datos.total||0)-(datos.senia||0)))}</span>
     </div>` : `
+    <div class="total-row"><span>Método de pago</span><span class="monto-blank" style="min-width:180px"></span></div>
     <div class="total-row big">
-      <span>Monto cobrado (a definir al salir)</span>
-      <span class="monto-blank"></span>
+      <span>Monto a cobrar</span>
+      <span>${new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(Math.max(0,(datos.total||0)-(datos.senia||0)))}</span>
     </div>`}
   </div>
 
