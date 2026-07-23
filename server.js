@@ -1488,7 +1488,7 @@ app.post('/api/huesped/login', async (req, res) => {
       return res.status(403).json({ error: 'No hay huésped activo en esta habitación' });
     const reserva = await db.getOne("SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [habitacion_id]);
     const token = jwt.sign({ hab_id: habitacion_id, rol: 'huesped' }, JWT_SECRET, { expiresIn: '24h' });
-    res.json({ token, habitacion: { id: hab.id, numero: hab.numero, tipo: hab.tipo, nombre: hab.nombre, ala: hab.ala }, reserva: reserva || null });
+    res.json({ token, habitacion: { id: hab.id, numero: hab.numero, tipo: hab.tipo, nombre: hab.nombre, ala: hab.ala, password_puerta: hab.password_puerta }, reserva: reserva || null });
   } catch(e) { console.error('Huesped login:', e); res.status(500).json({ error: e.message }); }
 });
 
@@ -1505,13 +1505,29 @@ function authHuesped(req, res, next) {
 
 app.get('/api/huesped/info', authHuesped, async (req, res) => {
   try {
-    const hab = await db.getOne('SELECT id,numero,tipo,nombre,ala,status FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
+    const hab = await db.getOne('SELECT id,numero,tipo,nombre,ala,status,password_puerta FROM habitaciones WHERE id=$1', [req.huesped.hab_id]);
     const reserva = await db.getOne("SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [req.huesped.hab_id]);
     const productos = await db.getAll("SELECT id,nombre,categoria,precio,stock FROM productos WHERE activo=1 AND stock>0 ORDER BY categoria,nombre");
     const solicitudes = reserva
       ? await db.getAll("SELECT * FROM solicitudes_huesped WHERE habitacion_id=$1 AND reserva_id=$2 ORDER BY created_at DESC LIMIT 5", [req.huesped.hab_id, reserva.id])
       : [];
     res.json({ habitacion: hab, reserva, productos, solicitudes });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET cargos de restaurante de la reserva activa del huésped autenticado (portal huesped.html)
+app.get('/api/huesped/cargos-restaurante', authHuesped, async (req, res) => {
+  try {
+    const reserva = await db.getOne(
+      "SELECT id FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1",
+      [req.huesped.hab_id]
+    );
+    if (!reserva) return res.json([]);
+    const cargos = await db.getAll(
+      'SELECT * FROM cargos_restaurante WHERE reserva_id=$1 ORDER BY created_at DESC',
+      [reserva.id]
+    );
+    res.json(cargos);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
