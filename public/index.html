@@ -1219,7 +1219,7 @@ function loadSolicitudes(pendientes) {
     btn.addEventListener('click', async () => {
       await apiFetch('PUT', `/solicitudes/${btn.dataset.solId}`, { estado: 'atendida' });
       toast('Solicitud marcada como atendida');
-      loadSolicitudes();
+      loadSolicitudesAll();
     });
   });
 }
