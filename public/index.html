@@ -1191,8 +1191,8 @@ function afterMapInsert(showLog=false) {
   bindZoom();
   if (showLog) document.getElementById('btn-log')?.addEventListener('click', loadLog);
   renderMap(document.getElementById('room-map'), habitaciones);
-  // Solicitudes pendientes (solo admin/recep)
-  if (!isMucama) loadSolicitudes();
+  // Solicitudes pendientes: refrescar de verdad (fetch + badges 🔔 en el mapa + panel)
+  loadSolicitudesAll();
 }
  
 function loadSolicitudes(pendientes) {
