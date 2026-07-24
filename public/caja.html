@@ -1808,7 +1808,7 @@ function imprimirHistorial() {
     document.body.appendChild(frame);
   }
   frame.srcdoc = html;
-  frame.onload = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch(e) {} };
+  frame.onload = () => { esperarFuentesYImprimir(frame); };
 }
 
 function descargarHistorialCSV() {
@@ -1850,7 +1850,25 @@ function imprimirReporte(tipo, desde, hasta) {
     document.body.appendChild(frame);
   }
   frame.srcdoc = html;
-  frame.onload = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch(e) {} };
+  frame.onload = () => { esperarFuentesYImprimir(frame); };
+}
+
+// Espera a que carguen las fuentes de Google Fonts (Montserrat/Dancing Script) antes
+// de disparar la impresión — si se imprime antes de tiempo, el navegador usa la
+// tipografía de reemplazo y "Serrano" sale en sans-serif en vez de manuscrita.
+function esperarFuentesYImprimir(frameOrWin, isWindow=false) {
+  try {
+    const win = isWindow ? frameOrWin : frameOrWin.contentWindow;
+    const doc = win.document;
+    const disparar = () => { try { win.focus(); win.print(); } catch(e) {} };
+    if (doc.fonts && doc.fonts.ready) {
+      doc.fonts.ready.then(disparar).catch(disparar);
+      // Red de seguridad por si "ready" nunca resuelve
+      setTimeout(disparar, 1200);
+    } else {
+      setTimeout(disparar, 400);
+    }
+  } catch(e) {}
 }
 
 function exportarPDFReporte(tipo, desde, hasta) {
@@ -1862,7 +1880,7 @@ function exportarPDFReporte(tipo, desde, hasta) {
   win.document.write(html);
   win.document.close();
   win.onload = () => {
-    win.print();
+    esperarFuentesYImprimir(win, true);
     // El usuario elige "Guardar como PDF" en el diálogo de impresión
   };
 }
