@@ -3640,10 +3640,38 @@ function imprimirCheckin(datos) {
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  setTimeout(() => win.print(), 600);
+  const id = 'checkin-print-frame';
+  let frame = document.getElementById(id);
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.id = id;
+    frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none';
+    document.body.appendChild(frame);
+  }
+  frame.srcdoc = html;
+  frame.onload = () => {
+    try {
+      const doc = frame.contentWindow.document;
+      let disparado = false;
+      const disparar = () => {
+        if (disparado) return; // nunca imprimir dos veces
+        disparado = true;
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch(e) {}
+      };
+      if (doc.fonts && doc.fonts.load) {
+        // Forzar la carga explícita de las tipografías de marca antes de imprimir
+        // (si se imprime antes de tiempo, "Serrano" sale en sans-serif en vez de manuscrita)
+        Promise.all([
+          doc.fonts.load('700 28px "Montserrat"'),
+          doc.fonts.load('900 28px "Montserrat"'),
+          doc.fonts.load('700 28px "Dancing Script"')
+        ]).catch(()=>{}).then(() => doc.fonts.ready).then(disparar).catch(disparar);
+      } else {
+        setTimeout(disparar, 500);
+      }
+      setTimeout(disparar, 1800); // red de seguridad única
+    } catch(e) {}
+  };
 }
 
 function initFlatpickrFechas(idIn, idOut, valIn, valOut) {
