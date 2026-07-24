@@ -2355,8 +2355,9 @@ app.get('/api/restaurante/turno/activo', auth, authRestaurante, async (req, res)
   try {
     const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
     if (!turno) return res.json(null);
+    // Se excluye 'Habitación': esa plata todavía no se cobró (se cobra en el check-out).
     const cerradas = await db.getAll(
-      "SELECT * FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 ORDER BY cerrada_at DESC",
+      "SELECT * FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND cerrada_at >= $1 ORDER BY cerrada_at DESC",
       [turno.abierto_at]
     );
     for (const c of cerradas) {
@@ -2374,8 +2375,9 @@ app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res)
   try {
     const turno = await db.getOne('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 1');
     if (!turno) return res.json(null);
+    // Se excluye 'Habitación': esa plata todavía no se cobró (se cobra en el check-out).
     const cerradas = await db.getAll(
-      "SELECT c.*, u.nombre as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
+      "SELECT c.*, u.nombre as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.metodo_pago != 'Habitación' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
       [turno.abierto_at]
     );
     const retiros = await db.getAll(
@@ -2421,9 +2423,11 @@ app.post('/api/restaurante/turno/cerrar', auth, authRestaurante, async (req, res
     const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
     if (!turno) return res.status(400).json({ error: 'No hay turno abierto' });
     await db.query("UPDATE turnos_restaurante SET estado='cerrado',cerrado_at=NOW() WHERE id=$1", [turno.id]);
-    // Resumen final
+    // Resumen final — se excluye 'Habitación' porque esa plata todavía no se cobró
+    // (queda pendiente en la reserva y se cobra recién en el check-out; contarla acá
+    // duplicaría el ingreso cuando después se registre el pago real en Habitaciones).
     const cerradas = await db.getAll(
-      "SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cantidad FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 GROUP BY metodo_pago",
+      "SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cantidad FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND cerrada_at >= $1 GROUP BY metodo_pago",
       [turno.abierto_at]
     );
     const totalCobrado = cerradas.reduce((s,c) => s+parseFloat(c.total||0), 0);
@@ -2786,10 +2790,12 @@ app.get('/api/caja-global/resumen-dia', auth, adminOnly, async (req, res) => {
     const hoy = req.query.fecha || new Date().toISOString().split('T')[0];
 
     // Restaurante — comandas cerradas hoy (usando fecha en zona Argentina)
+    // Se excluye 'Habitación': esa plata todavía no se cobró, se cobra recién en el
+    // check-out y ya se contabiliza ahí — incluirla acá también la duplicaría.
     const cmdHoy = await db.getAll(
       `SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant
        FROM comandas
-       WHERE estado='cerrada'
+       WHERE estado='cerrada' AND metodo_pago != 'Habitación'
        AND DATE(cerrada_at AT TIME ZONE 'America/Argentina/Buenos_Aires') = $1
        GROUP BY metodo_pago`,
       [hoy]
@@ -2825,12 +2831,15 @@ app.get('/api/caja-global/historial', auth, adminOnly, async (req, res) => {
     const h = hasta  || new Date().toISOString().split('T')[0];
 
     // Comandas restaurante (no editable desde el historial — venta con ítems propios)
+    // Se excluye 'Habitación': esa plata todavía no se cobró, se cobra recién en el
+    // check-out (y ahí ya queda registrada del lado Habitaciones) — mostrarla acá
+    // duplicaría el ingreso.
     const cmds = await db.getAll(
       `SELECT 'restaurante' as fuente, 'ingreso' as tipo, total_final as monto,
               metodo_pago, concat('Mesa ', mesa_id) as concepto,
               cajero_nombre as usuario, cerrada_at as fecha,
               id as comanda_id, mesa_id, id as reg_id, 'comanda' as origen
-       FROM comandas WHERE estado='cerrada' AND cerrada_at BETWEEN $1 AND $2
+       FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND cerrada_at BETWEEN $1 AND $2
        ORDER BY cerrada_at DESC LIMIT $3`,
       [d+' 00:00:00', h+' 23:59:59', lim]
     );
@@ -2926,7 +2935,9 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
     const TZ = `AT TIME ZONE 'America/Argentina/Buenos_Aires'`;
 
     const [cmdTotal, retTotal, habIngresos, habEgresos] = await Promise.all([
-      db.getAll(`SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
+      // Se excluye 'Habitación': esa plata se cobra recién en el check-out y ya se
+      // contabiliza ahí — incluirla acá también la duplicaría.
+      db.getAll(`SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
       db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM caja_retiros WHERE DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
       db.getAll(`SELECT metodo_pago, SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
       db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='egreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
@@ -2942,17 +2953,17 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
     const porDia = await db.getAll(`
       SELECT dia, SUM(total) as total, fuente FROM (
         SELECT DATE(cerrada_at ${TZ})::text as dia, SUM(total_final) as total, 'restaurante' as fuente
-        FROM comandas WHERE estado='cerrada' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(cerrada_at ${TZ})
+        FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(cerrada_at ${TZ})
         UNION ALL
         SELECT DATE(created_at ${TZ})::text, SUM(monto), 'habitaciones'
         FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY DATE(created_at ${TZ})
       ) t GROUP BY dia, fuente ORDER BY dia DESC
     `, [desde,hasta]);
 
-    // Detalle de turnos en el período
+    // Detalle de turnos en el período (se excluye 'Habitación' del total cobrado — no es plata en caja)
     const turnosRest = await db.getAll(`
       SELECT t.*, 
-        COALESCE((SELECT SUM(c.total_final) FROM comandas c WHERE c.estado='cerrada' AND c.cerrada_at >= t.abierto_at AND (t.cerrado_at IS NULL OR c.cerrada_at <= t.cerrado_at)),0) as total_cobrado,
+        COALESCE((SELECT SUM(c.total_final) FROM comandas c WHERE c.estado='cerrada' AND c.metodo_pago != 'Habitación' AND c.cerrada_at >= t.abierto_at AND (t.cerrado_at IS NULL OR c.cerrada_at <= t.cerrado_at)),0) as total_cobrado,
         COALESCE((SELECT SUM(r.monto) FROM caja_retiros r WHERE r.turno_id=t.id),0) as retiros,
         COALESCE((SELECT COUNT(*) FROM comandas c WHERE c.estado='cerrada' AND c.cerrada_at >= t.abierto_at AND (t.cerrado_at IS NULL OR c.cerrada_at <= t.cerrado_at)),0) as cant_comandas
       FROM turnos_restaurante t
@@ -2986,8 +2997,9 @@ app.get('/api/caja-global/turnos', auth, adminOnly, async (req, res) => {
       const turnos = await db.getAll('SELECT * FROM turnos_restaurante ORDER BY id DESC LIMIT 50');
       // Calcular total cobrado y retiros por turno
       for (const t of turnos) {
+        // Se excluye 'Habitación': esa plata todavía no se cobró (se cobra en el check-out).
         const cobrado = await db.getOne(
-          "SELECT COALESCE(SUM(total_final),0) as total FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1 AND ($2::timestamp IS NULL OR cerrada_at <= $2)",
+          "SELECT COALESCE(SUM(total_final),0) as total FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND cerrada_at >= $1 AND ($2::timestamp IS NULL OR cerrada_at <= $2)",
           [t.abierto_at, t.cerrado_at||null]
         );
         const retiros = await db.getOne(
@@ -3026,8 +3038,10 @@ app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
     if (fuente === 'restaurante') {
       const turno = await db.getOne('SELECT * FROM turnos_restaurante WHERE id=$1', [id]);
       if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
+      // Se excluye 'Habitación': esa plata todavía no se cobró (se cobra en el check-out),
+      // no corresponde a caja de este turno.
       const cerradas = await db.getAll(
-        `SELECT * FROM comandas WHERE estado='cerrada' AND cerrada_at >= $1
+        `SELECT * FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND cerrada_at >= $1
          AND ($2::timestamp IS NULL OR cerrada_at <= $2) ORDER BY cerrada_at DESC`,
         [turno.abierto_at, turno.cerrado_at||null]
       );
@@ -3055,7 +3069,7 @@ app.get('/api/caja-global/turno-detalle', auth, adminOnly, async (req, res) => {
          FROM comanda_items ci
          JOIN comandas c ON ci.comanda_id = c.id
          LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
-         WHERE c.estado='cerrada' AND c.cerrada_at >= $1
+         WHERE c.estado='cerrada' AND c.metodo_pago != 'Habitación' AND c.cerrada_at >= $1
          AND ($2::timestamp IS NULL OR c.cerrada_at <= $2)
          GROUP BY ci.nombre, COALESCE(m.categoria, 'Sin categoría')
          ORDER BY total DESC`,
