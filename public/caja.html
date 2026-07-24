@@ -811,8 +811,18 @@ function renderHistorialFiltrado(el) {
       <div class="sc-head" style="flex-direction:column;align-items:stretch;gap:12px">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <span class="card-title">Últimos 30 días (${filtrados.length} de ${movs.length})</span>
-          <span style="font-size:12px;color:#94a3b8">Tocá una comanda para ver el detalle</span>
+          <div style="display:flex;gap:8px">
+            <button onclick="imprimirHistorial()"
+              style="padding:7px 12px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;
+              color:#475569;font-family:Nunito,sans-serif;font-size:12px;font-weight:700;cursor:pointer;
+              display:flex;align-items:center;gap:5px">🖨️ Imprimir</button>
+            <button onclick="descargarHistorialCSV()"
+              style="padding:7px 12px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;
+              color:#475569;font-family:Nunito,sans-serif;font-size:12px;font-weight:700;cursor:pointer;
+              display:flex;align-items:center;gap:5px">⬇️ CSV</button>
+          </div>
         </div>
+        <span style="font-size:12px;color:#94a3b8">Tocá una comanda para ver el detalle</span>
         <!-- Filtros -->
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="setHistFuente('todos', this.closest('.section-card').parentElement)"
@@ -1693,6 +1703,120 @@ ${manuales.length ? `
   <span>Reporte generado: ${ahora}</span>
 </div>
 </body></html>`;
+}
+
+// ── IMPRIMIR / DESCARGAR HISTORIAL (respeta el filtro activo: todos/hab/rest) ──
+function _histFiltradosActuales() {
+  return _histFuente === 'todos' ? _histMovs : _histMovs.filter(m => m.fuente === _histFuente);
+}
+function _histFuenteLabel() {
+  return _histFuente === 'restaurante' ? 'Restaurante' : _histFuente === 'habitaciones' ? 'Habitaciones' : 'Todos';
+}
+
+function generarHTMLHistorial() {
+  const filtrados = _histFiltradosActuales();
+  if (!filtrados.length) return null;
+  const ingresos = filtrados.filter(m=>m.tipo!=='egreso').reduce((s,m)=>s+Number(m.monto||0),0);
+  const egresos  = filtrados.filter(m=>m.tipo==='egreso').reduce((s,m)=>s+Number(m.monto||0),0);
+  const neto     = ingresos - egresos;
+  const ahora    = new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  const filas = filtrados.map(m => {
+    const esEgreso = m.tipo === 'egreso';
+    return `<tr>
+      <td>${fmtDate(m.fecha)}</td>
+      <td>${m.fuente==='restaurante'?'🍽️ Restaurante':'🛏️ Habitaciones'}</td>
+      <td>${(m.concepto||'—').replace(/</g,'&lt;')}</td>
+      <td>${METODO_ICONS[m.metodo_pago]||''} ${m.metodo_pago||''}</td>
+      <td>${m.usuario||'—'}</td>
+      <td style="text-align:right" class="${esEgreso?'neg':''}">${esEgreso?'-':'+'} ${fmt(Math.abs(Number(m.monto||0)))}</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<style>
+  @page{size:A4;margin:15mm 12mm}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#111;background:#fff}
+  .header{background:#1a2035;color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:16px}
+  .header h1{font-size:20px;font-weight:800}
+  .header p{font-size:11px;opacity:.7;margin-top:3px}
+  .badge-total{background:#7c3aed;color:#fff;border-radius:8px;padding:12px 16px;
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:16px}
+  .badge-total .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.8}
+  .badge-total .val{font-size:22px;font-weight:900}
+  table.movs{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:6px}
+  table.movs th{background:#f8fafc;padding:6px 7px;text-align:left;font-weight:700;border-bottom:2px solid #e5e7eb}
+  table.movs td{padding:5px 7px;border-bottom:1px solid #f1f5f9}
+  .neg{color:#dc2626}
+  .footer{margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af;
+    display:flex;justify-content:space-between}
+  @media print{.no-print{display:none}}
+</style></head><body>
+
+<div class="header">
+  <h1>🏨 Hotel TK Serrano — Historial de Caja</h1>
+  <p>Filtro: ${_histFuenteLabel()} &nbsp;·&nbsp; ${filtrados.length} movimientos &nbsp;·&nbsp; Generado: ${ahora}</p>
+</div>
+
+<div class="badge-total">
+  <div><div class="lbl">Ingresos</div><div class="val">${fmt(ingresos)}</div></div>
+  <div><div class="lbl">Egresos</div><div class="val">${fmt(egresos)}</div></div>
+  <div><div class="lbl">Neto</div><div class="val">${fmt(neto)}</div></div>
+</div>
+
+<table class="movs">
+  <thead><tr><th>Fecha</th><th>Fuente</th><th>Concepto</th><th>Método</th><th>Usuario</th><th style="text-align:right">Monto</th></tr></thead>
+  <tbody>${filas}</tbody>
+</table>
+
+<div class="footer">
+  <span>Hotel TK Serrano — Sistema de Gestión Hotel Takuá</span>
+  <span>Historial generado: ${ahora}</span>
+</div>
+</body></html>`;
+}
+
+function imprimirHistorial() {
+  const html = generarHTMLHistorial();
+  if (!html) { toast('No hay movimientos para imprimir', false); return; }
+  const id = 'historial-print-frame';
+  let frame = document.getElementById(id);
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.id = id;
+    frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none';
+    document.body.appendChild(frame);
+  }
+  frame.srcdoc = html;
+  frame.onload = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch(e) {} };
+}
+
+function descargarHistorialCSV() {
+  const filtrados = _histFiltradosActuales();
+  if (!filtrados.length) { toast('No hay movimientos para descargar', false); return; }
+  const esc = (v) => `"${String(v??'').replace(/"/g,'""')}"`;
+  const header = ['Fecha','Fuente','Concepto','Método de pago','Usuario','Tipo','Monto'];
+  const filas = filtrados.map(m => [
+    fmtDate(m.fecha),
+    m.fuente==='restaurante' ? 'Restaurante' : 'Habitaciones',
+    m.concepto||'',
+    m.metodo_pago||'',
+    m.usuario||'',
+    m.tipo==='egreso' ? 'Egreso' : 'Ingreso',
+    (m.tipo==='egreso'?-1:1) * Number(m.monto||0)
+  ].map(esc).join(','));
+  const csv = '\uFEFF' + [header.map(esc).join(','), ...filas].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fecha = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `historial-caja_${_histFuente}_${fecha}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function imprimirReporte(tipo, desde, hasta) {
