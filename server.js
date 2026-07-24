@@ -2427,13 +2427,13 @@ app.post('/api/restaurante/turno/retiro', auth, authRestaurante, async (req, res
     if (!monto || monto <= 0) return res.status(400).json({ error: 'Monto inválido' });
     const turno = await db.getOne("SELECT * FROM turnos_restaurante WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
     if (!turno) return res.status(400).json({ error: 'No hay turno abierto' });
-    await db.query(
+    const r = await db.query(
       `INSERT INTO caja_retiros (turno_id, monto, motivo, usuario_id, usuario_nombre)
-       VALUES ($1,$2,$3,$4,$5)`,
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
       [turno.id, monto, motivo||'Sin motivo', req.user.id, req.user.nombre]
     );
     await logAction(req.user.id, req.user.nombre, 'RETIRO_CAJA', `$${monto} — ${motivo||'Sin motivo'}`);
-    res.json({ ok: true });
+    res.json({ ok: true, retiro: r.rows[0], cajero_nombre: turno.cajero_nombre });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
