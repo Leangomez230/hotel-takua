@@ -406,13 +406,17 @@ app.post('/api/checkin', auth, adminRecepMucama, async (req, res) => {
       }
     } else {
       // ── Checkin directo sin reserva previa ───────────────
+      // saldo_pendiente: si paga ahora, 0 (se cobra completo, se registra el ingreso abajo);
+      // si paga al salir, queda pendiente el total completo (nada se cobró todavía).
+      const saldoInicialDirecto = (momento_cobro||'ahora') === 'ahora' ? 0 : (precio_total||0);
       const reserva = await db.query(
         `INSERT INTO reservas (habitacion_id,huesped_id,nombre_huesped,documento,entrada,salida,noches,
           precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente,cantidad_personas,momento_cobro,acompanantes)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activa',0,0,$11,$12,$13) RETURNING id`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activa',0,$14,$11,$12,$13) RETURNING id`,
         [habitacion_id, huespedId, nombre, documento||'', entrada, salida,
          noches||1, precio_total||0, metodo_pago||'Efectivo', notas||'',
-         cantidad_personas||1, momento_cobro||'ahora', JSON.stringify(acompanantes||[])]
+         cantidad_personas||1, momento_cobro||'ahora', JSON.stringify(acompanantes||[]),
+         saldoInicialDirecto]
       );
       finalReservaId = reserva.rows[0].id;
       // Registrar cobro total en caja solo si paga ahora
@@ -769,6 +773,20 @@ app.get('/api/habitaciones/:id/reservas', auth, adminRecepMucama, async (req, re
 });
 
 // Obtener reserva vigente de una habitación (para precarga en checkin)
+// Reserva ACTIVA (huésped en casa ahora) de una habitación — usado para check-out.
+// A diferencia de /reserva (que también trae 'futura', pensado para precargar el check-in),
+// este SOLO devuelve estado='activa', para no confundir al huésped actual con una reserva futura.
+app.get('/api/habitaciones/:id/reserva-activa', auth, adminRecepMucama, async (req, res) => {
+  try {
+    const reserva = await db.getOne(
+      `SELECT * FROM reservas WHERE habitacion_id=$1
+       AND estado='activa' ORDER BY id DESC LIMIT 1`,
+      [req.params.id]
+    );
+    res.json(reserva || null);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/habitaciones/:id/reserva', auth, adminRecepMucama, async (req, res) => {
   try {
     const reserva = await db.getOne(
