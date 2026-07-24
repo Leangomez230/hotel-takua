@@ -787,6 +787,20 @@ app.get('/api/habitaciones/:id/reserva-activa', auth, adminRecepMucama, async (r
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Reserva ACTIVA (huésped en casa ahora) de una habitación — usado para check-out.
+// A diferencia de /reserva (que también trae 'futura', pensado para precargar el check-in),
+// este SOLO devuelve estado='activa', para no confundir al huésped actual con una reserva futura.
+app.get('/api/habitaciones/:id/reserva-activa', auth, adminRecepMucama, async (req, res) => {
+  try {
+    const reserva = await db.getOne(
+      `SELECT * FROM reservas WHERE habitacion_id=$1
+       AND estado='activa' ORDER BY id DESC LIMIT 1`,
+      [req.params.id]
+    );
+    res.json(reserva || null);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/habitaciones/:id/reserva', auth, adminRecepMucama, async (req, res) => {
   try {
     const reserva = await db.getOne(
