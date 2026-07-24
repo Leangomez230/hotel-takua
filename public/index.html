@@ -1554,7 +1554,7 @@ function showHabModal(hab) {
     const r = hab.reserva_activa;
     if (!r) { toast('No hay datos de reserva disponibles', false); return; }
     // Buscar datos completos de la reserva
-    const resCompleta = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
+    const resCompleta = await apiFetch('GET', `/habitaciones/${hab.id}/reserva-activa`);
     imprimirCheckin({
       hab:         hab.numero,
       tipoHab:     hab.tipo?.toUpperCase?.() || '',
@@ -1617,7 +1617,7 @@ function showHabModal(hab) {
       if (!monto || monto <= 0) { toast('Ingresá un monto válido', false); return; }
       const metodo = document.getElementById('pp-metodo').value;
       // Buscar reserva activa
-      const res = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
+      const res = await apiFetch('GET', `/habitaciones/${hab.id}/reserva-activa`);
       if (!res?.id) { toast('No se encontró la reserva', false); return; }
       const result = await apiFetch('POST', `/reservas/${res.id}/pago-parcial`, { monto, metodo_pago: metodo });
       if (result?.ok) {
@@ -2115,7 +2115,7 @@ function showCambiarHabModal(hab) {
 // CHECK-OUT
 // ══════════════════════════════════════
 async function showCheckoutModal(hab) {
-  const reserva = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
+  const reserva = await apiFetch('GET', `/habitaciones/${hab.id}/reserva-activa`);
   const saldo   = Number(reserva?.saldo_pendiente || 0);
   const nombre  = reserva?.nombre_huesped || hab.nota || '—';
   const metodo0 = reserva?.metodo_pago || 'Efectivo';
