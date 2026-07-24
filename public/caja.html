@@ -1440,8 +1440,13 @@ async function eliminarMovimientoManual(id) {
 // ── REPORTES ──────────────────────────────────────────
 
 // ── IDENTIDAD VISUAL DE MARCA (usada en todos los informes descargables de Caja) ──
+// Se usa <link> en vez de @import: el navegador lo detecta y empieza a descargar
+// la fuente más temprano (@import dentro de un <style> a veces se registra tarde
+// y la impresión se dispara antes de que la tipografía esté lista).
+const BRAND_FONTS_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">`;
 const BRAND_HEADER_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Dancing+Script:wght@700&display=swap');
   .brand-header{margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #1a2035}
   .brand-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px}
   .brand-tk{font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:28px;color:#C6862B;letter-spacing:.5px}
@@ -1576,6 +1581,7 @@ function generarHTMLReporte(tipo, desde, hasta) {
   const ahora = new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+${BRAND_FONTS_LINK}
 <style>
   @page{size:A4;margin:15mm 12mm}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -1755,6 +1761,7 @@ function generarHTMLHistorial() {
   }).join('');
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+${BRAND_FONTS_LINK}
 <style>
   @page{size:A4;margin:15mm 12mm}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -1860,14 +1867,25 @@ function esperarFuentesYImprimir(frameOrWin, isWindow=false) {
   try {
     const win = isWindow ? frameOrWin : frameOrWin.contentWindow;
     const doc = win.document;
-    const disparar = () => { try { win.focus(); win.print(); } catch(e) {} };
-    if (doc.fonts && doc.fonts.ready) {
-      doc.fonts.ready.then(disparar).catch(disparar);
-      // Red de seguridad por si "ready" nunca resuelve
-      setTimeout(disparar, 1200);
+    let disparado = false;
+    const disparar = () => {
+      if (disparado) return; // nunca imprimir dos veces (rompía el diálogo "Cancelar")
+      disparado = true;
+      try { win.focus(); win.print(); } catch(e) {}
+    };
+    if (doc.fonts && doc.fonts.load) {
+      // Forzar la carga explícita (con @import a veces el navegador todavía no
+      // "pidió" la tipografía cuando se consulta document.fonts.ready)
+      Promise.all([
+        doc.fonts.load('800 28px "Montserrat"'),
+        doc.fonts.load('600 20px "Montserrat"'),
+        doc.fonts.load('700 32px "Dancing Script"')
+      ]).catch(()=>{}).then(() => doc.fonts.ready).then(disparar).catch(disparar);
     } else {
-      setTimeout(disparar, 400);
+      setTimeout(disparar, 500);
     }
+    // Red de seguridad única: si por algún motivo nunca dispara, imprime igual
+    setTimeout(disparar, 1800);
   } catch(e) {}
 }
 
