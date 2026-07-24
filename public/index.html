@@ -2116,7 +2116,7 @@ function showCambiarHabModal(hab) {
 // CHECK-OUT
 // ══════════════════════════════════════
 async function showCheckoutModal(hab) {
-  const reserva = await apiFetch('GET', `/habitaciones/${hab.id}/reserva`);
+  const reserva = await apiFetch('GET', `/habitaciones/${hab.id}/reserva-activa`);
   const saldo   = Number(reserva?.saldo_pendiente || 0);
   const nombre  = reserva?.nombre_huesped || hab.nota || '—';
   const metodo0 = reserva?.metodo_pago || 'Efectivo';
@@ -2248,11 +2248,52 @@ async function showCheckoutModal(hab) {
     const r = await apiFetch('POST', `/checkout/${hab.id}`, body);
     if (r?.ok) {
       const cobrado = Number(r.cobrado||0);
-      toast(cobrado > 0 ? `Check-out realizado · Cobrado ${fmt(cobrado)}` : 'Check-out realizado');
-      closeModal();
       await refreshHabs();
+      mostrarExitoCheckout({
+        hab: hab.numero,
+        ala: hab.ala,
+        nombre,
+        entrada: reserva?.entrada,
+        salida: reserva?.salida,
+        noches: reserva?.noches,
+        total: total0,
+        senia: senia0,
+        cargosRest,
+        totalCargosRest,
+        extra,
+        conceptoExtra: concepto,
+        metodo: extra > 0 ? document.getElementById('co-pago-extra')?.value : document.getElementById('co-pago')?.value,
+        totalCobrado: cobrado,
+      });
     } else toast(r?.error||'Error en check-out', false);
   });
+}
+
+// ── Paso final: pantalla de éxito dentro del modal, con el comprobante listo para imprimir ──
+function mostrarExitoCheckout(datos) {
+  const box = document.getElementById('modal-box');
+  if (!box) return;
+  box.innerHTML = `
+    <div style="font-family:'Nunito',sans-serif;text-align:center;padding:12px 4px">
+      <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#0f4c75,#1b6ca8);
+        display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 18px;color:#fff">✓</div>
+      <div style="font-size:20px;font-weight:800;color:#1a2035;margin-bottom:4px">Check-out realizado</div>
+      <div style="font-size:14px;color:#64748b;margin-bottom:22px">
+        Hab. ${datos.hab} — ${datos.nombre}${datos.totalCobrado>0?` · Cobrado ${fmt(datos.totalCobrado)}`:''}
+      </div>
+      <button id="co-exito-imprimir" style="width:100%;background:linear-gradient(135deg,#0f4c75,#1b6ca8);
+        border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;
+        font-family:'Nunito',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px">
+        🖨️ Imprimir Comprobante
+      </button>
+      <button id="co-exito-cerrar" style="width:100%;background:#f1f5f9;border:1.5px solid #e2e8f0;
+        border-radius:12px;padding:13px;font-size:14px;font-weight:700;color:#64748b;cursor:pointer;
+        font-family:'Nunito',sans-serif">
+        Cerrar
+      </button>
+    </div>`;
+  document.getElementById('co-exito-imprimir')?.addEventListener('click', () => imprimirCheckout(datos));
+  document.getElementById('co-exito-cerrar')?.addEventListener('click', closeModal);
 }
 
 // ══════════════════════════════════════
@@ -3488,6 +3529,178 @@ function buildAcompBlock(containerId, btnId) {
 // QR MODAL
 // ══════════════════════════════════════
 // ── Inicializar Flatpickr en modal de reservas/edición ──────────────
+// ══════════════════════════════════════
+// IMPRIMIR CHECK-OUT
+// ══════════════════════════════════════
+function imprimirCheckout(datos) {
+  // datos: { hab, ala, nombre, entrada, salida, noches, total, senia,
+  //          cargosRest, totalCargosRest, extra, conceptoExtra, metodo, totalCobrado }
+  const fmtDt = dt => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
+           d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  };
+  const money = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0}).format(n||0);
+  const ahora = new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const cargosRest = datos.cargosRest||[];
+
+  const cargosRowsHTML = cargosRest.length ? `
+  <div class="section">
+    <div class="section-title">🍽️ Consumos de restaurante cargados a la habitación</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:5px 6px;border-bottom:2px solid #e2e8f0;color:#94a3b8;text-transform:uppercase;font-size:10px">Descripción</th>
+          <th style="text-align:left;padding:5px 6px;border-bottom:2px solid #e2e8f0;color:#94a3b8;text-transform:uppercase;font-size:10px">Fecha</th>
+          <th style="text-align:right;padding:5px 6px;border-bottom:2px solid #e2e8f0;color:#94a3b8;text-transform:uppercase;font-size:10px">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${cargosRest.map(c => `
+        <tr>
+          <td style="padding:5px 6px;border-bottom:1px solid #f1f5f9">${(c.descripcion||'').replace(/</g,'&lt;')}</td>
+          <td style="padding:5px 6px;border-bottom:1px solid #f1f5f9;color:#64748b;white-space:nowrap">${new Date(c.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="padding:5px 6px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700">${money(c.monto)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:800;font-size:13px;color:#0f4c75">
+      <span>Total restaurante</span><span>${money(datos.totalCargosRest)}</span>
+    </div>
+  </div>` : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Check-out Hab. ${datos.hab} — ${datos.nombre}</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family: 'Arial', sans-serif; font-size:13px; color:#1a2035; background:#fff; padding:32px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1a2035; padding-bottom:14px; margin-bottom:20px; }
+  .hotel-name { display:flex; align-items:baseline; gap:5px; }
+  .hn-takua   { font-family:'Montserrat',sans-serif; font-size:24px; font-weight:900; color:#C6862B; letter-spacing:1px; }
+  .hn-dot     { font-family:'Montserrat',sans-serif; font-size:20px; font-weight:700; color:#333F2C; }
+  .hn-hotel   { font-family:'Montserrat',sans-serif; font-size:18px; font-weight:700; color:#333F2C; }
+  .hn-serrano { font-family:'Dancing Script',cursive; font-size:28px; font-weight:700; color:#C6862B; }
+  .hotel-sub  { font-size:11px; color:#64748b; margin-top:3px; }
+  .checkout-title { font-size:16px; font-weight:800; color:#dc2626; text-align:right; }
+  .checkout-date  { font-size:11px; color:#64748b; text-align:right; margin-top:3px; }
+  .section { margin-bottom:18px; }
+  .section-title { font-size:11px; font-weight:800; color:#00c9b1; text-transform:uppercase; letter-spacing:.08em; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:10px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px 16px; }
+  .field label { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; display:block; margin-bottom:3px; }
+  .field .val { font-size:13px; font-weight:700; color:#1a2035; border-bottom:1px solid #e2e8f0; padding-bottom:4px; min-height:22px; }
+  .hab-badge { display:inline-block; background:#1a2035; color:#fff; border-radius:8px; padding:6px 16px; font-size:18px; font-weight:900; letter-spacing:2px; margin-bottom:6px; }
+  .total-box { background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:14px 18px; margin-bottom:18px; }
+  .total-row { display:flex; justify-content:space-between; font-size:13px; color:#64748b; margin-bottom:5px; }
+  .total-row.big { font-size:16px; font-weight:900; color:#1a2035; border-top:1.5px solid #e2e8f0; padding-top:8px; margin-top:4px; }
+  .firma-section { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:26px; }
+  .firma-box { border-top:1.5px solid #1a2035; padding-top:6px; text-align:center; font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; height:90px; display:flex; align-items:flex-end; justify-content:center; }
+  @media print {
+    body { padding:18px; }
+    @page { size:A4; margin:15mm; }
+  }
+</style>
+</head>
+<body>
+  <!-- ENCABEZADO -->
+  <div class="header">
+    <div>
+      <div class="hotel-name">
+        <span class="hn-takua">TAKUÁ</span>
+        <span class="hn-dot">·</span>
+        <span class="hn-hotel">Hotel</span>
+        <span class="hn-serrano">Serrano</span>
+      </div>
+      <div class="hotel-sub">La Punta, San Luis, Argentina</div>
+    </div>
+    <div>
+      <div class="checkout-title">COMPROBANTE DE CHECK-OUT</div>
+      <div class="checkout-date">Fecha de emisión: ${ahora}</div>
+    </div>
+  </div>
+
+  <!-- HABITACIÓN -->
+  <div class="section">
+    <div class="section-title">Habitación</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div>
+        <div class="hab-badge">HAB. ${datos.hab}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px">Ala ${datos.ala||''}</div>
+      </div>
+      <div class="grid-3" style="flex:1">
+        <div class="field"><label>Entrada</label><div class="val">${fmtDt(datos.entrada)}</div></div>
+        <div class="field"><label>Salida</label><div class="val">${fmtDt(datos.salida)}</div></div>
+        <div class="field"><label>Noches / Unidades</label><div class="val">${datos.noches||1}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUÉSPED -->
+  <div class="section">
+    <div class="section-title">Huésped</div>
+    <div class="field"><label>Nombre Completo</label><div class="val">${datos.nombre||''}</div></div>
+  </div>
+
+  ${cargosRowsHTML}
+
+  <!-- RESUMEN DE CUENTA -->
+  <div class="total-box">
+    <div class="total-row"><span>Total estadía</span><span style="font-weight:700">${money(datos.total)}</span></div>
+    ${datos.totalCargosRest > 0 ? `<div class="total-row"><span>Consumos de restaurante</span><span style="font-weight:700">${money(datos.totalCargosRest)}</span></div>` : ''}
+    ${datos.senia > 0 ? `<div class="total-row"><span>Seña cobrada al ingreso</span><span style="color:#16a34a;font-weight:700">- ${money(datos.senia)}</span></div>` : ''}
+    ${datos.extra > 0 ? `<div class="total-row"><span>Extra${datos.conceptoExtra?' — '+datos.conceptoExtra:''}</span><span style="font-weight:700">${money(datos.extra)}</span></div>` : ''}
+    <div class="total-row"><span>Método de pago</span><span style="font-weight:700">${datos.metodo||'—'}</span></div>
+    <div class="total-row big">
+      <span>Total cobrado en check-out</span>
+      <span>${money(datos.totalCobrado)}</span>
+    </div>
+  </div>
+
+  <!-- FIRMA -->
+  <div class="firma-section">
+    <div class="firma-box">Firma del Huésped</div>
+    <div class="firma-box">Firma del Recepcionista</div>
+  </div>
+
+</body>
+</html>`;
+
+  const id = 'checkout-print-frame';
+  let frame = document.getElementById(id);
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.id = id;
+    frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none';
+    document.body.appendChild(frame);
+  }
+  frame.srcdoc = html;
+  frame.onload = () => {
+    try {
+      const doc = frame.contentWindow.document;
+      let disparado = false;
+      const disparar = () => {
+        if (disparado) return; // nunca imprimir dos veces
+        disparado = true;
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch(e) {}
+      };
+      if (doc.fonts && doc.fonts.load) {
+        Promise.all([
+          doc.fonts.load('700 28px "Montserrat"'),
+          doc.fonts.load('900 28px "Montserrat"'),
+          doc.fonts.load('700 28px "Dancing Script"')
+        ]).catch(()=>{}).then(() => doc.fonts.ready).then(disparar).catch(disparar);
+      } else {
+        setTimeout(disparar, 500);
+      }
+      setTimeout(disparar, 1800);
+    } catch(e) {}
+  };
+}
+
 // ══════════════════════════════════════
 // IMPRIMIR CHECK-IN
 // ══════════════════════════════════════
