@@ -1439,6 +1439,29 @@ async function eliminarMovimientoManual(id) {
 
 // ── REPORTES ──────────────────────────────────────────
 
+// ── IDENTIDAD VISUAL DE MARCA (usada en todos los informes descargables de Caja) ──
+const BRAND_HEADER_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Dancing+Script:wght@700&display=swap');
+  .brand-header{margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #1a2035}
+  .brand-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px}
+  .brand-tk{font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:28px;color:#C6862B;letter-spacing:.5px}
+  .brand-dot{font-family:'Montserrat',Arial,sans-serif;font-weight:800;font-size:22px;color:#1a2035;margin:0 1px}
+  .brand-hotel{font-family:'Montserrat',Arial,sans-serif;font-weight:600;font-size:20px;color:#1a2035}
+  .brand-serrano{font-family:'Dancing Script',cursive;font-weight:700;font-size:32px;color:#C6862B;margin-left:4px}
+  .brand-sub{font-family:'Montserrat',Arial,sans-serif;font-size:11px;color:#64748b;margin-top:3px;letter-spacing:.3px}
+  .brand-meta{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#374151;margin-top:10px}
+`;
+
+function brandHeaderHTML(metaText) {
+  return `<div class="brand-header">
+    <div class="brand-title">
+      <span class="brand-tk">TAKUÁ</span><span class="brand-dot">·</span><span class="brand-hotel">Hotel</span><span class="brand-serrano">Serrano</span>
+    </div>
+    <div class="brand-sub">La Punta, San Luis, Argentina</div>
+    <div class="brand-meta">${metaText}</div>
+  </div>`;
+}
+
 function generarHTMLReporte(tipo, desde, hasta) {
   const { data, label } = window._reporteData || {};
   if (!data) return null;
@@ -1581,13 +1604,11 @@ function generarHTMLReporte(tipo, desde, hasta) {
   table.movs th{background:#f8fafc;padding:5px 6px;text-align:left;font-weight:700;border-bottom:2px solid #e5e7eb}
   table.movs td{padding:4px 6px;border-bottom:1px solid #f1f5f9}
   .neg{color:#dc2626}
+  ${BRAND_HEADER_CSS}
   @media print{.no-print{display:none}}
 </style></head><body>
 
-<div class="header">
-  <h1>🏨 Hotel TK Serrano — Reporte Contable</h1>
-  <p>${label} &nbsp;·&nbsp; Generado: ${ahora}</p>
-</div>
+${brandHeaderHTML(`Reporte Contable &nbsp;·&nbsp; ${label} &nbsp;·&nbsp; Generado: ${ahora}`)}
 
 <!-- Resumen ejecutivo -->
 <div class="grid2">
@@ -1751,13 +1772,11 @@ function generarHTMLHistorial() {
   .neg{color:#dc2626}
   .footer{margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af;
     display:flex;justify-content:space-between}
+  ${BRAND_HEADER_CSS}
   @media print{.no-print{display:none}}
 </style></head><body>
 
-<div class="header">
-  <h1>🏨 Hotel TK Serrano — Historial de Caja</h1>
-  <p>Filtro: ${_histFuenteLabel()} &nbsp;·&nbsp; ${filtrados.length} movimientos &nbsp;·&nbsp; Generado: ${ahora}</p>
-</div>
+${brandHeaderHTML(`Historial de Caja &nbsp;·&nbsp; Filtro: ${_histFuenteLabel()} &nbsp;·&nbsp; ${filtrados.length} movimientos &nbsp;·&nbsp; Generado: ${ahora}`)}
 
 <div class="badge-total">
   <div><div class="lbl">Ingresos</div><div class="val">${fmt(ingresos)}</div></div>
