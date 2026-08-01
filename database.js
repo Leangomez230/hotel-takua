@@ -37,7 +37,7 @@ async function run(text, params) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 // Inicializar tablas
 async function initDB() {
@@ -270,6 +270,15 @@ try {
   await query("UPDATE menu_restaurante SET es_bebida=1 WHERE LOWER(categoria) IN ('bebidas','bebida','drinks') AND es_bebida=0");
   console.log('✅ Columna es_bebida lista');
 } catch(e) { console.log('es_bebida ya existe'); }
+
+// Migración: va_cocina en menu_restaurante — control manual por producto de si va o no
+// al ticket de cocina (reemplaza la heurística por categoría, que daba falsos positivos
+// con categorías mixtas como "Cafetería", donde algunos productos sí llevan preparación).
+// Default 1 (va a cocina) para todos — el staff destilda manualmente los que no correspondan.
+try {
+  await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS va_cocina INTEGER DEFAULT 1');
+  console.log('✅ Columna va_cocina lista');
+} catch(e) { console.log('va_cocina ya existe'); }
 
 // Migración: activo en menu_restaurante (permite "borrado suave" cuando el producto tiene comandas históricas)
 try {
