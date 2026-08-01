@@ -194,7 +194,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .mc-cats-arrow:hover{color:#1a2035}
 
 /* Panel deslizante — Gestión de Productos (pantalla dedicada) */
-.slide-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:#f8fafc;z-index:150;
+.slide-panel{position:fixed;top:0;left:var(--sw);right:0;bottom:0;background:#f8fafc;z-index:150;
   transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);overflow-y:auto;
   -webkit-overflow-scrolling:touch}
 .slide-panel.open{transform:translateX(0)}
@@ -204,7 +204,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   color:#475569;cursor:pointer;font-family:'Nunito',sans-serif;display:flex;align-items:center;gap:6px;flex-shrink:0}
 .gp-back:hover{background:#e2e8f0}
 .gp-title{font-size:16px;font-weight:800;color:#1a2035}
-.gp-body{max-width:720px;margin:0 auto;padding:18px 16px 40px}
+.gp-body{max-width:1180px;margin:0 auto;padding:18px 16px 40px}
+.gp-grid{display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start}
+@media(max-width:860px){.gp-grid{grid-template-columns:1fr}}
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:260px;overflow-y:auto}
 .menu-item-btn{padding:12px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;text-align:left;transition:all .15s}
 .menu-item-btn:hover{border-color:#3b82f6;background:#eff6ff}
@@ -1081,12 +1083,14 @@ function renderCajero(el){
         </div>
 
         <!-- Acceso a Gestión de Productos -->
-        <button class="desp-btn" onclick="abrirGestionProductos()" style="margin-top:14px">
-          <div class="desp-left"><span class="desp-icon">🍽️</span>
-            <div><div class="desp-title">Gestión de productos</div><div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div></div>
-          </div>
-          <div class="desp-arrow" style="transform:none">›</div>
-        </button>
+        <div class="desplegable" style="margin-top:14px">
+          <button class="desp-btn" onclick="abrirGestionProductos()">
+            <div class="desp-left"><span class="desp-icon">🍽️</span>
+              <div><div class="desp-title">Gestión de productos</div><div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div></div>
+            </div>
+            <div class="desp-arrow" style="transform:none">›</div>
+          </button>
+        </div>
       </div>
 
       <!-- Columna principal DERECHA: Mesas en cuenta + Mapa + Menú -->
@@ -1283,12 +1287,14 @@ function renderAdmin(el){
         </div>
 
         <!-- Acceso a Gestión de Productos -->
-        <button class="desp-btn" onclick="abrirGestionProductos()" style="margin-top:14px">
-          <div class="desp-left"><span class="desp-icon">🍽️</span>
-            <div><div class="desp-title">Gestión de productos</div><div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div></div>
-          </div>
-          <div class="desp-arrow" style="transform:none">›</div>
-        </button>
+        <div class="desplegable" style="margin-top:14px">
+          <button class="desp-btn" onclick="abrirGestionProductos()">
+            <div class="desp-left"><span class="desp-icon">🍽️</span>
+              <div><div class="desp-title">Gestión de productos</div><div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div></div>
+            </div>
+            <div class="desp-arrow" style="transform:none">›</div>
+          </button>
+        </div>
       </div>
 
       <!-- COLUMNA PRINCIPAL DERECHA: Mapa + Menú -->
@@ -1372,6 +1378,7 @@ function abrirGestionProductos(){
   const panel = document.getElementById('panel-productos');
   if(!panel) return;
   window._gpCatActiva = 'Todas';
+  window._gpBusqueda = '';
   renderGestionProductos(panel);
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(()=>panel.classList.add('open'));
@@ -1395,10 +1402,22 @@ function prodRowHTML(p){
   </div>`;
 }
 
-function listaProductosGP(catActiva){
-  const prods = catActiva==='Todas' ? S.menu : S.menu.filter(m=>m.categoria===catActiva);
-  if(!prods.length) return '<div class="empty"><div class="ei">📦</div><p>Sin productos en esta categoría</p></div>';
+function listaProductosGP(catActiva, busqueda){
+  catActiva = catActiva ?? window._gpCatActiva ?? 'Todas';
+  busqueda  = (busqueda ?? window._gpBusqueda ?? '').toLowerCase().trim();
+  const prods = S.menu.filter(m=>{
+    const matchCat = catActiva==='Todas' || m.categoria===catActiva;
+    const matchQ   = !busqueda || m.nombre.toLowerCase().includes(busqueda) || (m.categoria||'').toLowerCase().includes(busqueda);
+    return matchCat && matchQ;
+  });
+  if(!prods.length) return `<div class="empty"><div class="ei">📦</div><p>Sin resultados${busqueda?` para "${busqueda}"`:''}</p></div>`;
   return prods.map(prodRowHTML).join('');
+}
+
+function buscarProductosGP(q){
+  window._gpBusqueda = q;
+  const lista = document.getElementById('gp-lista');
+  if(lista) lista.innerHTML = listaProductosGP();
 }
 
 function scrollCatsGP(dir){
@@ -1411,11 +1430,12 @@ function filtrarCatsGP(cat, btn){
   btn.classList.add('active');
   window._gpCatActiva = cat;
   const lista = document.getElementById('gp-lista');
-  if(lista) lista.innerHTML = listaProductosGP(cat);
+  if(lista) lista.innerHTML = listaProductosGP();
 }
 
 function renderGestionProductos(el, catActiva){
   catActiva = catActiva || window._gpCatActiva || 'Todas';
+  const busqueda = window._gpBusqueda || '';
   const cats = ['Todas', ...new Set(S.menu.map(m=>m.categoria).filter(Boolean))];
   el.innerHTML = `
     <div class="gp-header">
@@ -1423,50 +1443,63 @@ function renderGestionProductos(el, catActiva){
       <div class="gp-title">🍽️ Gestión de Productos</div>
     </div>
     <div class="gp-body">
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title" style="margin-bottom:12px">➕ Nuevo producto</div>
-        <div class="form-grid-2">
-          <input id="mp-nombre" placeholder="Nombre"/>
-          <input id="mp-precio" placeholder="Precio" type="number"/>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <select id="mp-cat" style="flex:1">
-            <option value="">-- Categoría --</option>
-            ${cats.filter(c=>c!=='Todas').map(c=>`<option>${c}</option>`).join('')}
-          </select>
-          <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
-          <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
-        </div>
-        <div style="border-top:1.5px solid #f1f5f9;padding-top:12px;margin-bottom:12px">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px">
-            <input type="checkbox" id="mp-es-combo" onchange="toggleNuevoComboSection()"
-              style="width:17px;height:17px;accent-color:#7c3aed;cursor:pointer">
-            <span style="font-size:13px;font-weight:700;color:#7c3aed">Definir como Combo</span>
-          </label>
-          <div id="mp-combo-panel" style="display:none">
-            <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;line-height:1.5">Componentes del combo. Marcá 🍳 en los que va a cocina.</div>
-            <div id="mp-combo-rows"></div>
-            <button type="button" onclick="agregarFilaNuevoCombo()"
-              style="width:100%;margin-top:4px;background:#f5f3ff;border:1.5px dashed #a78bfa;border-radius:8px;color:#7c3aed;font-weight:700;font-size:12px;padding:7px;cursor:pointer">
-              + Agregar componente
-            </button>
+      <div class="gp-grid">
+        <!-- Columna izquierda: Nuevo producto -->
+        <div class="card" style="align-self:start">
+          <div class="card-title" style="margin-bottom:12px">➕ Nuevo producto</div>
+          <div class="form-grid-2">
+            <input id="mp-nombre" placeholder="Nombre"/>
+            <input id="mp-precio" placeholder="Precio" type="number"/>
           </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <select id="mp-cat" style="flex:1">
+              <option value="">-- Categoría --</option>
+              ${cats.filter(c=>c!=='Todas').map(c=>`<option>${c}</option>`).join('')}
+            </select>
+            <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+            <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+          </div>
+          <div style="border-top:1.5px solid #f1f5f9;padding-top:12px;margin-bottom:12px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px">
+              <input type="checkbox" id="mp-es-combo" onchange="toggleNuevoComboSection()"
+                style="width:17px;height:17px;accent-color:#7c3aed;cursor:pointer">
+              <span style="font-size:13px;font-weight:700;color:#7c3aed">Definir como Combo</span>
+            </label>
+            <div id="mp-combo-panel" style="display:none">
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;line-height:1.5">Componentes del combo. Marcá 🍳 en los que va a cocina.</div>
+              <div id="mp-combo-rows"></div>
+              <button type="button" onclick="agregarFilaNuevoCombo()"
+                style="width:100%;margin-top:4px;background:#f5f3ff;border:1.5px dashed #a78bfa;border-radius:8px;color:#7c3aed;font-weight:700;font-size:12px;padding:7px;cursor:pointer">
+                + Agregar componente
+              </button>
+            </div>
+          </div>
+          <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
         </div>
-        <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
-      </div>
 
-      <div class="card">
-        <div class="mc-cats-row" style="margin-bottom:14px">
-          <button class="mc-cats-arrow" onclick="scrollCatsGP(-1)">‹</button>
-          <div class="mc-cats-scroll" id="gp-cats">
-            ${cats.map((c,i)=>`<button class="mc-cat-tab${c===catActiva?' active':''}" onclick="filtrarCatsGP('${c}',this)">
-              <span class="mc-cat-tab-icon">${iconoCategoriaMC(c)}</span>
-              <span class="mc-cat-tab-label">${c}</span>
-            </button>`).join('')}
+        <!-- Columna derecha: buscador + categorías + lista de productos -->
+        <div class="card">
+          <div style="position:relative;margin-bottom:12px">
+            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔍</span>
+            <input id="gp-search" type="text" placeholder="Buscar producto..." autocomplete="off" value="${busqueda.replace(/"/g,'&quot;')}"
+              oninput="buscarProductosGP(this.value)"
+              style="width:100%;padding:10px 12px 10px 34px;border-radius:10px;border:2px solid #e2e8f0;
+                     font-size:14px;font-family:'Nunito',sans-serif;transition:border .15s"
+              onfocus="this.style.borderColor='#00c9b1'"
+              onblur="this.style.borderColor='#e2e8f0'">
           </div>
-          <button class="mc-cats-arrow" onclick="scrollCatsGP(1)">›</button>
+          <div class="mc-cats-row" style="margin-bottom:14px">
+            <button class="mc-cats-arrow" onclick="scrollCatsGP(-1)">‹</button>
+            <div class="mc-cats-scroll" id="gp-cats">
+              ${cats.map((c,i)=>`<button class="mc-cat-tab${c===catActiva?' active':''}" onclick="filtrarCatsGP('${c}',this)">
+                <span class="mc-cat-tab-icon">${iconoCategoriaMC(c)}</span>
+                <span class="mc-cat-tab-label">${c}</span>
+              </button>`).join('')}
+            </div>
+            <button class="mc-cats-arrow" onclick="scrollCatsGP(1)">›</button>
+          </div>
+          <div id="gp-lista">${listaProductosGP(catActiva,busqueda)}</div>
         </div>
-        <div id="gp-lista">${listaProductosGP(catActiva)}</div>
       </div>
     </div>`;
 }
