@@ -3016,6 +3016,14 @@ function esBebida(cat, productoId){
   // Fallback: nombre de categoría
   return CATS_BEBIDAS.includes((cat||'').toLowerCase());
 }
+// Categorías que tampoco van al ticket de cocina, aunque el producto no tenga el flag es_bebida
+// (ej. Cafetería: se prepara en barra, no en cocina)
+const CATS_NO_COCINA_EXTRA = ['cafetería','cafeteria'];
+function vaACocina(cat, productoId){
+  if (esBebida(cat, productoId)) return false;
+  if (CATS_NO_COCINA_EXTRA.includes((cat||'').toLowerCase())) return false;
+  return true;
+}
 
 function imprimirTicketCobrar(cmdId){
   const cmd = S.comandas.find(c=>c.id===cmdId);
@@ -3052,7 +3060,7 @@ function imprimirTicket(tipo) {
         for(const comp of compCocina){
           itemsImprimir.push({nombre:comp.nombre, cantidad:it.cantidad, nota:it.nota, precio_unitario:0});
         }
-      } else if(!esBebida(it.categoria||'', it.producto_id)){
+      } else if(vaACocina(it.categoria||'', it.producto_id)){
         itemsImprimir.push(it);
       }
     }
