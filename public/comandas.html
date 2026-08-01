@@ -175,21 +175,21 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .cat-pill{padding:6px 14px;border-radius:20px;border:none;font-size:12px;font-weight:600;background:#f1f5f9;color:#64748b;cursor:pointer}
 .cat-pill.active{background:#3b82f6;color:#fff}
 
-/* Barra de categorías del modal "Agregar ítem" (mozo) — estilo tabs oscuro con ícono */
-.mc-cats-row{display:flex;align-items:center;gap:2px;background:#1c1c1e;border-radius:12px;padding:6px 2px;margin-bottom:12px}
+/* Barra de categorías del modal "Agregar ítem" (mozo) — estilo tabs claro con ícono */
+.mc-cats-row{display:flex;align-items:center;gap:2px;background:#f1f5f9;border-radius:12px;padding:6px 2px;margin-bottom:12px}
 .mc-cats-scroll{display:flex;gap:2px;overflow-x:auto;scroll-behavior:smooth;flex:1;scrollbar-width:none;-ms-overflow-style:none}
 .mc-cats-scroll::-webkit-scrollbar{display:none}
 .mc-cat-tab{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;
   border-bottom:2px solid transparent;padding:7px 14px 6px;cursor:pointer;flex-shrink:0;
   font-family:'Nunito',sans-serif;transition:opacity .15s}
-.mc-cat-tab-icon{font-size:16px;line-height:1;opacity:.5;filter:grayscale(1)}
-.mc-cat-tab-label{font-size:9.5px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
-.mc-cat-tab.active{border-bottom-color:#fff}
-.mc-cat-tab.active .mc-cat-tab-icon{opacity:1;filter:none}
-.mc-cat-tab.active .mc-cat-tab-label{color:#fff}
-.mc-cats-arrow{background:none;border:none;color:#8e8e93;font-size:18px;font-weight:700;cursor:pointer;
+.mc-cat-tab-icon{font-size:16px;line-height:1;opacity:.45}
+.mc-cat-tab-label{font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.mc-cat-tab.active{border-bottom-color:#00c9b1}
+.mc-cat-tab.active .mc-cat-tab-icon{opacity:1}
+.mc-cat-tab.active .mc-cat-tab-label{color:#1a2035}
+.mc-cats-arrow{background:none;border:none;color:#94a3b8;font-size:18px;font-weight:700;cursor:pointer;
   padding:0 8px;flex-shrink:0;align-self:stretch;display:flex;align-items:center}
-.mc-cats-arrow:hover{color:#fff}
+.mc-cats-arrow:hover{color:#1a2035}
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:260px;overflow-y:auto}
 .menu-item-btn{padding:12px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;text-align:left;transition:all .15s}
 .menu-item-btn:hover{border-color:#3b82f6;background:#eff6ff}
@@ -2031,7 +2031,6 @@ async function verComanda(cmdId){
         </div>
       </div>`;
     if(canCuenta&&!sinItems) accionHTML+=`<button class="btn-purple" style="margin-top:12px" onclick="pedirCuenta(${cmdId})">Pedir la cuenta</button>`;
-    if(canEdit&&cmd.estado!=='cerrada') accionHTML+=`<button class="btn-ghost-light" style="width:100%;margin-top:8px" onclick="verCliente(${cmdId})">👁️ Vista cliente</button>`;
     // Botón cancelar: visible cuando está abierta y sin ítems
     if(canEdit&&cmd.estado==='abierta'&&sinItems) accionHTML+=`
       <button onclick="cancelarComanda(${cmdId})"
