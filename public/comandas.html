@@ -174,6 +174,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .cats-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .cat-pill{padding:6px 14px;border-radius:20px;border:none;font-size:12px;font-weight:600;background:#f1f5f9;color:#64748b;cursor:pointer}
 .cat-pill.active{background:#3b82f6;color:#fff}
+#ab-coms::-webkit-outer-spin-button,#ab-coms::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#ab-coms{-moz-appearance:textfield}
 
 /* Barra de categorías del modal "Agregar ítem" (mozo) — estilo tabs claro con ícono */
 .mc-cats-row{display:flex;align-items:center;gap:2px;background:#f1f5f9;border-radius:12px;padding:6px 2px;margin-bottom:12px}
@@ -190,6 +192,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .mc-cats-arrow{background:none;border:none;color:#94a3b8;font-size:18px;font-weight:700;cursor:pointer;
   padding:0 8px;flex-shrink:0;align-self:stretch;display:flex;align-items:center}
 .mc-cats-arrow:hover{color:#1a2035}
+
+/* Panel deslizante — Gestión de Productos (pantalla dedicada) */
+.slide-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:#f8fafc;z-index:150;
+  transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+.slide-panel.open{transform:translateX(0)}
+.gp-header{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1.5px solid #e2e8f0;
+  padding:14px 16px;display:flex;align-items:center;gap:12px}
+.gp-back{background:#f1f5f9;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;
+  color:#475569;cursor:pointer;font-family:'Nunito',sans-serif;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.gp-back:hover{background:#e2e8f0}
+.gp-title{font-size:16px;font-weight:800;color:#1a2035}
+.gp-body{max-width:720px;margin:0 auto;padding:18px 16px 40px}
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:260px;overflow-y:auto}
 .menu-item-btn{padding:12px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;text-align:left;transition:all .15s}
 .menu-item-btn:hover{border-color:#3b82f6;background:#eff6ff}
@@ -477,6 +492,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <!-- ══ MODALES ══ -->
 
 <!-- Modal Abrir Comanda -->
+<!-- Panel deslizante: Gestión de Productos -->
+<div id="panel-productos" class="slide-panel"></div>
+
 <div class="overlay" id="m-abrir">
   <div class="modal" style="max-width:500px">
     <div class="modal-handle"><div></div></div>
@@ -485,8 +503,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <button class="btn-close-modal" onclick="closeModal('m-abrir')">×</button>
     </div>
     <div class="modal-body">
-      <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px">👥 Comensales</label>
-        <input type="number" id="ab-coms" min="1" value="2"/></div>
+      <div style="margin-bottom:16px"><label style="font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:10px;text-align:center">👥 Comensales</label>
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px">
+          <button type="button" onclick="ajustarComensales(-1)"
+            style="width:48px;height:48px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;
+            font-size:24px;font-weight:700;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
+          <input type="number" id="ab-coms" min="1" value="2" inputmode="numeric" onfocus="this.select()"
+            style="width:84px;text-align:center;font-size:30px;font-weight:800;color:#1a2035;border:none;
+            background:none;font-family:'Nunito',sans-serif"/>
+          <button type="button" onclick="ajustarComensales(1)"
+            style="width:48px;height:48px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;
+            font-size:24px;font-weight:700;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
+        </div>
+      </div>
       <button class="btn-primary" onclick="confirmarAbrirComanda()">Abrir comanda</button>
     </div>
   </div>
@@ -807,7 +836,7 @@ function buildTabsHTML(actual) {
   let h = `<div class="tabs">`;
   h += `<button class="tab ${actual==='salon'?'active':''}" onclick="snav('salon')">🗺️ Salón</button>`;
   if (esCA) h += `<button class="tab ${actual==='caja'?'active':''}" onclick="snav('caja')">💰 Caja</button>`;
-  if (esCA) h += `<button class="tab ${actual==='menu'?'active':''}" onclick="snav('menu')">🍽️ Menú</button>`;
+  if (esCA) h += `<button class="tab ${actual==='menu'?'active':''}" onclick="abrirGestionProductos()">🍽️ Menú</button>`;
   h += `</div>`;
   return h;
 }
@@ -889,6 +918,10 @@ function snav(id) {
 // ════════════════════════════════════
 function renderMain(){
   snav(_snavActual || 'salon');
+  const panelProd = document.getElementById('panel-productos');
+  if (panelProd && panelProd.classList.contains('open')) {
+    renderGestionProductos(panelProd, window._gpCatActiva);
+  }
 }
 
 // ── MAPA (solo lectura) ───────────────────────────────
@@ -1046,6 +1079,14 @@ function renderCajero(el){
           </button>
           <div class="desp-body" id="body-hist"><div class="desp-content" id="hist-content"></div></div>
         </div>
+
+        <!-- Acceso a Gestión de Productos -->
+        <button class="desp-btn" onclick="abrirGestionProductos()" style="margin-top:14px">
+          <div class="desp-left"><span class="desp-icon">🍽️</span>
+            <div><div class="desp-title">Gestión de productos</div><div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div></div>
+          </div>
+          <div class="desp-arrow" style="transform:none">›</div>
+        </button>
       </div>
 
       <!-- Columna principal DERECHA: Mesas en cuenta + Mapa + Menú -->
@@ -1061,66 +1102,6 @@ function renderCajero(el){
             </div>
           </div>
           ${window.innerWidth > 900 ? `<div class="pills-row">${renderPills()}</div><div style="overflow-x:auto">${renderMapa(false)}</div>` : mapaDesp(false)}
-        </div>
-
-        <!-- Menú productos — desplegable -->
-        <div class="desplegable" id="desp-menuC">
-          <button class="desp-btn" onclick="toggleDesp('menuC')">
-            <div class="desp-left"><span class="desp-icon">🍽️</span>
-              <div>
-                <div class="desp-title">Gestión de productos</div>
-                <div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div>
-              </div>
-            </div>
-            <div class="desp-arrow" id="arr-menuC">▼</div>
-          </button>
-          <div class="desp-body" id="body-menuC">
-            <div class="desp-content">
-              <div style="margin-bottom:16px">
-                <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:10px">➕ Nuevo producto</div>
-                <div class="form-grid-2">
-                  <input id="mp-nombre" placeholder="Nombre"/>
-                  <input id="mp-precio" placeholder="Precio" type="number"/>
-                </div>
-                <div style="display:flex;gap:8px;margin-bottom:12px">
-                  <select id="mp-cat" style="flex:1">
-                    <option value="">-- Categoría --</option>
-                    ${cats.map(c=>`<option>${c}</option>`).join('')}
-                  </select>
-                  <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
-                  <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
-                </div>
-                <div style="border-top:1.5px solid #f1f5f9;padding-top:12px;margin-bottom:12px">
-                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px">
-                    <input type="checkbox" id="mp-es-combo" onchange="toggleNuevoComboSection()"
-                      style="width:17px;height:17px;accent-color:#7c3aed;cursor:pointer">
-                    <span style="font-size:13px;font-weight:700;color:#7c3aed">Definir como Combo</span>
-                  </label>
-                  <div id="mp-combo-panel" style="display:none">
-                    <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;line-height:1.5">Componentes del combo. Marcá 🍳 en los que va a cocina.</div>
-                    <div id="mp-combo-rows"></div>
-                    <button type="button" onclick="agregarFilaNuevoCombo()"
-                      style="width:100%;margin-top:4px;background:#f5f3ff;border:1.5px dashed #a78bfa;border-radius:8px;color:#7c3aed;font-weight:700;font-size:12px;padding:7px;cursor:pointer">
-                      + Agregar componente
-                    </button>
-                  </div>
-                </div>
-                <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
-              </div>
-              ${cats.map(cat=>{
-                const prods=S.menu.filter(m=>m.categoria===cat);
-                return `<div style="margin-bottom:12px">
-                  <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f1f5f9">${cat}</div>
-                  ${prods.map(p=>`<div class="prod-row">
-                    <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}${p.es_combo?` <span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">COMBO</span>`:''}${p.es_bebida?` <span style="font-size:10px;background:#dbeafe;color:#2563eb;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">🍺</span>`:''}</span>
-                    <span class="prod-precio">${fmt(p.precio)}</span>
-                    <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
-                    <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
-                  </div>`).join('')}
-                </div>`;
-              }).join('')}
-            </div>
-          </div>
         </div>
       </div><!-- fin col-main -->
     </div>`;
@@ -1300,6 +1281,14 @@ function renderAdmin(el){
           </button>
           <div class="desp-body" id="body-hist"><div class="desp-content" id="hist-content"></div></div>
         </div>
+
+        <!-- Acceso a Gestión de Productos -->
+        <button class="desp-btn" onclick="abrirGestionProductos()" style="margin-top:14px">
+          <div class="desp-left"><span class="desp-icon">🍽️</span>
+            <div><div class="desp-title">Gestión de productos</div><div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div></div>
+          </div>
+          <div class="desp-arrow" style="transform:none">›</div>
+        </button>
       </div>
 
       <!-- COLUMNA PRINCIPAL DERECHA: Mapa + Menú -->
@@ -1316,67 +1305,6 @@ function renderAdmin(el){
             </div>
           </div>
           ${window.innerWidth > 900 ? `<div class="pills-row">${renderPills()}</div><div style="overflow-x:auto">${renderMapa(false)}</div>` : mapaDesp(false)}
-        </div>
-
-        <!-- Menú productos — desplegable -->
-        <div class="desplegable" id="desp-menu">
-          <button class="desp-btn" onclick="toggleDesp('menu')">
-            <div class="desp-left"><span class="desp-icon">🍽️</span>
-              <div>
-                <div class="desp-title">Gestión de productos</div>
-                <div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div>
-              </div>
-            </div>
-            <div class="desp-arrow" id="arr-menu">▼</div>
-          </button>
-          <div class="desp-body" id="body-menu">
-            <div class="desp-content">
-              <div style="margin-bottom:16px">
-                <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:10px">➕ Nuevo producto</div>
-                <div class="form-grid-2">
-                  <input id="mp-nombre" placeholder="Nombre"/>
-                  <input id="mp-precio" placeholder="Precio" type="number"/>
-                </div>
-                <div style="display:flex;gap:8px;margin-bottom:12px">
-                  <select id="mp-cat" style="flex:1">
-                    <option value="">-- Categoría --</option>
-                    ${cats.map(c=>`<option>${c}</option>`).join('')}
-                  </select>
-                  <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
-                  <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
-                </div>
-                <div style="border-top:1.5px solid #f1f5f9;padding-top:12px;margin-bottom:12px">
-                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px">
-                    <input type="checkbox" id="mp-es-combo" onchange="toggleNuevoComboSection()"
-                      style="width:17px;height:17px;accent-color:#7c3aed;cursor:pointer">
-                    <span style="font-size:13px;font-weight:700;color:#7c3aed">Definir como Combo</span>
-                  </label>
-                  <div id="mp-combo-panel" style="display:none">
-                    <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;line-height:1.5">Componentes del combo. Marcá 🍳 en los que va a cocina.</div>
-                    <div id="mp-combo-rows"></div>
-                    <button type="button" onclick="agregarFilaNuevoCombo()"
-                      style="width:100%;margin-top:4px;background:#f5f3ff;border:1.5px dashed #a78bfa;border-radius:8px;color:#7c3aed;font-weight:700;font-size:12px;padding:7px;cursor:pointer">
-                      + Agregar componente
-                    </button>
-                  </div>
-                </div>
-                <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
-              </div>
-
-              ${cats.map(cat=>{
-                const prods=S.menu.filter(m=>m.categoria===cat);
-                return `<div style="margin-bottom:12px">
-                  <div style="font-weight:700;font-size:13px;color:#475569;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f1f5f9">${cat}</div>
-                  ${prods.map(p=>`<div class="prod-row">
-                    <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}${p.es_combo?` <span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">COMBO</span>`:''}${p.es_bebida?` <span style="font-size:10px;background:#dbeafe;color:#2563eb;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">🍺</span>`:''}</span>
-                    <span class="prod-precio">${fmt(p.precio)}</span>
-                    <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
-                    <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
-                  </div>`).join('')}
-                </div>`;
-              }).join('')}
-            </div>
-          </div>
         </div>
       </div><!-- fin col-main -->
     </div><!-- fin layout-2col -->`;
@@ -1432,6 +1360,114 @@ function renderMenuTab(el){
           </div>`).join('')}
         </div>`;
       }).join('')}
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════
+// GESTIÓN DE PRODUCTOS — pantalla dedicada (panel deslizante)
+// ════════════════════════════════════════════════════════
+window._gpCatActiva = 'Todas';
+
+function abrirGestionProductos(){
+  const panel = document.getElementById('panel-productos');
+  if(!panel) return;
+  window._gpCatActiva = 'Todas';
+  renderGestionProductos(panel);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(()=>panel.classList.add('open'));
+}
+
+function cerrarGestionProductos(){
+  const panel = document.getElementById('panel-productos');
+  if(!panel) return;
+  panel.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function prodRowHTML(p){
+  return `<div class="prod-row">
+    <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}${p.es_combo?` <span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">COMBO</span>`:''}${p.es_bebida?` <span style="font-size:10px;background:#dbeafe;color:#2563eb;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">🍺</span>`:''}
+      <div style="font-size:11px;color:#94a3b8;font-weight:400">${p.categoria||''}</div>
+    </span>
+    <span class="prod-precio">${fmt(p.precio)}</span>
+    <button class="btn-sm" style="background:#eff6ff;color:#2563eb" onclick="editarProducto(${p.id})">✏️</button>
+    <button class="btn-sm" style="background:#fee2e2;color:#dc2626" onclick="eliminarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+  </div>`;
+}
+
+function listaProductosGP(catActiva){
+  const prods = catActiva==='Todas' ? S.menu : S.menu.filter(m=>m.categoria===catActiva);
+  if(!prods.length) return '<div class="empty"><div class="ei">📦</div><p>Sin productos en esta categoría</p></div>';
+  return prods.map(prodRowHTML).join('');
+}
+
+function scrollCatsGP(dir){
+  const el = document.getElementById('gp-cats');
+  if(el) el.scrollBy({ left: dir*140, behavior:'smooth' });
+}
+
+function filtrarCatsGP(cat, btn){
+  document.querySelectorAll('#gp-cats .mc-cat-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  window._gpCatActiva = cat;
+  const lista = document.getElementById('gp-lista');
+  if(lista) lista.innerHTML = listaProductosGP(cat);
+}
+
+function renderGestionProductos(el, catActiva){
+  catActiva = catActiva || window._gpCatActiva || 'Todas';
+  const cats = ['Todas', ...new Set(S.menu.map(m=>m.categoria).filter(Boolean))];
+  el.innerHTML = `
+    <div class="gp-header">
+      <button class="gp-back" onclick="cerrarGestionProductos()">← Volver</button>
+      <div class="gp-title">🍽️ Gestión de Productos</div>
+    </div>
+    <div class="gp-body">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:12px">➕ Nuevo producto</div>
+        <div class="form-grid-2">
+          <input id="mp-nombre" placeholder="Nombre"/>
+          <input id="mp-precio" placeholder="Precio" type="number"/>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <select id="mp-cat" style="flex:1">
+            <option value="">-- Categoría --</option>
+            ${cats.filter(c=>c!=='Todas').map(c=>`<option>${c}</option>`).join('')}
+          </select>
+          <input id="mp-cat-nueva" placeholder="Nueva categoría" style="flex:1"/>
+          <button class="btn-ghost-light" onclick="agregarCategoria()" style="white-space:nowrap">+ Cat.</button>
+        </div>
+        <div style="border-top:1.5px solid #f1f5f9;padding-top:12px;margin-bottom:12px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px">
+            <input type="checkbox" id="mp-es-combo" onchange="toggleNuevoComboSection()"
+              style="width:17px;height:17px;accent-color:#7c3aed;cursor:pointer">
+            <span style="font-size:13px;font-weight:700;color:#7c3aed">Definir como Combo</span>
+          </label>
+          <div id="mp-combo-panel" style="display:none">
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;line-height:1.5">Componentes del combo. Marcá 🍳 en los que va a cocina.</div>
+            <div id="mp-combo-rows"></div>
+            <button type="button" onclick="agregarFilaNuevoCombo()"
+              style="width:100%;margin-top:4px;background:#f5f3ff;border:1.5px dashed #a78bfa;border-radius:8px;color:#7c3aed;font-weight:700;font-size:12px;padding:7px;cursor:pointer">
+              + Agregar componente
+            </button>
+          </div>
+        </div>
+        <button class="btn-primary" id="mp-btn" onclick="guardarProducto()">Agregar</button>
+      </div>
+
+      <div class="card">
+        <div class="mc-cats-row" style="margin-bottom:14px">
+          <button class="mc-cats-arrow" onclick="scrollCatsGP(-1)">‹</button>
+          <div class="mc-cats-scroll" id="gp-cats">
+            ${cats.map((c,i)=>`<button class="mc-cat-tab${c===catActiva?' active':''}" onclick="filtrarCatsGP('${c}',this)">
+              <span class="mc-cat-tab-icon">${iconoCategoriaMC(c)}</span>
+              <span class="mc-cat-tab-label">${c}</span>
+            </button>`).join('')}
+          </div>
+          <button class="mc-cats-arrow" onclick="scrollCatsGP(1)">›</button>
+        </div>
+        <div id="gp-lista">${listaProductosGP(catActiva)}</div>
+      </div>
     </div>`;
 }
 
@@ -1917,6 +1953,12 @@ function clickMesa(mesaId){
 // ════════════════════════════════════
 // COMANDA
 // ════════════════════════════════════
+function ajustarComensales(delta){
+  const inp=document.getElementById('ab-coms');
+  if(!inp) return;
+  const val=Math.max(1,(parseInt(inp.value)||1)+delta);
+  inp.value=val;
+}
 async function confirmarAbrirComanda(){
   const coms=document.getElementById('ab-coms').value;
   const obs ='';
