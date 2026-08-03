@@ -192,7 +192,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     </div>
     <div class="tb-right">
       <div class="user-av" id="user-av">?</div>
-      <button class="btn-salir" id="btn-salir">Salir</button>
     </div>
   </div>
   <div class="content" id="content">
@@ -248,11 +247,6 @@ function closeModal() {
 }
 document.getElementById('modal-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
-});
-
-document.getElementById('btn-salir').addEventListener('click', () => {
-  localStorage.removeItem(TOKEN_KEY);
-  location.href = '/portal.html';
 });
 
 document.getElementById('hamburger').addEventListener('click', () => {
