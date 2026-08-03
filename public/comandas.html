@@ -523,6 +523,23 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   </div>
 </div>
 
+<!-- Modal: elegir bebida incluida en un Menú -->
+<div class="overlay" id="m-bebida-menu">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-handle"><div></div></div>
+    <div class="modal-header">
+      <span class="modal-title">🥤 Elegir bebida</span>
+      <button class="btn-close-modal" onclick="closeModal('m-bebida-menu')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="bm-prod-nombre" style="font-weight:800;color:#1a2035;margin-bottom:4px"></div>
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:16px">Este menú incluye una bebida a elección del comensal</div>
+      <select id="bm-select" style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;margin-bottom:16px"></select>
+      <button class="btn-primary" onclick="confirmarAgregarConBebida()">Agregar al pedido</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Comanda (mozo) -->
 <div class="overlay" id="m-comanda">
   <div class="modal">
@@ -1393,7 +1410,7 @@ function cerrarGestionProductos(){
 
 function prodRowHTML(p){
   return `<div class="prod-row">
-    <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}${p.es_combo?` <span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">COMBO</span>`:''}${p.es_bebida?` <span style="font-size:10px;background:#dbeafe;color:#2563eb;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">🍺</span>`:''}${(!p.es_combo&&p.va_cocina==0)?` <span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">NO VA A COCINA</span>`:''}
+    <span class="prod-nombre" style="${p.disponible?'':'opacity:.4;text-decoration:line-through'}">${p.nombre}${p.es_combo?` <span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">COMBO</span>`:''}${p.es_bebida?` <span style="font-size:10px;background:#dbeafe;color:#2563eb;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">🍺</span>`:''}${p.incluye_bebida==1?` <span style="font-size:10px;background:#e0f2fe;color:#0284c7;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">🥤 BEBIDA A ELECCIÓN</span>`:''}${(!p.es_combo&&p.va_cocina==0)?` <span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:20px;padding:1px 7px;font-weight:700;vertical-align:middle">NO VA A COCINA</span>`:''}
       <div style="font-size:11px;color:#94a3b8;font-weight:400">${p.categoria||''}</div>
     </span>
     <span class="prod-precio">${fmt(p.precio)}</span>
@@ -1464,6 +1481,12 @@ function renderGestionProductos(el, catActiva){
               style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;flex-shrink:0">
             <label for="mp-va-cocina" style="font-size:13px;font-weight:700;color:#16a34a;cursor:pointer">🍳 Va a cocina</label>
             <span style="font-size:11px;color:#94a3b8">(desmarcá si se prepara en barra: bebidas, café, etc.)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <input type="checkbox" id="mp-incluye-bebida"
+              style="width:17px;height:17px;accent-color:#0284c7;cursor:pointer;flex-shrink:0">
+            <label for="mp-incluye-bebida" style="font-size:13px;font-weight:700;color:#0284c7;cursor:pointer">🥤 Incluye bebida a elección</label>
+            <span style="font-size:11px;color:#94a3b8">(ej. menús: el mozo elige la bebida al agregarlo)</span>
           </div>
           <div style="border-top:1.5px solid #f1f5f9;padding-top:12px;margin-bottom:12px">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px">
@@ -1739,6 +1762,12 @@ async function editarProducto(id){
       <label for="ep-va-cocina" style="font-size:13px;font-weight:700;color:#16a34a;cursor:pointer">🍳 Va a cocina</label>
       <span style="font-size:11px;color:#94a3b8">(desmarcá si se prepara en barra)</span>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <input type="checkbox" id="ep-incluye-bebida" ${p.incluye_bebida==1?'checked':''}
+        style="width:17px;height:17px;accent-color:#0284c7;cursor:pointer;flex-shrink:0">
+      <label for="ep-incluye-bebida" style="font-size:13px;font-weight:700;color:#0284c7;cursor:pointer">🥤 Incluye bebida a elección</label>
+      <span style="font-size:11px;color:#94a3b8">(el mozo elige la bebida al agregarlo)</span>
+    </div>
     <!-- SECCIÓN COMBO -->
     <div style="border-top:1.5px solid #e2e8f0;padding-top:14px;margin-bottom:16px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px">
@@ -1838,10 +1867,11 @@ async function guardarEdicionProducto(){
   const precio   =parseFloat(document.getElementById('ep-precio')?.value);
   const esCombo  =document.getElementById('ep-es-combo')?.checked;
   const va_cocina=document.getElementById('ep-va-cocina')?.checked!==false;
+  const incluye_bebida=document.getElementById('ep-incluye-bebida')?.checked||false;
   if(!nombre||!precio){toast('Completá todos los campos','err');return;}
   loading(true);
   try{
-    await api('PUT',`/api/restaurante/menu/${_editProdId}`,{nombre,precio,categoria,va_cocina});
+    await api('PUT',`/api/restaurante/menu/${_editProdId}`,{nombre,precio,categoria,va_cocina,incluye_bebida});
     if(esCombo){
       const itemsValidos=_comboItems.filter(c=>c.nombre.trim());
       if(itemsValidos.length<2){toast('Un combo necesita al menos 2 componentes','err');loading(false);return;}
@@ -1930,6 +1960,7 @@ async function guardarProducto(){
   const categoria=document.getElementById('mp-cat').value||document.getElementById('mp-cat-nueva').value.trim();
   const es_bebida=0;
   const va_cocina=document.getElementById('mp-va-cocina')?.checked!==false;
+  const incluye_bebida=document.getElementById('mp-incluye-bebida')?.checked||false;
   const esCombo=document.getElementById('mp-es-combo')?.checked;
   if(!nombre||!precio||!categoria){toast('Completá todos los campos','err');return;}
   if(esCombo){
@@ -1939,11 +1970,11 @@ async function guardarProducto(){
   loading(true);
   try{
     if(_editProdId){
-      await api('PUT',`/api/restaurante/menu/${_editProdId}`,{nombre,precio,categoria,es_bebida,va_cocina});
+      await api('PUT',`/api/restaurante/menu/${_editProdId}`,{nombre,precio,categoria,es_bebida,va_cocina,incluye_bebida});
       toast('Producto actualizado ✓','ok'); _editProdId=null;
       document.getElementById('mp-btn').textContent='Agregar';
     } else {
-      const nuevo=await api('POST','/api/restaurante/menu',{nombre,precio,categoria,es_bebida,va_cocina});
+      const nuevo=await api('POST','/api/restaurante/menu',{nombre,precio,categoria,es_bebida,va_cocina,incluye_bebida});
       if(esCombo && nuevo?.id){
         const validos=_nuevoComboItems.filter(c=>c.nombre.trim());
         await api('POST',`/api/restaurante/menu/${nuevo.id}/combo`,{items:validos});
@@ -1953,6 +1984,7 @@ async function guardarProducto(){
     document.getElementById('mp-nombre').value='';
     document.getElementById('mp-precio').value='';
     if(document.getElementById('mp-va-cocina')) document.getElementById('mp-va-cocina').checked=true;
+    if(document.getElementById('mp-incluye-bebida')) document.getElementById('mp-incluye-bebida').checked=false;
     if(document.getElementById('mp-es-combo')) document.getElementById('mp-es-combo').checked=false;
     if(document.getElementById('mp-combo-panel')) document.getElementById('mp-combo-panel').style.display='none';
     _nuevoComboItems=[];
@@ -2077,8 +2109,8 @@ async function verComanda(cmdId){
         const sinStock = m.sin_stock===true||m.sin_stock==1;
         return `<div class="menu-item-btn${sinStock?' disabled':''}"
           style="${sinStock?'opacity:.4;cursor:not-allowed;filter:grayscale(.5)':''}"
-          onclick="${sinStock?'':'agregarItemConNota('+cmdId+','+m.id+')'}">
-          <div class="menu-item-nombre">${m.nombre}</div>
+          onclick="${sinStock?'':(m.incluye_bebida==1?'abrirSelectorBebida('+cmdId+','+m.id+')':'agregarItemConNota('+cmdId+','+m.id+')')}">
+          <div class="menu-item-nombre">${m.nombre}${m.incluye_bebida==1?' <span style="font-size:10px">🥤</span>':''}</div>
           <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${m.categoria}</div>
           ${sinStock?'<div style="font-size:10px;color:#dc2626;font-weight:700">Sin stock</div>':'<div class="menu-item-precio">'+fmt(m.precio)+'</div>'}
         </div>`;
@@ -2236,6 +2268,38 @@ async function agregarItemConNota(cmdId,prodId){
   finally{loading(false);}
 }
 async function agregarItemExistente(cmdId,prodId){ await agregarItemConNota(cmdId,prodId); }
+
+// ── Menús con bebida a elección (ej. "Menú del día" incluye una gaseosa/agua a elegir) ──
+let _bmCmdId=null, _bmProdId=null;
+function abrirSelectorBebida(cmdId, prodId){
+  const prod = S.menu.find(m=>m.id===prodId);
+  if(!prod) return;
+  _bmCmdId=cmdId; _bmProdId=prodId;
+  document.getElementById('bm-prod-nombre').textContent = prod.nombre;
+  const bebidas = S.menu.filter(m=>m.es_bebida==1 && m.disponible && !(m.sin_stock===true||m.sin_stock==1));
+  const sel = document.getElementById('bm-select');
+  sel.innerHTML = bebidas.length
+    ? bebidas.map(b=>`<option value="${b.id}">${b.nombre}</option>`).join('')
+    : '<option value="">No hay bebidas disponibles</option>';
+  openModal('m-bebida-menu');
+}
+async function confirmarAgregarConBebida(){
+  const bebidaId = document.getElementById('bm-select')?.value;
+  if(!bebidaId){ toast('Elegí una bebida','err'); return; }
+  const bebida = S.menu.find(m=>m.id===Number(bebidaId));
+  const notaManual = document.getElementById('nota-item')?.value || '';
+  const nota = `Bebida: ${bebida?.nombre||''}` + (notaManual ? ` — ${notaManual}` : '');
+  closeModal('m-bebida-menu');
+  loading(true);
+  try{
+    await api('POST',`/api/restaurante/comandas/${_bmCmdId}/items`,{
+      producto_id:_bmProdId, cantidad:1, nota, bebida_id:Number(bebidaId)
+    });
+    toast('Ítem agregado ✓','ok');
+    await loadAll(); verComanda(_bmCmdId);
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
+}
 
 async function quitarItem(cmdId,itemId){
   loading(true);
