@@ -51,6 +51,10 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--ink);font-
 .stat-card .lbl{font-size:11px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px}
 .stat-card .val{font-size:22px;font-weight:800;color:var(--ink)}
 .stat-card.accent .val{color:var(--accent2)}
+.stat-card.clickable{cursor:pointer;border:1.5px solid transparent;transition:all .15s}
+.stat-card.clickable:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.09)}
+.stat-card.clickable.activo-filtro{border-color:var(--accent);background:#f0fdfa}
+.stat-card.clickable.activo-filtro .lbl{color:var(--accent)}
 
 /* ── Tabla usuarios ───────────────────────────────────────── */
 .data-table{width:100%;border-collapse:collapse;font-size:13px}
@@ -270,10 +274,16 @@ function cambiarCfgTab(id) {
   document.querySelectorAll('.cfg-pane').forEach(p => p.classList.toggle('activo', p.id === 'pane-' + id));
 }
 
+function cambiarFiltroUsuarios(f) {
+  filtroUsuarios = f;
+  renderConfig();
+}
+
 const ROL_COLOR = { admin:'pb', recepcionista:'pg', mucama:'py', mantenimiento:'pgr', mozo:'pp', cajero:'po' };
 const ROL_LABEL = { admin:'Admin', recepcionista:'Recepción', mucama:'Mucama', mantenimiento:'Mantenimiento', mozo:'Mozo', cajero:'Cajero' };
 let TIPOS = [];
 let PLATAFORMAS = [];
+let filtroUsuarios = 'activos';
 
 function renderTiposRows(tipos) {
   if (!tipos.length) return `<p class="empty-state" style="padding:24px 0">No hay tipos cargados</p>`;
@@ -324,7 +334,8 @@ async function renderConfig() {
   const inactivos      = totalUsuarios - activos;
   const admins         = usuarios.filter(u => u.rol === 'admin').length;
 
-  const rows = usuarios.map(u => `<tr>
+  const usuariosVisibles = usuarios.filter(u => filtroUsuarios === 'inactivos' ? !u.activo : u.activo);
+  const rows = usuariosVisibles.map(u => `<tr>
     <td><strong>${u.nombre}</strong></td>
     <td class="cell-sub">${u.usuario || '—'}</td>
     <td class="cell-faint">${u.email || '—'}</td>
@@ -356,18 +367,21 @@ async function renderConfig() {
     <div class="cfg-pane${cfgTabActiva==='usuarios'?' activo':''}" id="pane-usuarios">
       <div class="stat-cards">
         <div class="stat-card"><div class="lbl">Total usuarios</div><div class="val">${totalUsuarios}</div></div>
-        <div class="stat-card accent"><div class="lbl">Activos</div><div class="val">${activos}</div></div>
-        <div class="stat-card"><div class="lbl">Inactivos</div><div class="val">${inactivos}</div></div>
+        <div class="stat-card accent clickable${filtroUsuarios==='activos'?' activo-filtro':''}" onclick="cambiarFiltroUsuarios('activos')"><div class="lbl">Activos</div><div class="val">${activos}</div></div>
+        <div class="stat-card clickable${filtroUsuarios==='inactivos'?' activo-filtro':''}" onclick="cambiarFiltroUsuarios('inactivos')"><div class="lbl">Inactivos</div><div class="val">${inactivos}</div></div>
         <div class="stat-card"><div class="lbl">Administradores</div><div class="val">${admins}</div></div>
       </div>
       <div class="section-card">
         <div class="sc-head">
-          <h2>👤 Usuarios del sistema</h2>
+          <div>
+            <h2>${filtroUsuarios==='inactivos' ? '👤 Usuarios inactivos' : '👤 Usuarios del sistema'}</h2>
+            ${filtroUsuarios==='inactivos' ? `<p class="sc-sub">Desactivados por tener historial asociado o por baja manual · <a href="javascript:void(0)" onclick="cambiarFiltroUsuarios('activos')" style="color:var(--accent2);font-weight:700">← Ver activos</a></p>` : ''}
+          </div>
           <button class="btn-primary" id="btn-nuser">+ Nuevo usuario</button>
         </div>
         <table class="data-table">
           <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
-          <tbody>${rows || `<tr><td colspan="6" class="empty-state">No hay usuarios cargados</td></tr>`}</tbody>
+          <tbody>${rows || `<tr><td colspan="6" class="empty-state">${filtroUsuarios==='inactivos' ? 'No hay usuarios inactivos' : 'No hay usuarios activos'}</td></tr>`}</tbody>
         </table>
       </div>
     </div>
