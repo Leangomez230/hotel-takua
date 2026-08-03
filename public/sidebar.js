@@ -46,9 +46,8 @@
       show: ['admin'],
       bottom: true },
     { id:'sb-config',       icon:'⚙️', label:'Config',
-      href: '/config.html',
+      href: indexHref('config'), click: indexClick('config'),
       show: ['admin'],
-      active: on('config.html'),
       bottom: true },
   ];
 
@@ -132,6 +131,37 @@
       .sb-sidebar .sb-btn.bottom { margin-top:0; }
       .sb-sidebar > .sb-logo { display:none; }
     }
+
+    /* ── MENÚ DE USUARIO (avatar topbar) ─────────────────────────── */
+    .sbu-dropdown {
+      position:fixed; min-width:230px; max-width:calc(100vw - 24px); background:#fff;
+      border-radius:14px; box-shadow:0 12px 32px rgba(0,0,0,.18); border:1px solid #e8edf3;
+      padding:8px; z-index:400; display:none; font-family:'Nunito',sans-serif;
+    }
+    .sbu-dropdown.open { display:block; }
+    .sbu-dd-head { padding:10px 10px 14px; border-bottom:1px solid #eef1f5; margin-bottom:6px; display:flex; gap:10px; align-items:center; }
+    .sbu-dd-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#00c9b1,#0094ff); display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:16px; flex-shrink:0; }
+    .sbu-dd-name { font-size:14px; font-weight:800; color:#1a2035; line-height:1.3; word-break:break-word; }
+    .sbu-dd-role { font-size:12px; color:#64748b; font-weight:600; }
+    .sbu-dd-item { display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px; border-radius:10px; border:none; background:none; font-size:13.5px; font-weight:700; color:#1a2035; cursor:pointer; text-align:left; font-family:inherit; }
+    .sbu-dd-item:hover { background:#f0f4f8; }
+    .sbu-dd-item.danger { color:#dc2626; }
+    .sbu-dd-sep { height:1px; background:#eef1f5; margin:6px 4px; }
+    .sbu-overlay { position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:500; display:none; align-items:center; justify-content:center; padding:20px; }
+    .sbu-overlay.open { display:flex; }
+    .sbu-modal { background:#fff; border-radius:18px; padding:24px; width:100%; max-width:360px; font-family:'Nunito',sans-serif; }
+    .sbu-modal h3 { font-size:16px; font-weight:800; color:#1a2035; margin:0 0 4px; }
+    .sbu-modal label { font-size:12px; font-weight:700; color:#64748b; display:block; margin:14px 0 4px; }
+    .sbu-modal input { width:100%; font-family:'Nunito',sans-serif; font-size:14px; border:1.5px solid #e2e8f0; border-radius:10px; padding:10px 12px; outline:none; box-sizing:border-box; }
+    .sbu-modal input:focus { border-color:#00c9b1; }
+    .sbu-modal-actions { display:flex; gap:8px; margin-top:20px; }
+    .sbu-modal-actions button { flex:1; padding:11px; border-radius:10px; font-weight:800; font-size:13.5px; border:none; cursor:pointer; font-family:inherit; }
+    .sbu-btn-cancel { background:#f1f5f9; color:#475569; }
+    .sbu-btn-ok { background:#00c9b1; color:#fff; }
+    .sbu-modal-err { color:#dc2626; font-size:12.5px; font-weight:700; margin-top:10px; display:none; }
+    .sbu-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:#1a2035; color:#fff; padding:12px 22px; border-radius:12px; font-size:13.5px; font-weight:700; z-index:600; opacity:0; transition:all .3s; white-space:nowrap; }
+    .sbu-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .sbu-toast.err { background:#dc2626; }
   `;
   document.head.appendChild(css);
 
@@ -210,4 +240,143 @@
       if (window.innerWidth <= 900) { sb.classList.remove('open'); ov.classList.remove('open'); }
     }));
   });
+
+  // ── MENÚ DE USUARIO (avatar del topbar) ─────────────────────────────
+  function initUserMenu() {
+    const avatarEl = document.getElementById('user-av') || document.getElementById('user-av-tb');
+    if (!avatarEl) return;
+
+    const ROLES = {
+      admin:'Administrador', recepcionista:'Recepción', mucama:'Mucama',
+      cajero:'Cajero', mozo:'Mozo', mantenimiento:'Mantenimiento'
+    };
+    const rolLabel = ROLES[ME.rol] || ME.rol || '';
+    const inicial   = (ME.nombre || '?')[0].toUpperCase();
+
+    avatarEl.style.cursor = 'pointer';
+    avatarEl.title = 'Mi cuenta';
+
+    // ── Dropdown ──
+    const dd = document.createElement('div');
+    dd.className = 'sbu-dropdown';
+    dd.innerHTML =
+      '<div class="sbu-dd-head">' +
+        '<div class="sbu-dd-avatar">' + inicial + '</div>' +
+        '<div><div class="sbu-dd-name">' + (ME.nombre || '') + '</div>' +
+        '<div class="sbu-dd-role">' + rolLabel + '</div></div>' +
+      '</div>' +
+      '<button class="sbu-dd-item" id="sbu-btn-pass">🔑 Cambiar contraseña</button>' +
+      '<div class="sbu-dd-sep"></div>' +
+      '<button class="sbu-dd-item danger" id="sbu-btn-logout">🚪 Cerrar sesión</button>';
+    document.body.appendChild(dd);
+
+    function closeDD() { dd.classList.remove('open'); }
+    function toggleDD() {
+      if (dd.classList.contains('open')) { closeDD(); return; }
+      const r = avatarEl.getBoundingClientRect();
+      dd.style.top = (r.bottom + 8) + 'px';
+      dd.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
+      dd.classList.add('open');
+    }
+    avatarEl.addEventListener('click', (e) => { e.stopPropagation(); toggleDD(); });
+    document.addEventListener('click', (e) => { if (!dd.contains(e.target)) closeDD(); });
+    window.addEventListener('scroll', closeDD, true);
+    window.addEventListener('resize', closeDD);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDD(); });
+
+    // ── Toast propio (no depende del toast() de cada página) ──
+    function sbuToast(msg, ok) {
+      let t = document.getElementById('sbu-toast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'sbu-toast'; t.className = 'sbu-toast';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.className = 'sbu-toast show' + (ok === false ? ' err' : '');
+      setTimeout(() => { t.className = 'sbu-toast'; }, 2800);
+    }
+
+    // ── Modal cambiar contraseña ──
+    const ov = document.createElement('div');
+    ov.className = 'sbu-overlay';
+    ov.innerHTML =
+      '<div class="sbu-modal">' +
+        '<h3>🔑 Cambiar contraseña</h3>' +
+        '<label>Contraseña actual</label>' +
+        '<input type="password" id="sbu-pass-actual" autocomplete="current-password">' +
+        '<label>Nueva contraseña</label>' +
+        '<input type="password" id="sbu-pass-nueva" autocomplete="new-password">' +
+        '<label>Repetir nueva contraseña</label>' +
+        '<input type="password" id="sbu-pass-repite" autocomplete="new-password">' +
+        '<div class="sbu-modal-err" id="sbu-pass-err"></div>' +
+        '<div class="sbu-modal-actions">' +
+          '<button class="sbu-btn-cancel" id="sbu-pass-cancel">Cancelar</button>' +
+          '<button class="sbu-btn-ok" id="sbu-pass-ok">Guardar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(ov);
+
+    function closeModal() {
+      ov.classList.remove('open');
+      ['sbu-pass-actual','sbu-pass-nueva','sbu-pass-repite'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      document.getElementById('sbu-pass-err').style.display = 'none';
+    }
+    function openModal() {
+      closeDD();
+      ov.classList.add('open');
+      setTimeout(() => document.getElementById('sbu-pass-actual').focus(), 50);
+    }
+
+    document.getElementById('sbu-btn-pass').addEventListener('click', openModal);
+    document.getElementById('sbu-pass-cancel').addEventListener('click', closeModal);
+    ov.addEventListener('click', (e) => { if (e.target === ov) closeModal(); });
+
+    document.getElementById('sbu-pass-ok').addEventListener('click', async () => {
+      const actual = document.getElementById('sbu-pass-actual').value;
+      const nueva  = document.getElementById('sbu-pass-nueva').value;
+      const repite = document.getElementById('sbu-pass-repite').value;
+      const errEl  = document.getElementById('sbu-pass-err');
+      errEl.style.display = 'none';
+
+      if (!actual || !nueva || !repite) {
+        errEl.textContent = 'Completá los 3 campos'; errEl.style.display = 'block'; return;
+      }
+      if (nueva.length < 4) {
+        errEl.textContent = 'La nueva contraseña es muy corta'; errEl.style.display = 'block'; return;
+      }
+      if (nueva !== repite) {
+        errEl.textContent = 'Las contraseñas nuevas no coinciden'; errEl.style.display = 'block'; return;
+      }
+
+      try {
+        const r = await fetch('/api/portal/me/password', {
+          method: 'PUT',
+          headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN },
+          body: JSON.stringify({ actual, nueva })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) {
+          closeModal();
+          sbuToast('Contraseña actualizada ✓');
+        } else {
+          errEl.textContent = data?.error || 'No se pudo cambiar la contraseña';
+          errEl.style.display = 'block';
+        }
+      } catch (e) {
+        errEl.textContent = 'Error de conexión'; errEl.style.display = 'block';
+      }
+    });
+
+    // ── Cerrar sesión ──
+    document.getElementById('sbu-btn-logout').addEventListener('click', () => {
+      localStorage.removeItem('takua_token');
+      localStorage.removeItem('takua_user');
+      window.location.href = '/portal.html';
+    });
+  }
+
+  initUserMenu();
 })();
