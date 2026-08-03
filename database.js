@@ -37,7 +37,7 @@ async function run(text, params) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 // Inicializar tablas
 async function initDB() {
@@ -279,6 +279,13 @@ try {
   await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS va_cocina INTEGER DEFAULT 1');
   console.log('✅ Columna va_cocina lista');
 } catch(e) { console.log('va_cocina ya existe'); }
+
+// Migración: incluye_bebida en menu_restaurante — marca productos (ej. "Menú del día")
+// que traen una bebida a elección del comensal, elegida por el mozo al agregar el ítem.
+try {
+  await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS incluye_bebida INTEGER DEFAULT 0');
+  console.log('✅ Columna incluye_bebida lista');
+} catch(e) { console.log('incluye_bebida ya existe'); }
 
 // Migración: activo en menu_restaurante (permite "borrado suave" cuando el producto tiene comandas históricas)
 try {
