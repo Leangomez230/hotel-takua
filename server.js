@@ -1077,7 +1077,7 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
 // ── CAJA HOTEL ───────────────────────────────────────────────────────
 app.get('/api/caja/activa', auth, async (req, res) => {
   try {
-    const caja = await db.getOne("SELECT c.*,u.nombre as usuario_nombre FROM cajas c LEFT JOIN usuarios u ON c.usuario_id=u.id WHERE c.estado='abierta' ORDER BY c.id DESC LIMIT 1");
+    const caja = await db.getOne("SELECT c.*,COALESCE(u.nombre,'Usuario eliminado') as usuario_nombre FROM cajas c LEFT JOIN usuarios u ON c.usuario_id=u.id WHERE c.estado='abierta' ORDER BY c.id DESC LIMIT 1");
     res.json(caja || null);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -2050,7 +2050,7 @@ app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => 
   try {
     const { estado, mozo_id } = req.query;
     let q = `SELECT c.*, m.alias as mesa_alias, m.tipo as mesa_tipo,
-             u.nombre as mozo_nombre
+             COALESCE(u.nombre,'Usuario eliminado') as mozo_nombre
              FROM comandas c
              LEFT JOIN mesas_restaurante m ON c.mesa_id=m.id
              LEFT JOIN usuarios u ON c.mozo_id=u.id`;
@@ -2079,7 +2079,7 @@ app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => 
 app.get('/api/restaurante/comandas/:id', auth, authRestaurante, async (req, res) => {
   try {
     const cmd = await db.getOne(
-      `SELECT c.*, u.nombre as mozo_nombre
+      `SELECT c.*, COALESCE(u.nombre,'Usuario eliminado') as mozo_nombre
        FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id
        WHERE c.id=$1`, [req.params.id]
     );
@@ -2410,7 +2410,7 @@ app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res)
     if (!turno) return res.json(null);
     // Se excluye 'Habitación': esa plata todavía no se cobró (se cobra en el check-out).
     const cerradas = await db.getAll(
-      "SELECT c.*, u.nombre as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.metodo_pago != 'Habitación' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
+      "SELECT c.*, COALESCE(u.nombre,'Usuario eliminado') as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.metodo_pago != 'Habitación' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
       [turno.abierto_at]
     );
     const retiros = await db.getAll(
@@ -2655,13 +2655,15 @@ app.put('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-// Eliminar (desactivar) usuario
+// Eliminar usuario (borrado real)
 app.delete('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
   try {
     const uid = req.params.id;
     if (Number(uid) === req.user.id) return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
-    await db.query('UPDATE usuarios SET activo=0 WHERE id=$1', [uid]);
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_USUARIO', `id:${uid}`);
+    const u = await db.getOne('SELECT nombre FROM usuarios WHERE id=$1', [uid]);
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await db.query('DELETE FROM usuarios WHERE id=$1', [uid]);
+    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_USUARIO', `${u.nombre} (id:${uid})`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
