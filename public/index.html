@@ -601,8 +601,8 @@ if (['admin','recepcionista','mucama'].includes(_rolLibro)) {
   if (_btnLibro) _btnLibro.style.display = '';
   _libroStartPolling();
 }
-// Mostrar botón Mantenimiento para admin y recepcionista
-if (['admin','recepcionista'].includes(currentUser?.rol)) {
+// Mostrar botón Mantenimiento para admin, recepcionista y mucama
+if (['admin','recepcionista','mucama'].includes(currentUser?.rol)) {
   const _btnMant = document.getElementById('tb-sol-mant');
   if (_btnMant) _btnMant.style.display = '';
 }
