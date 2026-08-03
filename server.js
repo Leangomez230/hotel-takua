@@ -2593,6 +2593,27 @@ app.get('/api/portal/me', auth, async (req, res) => {
   }
 });
  
+// ── Cambiar mi propia contraseña (cualquier rol autenticado) ─────────
+app.put('/api/portal/me/password', auth, async (req, res) => {
+  try {
+    const { actual, nueva } = req.body;
+    if (!actual || !nueva)
+      return res.status(400).json({ error: 'Completá la contraseña actual y la nueva' });
+    if (String(nueva).length < 4)
+      return res.status(400).json({ error: 'La nueva contraseña es muy corta' });
+
+    const user = await db.getOne('SELECT id, password FROM usuarios WHERE id = $1', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!bcrypt.compareSync(actual, user.password))
+      return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+
+    const hash = bcrypt.hashSync(nueva, 10);
+    await db.query('UPDATE usuarios SET password = $1 WHERE id = $2', [hash, user.id]);
+    await logAction(req.user.id, req.user.nombre, 'CAMBIAR_PASSWORD_PROPIA', '');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── GESTIÓN DE USUARIOS (solo admin) ────────────────────────────────
  
 // Listar todos
