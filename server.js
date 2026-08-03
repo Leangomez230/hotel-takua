@@ -2655,16 +2655,28 @@ app.put('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-// Eliminar usuario (borrado real)
+// Eliminar usuario (borrado real; si tiene historial asociado, se desactiva en su lugar)
 app.delete('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
   try {
     const uid = req.params.id;
     if (Number(uid) === req.user.id) return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
     const u = await db.getOne('SELECT nombre FROM usuarios WHERE id=$1', [uid]);
     if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
-    await db.query('DELETE FROM usuarios WHERE id=$1', [uid]);
-    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_USUARIO', `${u.nombre} (id:${uid})`);
-    res.json({ ok: true });
+    try {
+      await db.query('DELETE FROM usuarios WHERE id=$1', [uid]);
+      await logAction(req.user.id, req.user.nombre, 'ELIMINAR_USUARIO', `${u.nombre} (id:${uid})`);
+      res.json({ ok: true });
+    } catch (fkErr) {
+      // Tiene historial asociado (comandas, cajas, turnos, etc.): no se puede borrar físicamente
+      // sin perder esos registros. Se desactiva en su lugar: desaparece de selectores activos
+      // (mozo/cajero/mucama) y no puede iniciar sesión, pero preserva el historial.
+      if (fkErr.code === '23503') {
+        await db.query('UPDATE usuarios SET activo=0 WHERE id=$1', [uid]);
+        await logAction(req.user.id, req.user.nombre, 'DESACTIVAR_USUARIO', `${u.nombre} (id:${uid}) — tenía historial, no se pudo borrar físicamente`);
+        return res.json({ ok: true, desactivado: true });
+      }
+      throw fkErr;
+    }
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
