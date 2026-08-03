@@ -1813,11 +1813,11 @@ app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
 app.post('/api/restaurante/menu', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, es_bebida, va_cocina } = req.body;
+    const { nombre, categoria, precio, es_bebida, va_cocina, incluye_bebida } = req.body;
     if (!nombre || !precio) return res.status(400).json({ error: 'Nombre y precio requeridos' });
     const r = await db.query(
-      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida,va_cocina) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      [nombre, categoria||'General', precio, es_bebida?1:0, va_cocina===false||va_cocina===0?0:1]
+      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida,va_cocina,incluye_bebida) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [nombre, categoria||'General', precio, es_bebida?1:0, va_cocina===false||va_cocina===0?0:1, incluye_bebida?1:0]
     );
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1826,11 +1826,11 @@ app.post('/api/restaurante/menu', auth, async (req, res) => {
 app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, disponible, es_bebida, va_cocina } = req.body;
+    const { nombre, categoria, precio, disponible, es_bebida, va_cocina, incluye_bebida } = req.body;
     const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [req.params.id]);
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
     await db.query(
-      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5,va_cocina=$6 WHERE id=$7',
+      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5,va_cocina=$6,incluye_bebida=$7 WHERE id=$8',
       [
         nombre     !== undefined ? nombre     : prod.nombre,
         categoria  !== undefined ? categoria  : prod.categoria,
@@ -1838,6 +1838,7 @@ app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
         disponible !== undefined ? disponible : prod.disponible,
         es_bebida  !== undefined ? (es_bebida?1:0) : prod.es_bebida,
         va_cocina  !== undefined ? (va_cocina?1:0) : prod.va_cocina,
+        incluye_bebida !== undefined ? (incluye_bebida?1:0) : prod.incluye_bebida,
         req.params.id
       ]
     );
@@ -2152,7 +2153,7 @@ async function descontarStockBebida(menuId, cantidad, cmdId, motivo, userId, use
 
 app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
   try {
-    const { producto_id, cantidad, nota } = req.body;
+    const { producto_id, cantidad, nota, bebida_id } = req.body;
     const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
     if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
     if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'La comanda está cerrada' });
@@ -2200,6 +2201,12 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
         const cantComponente = (Number(comp.cantidad)||1) * (cantidad||1);
         await descontarStockBebida(comp.vinculo_menu_id, cantComponente, cmd.id, 'Consumo combo', req.user.id, req.user.nombre);
       }
+    }
+
+    // Producto con bebida a elección (ej. "Menú del día"): descontar stock de la bebida
+    // que el mozo eligió al agregarlo (viene en bebida_id, elegida por el comensal).
+    if (prod.incluye_bebida && bebida_id) {
+      await descontarStockBebida(Number(bebida_id), cantidad||1, cmd.id, 'Bebida a elección (menú)', req.user.id, req.user.nombre);
     }
 
     res.json(item);
