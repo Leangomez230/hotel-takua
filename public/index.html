@@ -426,7 +426,6 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
             font-family:'Nunito',sans-serif;pointer-events:none"></span>
         </button>
         <div class="user-av" id="user-av">A</div>
-        <button class="tb-btn" id="btn-logout" style="color:#dc2626">Salir</button>
       </div>
     </div>
     <div class="content" id="content"></div>
@@ -607,7 +606,6 @@ if (['admin','recepcionista'].includes(currentUser?.rol)) {
   const _btnMant = document.getElementById('tb-sol-mant');
   if (_btnMant) _btnMant.style.display = '';
 }
-document.getElementById('btn-logout').addEventListener('click', doLogout);
  
 function irARestaurante() {
   // Pasar a comandas.html manteniendo el token (ya está en localStorage)
