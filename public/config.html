@@ -710,7 +710,7 @@ async function editarUsuario(id) {
 }
 
 async function eliminarUsuario(id, nombre) {
-  if (!confirm(`¿Eliminar al usuario "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  if (!confirm(`¿Eliminar permanentemente al usuario "${nombre}"?\n\nEsta acción borra el usuario de la base de datos y no se puede deshacer. Sus registros históricos (caja, comandas, log de acciones) quedarán conservados pero sin poder editarlos ni volver a asignarle turnos.`)) return;
   const r = await apiFetch('DELETE', `/portal/usuarios/${id}`);
   if (r?.ok) { toast('Usuario eliminado'); renderConfig(); }
   else toast(r?.error || 'Error al eliminar', false);
