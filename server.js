@@ -2017,11 +2017,11 @@ app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
 app.post('/api/restaurante/menu', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, es_bebida, va_cocina } = req.body;
+    const { nombre, categoria, precio, es_bebida, va_cocina, incluye_bebida } = req.body;
     if (!nombre || !precio) return res.status(400).json({ error: 'Nombre y precio requeridos' });
     const r = await db.query(
-      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida,va_cocina) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      [nombre, categoria||'General', precio, es_bebida?1:0, va_cocina===false||va_cocina===0?0:1]
+      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida,va_cocina,incluye_bebida) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [nombre, categoria||'General', precio, es_bebida?1:0, va_cocina===false||va_cocina===0?0:1, incluye_bebida?1:0]
     );
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -2030,11 +2030,11 @@ app.post('/api/restaurante/menu', auth, async (req, res) => {
 app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, disponible, es_bebida, va_cocina } = req.body;
+    const { nombre, categoria, precio, disponible, es_bebida, va_cocina, incluye_bebida } = req.body;
     const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [req.params.id]);
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
     await db.query(
-      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5,va_cocina=$6 WHERE id=$7',
+      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5,va_cocina=$6,incluye_bebida=$7 WHERE id=$8',
       [
         nombre     !== undefined ? nombre     : prod.nombre,
         categoria  !== undefined ? categoria  : prod.categoria,
@@ -2042,6 +2042,7 @@ app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
         disponible !== undefined ? disponible : prod.disponible,
         es_bebida  !== undefined ? (es_bebida?1:0) : prod.es_bebida,
         va_cocina  !== undefined ? (va_cocina?1:0) : prod.va_cocina,
+        incluye_bebida !== undefined ? (incluye_bebida?1:0) : prod.incluye_bebida,
         req.params.id
       ]
     );
@@ -2330,7 +2331,7 @@ app.get('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req
     const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
                     : colNames.includes('precio')          ? 'precio' : '0';
     const items = await db.getAll(
-      `SELECT nombre, cantidad, ${precioCol} as precio_unitario
+      `SELECT nombre, cantidad, producto_id, bebidas_elegidas, ${precioCol} as precio_unitario
        FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
       [req.params.id]
     );
@@ -2407,6 +2408,49 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
     }
 
     res.json(item);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Asignar/actualizar las bebidas elegidas para un ítem tipo "Menú" (incluye_bebida=1).
+// Reemplaza la lista completa cada vez; ajusta el stock por la DIFERENCIA contra lo que
+// había antes (delta), no por el total, para no descontar de más en cada edición.
+app.put('/api/restaurante/comandas/:id/items/:itemId/bebidas', auth, authRestaurante, async (req, res) => {
+  try {
+    const { bebidas } = req.body; // [{producto_id, nombre, cantidad}, ...]
+    if (!Array.isArray(bebidas)) return res.status(400).json({ error: 'bebidas debe ser un array' });
+
+    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
+    if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'La comanda está cerrada' });
+
+    const item = await db.getOne('SELECT * FROM comanda_items WHERE id=$1 AND comanda_id=$2', [req.params.itemId, cmd.id]);
+    if (!item) return res.status(404).json({ error: 'Ítem no encontrado' });
+
+    const limpias = bebidas.filter(b => b.producto_id && Number(b.cantidad) > 0)
+      .map(b => ({ producto_id: Number(b.producto_id), nombre: b.nombre||'', cantidad: Number(b.cantidad) }));
+    const totalBebidas = limpias.reduce((s,b)=>s+b.cantidad, 0);
+    if (totalBebidas > item.cantidad) {
+      return res.status(400).json({ error: `No podés asignar más bebidas (${totalBebidas}) que unidades del ítem (${item.cantidad})` });
+    }
+
+    // Calcular delta de stock contra lo que había guardado antes
+    let anteriores = [];
+    try { anteriores = JSON.parse(item.bebidas_elegidas || '[]'); } catch(e) { anteriores = []; }
+    const mapaAntes = {};
+    anteriores.forEach(b => { mapaAntes[b.producto_id] = (mapaAntes[b.producto_id]||0) + Number(b.cantidad||0); });
+    const mapaAhora = {};
+    limpias.forEach(b => { mapaAhora[b.producto_id] = (mapaAhora[b.producto_id]||0) + b.cantidad; });
+    const todosIds = new Set([...Object.keys(mapaAntes), ...Object.keys(mapaAhora)]);
+    for (const idStr of todosIds) {
+      const id = Number(idStr);
+      const delta = (mapaAhora[id]||0) - (mapaAntes[id]||0);
+      if (delta !== 0) {
+        await descontarStockBebida(id, delta, cmd.id, 'Bebida a elección (menú)', req.user.id, req.user.nombre);
+      }
+    }
+
+    await db.query('UPDATE comanda_items SET bebidas_elegidas=$1 WHERE id=$2', [JSON.stringify(limpias), item.id]);
+    res.json({ ok: true, bebidas: limpias });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
