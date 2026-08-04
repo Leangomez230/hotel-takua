@@ -2207,7 +2207,7 @@ async function verComanda(cmdId){
           </div>
           <button class="mc-cats-arrow" onclick="scrollCatsMC(1)">›</button>
         </div>
-        <div class="menu-grid" id="mc-menu-grid" data-cmdid="${cmdId}">${renderItems(searchPersistido.toLowerCase().trim(), catPersistida)}</div>
+        <div class="menu-grid" id="mc-menu-grid" data-cmdid="${cmdId}">${renderItems()}</div>
       </div>`;
     }
 
@@ -2256,6 +2256,20 @@ async function verComanda(cmdId){
           <div class="mc-tab-page">${comandaPageHTML}</div>
         </div>
       </div>` : comandaPageHTML}`;
+
+    // Reaplicar el filtro que estaba activo (búsqueda o categoría) — la grilla se arma
+    // siempre completa, así que esto solo oculta visualmente lo que no corresponde
+    // (nunca "pierde" productos que no matchean con un filtro previo).
+    if(hayTabProductos){
+      if(searchPersistido){
+        filtrarMenuMC(searchPersistido);
+      } else if(catPersistida && catPersistida!=='Todas'){
+        document.querySelectorAll('#mc-menu-grid .menu-item-btn').forEach(el=>{
+          const c = el.querySelector('div:nth-child(2)')?.textContent||'';
+          el.style.display = (c===catPersistida) ? '' : 'none';
+        });
+      }
+    }
 
     // Restaurar el scroll de la grilla de Productos (si se estaba viendo, no perder la posición al agregar/quitar)
     if(hayTabProductos && _scrollProductosPrevio > 0){
