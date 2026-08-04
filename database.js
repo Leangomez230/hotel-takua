@@ -37,7 +37,7 @@ async function run(text, params) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 // Inicializar tablas
 async function initDB() {
@@ -286,6 +286,15 @@ try {
   await query('ALTER TABLE menu_restaurante ADD COLUMN IF NOT EXISTS incluye_bebida INTEGER DEFAULT 0');
   console.log('✅ Columna incluye_bebida lista');
 } catch(e) { console.log('incluye_bebida ya existe'); }
+
+// Migración: bebidas_elegidas en comanda_items — para ítems tipo "Menú del día" que incluyen
+// una bebida a elección, guarda acá qué bebidas (y cuántas) se asignaron a ese ítem
+// (JSON: [{producto_id,nombre,cantidad}, ...]). Se muestra en la comanda y en el ticket
+// de caja/cuenta, pero NUNCA en el ticket de cocina.
+try {
+  await query("ALTER TABLE comanda_items ADD COLUMN IF NOT EXISTS bebidas_elegidas TEXT DEFAULT '[]'");
+  console.log('✅ Columna bebidas_elegidas lista');
+} catch(e) { console.log('bebidas_elegidas ya existe'); }
 
 // Migración: activo en menu_restaurante (permite "borrado suave" cuando el producto tiene comandas históricas)
 try {
