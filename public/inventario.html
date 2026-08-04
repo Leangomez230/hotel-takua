@@ -181,7 +181,7 @@ document.getElementById('overlay').addEventListener('click', e => {
 });
 
 // ── ESTADO ────────────────────────────────────────────
-const G = { tab:'productos', productos:[], alertas:[], filtroModulo:'todos', filtroCat:'todas', busqueda:'' };
+const G = { tab:'productos', productos:[], alertas:[], filtroModulo:'todos', filtroCat:'todas', busqueda:'', mostrarAlertas:false };
 
 const MODULOS = [
   {id:'todos',    label:'Todos',    icon:'📦'},
@@ -222,12 +222,14 @@ async function render() {
   const stockBajo = G.alertas.length;
   const valorTotal= G.productos.reduce((s,p)=>s+(Number(p.stock)*Number(p.costo||0)),0);
 
-  const alertHTML = G.alertas.length ? '<div class="alert-stock">'
+  const alertHTML = G.alertas.length ? '<div id="alertas-stock-block" class="alert-stock" style="display:'+(G.mostrarAlertas?'block':'none')+'">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">'
     +'<div style="font-weight:800;color:#dc2626;font-size:14px">⚠️ '
     +G.alertas.length+' producto'+(G.alertas.length>1?'s':'')+' con stock bajo o agotado</div>'
+    +'<div style="display:flex;gap:8px">'
     +'<button class="btn-secondary" onclick="imprimirAlertas()" style="background:#1e293b;color:#fff;border-color:#1e293b;padding:5px 12px;font-size:12px">🖨️ Imprimir listado</button>'
-    +'</div>'
+    +'<button class="btn-secondary" onclick="toggleAlertas()" style="padding:5px 12px;font-size:12px">✕ Cerrar</button>'
+    +'</div></div>'
     +G.alertas.map(a=>'<div class="alert-row"><span>'
       +'<span class="mod-badge '+(MOD_CLASS[a.modulo]||'mod-general')+'">'+(MOD_ICON[a.modulo]||'📋')+' '+(a.modulo||'general')+'</span>'
       +' <strong style="margin-left:6px">'+a.nombre+'</strong>'
@@ -236,13 +238,17 @@ async function render() {
     +a.stock+' / mín '+a.stock_minimo+' '+(a.unidad||'u')+'</span></div>').join('')
     +'</div>' : '';
 
-  document.getElementById('main-content').innerHTML = alertHTML
-    +'<div class="stats-grid">'
+  const stockBajoClickable = stockBajo>0;
+  document.getElementById('main-content').innerHTML =
+    '<div class="stats-grid">'
     +'<div class="stat-card" style="background:linear-gradient(135deg,#0f766e,#14b8a6)"><div class="stat-lbl">Total productos</div><div class="stat-val">'+total+'</div><div class="stat-sub">en inventario</div></div>'
     +'<div class="stat-card" style="background:linear-gradient(135deg,#dc2626,#ef4444)"><div class="stat-lbl">Sin stock</div><div class="stat-val">'+sinStock+'</div><div class="stat-sub">agotados</div></div>'
-    +'<div class="stat-card" style="background:linear-gradient(135deg,#d97706,#f59e0b)"><div class="stat-lbl">Stock bajo</div><div class="stat-val">'+stockBajo+'</div><div class="stat-sub">bajo mínimo</div></div>'
+    +'<div class="stat-card" id="kpi-stock-bajo" style="background:linear-gradient(135deg,#d97706,#f59e0b)'+(stockBajoClickable?';cursor:pointer' : '')+'" '+(stockBajoClickable?'onclick="toggleAlertas()"':'')+'>'
+    +'<div class="stat-lbl">Stock bajo</div><div class="stat-val">'+stockBajo+'</div>'
+    +'<div class="stat-sub">'+(stockBajoClickable?'👁️ ver detalle':'bajo mínimo')+'</div></div>'
     +'<div class="stat-card" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6)"><div class="stat-lbl">Valor en stock</div><div class="stat-val" style="font-size:'+(valorTotal>9999999?'14px':'18px')+'">'+fmt(valorTotal)+'</div><div class="stat-sub">a precio de costo</div></div>'
     +'</div>'
+    +alertHTML
     +'<div class="tabs">'
     +'<button class="tab '+(G.tab==='productos'?'active':'')+'" onclick="setTab(\'productos\')">📦 Productos</button>'
     +'<button class="tab '+(G.tab==='movimientos'?'active':'')+'" onclick="setTab(\'movimientos\')">📋 Movimientos</button>'
@@ -251,6 +257,16 @@ async function render() {
     +'<div id="tab-content"></div>';
 
   renderTab();
+}
+
+function toggleAlertas() {
+  G.mostrarAlertas = !G.mostrarAlertas;
+  const block = document.getElementById('alertas-stock-block');
+  if (!block) return;
+  block.style.display = G.mostrarAlertas ? 'block' : 'none';
+  const sub = document.querySelector('#kpi-stock-bajo .stat-sub');
+  if (sub) sub.textContent = G.mostrarAlertas ? '👁️ ocultar detalle' : '👁️ ver detalle';
+  if (G.mostrarAlertas) block.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 function setTab(tab) {
