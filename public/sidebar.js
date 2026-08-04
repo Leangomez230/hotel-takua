@@ -29,10 +29,14 @@
       href: '/reservas.html',
       show: ['admin','recepcionista','mucama','cajero'],
       active: on('reservas.html') },
-    { id:'sb-inventario',   icon:'📦', label:'Inventario',
-      href: '/inventario.html',
-      show: ['admin'],
-      active: on('inventario.html') },
+    { id:'sb-compras',      icon:'🛒', label:'Compras',
+      show: ['admin','recepcionista'],
+      children: [
+        { id:'sb-compras-nueva', icon:'➕', label:'Cargar Compra', href:'/compras.html',
+          show: ['admin','recepcionista'] },
+        { id:'sb-inventario',    icon:'📦', label:'Inventario',    href:'/inventario.html',
+          show: ['admin'] },
+      ] },
     { id:'sb-caja',         icon:'💰', label:'Caja',
       href: '/caja.html',
       show: ['admin','recepcionista'],
@@ -163,6 +167,24 @@
     .sbu-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:#1a2035; color:#fff; padding:12px 22px; border-radius:12px; font-size:13.5px; font-weight:700; z-index:600; opacity:0; transition:all .3s; white-space:nowrap; }
     .sbu-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     .sbu-toast.err { background:#dc2626; }
+
+    /* ── SUBMENÚ (ej: Compras → Cargar Compra / Inventario) ────────── */
+    .sb-submenu {
+      position:fixed; min-width:210px; background:#232a45; border-radius:14px;
+      box-shadow:0 12px 32px rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.08);
+      padding:6px; z-index:250; display:none;
+    }
+    .sb-submenu.open { display:block; }
+    .sb-submenu-item {
+      display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px;
+      border-radius:10px; color:#cbd5e1; font-size:13.5px; font-weight:700;
+      cursor:pointer; font-family:'Nunito',sans-serif; text-decoration:none;
+    }
+    .sb-submenu-item:hover { background:rgba(255,255,255,.08); color:#fff; }
+    .sb-submenu-item.active { background:rgba(0,201,177,.18); color:#00c9b1; }
+    .sb-submenu-item .ni { font-size:16px; flex-shrink:0; }
+    .sb-btn[data-submenu-trigger] .ni { transition:transform .15s; }
+    .sb-btn[data-submenu-trigger].submenu-open .ni { transform:scale(1.1); }
   `;
   document.head.appendChild(css);
 
@@ -198,6 +220,15 @@
   // ── ÍTEMS ─────────────────────────────────────────────────────────────
   ITEMS.forEach(item => {
     if (!item.show.includes(rol)) return;
+
+    if (item.children) {
+      const children = item.children.filter(c => c.show.includes(rol));
+      if (!children.length) return;
+      const activo = children.some(c => on(c.href.replace(/^\//,'')));
+      renderSubmenuItem(item, children, activo);
+      return;
+    }
+
     const a = document.createElement('a');
     a.id = item.id;
     a.style.textDecoration = 'none';
@@ -223,6 +254,56 @@
     }
   });
 
+  // Ítem con submenú (ej: Compras → Cargar Compra / Inventario): un botón que
+  // despliega un flyout flotante con los accesos, en vez de navegar directo.
+  function renderSubmenuItem(item, children, activo) {
+    const btn = document.createElement('button');
+    btn.className = 'sb-btn' + (activo ? ' active' : '') + (item.bottom ? ' bottom' : '');
+    btn.title = item.label;
+    btn.setAttribute('data-submenu-trigger', '1');
+    btn.innerHTML = '<span class="ni">' + item.icon + '</span><span class="nl">' + item.label + '</span>';
+
+    const submenu = document.createElement('div');
+    submenu.className = 'sb-submenu';
+    submenu.innerHTML = children.map(c => {
+      const childActive = on(c.href.replace(/^\//,''));
+      return '<a class="sb-submenu-item' + (childActive?' active':'') + '" href="' + c.href + '">'
+        + '<span class="ni">' + c.icon + '</span>' + c.label + '</a>';
+    }).join('');
+    document.body.appendChild(submenu);
+
+    function closeSubmenu() {
+      submenu.classList.remove('open');
+      btn.classList.remove('submenu-open');
+    }
+    function toggleSubmenu(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (submenu.classList.contains('open')) { closeSubmenu(); return; }
+      document.querySelectorAll('.sb-submenu.open').forEach(s => s.classList.remove('open'));
+      const r = btn.getBoundingClientRect();
+      if (window.innerWidth <= 900) {
+        submenu.style.top = (r.bottom + 4) + 'px';
+        submenu.style.left = r.left + 'px';
+        submenu.style.width = r.width + 'px';
+      } else {
+        submenu.style.top = r.top + 'px';
+        submenu.style.left = (r.right + 8) + 'px';
+        submenu.style.width = '';
+      }
+      submenu.classList.add('open');
+      btn.classList.add('submenu-open');
+    }
+    btn.addEventListener('click', toggleSubmenu);
+    document.addEventListener('click', (e) => {
+      if (!submenu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) closeSubmenu();
+    });
+    window.addEventListener('resize', closeSubmenu);
+
+    if (item.bottom) drawerFooter.appendChild(btn); else drawerNav.appendChild(btn);
+  }
+
+
   const overlay = document.createElement('div');
   overlay.className = 'sb-overlay'; overlay.id = 'sb-overlay';
 
@@ -237,7 +318,7 @@
     if (!hb) return;
     hb.addEventListener('click', () => { sb.classList.toggle('open'); ov.classList.toggle('open'); });
     ov.addEventListener('click', () => { sb.classList.remove('open'); ov.classList.remove('open'); });
-    sb.querySelectorAll('.sb-btn').forEach(b => b.addEventListener('click', () => {
+    sb.querySelectorAll('.sb-btn:not([data-submenu-trigger])').forEach(b => b.addEventListener('click', () => {
       if (window.innerWidth <= 900) { sb.classList.remove('open'); ov.classList.remove('open'); }
     }));
   });
