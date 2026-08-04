@@ -1461,6 +1461,159 @@ app.delete('/api/proveedores/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── COMPRAS (recepción de mercadería) ─────────────────────────────────
+// Alta: crea la cabecera + ítems y, para los ítems vinculados a inventario,
+// impacta el stock exactamente igual que una "Entrada" manual (mismo registro
+// en inventario_movimientos), todo dentro de una transacción — o se guarda
+// todo o no se guarda nada.
+app.post('/api/compras', auth, adminOrRecep, async (req, res) => {
+  try {
+    const { proveedor_id, numero_factura, numero_remito, fecha_emision, fecha_recepcion, observaciones, items } = req.body;
+    if (!proveedor_id) return res.status(400).json({ error: 'El proveedor es obligatorio' });
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Agregá al menos un ítem' });
+    for (const it of items) {
+      if (!it.nombre || !it.nombre.trim()) return res.status(400).json({ error: 'Todos los ítems necesitan un nombre' });
+      if (!(Number(it.cantidad) > 0)) return res.status(400).json({ error: `Cantidad inválida en "${it.nombre}"` });
+    }
+
+    const proveedor = await db.getOne('SELECT * FROM proveedores WHERE id=$1', [proveedor_id]);
+    if (!proveedor) return res.status(404).json({ error: 'Proveedor no encontrado' });
+
+    const compraId = await db.transaction(async (tx) => {
+      const total = items.reduce((s,it) => s + (Number(it.cantidad) * Number(it.costo_unitario||0)), 0);
+
+      const rCompra = await tx.query(
+        `INSERT INTO compras (proveedor_id,proveedor_nombre,numero_factura,numero_remito,fecha_emision,fecha_recepcion,observaciones,total,usuario_id,usuario_nombre)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+        [proveedor_id, proveedor.nombre, (numero_factura||'').trim(), (numero_remito||'').trim(),
+         fecha_emision || null, fecha_recepcion || new Date().toISOString().slice(0,10),
+         (observaciones||'').trim(), total, req.user.id, req.user.nombre]
+      );
+      const id = rCompra.rows[0].id;
+
+      for (const it of items) {
+        const cantidad = Number(it.cantidad);
+        const costoUnit = Number(it.costo_unitario)||0;
+        const subtotal = cantidad * costoUnit;
+
+        await tx.query(
+          `INSERT INTO compra_items (compra_id,producto_id,nombre,cantidad,unidad,costo_unitario,subtotal,notas)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [id, it.producto_id || null, it.nombre.trim(), cantidad, it.unidad||'unidad', costoUnit, subtotal, it.notas||'']
+        );
+
+        // Ítem vinculado a inventario: mismo efecto que /api/inventario/entrada
+        if (it.producto_id) {
+          const prod = await tx.getOne('SELECT * FROM productos WHERE id=$1', [it.producto_id]);
+          if (!prod) throw new Error(`Producto vinculado (id ${it.producto_id}) no encontrado`);
+          const stockAntes = Number(prod.stock)||0;
+          const stockDespues = stockAntes + cantidad;
+          await tx.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, it.producto_id]);
+          await tx.query(
+            `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,referencia,usuario_id,usuario_nombre,stock_antes,stock_despues)
+             VALUES ($1,'entrada',$2,$3,$4,$5,$6,$7,$8)`,
+            [it.producto_id, cantidad, `Compra #${id} — ${proveedor.nombre}`,
+             (numero_factura||numero_remito||'').trim(), req.user.id, req.user.nombre, stockAntes, stockDespues]
+          );
+        }
+      }
+
+      return id;
+    });
+
+    const compra = await db.getOne('SELECT * FROM compras WHERE id=$1', [compraId]);
+    const compraItems = await db.getAll('SELECT * FROM compra_items WHERE compra_id=$1 ORDER BY id', [compraId]);
+    await logAction(req.user.id, req.user.nombre, 'COMPRA_CREAR', `#${compraId} — ${proveedor.nombre}`);
+    res.json({ ok: true, compra: { ...compra, items: compraItems } });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Listado con filtros (fecha, proveedor, estado)
+app.get('/api/compras', auth, async (req, res) => {
+  try {
+    const { desde, hasta, proveedor_id, estado } = req.query;
+    const cond = [];
+    const params = [];
+    if (desde && hasta) { params.push(desde, hasta); cond.push(`fecha_recepcion BETWEEN $${params.length-1} AND $${params.length}`); }
+    if (proveedor_id) { params.push(proveedor_id); cond.push(`proveedor_id=$${params.length}`); }
+    if (estado) { params.push(estado); cond.push(`estado=$${params.length}`); }
+    const where = cond.length ? 'WHERE '+cond.join(' AND ') : '';
+    res.json(await db.getAll(
+      `SELECT c.*, (SELECT COUNT(*) FROM compra_items WHERE compra_id=c.id) as cantidad_items
+       FROM compras c ${where} ORDER BY c.created_at DESC LIMIT 200`,
+      params
+    ));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Detalle (para reimprimir el comprobante)
+app.get('/api/compras/:id', auth, async (req, res) => {
+  try {
+    const compra = await db.getOne('SELECT * FROM compras WHERE id=$1', [req.params.id]);
+    if (!compra) return res.status(404).json({ error: 'Compra no encontrada' });
+    const items = await db.getAll('SELECT * FROM compra_items WHERE compra_id=$1 ORDER BY id', [req.params.id]);
+    res.json({ ...compra, items });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Anulación: nunca borra — genera movimientos de salida compensatorios por
+// cada ítem vinculado a stock y marca la compra como 'anulada'. Si algún
+// producto ya no tiene stock suficiente para revertir (se consumió/vendió
+// después), se aborta TODA la anulación sin tocar nada — hay que corregir
+// el stock a mano desde Inventario antes de poder anular.
+app.post('/api/compras/:id/anular', auth, adminOnly, async (req, res) => {
+  try {
+    const { motivo } = req.body;
+    if (!motivo || !motivo.trim()) return res.status(400).json({ error: 'El motivo de anulación es obligatorio' });
+
+    const compra = await db.getOne('SELECT * FROM compras WHERE id=$1', [req.params.id]);
+    if (!compra) return res.status(404).json({ error: 'Compra no encontrada' });
+    if (compra.estado === 'anulada') return res.status(400).json({ error: 'Esta compra ya está anulada' });
+
+    await db.transaction(async (tx) => {
+      const items = await tx.getAll('SELECT * FROM compra_items WHERE compra_id=$1 AND producto_id IS NOT NULL', [compra.id]);
+
+      // Validar todos los ítems antes de tocar nada (todo o nada)
+      for (const it of items) {
+        const prod = await tx.getOne('SELECT * FROM productos WHERE id=$1', [it.producto_id]);
+        if (!prod) continue; // el producto fue borrado después; no bloquea la anulación
+        if (Number(prod.stock) < Number(it.cantidad)) {
+          const err = new Error(
+            `No se puede anular: "${prod.nombre}" tiene ${prod.stock} ${prod.unidad||'u'} en stock, `
+            + `pero la compra sumó ${it.cantidad}. Ya se debe haber consumido parte — ajustá el stock manualmente desde Inventario si igual querés anular.`
+          );
+          err.userError = true;
+          throw err;
+        }
+      }
+
+      for (const it of items) {
+        const prod = await tx.getOne('SELECT * FROM productos WHERE id=$1', [it.producto_id]);
+        if (!prod) continue;
+        const stockAntes = Number(prod.stock)||0;
+        const stockDespues = stockAntes - Number(it.cantidad);
+        await tx.query('UPDATE productos SET stock=$1 WHERE id=$2', [stockDespues, it.producto_id]);
+        await tx.query(
+          `INSERT INTO inventario_movimientos (producto_id,tipo,cantidad,motivo,referencia,usuario_id,usuario_nombre,stock_antes,stock_despues)
+           VALUES ($1,'salida',$2,$3,$4,$5,$6,$7,$8)`,
+          [it.producto_id, it.cantidad, `Anulación compra #${compra.id} — ${compra.proveedor_nombre}`,
+           compra.numero_factura||compra.numero_remito||'', req.user.id, req.user.nombre, stockAntes, stockDespues]
+        );
+      }
+
+      await tx.query(
+        `UPDATE compras SET estado='anulada', anulada_at=NOW(), anulada_por=$1, motivo_anulacion=$2 WHERE id=$3`,
+        [req.user.id, motivo.trim(), compra.id]
+      );
+    });
+
+    await logAction(req.user.id, req.user.nombre, 'COMPRA_ANULAR', `#${compra.id} — ${motivo.trim()}`);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(e.userError ? 400 : 500).json({ error: e.message });
+  }
+});
+
 // ── INVENTARIO LEGACY ────────────────────────────────────────────────
 app.get('/api/productos', auth, async (req, res) => {
   try { res.json(await db.getAll("SELECT * FROM productos WHERE activo=1 ORDER BY categoria,nombre")); }
