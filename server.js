@@ -2475,6 +2475,25 @@ app.delete('/api/restaurante/comandas/:id/items/:itemId', auth, authRestaurante,
       [req.params.itemId, req.params.id]);
     if (!item) return res.status(404).json({ error: 'Ítem no encontrado' });
 
+    // Si el ítem tenía bebidas a elección asignadas (ej. "Menú del día"), y la nueva cantidad
+    // ya no las puede sostener (se reduce o se elimina del todo), hay que devolver ESE stock —
+    // si no, queda "perdido" del inventario para siempre. Se devuelve todo y se limpia la
+    // asignación; el mozo puede volver a asignar bebidas si el ítem sigue teniendo unidades.
+    let bebidasPrevias = [];
+    try { bebidasPrevias = JSON.parse(item.bebidas_elegidas || '[]'); } catch(e) { bebidasPrevias = []; }
+    const nuevaCantidad = item.cantidad - 1;
+    const totalBebidasAsignadas = bebidasPrevias.reduce((s,b)=>s+Number(b.cantidad||0),0);
+
+    if (bebidasPrevias.length && (nuevaCantidad <= 0 || totalBebidasAsignadas > nuevaCantidad)) {
+      for (const b of bebidasPrevias) {
+        await descontarStockBebida(b.producto_id, -Number(b.cantidad||0), req.params.id,
+          'Devolución por cancelación de ítem', req.user.id, req.user.nombre);
+      }
+      if (nuevaCantidad > 0) {
+        await db.query('UPDATE comanda_items SET bebidas_elegidas=$1 WHERE id=$2', [JSON.stringify([]), item.id]);
+      }
+    }
+
     if (item.cantidad > 1) {
       await db.query('UPDATE comanda_items SET cantidad=cantidad-1 WHERE id=$1', [item.id]);
     } else {
