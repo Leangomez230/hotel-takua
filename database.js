@@ -61,7 +61,7 @@ async function transaction(callback) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 // Inicializar tablas
 async function initDB() {
@@ -684,6 +684,9 @@ try {
   // Compras (cabecera): registra factura/remito de mercadería recibida.
   // proveedor_nombre queda desnormalizado a propósito — si el proveedor
   // se edita/renombra después, los comprobantes ya emitidos no cambian.
+  // fecha_emision/fecha_recepcion (v5) quedan como columnas legacy sin uso —
+  // en v6 se separaron en fecha_*_factura y fecha_*_remito porque un mismo
+  // envío puede traer factura y remito con fechas distintas.
   await query(`
     CREATE TABLE IF NOT EXISTS compras (
       id SERIAL PRIMARY KEY,
@@ -693,6 +696,10 @@ try {
       numero_remito TEXT DEFAULT '',
       fecha_emision DATE,
       fecha_recepcion DATE DEFAULT CURRENT_DATE,
+      fecha_emision_factura DATE,
+      fecha_recepcion_factura DATE,
+      fecha_emision_remito DATE,
+      fecha_recepcion_remito DATE,
       observaciones TEXT DEFAULT '',
       total REAL DEFAULT 0,
       estado TEXT DEFAULT 'confirmada',
@@ -704,7 +711,13 @@ try {
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
-  console.log('✅ Tabla compras lista');
+  // La tabla ya existía desde v5 en Railway — estas columnas nuevas necesitan
+  // agregarse aparte, CREATE TABLE IF NOT EXISTS no las suma a una tabla existente.
+  await query(`ALTER TABLE compras ADD COLUMN IF NOT EXISTS fecha_emision_factura DATE`);
+  await query(`ALTER TABLE compras ADD COLUMN IF NOT EXISTS fecha_recepcion_factura DATE`);
+  await query(`ALTER TABLE compras ADD COLUMN IF NOT EXISTS fecha_emision_remito DATE`);
+  await query(`ALTER TABLE compras ADD COLUMN IF NOT EXISTS fecha_recepcion_remito DATE`);
+  console.log('✅ Tabla compras lista (fechas de factura/remito separadas)');
 
   // Ítems de cada compra. producto_id es NULLABLE: un ítem puede no estar
   // vinculado al inventario (queda solo como registro documental del comprobante).
