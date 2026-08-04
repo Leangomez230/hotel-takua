@@ -1410,6 +1410,57 @@ app.get('/api/inventario/reporte', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── PROVEEDORES (módulo Compras) ──────────────────────────────────────
+// Listado: por defecto solo activos; ?incluir_inactivos=1 trae todos (para el
+// historial de compras, que necesita mostrar el nombre aunque el proveedor
+// se haya dado de baja después).
+app.get('/api/proveedores', auth, async (req, res) => {
+  try {
+    const sql = req.query.incluir_inactivos === '1'
+      ? 'SELECT * FROM proveedores ORDER BY nombre'
+      : 'SELECT * FROM proveedores WHERE activo=1 ORDER BY nombre';
+    res.json(await db.getAll(sql));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/proveedores', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, cuit, telefono, email, notas } = req.body;
+    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const r = await db.query(
+      'INSERT INTO proveedores (nombre,cuit,telefono,email,notas) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [nombre.trim(), (cuit||'').trim(), (telefono||'').trim(), (email||'').trim(), (notas||'').trim()]
+    );
+    await logAction(req.user.id, req.user.nombre, 'PROVEEDOR_CREAR', nombre);
+    res.json({ ok: true, id: r.rows[0].id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/proveedores/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { nombre, cuit, telefono, email, notas } = req.body;
+    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    await db.query(
+      'UPDATE proveedores SET nombre=$1, cuit=$2, telefono=$3, email=$4, notas=$5 WHERE id=$6',
+      [nombre.trim(), (cuit||'').trim(), (telefono||'').trim(), (email||'').trim(), (notas||'').trim(), req.params.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'PROVEEDOR_EDITAR', nombre);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Baja: soft-delete (activo=0), nunca DELETE físico — un proveedor puede tener
+// compras históricas vinculadas por proveedor_id y no queremos romper esa referencia.
+app.delete('/api/proveedores/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const prov = await db.getOne('SELECT * FROM proveedores WHERE id=$1', [req.params.id]);
+    if (!prov) return res.status(404).json({ error: 'Proveedor no encontrado' });
+    await db.query('UPDATE proveedores SET activo=0 WHERE id=$1', [req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'PROVEEDOR_DESACTIVAR', prov.nombre);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── INVENTARIO LEGACY ────────────────────────────────────────────────
 app.get('/api/productos', auth, async (req, res) => {
   try { res.json(await db.getAll("SELECT * FROM productos WHERE activo=1 ORDER BY categoria,nombre")); }
