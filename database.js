@@ -34,6 +34,30 @@ async function run(text, params) {
   return result;
 }
 
+// Helper: transacción — usar cuando una operación toca varias tablas y debe
+// ser todo-o-nada (ej: alta de compra, que actualiza stock de varios productos
+// a la vez). El callback recibe un cliente con query/getOne/getAll ligados a
+// la MISMA conexión, para que todo corra dentro del mismo BEGIN/COMMIT.
+async function transaction(callback) {
+  const client = await pool.connect();
+  const tx = {
+    query: (text, params) => client.query(text, params),
+    getOne: async (text, params) => (await client.query(text, params)).rows[0] || null,
+    getAll: async (text, params) => (await client.query(text, params)).rows,
+  };
+  try {
+    await client.query('BEGIN');
+    const result = await callback(tx);
+    await client.query('COMMIT');
+    return result;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
@@ -708,4 +732,4 @@ try {
   console.log(`✅ Schema marcado como v${SCHEMA_VERSION}`);
 }
 
-module.exports = { query, getOne, getAll, run, initDB };
+module.exports = { query, getOne, getAll, run, transaction, initDB };
