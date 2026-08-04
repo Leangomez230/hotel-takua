@@ -40,6 +40,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .pgr{background:#f3f4f6;color:#374151}
 .form-row{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 .form-col{flex:1;min-width:140px;display:flex;flex-direction:column;gap:5px}
+.form-col.narrow{flex:0 0 90px;min-width:90px}
 .form-col label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px}
 .form-col input,.form-col select,.form-col textarea{border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 11px;font-size:13px;font-family:'Nunito',sans-serif;width:100%;transition:border .15s}
 .form-col input:focus,.form-col select:focus,.form-col textarea:focus{outline:none;border-color:var(--accent)}
@@ -68,7 +69,16 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .item-toggle button{border:none;background:transparent;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif}
 .item-toggle button.active{background:#fff;color:#0f766e;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .item-remove{background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:2px 6px}
-.item-search-wrap{position:relative}
+.item-search-wrap{position:relative;flex:2;min-width:180px}
+.item-search-wrap input, .item-line input{border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 11px;font-size:13px;font-family:'Nunito',sans-serif;width:100%}
+.item-search-wrap input:focus, .item-line input:focus{outline:none;border-color:var(--accent)}
+.item-line{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.item-line .icol{display:flex;flex-direction:column;gap:4px}
+.item-line .icol label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px}
+.item-line .icol.nombre{flex:2;min-width:180px}
+.item-line .icol.cant{flex:0 0 80px}
+.item-line .icol.unidad{flex:0 0 78px}
+.item-line .icol.costo{flex:1;min-width:110px}
 .item-search-results{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;z-index:50;margin-top:4px}
 .item-search-opt{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9}
 .item-search-opt:hover{background:#f0fdf9}
@@ -235,23 +245,32 @@ function renderTabNueva(el) {
     +'<div class="sc-head"><span class="card-title">Datos de la compra</span>'
     +(IS_ADMIN ? '<button class="btn-secondary" onclick="modalNuevoProveedor(true)">+ Nuevo proveedor</button>' : '')
     +'</div>'
-    +'<div class="form-row">'
-    +'<div class="form-col"><label>Proveedor *</label><select id="nc-proveedor">'
+    +'<div class="form-col" style="margin-bottom:14px;max-width:340px"><label>Proveedor *</label><select id="nc-proveedor">'
     +'<option value="">Seleccionar...</option>'+optsProveedor+'</select></div>'
-    +'<div class="form-col"><label>Nº Factura</label><input id="nc-factura" placeholder="A-0001-00001234"></div>'
-    +'<div class="form-col"><label>Nº Remito</label><input id="nc-remito" placeholder="R-0001-00005678"></div>'
-    +'</div>'
+
+    +'<div class="stitle" style="margin-top:0">🧾 Factura</div>'
     +'<div class="form-row">'
-    +'<div class="form-col"><label>Fecha de emisión</label><input type="date" id="nc-emision"></div>'
-    +'<div class="form-col"><label>Fecha de recepción</label><input type="date" id="nc-recepcion" value="'+hoy()+'"></div>'
+    +'<div class="form-col"><label>Nº Factura</label><input id="nc-factura" placeholder="A-1-1234" '
+    +'onblur="this.value=formatearComprobante(this.value)"></div>'
+    +'<div class="form-col"><label>Fecha de emisión</label><input type="date" id="nc-emision-factura"></div>'
+    +'<div class="form-col"><label>Fecha de recepción</label><input type="date" id="nc-recepcion-factura" value="'+hoy()+'"></div>'
     +'</div>'
+
+    +'<div class="stitle">📦 Remito</div>'
+    +'<div class="form-row">'
+    +'<div class="form-col"><label>Nº Remito</label><input id="nc-remito" placeholder="R-1-5678" '
+    +'onblur="this.value=formatearComprobante(this.value)"></div>'
+    +'<div class="form-col"><label>Fecha de emisión</label><input type="date" id="nc-emision-remito"></div>'
+    +'<div class="form-col"><label>Fecha de recepción</label><input type="date" id="nc-recepcion-remito" value="'+hoy()+'"></div>'
+    +'</div>'
+
     +'<div class="form-col"><label>Observaciones</label><textarea id="nc-obs" placeholder="Opcional"></textarea></div>'
     +'</div>'
 
     +'<div class="section-card">'
-    +'<div class="sc-head"><span class="card-title">Ítems recibidos</span>'
-    +'<button class="btn-secondary" onclick="agregarItem()">+ Agregar ítem</button></div>'
+    +'<div class="sc-head"><span class="card-title">Ítems recibidos</span></div>'
     +'<div id="items-list"></div>'
+    +'<button class="btn-secondary" onclick="agregarItem()" style="width:100%;margin-top:4px">+ Agregar ítem</button>'
     +'<div class="total-box"><span class="lbl">Total compra</span><span class="val" id="nc-total">'+fmt(0)+'</span></div>'
     +'</div>'
 
@@ -259,6 +278,19 @@ function renderTabNueva(el) {
 
   document.getElementById('nc-proveedor').value = G.proveedorSeleccionado || '';
   renderItemsList();
+}
+
+// Autocompleta ceros a la izquierda: "A-1-1234" → "A-0001-00001234"
+// (Tipo - Punto de venta a 4 dígitos - Número a 8 dígitos, formato AFIP estándar)
+function formatearComprobante(raw) {
+  if (!raw || !raw.trim()) return '';
+  const partes = raw.trim().toUpperCase().split('-').map(p=>p.trim()).filter(p=>p!=='');
+  if (partes.length < 2) return raw.trim().toUpperCase();
+  const tipo = partes[0];
+  const puntoVenta = partes[1].padStart(4,'0');
+  if (partes.length < 3) return tipo + '-' + puntoVenta;
+  const numero = partes[2].padStart(8,'0');
+  return tipo + '-' + puntoVenta + '-' + numero;
 }
 
 function renderItemsList() {
@@ -270,6 +302,16 @@ function renderItemsList() {
 
 function itemRowHTML(it) {
   const subtotal = (Number(it.cantidad)||0) * (Number(it.costo_unitario)||0);
+  const campoNombre = it.vinculado
+    ? '<div class="item-search-wrap">'
+      +'<input placeholder="Buscar producto del inventario..." value="'+(it.nombre||'').replace(/"/g,'&quot;')+'" '
+      +'oninput="buscarProducto('+it.seq+',this.value)" onfocus="buscarProducto('+it.seq+',this.value)" '
+      +'onblur="setTimeout(()=>cerrarBusqueda('+it.seq+'),150)">'
+      +'<div class="item-search-results" id="search-'+it.seq+'" style="display:none"></div>'
+      +'</div>'
+    : '<input placeholder="Nombre del producto" value="'+(it.nombre||'').replace(/"/g,'&quot;')+'" '
+      +'oninput="setItemCampo('+it.seq+',\'nombre\',this.value)" style="border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 11px;font-size:13px;width:100%;font-family:Nunito,sans-serif">';
+
   return '<div class="item-row" data-seq="'+it.seq+'">'
     +'<div class="item-row-head">'
     +'<div class="item-toggle">'
@@ -279,21 +321,11 @@ function itemRowHTML(it) {
     +(G.itemsForm.length>1 ? '<button class="item-remove" onclick="quitarItem('+it.seq+')">✕</button>' : '')
     +'</div>'
 
-    +(it.vinculado
-      ? '<div class="item-search-wrap">'
-        +'<input placeholder="Buscar producto del inventario..." value="'+(it.nombre||'').replace(/"/g,'&quot;')+'" '
-        +'oninput="buscarProducto('+it.seq+',this.value)" onfocus="buscarProducto('+it.seq+',this.value)" '
-        +'onblur="setTimeout(()=>cerrarBusqueda('+it.seq+'),150)">'
-        +'<div class="item-search-results" id="search-'+it.seq+'" style="display:none"></div>'
-        +'</div>'
-      : '<input placeholder="Nombre del producto" value="'+(it.nombre||'').replace(/"/g,'&quot;')+'" '
-        +'oninput="setItemCampo('+it.seq+',\'nombre\',this.value)" style="margin-bottom:8px;border:1.5px solid #e0e6ef;border-radius:9px;padding:9px 11px;font-size:13px;width:100%;font-family:Nunito,sans-serif">'
-    )
-
-    +'<div class="form-row" style="margin-top:8px;margin-bottom:0">'
-    +'<div class="form-col"><label>Cantidad</label><input type="number" min="0" step="any" value="'+it.cantidad+'" oninput="setItemCampo('+it.seq+',\'cantidad\',this.value)"></div>'
-    +'<div class="form-col"><label>Unidad</label><input value="'+(it.unidad||'unidad')+'" oninput="setItemCampo('+it.seq+',\'unidad\',this.value)" '+(it.vinculado?'readonly style="background:#f1f5f9"':'')+'></div>'
-    +'<div class="form-col"><label>Costo unitario</label><input type="number" min="0" step="any" value="'+it.costo_unitario+'" oninput="setItemCampo('+it.seq+',\'costo_unitario\',this.value)"></div>'
+    +'<div class="item-line">'
+    +campoNombre
+    +'<div class="icol cant"><label>Cant.</label><input type="number" min="0" step="any" value="'+it.cantidad+'" oninput="setItemCampo('+it.seq+',\'cantidad\',this.value)"></div>'
+    +'<div class="icol unidad"><label>Unidad</label><input value="'+(it.unidad||'unidad')+'" oninput="setItemCampo('+it.seq+',\'unidad\',this.value)" '+(it.vinculado?'readonly style="background:#f1f5f9"':'')+'></div>'
+    +'<div class="icol costo"><label>Costo unit.</label><input type="number" min="0" step="any" value="'+it.costo_unitario+'" oninput="setItemCampo('+it.seq+',\'costo_unitario\',this.value)"></div>'
     +'</div>'
     +'<div class="item-subtotal">Subtotal: '+fmt(subtotal)+'</div>'
     +'</div>';
@@ -373,8 +405,10 @@ async function finalizarCompra() {
     proveedor_id: Number(proveedor_id),
     numero_factura: document.getElementById('nc-factura').value.trim(),
     numero_remito: document.getElementById('nc-remito').value.trim(),
-    fecha_emision: document.getElementById('nc-emision').value || null,
-    fecha_recepcion: document.getElementById('nc-recepcion').value || hoy(),
+    fecha_emision_factura: document.getElementById('nc-emision-factura').value || null,
+    fecha_recepcion_factura: document.getElementById('nc-recepcion-factura').value || null,
+    fecha_emision_remito: document.getElementById('nc-emision-remito').value || null,
+    fecha_recepcion_remito: document.getElementById('nc-recepcion-remito').value || null,
     observaciones: document.getElementById('nc-obs').value.trim(),
     items: G.itemsForm.map(it => ({
       producto_id: it.vinculado ? it.producto_id : null,
@@ -420,8 +454,16 @@ function comprobanteResumenHTML(compra) {
   const items = compra.items||[];
   return '<div class="form-row">'
     +'<div class="form-col"><label>Proveedor</label><div style="font-weight:700;padding-top:4px">'+compra.proveedor_nombre+'</div></div>'
-    +'<div class="form-col"><label>Fecha recepción</label><div style="font-weight:700;padding-top:4px">'+fmtDate(compra.fecha_recepcion)+'</div></div>'
-    +'<div class="form-col"><label>Nº Factura / Remito</label><div style="font-weight:700;padding-top:4px">'+(compra.numero_factura||'—')+' / '+(compra.numero_remito||'—')+'</div></div>'
+    +'</div>'
+    +'<div class="form-row">'
+    +'<div class="form-col"><label>Nº Factura</label><div style="font-weight:700;padding-top:4px">'+(compra.numero_factura||'—')+'</div></div>'
+    +'<div class="form-col"><label>Emisión factura</label><div style="font-weight:700;padding-top:4px">'+fmtDate(compra.fecha_emision_factura)+'</div></div>'
+    +'<div class="form-col"><label>Recepción factura</label><div style="font-weight:700;padding-top:4px">'+fmtDate(compra.fecha_recepcion_factura)+'</div></div>'
+    +'</div>'
+    +'<div class="form-row">'
+    +'<div class="form-col"><label>Nº Remito</label><div style="font-weight:700;padding-top:4px">'+(compra.numero_remito||'—')+'</div></div>'
+    +'<div class="form-col"><label>Emisión remito</label><div style="font-weight:700;padding-top:4px">'+fmtDate(compra.fecha_emision_remito)+'</div></div>'
+    +'<div class="form-col"><label>Recepción remito</label><div style="font-weight:700;padding-top:4px">'+fmtDate(compra.fecha_recepcion_remito)+'</div></div>'
     +'</div>'
     +'<div style="overflow-x:auto;margin-top:10px"><table class="data-table"><thead><tr>'
     +'<th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th>Vínculo</th>'
@@ -476,11 +518,13 @@ async function imprimirComprobante(compraId) {
   ${anulada?`<div class="anulada">⚠️ COMPROBANTE ANULADO${compra.motivo_anulacion?' — '+compra.motivo_anulacion:''}</div>`:''}
   <div class="datos">
     <div><b>Proveedor</b>${compra.proveedor_nombre}</div>
-    <div><b>Fecha de recepción</b>${fmtDate(compra.fecha_recepcion)}</div>
+    <div><b>Cargado por</b>${compra.usuario_nombre||'—'}</div>
     <div><b>Nº Factura</b>${compra.numero_factura||'—'}</div>
     <div><b>Nº Remito</b>${compra.numero_remito||'—'}</div>
-    <div><b>Fecha de emisión</b>${fmtDate(compra.fecha_emision)}</div>
-    <div><b>Cargado por</b>${compra.usuario_nombre||'—'}</div>
+    <div><b>Emisión factura</b>${fmtDate(compra.fecha_emision_factura)}</div>
+    <div><b>Emisión remito</b>${fmtDate(compra.fecha_emision_remito)}</div>
+    <div><b>Recepción factura</b>${fmtDate(compra.fecha_recepcion_factura)}</div>
+    <div><b>Recepción remito</b>${fmtDate(compra.fecha_recepcion_remito)}</div>
   </div>
   ${compra.observaciones?`<div class="datos"><div style="grid-column:1/-1"><b>Observaciones</b>${compra.observaciones}</div></div>`:''}
   <table>
