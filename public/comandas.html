@@ -2326,7 +2326,7 @@ function abrirAsignarBebidas(cmdId, itemId){
   document.getElementById('bm-search').value='';
 
   _bmBebidasDisp = S.menu.filter(m=>m.es_bebida==1 && m.disponible && !(m.sin_stock===true||m.sin_stock==1));
-  const cats = ['Todas', ...new Set(_bmBebidasDisp.map(b=>b.categoria).filter(Boolean))];
+  const cats = ['Todas', ...new Set(_bmBebidasDisp.map(b=>b.categoria).filter(c=>c && CATS_INVENTARIO.includes(c.toLowerCase())))];
   document.getElementById('bm-cats').innerHTML = cats.map((c,i)=>`<button class="mc-cat-tab${i===0?' active':''}" onclick="filtrarCatsBM('${c}',this)">
     <span class="mc-cat-tab-icon">${iconoCategoriaMC(c)}</span>
     <span class="mc-cat-tab-label">${c}</span>
