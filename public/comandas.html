@@ -528,14 +528,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   <div class="modal" style="max-width:420px">
     <div class="modal-handle"><div></div></div>
     <div class="modal-header">
-      <span class="modal-title">🥤 Elegir bebida</span>
+      <span class="modal-title">🥤 Asignar bebidas</span>
       <button class="btn-close-modal" onclick="closeModal('m-bebida-menu')">×</button>
     </div>
     <div class="modal-body">
-      <div id="bm-prod-nombre" style="font-weight:800;color:#1a2035;margin-bottom:4px"></div>
-      <div style="font-size:12px;color:#94a3b8;margin-bottom:16px">Este menú incluye una bebida a elección del comensal</div>
-      <select id="bm-select" style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;margin-bottom:16px"></select>
-      <button class="btn-primary" onclick="confirmarAgregarConBebida()">Agregar al pedido</button>
+      <div id="bm-item-nombre" style="font-weight:800;color:#1a2035;margin-bottom:4px"></div>
+      <div id="bm-contador" style="font-size:12px;color:#64748b;margin-bottom:16px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <select id="bm-select" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px"></select>
+        <button onclick="agregarBebidaALista()"
+          style="background:#0284c7;color:#fff;border:none;border-radius:10px;padding:0 18px;font-weight:800;font-size:18px;cursor:pointer">+</button>
+      </div>
+      <div id="bm-lista"></div>
+      <button class="btn-primary" onclick="guardarBebidasAsignadas()" style="margin-top:16px">Guardar</button>
     </div>
   </div>
 </div>
@@ -1640,10 +1645,18 @@ async function imprimirTicketHistorial(cmdId) {
     <span>${mesa}</span><span>${cmd.cajero_nombre||''}</span>
   </div>
   <div style="border-top:1px solid #000;margin:6px 0"></div>
-  ${items.map(i=>`<div style="display:flex;justify-content:space-between">
+  ${items.map(i=>{
+    const prodDef = S.menu.find(m=>m.id===i.producto_id);
+    let bebidasTxt='';
+    if(prodDef?.incluye_bebida==1){
+      let bebidas=[]; try{ bebidas=JSON.parse(i.bebidas_elegidas||'[]'); }catch(e){}
+      if(bebidas.length) bebidasTxt=bebidas.map(b=>`<div style="font-size:11px;padding-left:12px">• ${b.cantidad} ${b.nombre}</div>`).join('');
+    }
+    return `<div style="display:flex;justify-content:space-between">
     <span>${i.cantidad}x ${i.nombre}</span>
     <span>${fmt(Number(i.precio_unitario||i.precio||0)*i.cantidad)}</span>
-  </div>`).join('')}
+  </div>${bebidasTxt}`;
+  }).join('')}
   <div style="border-top:2px solid #000;margin:8px 0"></div>
   ${descuento>0?`<div style="display:flex;justify-content:space-between;font-size:12px">
     <span>Subtotal</span><span>${fmt(Number(cmd.total||0))}</span>
@@ -2087,15 +2100,32 @@ async function verComanda(cmdId){
     const items=cmd.items||[];
     const itemsHTML=!items.length
       ?'<p style="text-align:center;color:#94a3b8;padding:16px;font-size:13px">Sin ítems aún</p>'
-      :items.map(it=>`<div class="item-row">
-          <span class="item-name">${it.nombre}${it.nota?`<br><span style="font-size:11px;color:#94a3b8">📝 ${it.nota}</span>`:''}</span>
-          <div class="item-qty-ctrl">
-            ${canEdit&&cmd.estado==='abierta'?`<button class="qty-btn" onclick="quitarItem(${cmdId},${it.id})">−</button>`:''}
-            <span style="font-weight:700;min-width:20px;text-align:center">${it.cantidad}</span>
-            ${canEdit&&cmd.estado==='abierta'?`<button class="qty-btn" onclick="agregarItemExistente(${cmdId},${it.producto_id})">+</button>`:''}
-          </div>
-          <span class="item-precio">${fmt(it.precio_unitario*it.cantidad)}</span>
-        </div>`).join('');
+      :items.map(it=>{
+          const prodDef = S.menu.find(m=>m.id===it.producto_id);
+          const incluyeBebida = prodDef?.incluye_bebida==1;
+          let bebidas=[];
+          if(incluyeBebida){ try{ bebidas=JSON.parse(it.bebidas_elegidas||'[]'); }catch(e){ bebidas=[]; } }
+          const totalBebidas = bebidas.reduce((s,b)=>s+Number(b.cantidad||0),0);
+          const bebidasHTML = bebidas.length
+            ? `<div style="font-size:11px;color:#0284c7;margin-top:3px;line-height:1.6">${bebidas.map(b=>`🥤 ${b.cantidad} ${b.nombre}`).join('<br>')}</div>`
+            : '';
+          const btnBebidas = (incluyeBebida && canEdit && cmd.estado==='abierta')
+            ? `<button onclick="abrirAsignarBebidas(${cmdId},${it.id})"
+                 style="font-size:10px;background:#e0f2fe;color:#0284c7;border:none;border-radius:20px;padding:3px 9px;
+                 font-weight:700;cursor:pointer;margin-top:5px;display:inline-flex;align-items:center;gap:4px">
+                 🥤 Bebidas (${totalBebidas}/${it.cantidad})
+               </button>`
+            : '';
+          return `<div class="item-row">
+              <span class="item-name">${it.nombre}${it.nota?`<br><span style="font-size:11px;color:#94a3b8">📝 ${it.nota}</span>`:''}${bebidasHTML}${btnBebidas?`<br>${btnBebidas}`:''}</span>
+              <div class="item-qty-ctrl">
+                ${canEdit&&cmd.estado==='abierta'?`<button class="qty-btn" onclick="quitarItem(${cmdId},${it.id})">−</button>`:''}
+                <span style="font-weight:700;min-width:20px;text-align:center">${it.cantidad}</span>
+                ${canEdit&&cmd.estado==='abierta'?`<button class="qty-btn" onclick="agregarItemExistente(${cmdId},${it.producto_id})">+</button>`:''}
+              </div>
+              <span class="item-precio">${fmt(it.precio_unitario*it.cantidad)}</span>
+            </div>`;
+        }).join('');
 
     // Menú para agregar
     let menuHTML='';
@@ -2109,7 +2139,7 @@ async function verComanda(cmdId){
         const sinStock = m.sin_stock===true||m.sin_stock==1;
         return `<div class="menu-item-btn${sinStock?' disabled':''}"
           style="${sinStock?'opacity:.4;cursor:not-allowed;filter:grayscale(.5)':''}"
-          onclick="${sinStock?'':(m.incluye_bebida==1?'abrirSelectorBebida('+cmdId+','+m.id+')':'agregarItemConNota('+cmdId+','+m.id+')')}">
+          onclick="${sinStock?'':'agregarItemConNota('+cmdId+','+m.id+')'}">
           <div class="menu-item-nombre">${m.nombre}${m.incluye_bebida==1?' <span style="font-size:10px">🥤</span>':''}</div>
           <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${m.categoria}</div>
           ${sinStock?'<div style="font-size:10px;color:#dc2626;font-weight:700">Sin stock</div>':'<div class="menu-item-precio">'+fmt(m.precio)+'</div>'}
@@ -2270,32 +2300,73 @@ async function agregarItemConNota(cmdId,prodId){
 async function agregarItemExistente(cmdId,prodId){ await agregarItemConNota(cmdId,prodId); }
 
 // ── Menús con bebida a elección (ej. "Menú del día" incluye una gaseosa/agua a elegir) ──
-let _bmCmdId=null, _bmProdId=null;
-function abrirSelectorBebida(cmdId, prodId){
-  const prod = S.menu.find(m=>m.id===prodId);
-  if(!prod) return;
-  _bmCmdId=cmdId; _bmProdId=prodId;
-  document.getElementById('bm-prod-nombre').textContent = prod.nombre;
-  const bebidas = S.menu.filter(m=>m.es_bebida==1 && m.disponible && !(m.sin_stock===true||m.sin_stock==1));
+// El ítem se agrega normal (una sola línea, cantidad acumulable); acá se asigna, aparte,
+// qué bebidas concretas corresponden a esas unidades (hasta la cantidad del ítem).
+let _bmCmdId=null, _bmItemId=null, _bmCantidadItem=1, _bmLista=[];
+
+function abrirAsignarBebidas(cmdId, itemId){
+  const cmd = S.ticketData?.cmd;
+  const item = cmd?.items?.find(i=>i.id===itemId);
+  if(!item) return;
+  _bmCmdId=cmdId; _bmItemId=itemId; _bmCantidadItem=item.cantidad;
+  try{ _bmLista = JSON.parse(item.bebidas_elegidas||'[]'); }catch(e){ _bmLista=[]; }
+  document.getElementById('bm-item-nombre').textContent = `${item.nombre} — pediste ${item.cantidad}`;
+  const bebidasDisp = S.menu.filter(m=>m.es_bebida==1 && m.disponible && !(m.sin_stock===true||m.sin_stock==1));
   const sel = document.getElementById('bm-select');
-  sel.innerHTML = bebidas.length
-    ? bebidas.map(b=>`<option value="${b.id}">${b.nombre}</option>`).join('')
+  sel.innerHTML = bebidasDisp.length
+    ? bebidasDisp.map(b=>`<option value="${b.id}" data-nombre="${b.nombre.replace(/"/g,'&quot;')}">${b.nombre}</option>`).join('')
     : '<option value="">No hay bebidas disponibles</option>';
+  renderListaBebidasModal();
   openModal('m-bebida-menu');
 }
-async function confirmarAgregarConBebida(){
-  const bebidaId = document.getElementById('bm-select')?.value;
-  if(!bebidaId){ toast('Elegí una bebida','err'); return; }
-  const bebida = S.menu.find(m=>m.id===Number(bebidaId));
-  const notaManual = document.getElementById('nota-item')?.value || '';
-  const nota = `Bebida: ${bebida?.nombre||''}` + (notaManual ? ` — ${notaManual}` : '');
-  closeModal('m-bebida-menu');
+
+function renderListaBebidasModal(){
+  const totalAsignado = _bmLista.reduce((s,b)=>s+Number(b.cantidad||0),0);
+  document.getElementById('bm-contador').innerHTML =
+    `Asignadas: <strong style="color:${totalAsignado>_bmCantidadItem?'#dc2626':'#0284c7'}">${totalAsignado} / ${_bmCantidadItem}</strong>`;
+  const lista = document.getElementById('bm-lista');
+  if(!_bmLista.length){
+    lista.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:12px;padding:14px 0">Sin bebidas asignadas todavía</div>';
+    return;
+  }
+  lista.innerHTML = _bmLista.map((b,idx)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+      <span style="font-size:13px;color:#1a2035">${b.nombre}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="cambiarCantBebida(${idx},-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;font-weight:700">−</button>
+        <span style="min-width:18px;text-align:center;font-weight:700">${b.cantidad}</span>
+        <button onclick="cambiarCantBebida(${idx},1)" style="width:26px;height:26px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;font-weight:700">+</button>
+      </div>
+    </div>`).join('');
+}
+
+function agregarBebidaALista(){
+  const sel = document.getElementById('bm-select');
+  const id = Number(sel.value);
+  if(!id) return;
+  const totalActual = _bmLista.reduce((s,b)=>s+Number(b.cantidad||0),0);
+  if(totalActual >= _bmCantidadItem){ toast(`Ya asignaste las ${_bmCantidadItem} bebidas de este ítem`,'err'); return; }
+  const nombre = sel.options[sel.selectedIndex].dataset.nombre;
+  const existente = _bmLista.find(b=>b.producto_id===id);
+  if(existente) existente.cantidad++;
+  else _bmLista.push({producto_id:id, nombre, cantidad:1});
+  renderListaBebidasModal();
+}
+
+function cambiarCantBebida(idx, delta){
+  const totalActual = _bmLista.reduce((s,b)=>s+Number(b.cantidad||0),0);
+  if(delta>0 && totalActual>=_bmCantidadItem){ toast(`Ya asignaste las ${_bmCantidadItem} bebidas de este ítem`,'err'); return; }
+  _bmLista[idx].cantidad += delta;
+  if(_bmLista[idx].cantidad<=0) _bmLista.splice(idx,1);
+  renderListaBebidasModal();
+}
+
+async function guardarBebidasAsignadas(){
   loading(true);
   try{
-    await api('POST',`/api/restaurante/comandas/${_bmCmdId}/items`,{
-      producto_id:_bmProdId, cantidad:1, nota, bebida_id:Number(bebidaId)
-    });
-    toast('Ítem agregado ✓','ok');
+    await api('PUT',`/api/restaurante/comandas/${_bmCmdId}/items/${_bmItemId}/bebidas`,{bebidas:_bmLista});
+    toast('Bebidas asignadas ✓','ok');
+    closeModal('m-bebida-menu');
     await loadAll(); verComanda(_bmCmdId);
   }catch(e){toast(e.message,'err');}
   finally{loading(false);}
@@ -2418,10 +2489,21 @@ function renderModalCobrar(cmd){
     <!-- Items de la comanda -->
     <div style="margin-bottom:8px;background:#f8fafc;border-radius:10px;padding:10px 12px">
       <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Ítems del pedido</div>
-      ${items.map(i=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">
-        <span>${i.nombre} x${i.cantidad}</span>
-        <span style="font-weight:600">${fmt((i.precio_unitario||i.precio||0)*i.cantidad)}</span>
-      </div>`).join('')}
+      ${items.map(i=>{
+        const prodDef = S.menu.find(m=>m.id===i.producto_id);
+        let bebidasHTML='';
+        if(prodDef?.incluye_bebida==1){
+          let bebidas=[]; try{ bebidas=JSON.parse(i.bebidas_elegidas||'[]'); }catch(e){}
+          if(bebidas.length) bebidasHTML=`<div style="font-size:11px;color:#0284c7;margin:2px 0 4px 8px;line-height:1.5">${bebidas.map(b=>`🥤 ${b.cantidad} ${b.nombre}`).join('<br>')}</div>`;
+        }
+        return `<div style="padding:4px 0;font-size:13px">
+          <div style="display:flex;justify-content:space-between">
+            <span>${i.nombre} x${i.cantidad}</span>
+            <span style="font-weight:600">${fmt((i.precio_unitario||i.precio||0)*i.cantidad)}</span>
+          </div>
+          ${bebidasHTML}
+        </div>`;
+      }).join('')}
     </div>
 
     <!-- Ítems extra -->
@@ -3124,7 +3206,7 @@ function imprimirTicketCobrar(cmdId){
   const subtotal = (Number(cmd.total)||0) + extra;
   const totalFinal = subtotal*(1-desc/100);
   const metodo = METODOS[S._metodoIdx||0];
-  const items = (cmd.items||[]).map(i=>({nombre:i.nombre,cantidad:i.cantidad,precio:(i.precio_unitario||i.precio||0)*i.cantidad}));
+  const items = (cmd.items||[]).map(i=>({nombre:i.nombre,cantidad:i.cantidad,precio:(i.precio_unitario||i.precio||0)*i.cantidad,producto_id:i.producto_id,bebidas_elegidas:i.bebidas_elegidas}));
   const todosItems = [...items, ..._extraItems.map(i=>({nombre:i.nombre,cantidad:1,precio:i.precio}))];
 
   // Reutilizar imprimirTicket pasando datos manualmente
@@ -3178,15 +3260,25 @@ function imprimirTicket(tipo) {
       ${cmd.observaciones ? `<div style="font-style:italic;margin-bottom:5px">Obs: ${cmd.observaciones}</div>` : ''}
       <div style="border-top:3px solid #000;margin:8px 0"></div>
 
-      ${itemsImprimir.map(it => `
+      ${itemsImprimir.map(it => {
+        let bebidasTxt='';
+        if(!esCocina){
+          const prodDef = S.menu.find(m=>m.id===it.producto_id);
+          if(prodDef?.incluye_bebida==1){
+            let bebidas=[]; try{ bebidas=JSON.parse(it.bebidas_elegidas||'[]'); }catch(e){}
+            if(bebidas.length) bebidasTxt=bebidas.map(b=>`<div style="font-size:14px;padding-left:15px;font-weight:normal">• ${b.cantidad} ${b.nombre}</div>`).join('');
+          }
+        }
+        return `
         <div style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between">
             <span style="font-weight:bold">${it.cantidad}x ${it.nombre}</span>
             <span>${showTotal ? fmt((it.precio_unitario || it.precio || 0) * it.cantidad) : ''}</span>
           </div>
           ${it.nota ? `<div style="font-size:14px;padding-left:15px;font-weight:normal">→ ${it.nota}</div>` : ''}
+          ${bebidasTxt}
         </div>
-      `).join('')}
+      `;}).join('')}
 
       <div style="border-top:3px solid #000;margin:8px 0"></div>
       ${showTotal ? (() => {
