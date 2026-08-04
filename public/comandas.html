@@ -2091,7 +2091,12 @@ async function confirmarAbrirComanda(){
 
 async function verComanda(cmdId){
   S.selCmdId=cmdId;
-  if(window._mcLastCmdId !== cmdId){ window._mcTabActual='comanda'; window._mcLastCmdId=cmdId; }
+  if(window._mcLastCmdId !== cmdId){
+    window._mcTabActual='comanda'; window._mcLastCmdId=cmdId;
+    window._mcSearchText=''; window._mcCatActiva='Todas';
+  }
+  // Guardar el scroll de la pestaña Productos para restaurarlo después del rebuild
+  const _scrollProductosPrevio = document.querySelector('.mc-tab-page:nth-child(1)')?.scrollTop || 0;
   loading(true);
   try{
     const cmd=await api('GET',`/api/restaurante/comandas/${cmdId}`);
@@ -2150,6 +2155,8 @@ async function verComanda(cmdId){
     // Menú para agregar
     let menuHTML='';
     if(canEdit&&cmd.estado==='abierta'){
+      const catPersistida = window._mcCatActiva || 'Todas';
+      const searchPersistido = window._mcSearchText || '';
       const cats=['Todas',...new Set(S.menu.filter(m=>m.disponible).map(m=>m.categoria))];
       const renderItems = (filtro='', catActiva='Todas') => S.menu.filter(m=>m.disponible).filter(m=>{
         const matchCat = catActiva==='Todas' || m.categoria===catActiva;
@@ -2181,7 +2188,7 @@ async function verComanda(cmdId){
         <!-- BUSCADOR -->
         <div style="position:relative;margin-bottom:10px">
           <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔍</span>
-          <input id="mc-search" type="text" placeholder="Buscar producto..." autocomplete="off"
+          <input id="mc-search" type="text" placeholder="Buscar producto..." autocomplete="off" value="${searchPersistido.replace(/"/g,'&quot;')}"
             style="width:100%;padding:10px 12px 10px 34px;border-radius:10px;border:2px solid #e2e8f0;
                    font-size:14px;font-family:'Nunito',sans-serif;transition:border .15s"
             oninput="filtrarMenuMC(this.value)"
@@ -2193,14 +2200,14 @@ async function verComanda(cmdId){
         <div class="mc-cats-row">
           <button class="mc-cats-arrow" onclick="scrollCatsMC(-1)">‹</button>
           <div class="mc-cats-scroll" id="mc-cats">
-            ${cats.map((c,i)=>`<button class="mc-cat-tab${i===0?' active':''}" onclick="filtrarCatsMC('${c}',this)">
+            ${cats.map((c,i)=>`<button class="mc-cat-tab${c===catPersistida?' active':''}" onclick="filtrarCatsMC('${c}',this)">
               <span class="mc-cat-tab-icon">${iconoCategoriaMC(c)}</span>
               <span class="mc-cat-tab-label">${c}</span>
             </button>`).join('')}
           </div>
           <button class="mc-cats-arrow" onclick="scrollCatsMC(1)">›</button>
         </div>
-        <div class="menu-grid" id="mc-menu-grid" data-cmdid="${cmdId}">${renderItems()}</div>
+        <div class="menu-grid" id="mc-menu-grid" data-cmdid="${cmdId}">${renderItems(searchPersistido.toLowerCase().trim(), catPersistida)}</div>
       </div>`;
     }
 
@@ -2240,15 +2247,21 @@ async function verComanda(cmdId){
       </div>
       ${hayTabProductos ? `
       <div class="mc-tabs">
-        <button id="mc-tab-comanda" class="mc-tab-btn${tabActual==='comanda'?' active':''}" onclick="cambiarTabComanda('comanda')">📋 Comanda</button>
         <button id="mc-tab-productos" class="mc-tab-btn${tabActual==='productos'?' active':''}" onclick="cambiarTabComanda('productos')">🍽️ Productos</button>
+        <button id="mc-tab-comanda" class="mc-tab-btn${tabActual==='comanda'?' active':''}" onclick="cambiarTabComanda('comanda')">📋 Comanda</button>
       </div>
       <div class="mc-tabs-viewport">
-        <div class="mc-tabs-track" id="mc-tabs-track" style="transform:translateX(${tabActual==='productos'?'-100%':'0'})">
-          <div class="mc-tab-page">${comandaPageHTML}</div>
+        <div class="mc-tabs-track" id="mc-tabs-track" style="transform:translateX(${tabActual==='comanda'?'-100%':'0'})">
           <div class="mc-tab-page">${menuHTML}</div>
+          <div class="mc-tab-page">${comandaPageHTML}</div>
         </div>
       </div>` : comandaPageHTML}`;
+
+    // Restaurar el scroll de la grilla de Productos (si se estaba viendo, no perder la posición al agregar/quitar)
+    if(hayTabProductos && _scrollProductosPrevio > 0){
+      const paginaProductos = document.querySelector('.mc-tab-page:nth-child(1)');
+      if(paginaProductos) paginaProductos.scrollTop = _scrollProductosPrevio;
+    }
 
     openModal('m-comanda');
   }catch(e){toast(e.message,'err');}
@@ -2257,6 +2270,7 @@ async function verComanda(cmdId){
 
 function filtrarMenuMC(q) {
   const filtro = (q||'').toLowerCase().trim();
+  window._mcSearchText = q||'';
   const grid = document.getElementById('mc-menu-grid');
   if (!grid) return;
 
@@ -2317,6 +2331,7 @@ function filtrarCatsMC(cat, btn) {
   document.querySelectorAll('#mc-cats .mc-cat-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   window._mcCatActiva = cat;
+  window._mcSearchText = '';
 
   // Limpiar buscador al filtrar por categoría
   const search = document.getElementById('mc-search');
@@ -2360,7 +2375,7 @@ function cambiarTabComanda(tab){
   const track = document.getElementById('mc-tabs-track');
   if(!track) return;
   window._mcTabActual = tab;
-  track.style.transform = tab==='productos' ? 'translateX(-100%)' : 'translateX(0)';
+  track.style.transform = tab==='comanda' ? 'translateX(-100%)' : 'translateX(0)';
   document.getElementById('mc-tab-comanda')?.classList.toggle('active', tab==='comanda');
   document.getElementById('mc-tab-productos')?.classList.toggle('active', tab==='productos');
 }
