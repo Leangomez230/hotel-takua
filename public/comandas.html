@@ -525,21 +525,31 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 <!-- Modal: elegir bebida incluida en un Menú -->
 <div class="overlay" id="m-bebida-menu" style="z-index:250">
-  <div class="modal" style="max-width:420px">
+  <div class="modal" style="max-width:560px">
     <div class="modal-handle"><div></div></div>
     <div class="modal-header">
       <span class="modal-title">🥤 Asignar bebidas</span>
       <button class="btn-close-modal" onclick="closeModal('m-bebida-menu')">×</button>
     </div>
     <div class="modal-body">
-      <div id="bm-item-nombre" style="font-weight:800;color:#1a2035;margin-bottom:4px"></div>
-      <div id="bm-contador" style="font-size:12px;color:#64748b;margin-bottom:16px"></div>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <select id="bm-select" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px"></select>
-        <button onclick="agregarBebidaALista()"
-          style="background:#0284c7;color:#fff;border:none;border-radius:10px;padding:0 18px;font-weight:800;font-size:18px;cursor:pointer">+</button>
+      <div id="bm-item-nombre" style="font-weight:800;color:#1a2035;margin-bottom:2px"></div>
+      <div id="bm-contador" style="font-size:12px;color:#64748b;margin-bottom:14px"></div>
+
+      <div style="position:relative;margin-bottom:12px">
+        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔍</span>
+        <input id="bm-search" type="text" placeholder="Buscar bebida..." autocomplete="off" oninput="filtrarBebidasBM(this.value)"
+          style="width:100%;padding:10px 12px 10px 34px;border-radius:10px;border:2px solid #e2e8f0;font-size:14px;font-family:'Nunito',sans-serif"
+          onfocus="this.style.borderColor='#00c9b1'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
-      <div id="bm-lista"></div>
+
+      <div class="mc-cats-row" style="margin-bottom:14px">
+        <button class="mc-cats-arrow" onclick="scrollCatsBM(-1)">‹</button>
+        <div class="mc-cats-scroll" id="bm-cats"></div>
+        <button class="mc-cats-arrow" onclick="scrollCatsBM(1)">›</button>
+      </div>
+
+      <div class="menu-grid" id="bm-grid"></div>
+
       <button class="btn-primary" onclick="guardarBebidasAsignadas()" style="margin-top:16px">Guardar</button>
     </div>
   </div>
@@ -2303,6 +2313,7 @@ async function agregarItemExistente(cmdId,prodId){ await agregarItemConNota(cmdI
 // El ítem se agrega normal (una sola línea, cantidad acumulable); acá se asigna, aparte,
 // qué bebidas concretas corresponden a esas unidades (hasta la cantidad del ítem).
 let _bmCmdId=null, _bmItemId=null, _bmCantidadItem=1, _bmLista=[];
+let _bmBebidasDisp=[], _bmCatActiva='Todas', _bmBusqueda='';
 
 function abrirAsignarBebidas(cmdId, itemId){
   const cmd = S.ticketData?.cmd;
@@ -2310,55 +2321,85 @@ function abrirAsignarBebidas(cmdId, itemId){
   if(!item) return;
   _bmCmdId=cmdId; _bmItemId=itemId; _bmCantidadItem=item.cantidad;
   try{ _bmLista = JSON.parse(item.bebidas_elegidas||'[]'); }catch(e){ _bmLista=[]; }
+  _bmCatActiva='Todas'; _bmBusqueda='';
   document.getElementById('bm-item-nombre').textContent = `${item.nombre} — pediste ${item.cantidad}`;
-  const bebidasDisp = S.menu.filter(m=>m.es_bebida==1 && m.disponible && !(m.sin_stock===true||m.sin_stock==1));
-  const sel = document.getElementById('bm-select');
-  sel.innerHTML = bebidasDisp.length
-    ? bebidasDisp.map(b=>`<option value="${b.id}" data-nombre="${b.nombre.replace(/"/g,'&quot;')}">${b.nombre}</option>`).join('')
-    : '<option value="">No hay bebidas disponibles</option>';
-  renderListaBebidasModal();
+  document.getElementById('bm-search').value='';
+
+  _bmBebidasDisp = S.menu.filter(m=>m.es_bebida==1 && m.disponible && !(m.sin_stock===true||m.sin_stock==1));
+  const cats = ['Todas', ...new Set(_bmBebidasDisp.map(b=>b.categoria).filter(Boolean))];
+  document.getElementById('bm-cats').innerHTML = cats.map((c,i)=>`<button class="mc-cat-tab${i===0?' active':''}" onclick="filtrarCatsBM('${c}',this)">
+    <span class="mc-cat-tab-icon">${iconoCategoriaMC(c)}</span>
+    <span class="mc-cat-tab-label">${c}</span>
+  </button>`).join('');
+
+  renderGridBM();
+  renderContadorBM();
   openModal('m-bebida-menu');
 }
 
-function renderListaBebidasModal(){
+function renderContadorBM(){
   const totalAsignado = _bmLista.reduce((s,b)=>s+Number(b.cantidad||0),0);
   document.getElementById('bm-contador').innerHTML =
     `Asignadas: <strong style="color:${totalAsignado>_bmCantidadItem?'#dc2626':'#0284c7'}">${totalAsignado} / ${_bmCantidadItem}</strong>`;
-  const lista = document.getElementById('bm-lista');
-  if(!_bmLista.length){
-    lista.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:12px;padding:14px 0">Sin bebidas asignadas todavía</div>';
+}
+
+function renderGridBM(){
+  const grid = document.getElementById('bm-grid');
+  const filtro = _bmBusqueda.toLowerCase().trim();
+  const items = _bmBebidasDisp.filter(b=>{
+    const matchCat = _bmCatActiva==='Todas' || b.categoria===_bmCatActiva;
+    const matchQ   = !filtro || b.nombre.toLowerCase().includes(filtro);
+    return matchCat && matchQ;
+  });
+  if(!items.length){
+    grid.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;grid-column:1/-1;font-size:13px">Sin resultados</div>';
     return;
   }
-  lista.innerHTML = _bmLista.map((b,idx)=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
-      <span style="font-size:13px;color:#1a2035">${b.nombre}</span>
-      <div style="display:flex;align-items:center;gap:8px">
-        <button onclick="cambiarCantBebida(${idx},-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;font-weight:700">−</button>
-        <span style="min-width:18px;text-align:center;font-weight:700">${b.cantidad}</span>
-        <button onclick="cambiarCantBebida(${idx},1)" style="width:26px;height:26px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;font-weight:700">+</button>
+  grid.innerHTML = items.map(b=>{
+    const cant = (_bmLista.find(x=>x.producto_id===b.id)||{}).cantidad || 0;
+    return `<div class="menu-item-btn" style="cursor:default">
+      <div class="menu-item-nombre">${b.nombre}</div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:8px">${b.categoria}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+        <button onclick="cambiarCantBebidaProd(${b.id},'${b.nombre.replace(/'/g,"\\'")}',-1)"
+          style="width:28px;height:28px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-weight:700;font-size:16px;color:#475569">−</button>
+        <span style="min-width:16px;text-align:center;font-weight:800;font-size:15px;color:${cant>0?'#0284c7':'#1a2035'}">${cant}</span>
+        <button onclick="cambiarCantBebidaProd(${b.id},'${b.nombre.replace(/'/g,"\\'")}',1)"
+          style="width:28px;height:28px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-weight:700;font-size:16px;color:#475569">+</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
-function agregarBebidaALista(){
-  const sel = document.getElementById('bm-select');
-  const id = Number(sel.value);
-  if(!id) return;
-  const totalActual = _bmLista.reduce((s,b)=>s+Number(b.cantidad||0),0);
-  if(totalActual >= _bmCantidadItem){ toast(`Ya asignaste las ${_bmCantidadItem} bebidas de este ítem`,'err'); return; }
-  const nombre = sel.options[sel.selectedIndex].dataset.nombre;
-  const existente = _bmLista.find(b=>b.producto_id===id);
-  if(existente) existente.cantidad++;
-  else _bmLista.push({producto_id:id, nombre, cantidad:1});
-  renderListaBebidasModal();
+function filtrarBebidasBM(q){
+  _bmBusqueda = q;
+  renderGridBM();
 }
 
-function cambiarCantBebida(idx, delta){
+function scrollCatsBM(dir){
+  const el = document.getElementById('bm-cats');
+  if(el) el.scrollBy({ left: dir*140, behavior: 'smooth' });
+}
+
+function filtrarCatsBM(cat, btn){
+  document.querySelectorAll('#bm-cats .mc-cat-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  _bmCatActiva = cat;
+  renderGridBM();
+}
+
+function cambiarCantBebidaProd(prodId, nombre, delta){
   const totalActual = _bmLista.reduce((s,b)=>s+Number(b.cantidad||0),0);
   if(delta>0 && totalActual>=_bmCantidadItem){ toast(`Ya asignaste las ${_bmCantidadItem} bebidas de este ítem`,'err'); return; }
-  _bmLista[idx].cantidad += delta;
-  if(_bmLista[idx].cantidad<=0) _bmLista.splice(idx,1);
-  renderListaBebidasModal();
+  const existente = _bmLista.find(b=>b.producto_id===prodId);
+  if(existente){
+    existente.cantidad += delta;
+    if(existente.cantidad<=0) _bmLista = _bmLista.filter(b=>b.producto_id!==prodId);
+  } else if(delta>0){
+    _bmLista.push({producto_id:prodId, nombre, cantidad:1});
+  }
+  renderGridBM();
+  renderContadorBM();
 }
 
 async function guardarBebidasAsignadas(){
