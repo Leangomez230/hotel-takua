@@ -2154,9 +2154,9 @@ async function verComanda(cmdId){
 
     // Menú para agregar
     let menuHTML='';
+    const catPersistida = window._mcCatActiva || 'Todas';
+    const searchPersistido = window._mcSearchText || '';
     if(canEdit&&cmd.estado==='abierta'){
-      const catPersistida = window._mcCatActiva || 'Todas';
-      const searchPersistido = window._mcSearchText || '';
       const cats=['Todas',...new Set(S.menu.filter(m=>m.disponible).map(m=>m.categoria))];
       const renderItems = (filtro='', catActiva='Todas') => S.menu.filter(m=>m.disponible).filter(m=>{
         const matchCat = catActiva==='Todas' || m.categoria===catActiva;
