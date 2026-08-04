@@ -2127,7 +2127,7 @@ app.get('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req
     const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
                     : colNames.includes('precio')          ? 'precio' : '0';
     const items = await db.getAll(
-      `SELECT nombre, cantidad, ${precioCol} as precio_unitario
+      `SELECT nombre, cantidad, producto_id, bebidas_elegidas, ${precioCol} as precio_unitario
        FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
       [req.params.id]
     );
@@ -2153,7 +2153,7 @@ async function descontarStockBebida(menuId, cantidad, cmdId, motivo, userId, use
 
 app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req, res) => {
   try {
-    const { producto_id, cantidad, nota, bebida_id } = req.body;
+    const { producto_id, cantidad, nota } = req.body;
     const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
     if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
     if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'La comanda está cerrada' });
@@ -2203,13 +2203,50 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
       }
     }
 
-    // Producto con bebida a elección (ej. "Menú del día"): descontar stock de la bebida
-    // que el mozo eligió al agregarlo (viene en bebida_id, elegida por el comensal).
-    if (prod.incluye_bebida && bebida_id) {
-      await descontarStockBebida(Number(bebida_id), cantidad||1, cmd.id, 'Bebida a elección (menú)', req.user.id, req.user.nombre);
+    res.json(item);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Asignar/actualizar las bebidas elegidas para un ítem tipo "Menú" (incluye_bebida=1).
+// Reemplaza la lista completa cada vez; ajusta el stock por la DIFERENCIA contra lo que
+// había antes (delta), no por el total, para no descontar de más en cada edición.
+app.put('/api/restaurante/comandas/:id/items/:itemId/bebidas', auth, authRestaurante, async (req, res) => {
+  try {
+    const { bebidas } = req.body; // [{producto_id, nombre, cantidad}, ...]
+    if (!Array.isArray(bebidas)) return res.status(400).json({ error: 'bebidas debe ser un array' });
+
+    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
+    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
+    if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'La comanda está cerrada' });
+
+    const item = await db.getOne('SELECT * FROM comanda_items WHERE id=$1 AND comanda_id=$2', [req.params.itemId, cmd.id]);
+    if (!item) return res.status(404).json({ error: 'Ítem no encontrado' });
+
+    const limpias = bebidas.filter(b => b.producto_id && Number(b.cantidad) > 0)
+      .map(b => ({ producto_id: Number(b.producto_id), nombre: b.nombre||'', cantidad: Number(b.cantidad) }));
+    const totalBebidas = limpias.reduce((s,b)=>s+b.cantidad, 0);
+    if (totalBebidas > item.cantidad) {
+      return res.status(400).json({ error: `No podés asignar más bebidas (${totalBebidas}) que unidades del ítem (${item.cantidad})` });
     }
 
-    res.json(item);
+    // Calcular delta de stock contra lo que había guardado antes
+    let anteriores = [];
+    try { anteriores = JSON.parse(item.bebidas_elegidas || '[]'); } catch(e) { anteriores = []; }
+    const mapaAntes = {};
+    anteriores.forEach(b => { mapaAntes[b.producto_id] = (mapaAntes[b.producto_id]||0) + Number(b.cantidad||0); });
+    const mapaAhora = {};
+    limpias.forEach(b => { mapaAhora[b.producto_id] = (mapaAhora[b.producto_id]||0) + b.cantidad; });
+    const todosIds = new Set([...Object.keys(mapaAntes), ...Object.keys(mapaAhora)]);
+    for (const idStr of todosIds) {
+      const id = Number(idStr);
+      const delta = (mapaAhora[id]||0) - (mapaAntes[id]||0);
+      if (delta !== 0) {
+        await descontarStockBebida(id, delta, cmd.id, 'Bebida a elección (menú)', req.user.id, req.user.nombre);
+      }
+    }
+
+    await db.query('UPDATE comanda_items SET bebidas_elegidas=$1 WHERE id=$2', [JSON.stringify(limpias), item.id]);
+    res.json({ ok: true, bebidas: limpias });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
