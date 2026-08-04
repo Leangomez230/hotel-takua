@@ -278,7 +278,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .cliente-estado{text-align:center;padding:12px;border-radius:12px;font-size:13px;font-weight:600;border:1.5px solid}
 
 /* NOTA INPUT */
-.nota-row{display:flex;gap:8px;margin-bottom:14px;position:sticky;top:0;background:#fff;z-index:5;padding-top:4px}
+.nota-row{display:flex;gap:8px;margin-bottom:14px;position:sticky;top:0;background:#fff;z-index:5;padding-top:4px;padding-bottom:10px;box-shadow:0 6px 8px -6px rgba(0,0,0,.15)}
 .nota-row input{flex:1;padding:9px 12px;border-radius:9px;font-size:13px}
 
 /* ABRIR TURNO FORM */
@@ -2412,6 +2412,7 @@ function initSwipeComanda(){
 
 function mcSwipeStart(e){
   if(e.touches.length!==1) return;
+  if(e.target.closest('.mc-cats-scroll')) { _mcSwipeActivo=false; return; } // dejar su scroll horizontal propio intacto
   _mcSwipeStartX = e.touches[0].clientX;
   _mcSwipeStartY = e.touches[0].clientY;
   _mcSwipeDeltaX = 0;
