@@ -2475,6 +2475,23 @@ app.delete('/api/restaurante/comandas/:id/items/:itemId', auth, authRestaurante,
       [req.params.itemId, req.params.id]);
     if (!item) return res.status(404).json({ error: 'Ítem no encontrado' });
 
+    // Se está devolviendo 1 unidad de este ítem (esta ruta resta de a 1) — hay que devolver
+    // al stock lo que se descontó por esa unidad, según qué tipo de producto sea.
+    const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [item.producto_id]);
+    if (prod?.es_bebida && prod.id) {
+      await descontarStockBebida(prod.id, -1, req.params.id, 'Devolución por cancelación de ítem', req.user.id, req.user.nombre);
+    }
+    if (prod?.es_combo) {
+      const componentesVinculados = await db.getAll(
+        'SELECT * FROM menu_combo_items WHERE producto_id=$1 AND vinculo_menu_id IS NOT NULL',
+        [prod.id]
+      );
+      for (const comp of componentesVinculados) {
+        await descontarStockBebida(comp.vinculo_menu_id, -(Number(comp.cantidad)||1), req.params.id,
+          'Devolución por cancelación de combo', req.user.id, req.user.nombre);
+      }
+    }
+
     // Si el ítem tenía bebidas a elección asignadas (ej. "Menú del día"), y la nueva cantidad
     // ya no las puede sostener (se reduce o se elimina del todo), hay que devolver ESE stock —
     // si no, queda "perdido" del inventario para siempre. Se devuelve todo y se limpia la
