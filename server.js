@@ -1077,7 +1077,7 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
 // ── CAJA HOTEL ───────────────────────────────────────────────────────
 app.get('/api/caja/activa', auth, async (req, res) => {
   try {
-    const caja = await db.getOne("SELECT c.*,COALESCE(u.nombre,'Usuario eliminado') as usuario_nombre FROM cajas c LEFT JOIN usuarios u ON c.usuario_id=u.id WHERE c.estado='abierta' ORDER BY c.id DESC LIMIT 1");
+    const caja = await db.getOne("SELECT c.*,u.nombre as usuario_nombre FROM cajas c LEFT JOIN usuarios u ON c.usuario_id=u.id WHERE c.estado='abierta' ORDER BY c.id DESC LIMIT 1");
     res.json(caja || null);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1813,11 +1813,11 @@ app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
 app.post('/api/restaurante/menu', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, es_bebida, va_cocina, incluye_bebida } = req.body;
+    const { nombre, categoria, precio, es_bebida, va_cocina } = req.body;
     if (!nombre || !precio) return res.status(400).json({ error: 'Nombre y precio requeridos' });
     const r = await db.query(
-      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida,va_cocina,incluye_bebida) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [nombre, categoria||'General', precio, es_bebida?1:0, va_cocina===false||va_cocina===0?0:1, incluye_bebida?1:0]
+      'INSERT INTO menu_restaurante (nombre,categoria,precio,es_bebida,va_cocina) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [nombre, categoria||'General', precio, es_bebida?1:0, va_cocina===false||va_cocina===0?0:1]
     );
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1826,11 +1826,11 @@ app.post('/api/restaurante/menu', auth, async (req, res) => {
 app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
   try {
     if (!['admin','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
-    const { nombre, categoria, precio, disponible, es_bebida, va_cocina, incluye_bebida } = req.body;
+    const { nombre, categoria, precio, disponible, es_bebida, va_cocina } = req.body;
     const prod = await db.getOne('SELECT * FROM menu_restaurante WHERE id=$1', [req.params.id]);
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
     await db.query(
-      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5,va_cocina=$6,incluye_bebida=$7 WHERE id=$8',
+      'UPDATE menu_restaurante SET nombre=$1,categoria=$2,precio=$3,disponible=$4,es_bebida=$5,va_cocina=$6 WHERE id=$7',
       [
         nombre     !== undefined ? nombre     : prod.nombre,
         categoria  !== undefined ? categoria  : prod.categoria,
@@ -1838,7 +1838,6 @@ app.put('/api/restaurante/menu/:id', auth, async (req, res) => {
         disponible !== undefined ? disponible : prod.disponible,
         es_bebida  !== undefined ? (es_bebida?1:0) : prod.es_bebida,
         va_cocina  !== undefined ? (va_cocina?1:0) : prod.va_cocina,
-        incluye_bebida !== undefined ? (incluye_bebida?1:0) : prod.incluye_bebida,
         req.params.id
       ]
     );
@@ -2051,7 +2050,7 @@ app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => 
   try {
     const { estado, mozo_id } = req.query;
     let q = `SELECT c.*, m.alias as mesa_alias, m.tipo as mesa_tipo,
-             COALESCE(u.nombre,'Usuario eliminado') as mozo_nombre
+             u.nombre as mozo_nombre
              FROM comandas c
              LEFT JOIN mesas_restaurante m ON c.mesa_id=m.id
              LEFT JOIN usuarios u ON c.mozo_id=u.id`;
@@ -2080,7 +2079,7 @@ app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => 
 app.get('/api/restaurante/comandas/:id', auth, authRestaurante, async (req, res) => {
   try {
     const cmd = await db.getOne(
-      `SELECT c.*, COALESCE(u.nombre,'Usuario eliminado') as mozo_nombre
+      `SELECT c.*, u.nombre as mozo_nombre
        FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id
        WHERE c.id=$1`, [req.params.id]
     );
@@ -2127,7 +2126,7 @@ app.get('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (req
     const precioCol = colNames.includes('precio_unitario') ? 'precio_unitario'
                     : colNames.includes('precio')          ? 'precio' : '0';
     const items = await db.getAll(
-      `SELECT nombre, cantidad, producto_id, bebidas_elegidas, ${precioCol} as precio_unitario
+      `SELECT nombre, cantidad, ${precioCol} as precio_unitario
        FROM comanda_items WHERE comanda_id=$1 ORDER BY id`,
       [req.params.id]
     );
@@ -2204,49 +2203,6 @@ app.post('/api/restaurante/comandas/:id/items', auth, authRestaurante, async (re
     }
 
     res.json(item);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Asignar/actualizar las bebidas elegidas para un ítem tipo "Menú" (incluye_bebida=1).
-// Reemplaza la lista completa cada vez; ajusta el stock por la DIFERENCIA contra lo que
-// había antes (delta), no por el total, para no descontar de más en cada edición.
-app.put('/api/restaurante/comandas/:id/items/:itemId/bebidas', auth, authRestaurante, async (req, res) => {
-  try {
-    const { bebidas } = req.body; // [{producto_id, nombre, cantidad}, ...]
-    if (!Array.isArray(bebidas)) return res.status(400).json({ error: 'bebidas debe ser un array' });
-
-    const cmd = await db.getOne('SELECT * FROM comandas WHERE id=$1', [req.params.id]);
-    if (!cmd) return res.status(404).json({ error: 'Comanda no encontrada' });
-    if (cmd.estado === 'cerrada') return res.status(400).json({ error: 'La comanda está cerrada' });
-
-    const item = await db.getOne('SELECT * FROM comanda_items WHERE id=$1 AND comanda_id=$2', [req.params.itemId, cmd.id]);
-    if (!item) return res.status(404).json({ error: 'Ítem no encontrado' });
-
-    const limpias = bebidas.filter(b => b.producto_id && Number(b.cantidad) > 0)
-      .map(b => ({ producto_id: Number(b.producto_id), nombre: b.nombre||'', cantidad: Number(b.cantidad) }));
-    const totalBebidas = limpias.reduce((s,b)=>s+b.cantidad, 0);
-    if (totalBebidas > item.cantidad) {
-      return res.status(400).json({ error: `No podés asignar más bebidas (${totalBebidas}) que unidades del ítem (${item.cantidad})` });
-    }
-
-    // Calcular delta de stock contra lo que había guardado antes
-    let anteriores = [];
-    try { anteriores = JSON.parse(item.bebidas_elegidas || '[]'); } catch(e) { anteriores = []; }
-    const mapaAntes = {};
-    anteriores.forEach(b => { mapaAntes[b.producto_id] = (mapaAntes[b.producto_id]||0) + Number(b.cantidad||0); });
-    const mapaAhora = {};
-    limpias.forEach(b => { mapaAhora[b.producto_id] = (mapaAhora[b.producto_id]||0) + b.cantidad; });
-    const todosIds = new Set([...Object.keys(mapaAntes), ...Object.keys(mapaAhora)]);
-    for (const idStr of todosIds) {
-      const id = Number(idStr);
-      const delta = (mapaAhora[id]||0) - (mapaAntes[id]||0);
-      if (delta !== 0) {
-        await descontarStockBebida(id, delta, cmd.id, 'Bebida a elección (menú)', req.user.id, req.user.nombre);
-      }
-    }
-
-    await db.query('UPDATE comanda_items SET bebidas_elegidas=$1 WHERE id=$2', [JSON.stringify(limpias), item.id]);
-    res.json({ ok: true, bebidas: limpias });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -2454,7 +2410,7 @@ app.get('/api/restaurante/turno/ultimo', auth, authRestaurante, async (req, res)
     if (!turno) return res.json(null);
     // Se excluye 'Habitación': esa plata todavía no se cobró (se cobra en el check-out).
     const cerradas = await db.getAll(
-      "SELECT c.*, COALESCE(u.nombre,'Usuario eliminado') as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.metodo_pago != 'Habitación' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
+      "SELECT c.*, u.nombre as mozo_nombre FROM comandas c LEFT JOIN usuarios u ON c.mozo_id=u.id WHERE c.estado='cerrada' AND c.metodo_pago != 'Habitación' AND c.cerrada_at >= $1 ORDER BY c.cerrada_at DESC",
       [turno.abierto_at]
     );
     const retiros = await db.getAll(
@@ -2637,27 +2593,6 @@ app.get('/api/portal/me', auth, async (req, res) => {
   }
 });
  
-// ── Cambiar mi propia contraseña (cualquier rol autenticado) ─────────
-app.put('/api/portal/me/password', auth, async (req, res) => {
-  try {
-    const { actual, nueva } = req.body;
-    if (!actual || !nueva)
-      return res.status(400).json({ error: 'Completá la contraseña actual y la nueva' });
-    if (String(nueva).length < 4)
-      return res.status(400).json({ error: 'La nueva contraseña es muy corta' });
-
-    const user = await db.getOne('SELECT id, password FROM usuarios WHERE id = $1', [req.user.id]);
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-    if (!bcrypt.compareSync(actual, user.password))
-      return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
-
-    const hash = bcrypt.hashSync(nueva, 10);
-    await db.query('UPDATE usuarios SET password = $1 WHERE id = $2', [hash, user.id]);
-    await logAction(req.user.id, req.user.nombre, 'CAMBIAR_PASSWORD_PROPIA', '');
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
 // ── GESTIÓN DE USUARIOS (solo admin) ────────────────────────────────
  
 // Listar todos
@@ -2720,28 +2655,14 @@ app.put('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-// Eliminar usuario (borrado real; si tiene historial asociado, se desactiva en su lugar)
+// Eliminar (desactivar) usuario
 app.delete('/api/portal/usuarios/:id', auth, adminOnly, async (req, res) => {
   try {
     const uid = req.params.id;
     if (Number(uid) === req.user.id) return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
-    const u = await db.getOne('SELECT nombre FROM usuarios WHERE id=$1', [uid]);
-    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
-    try {
-      await db.query('DELETE FROM usuarios WHERE id=$1', [uid]);
-      await logAction(req.user.id, req.user.nombre, 'ELIMINAR_USUARIO', `${u.nombre} (id:${uid})`);
-      res.json({ ok: true });
-    } catch (fkErr) {
-      // Tiene historial asociado (comandas, cajas, turnos, etc.): no se puede borrar físicamente
-      // sin perder esos registros. Se desactiva en su lugar: desaparece de selectores activos
-      // (mozo/cajero/mucama) y no puede iniciar sesión, pero preserva el historial.
-      if (fkErr.code === '23503') {
-        await db.query('UPDATE usuarios SET activo=0 WHERE id=$1', [uid]);
-        await logAction(req.user.id, req.user.nombre, 'DESACTIVAR_USUARIO', `${u.nombre} (id:${uid}) — tenía historial, no se pudo borrar físicamente`);
-        return res.json({ ok: true, desactivado: true });
-      }
-      throw fkErr;
-    }
+    await db.query('UPDATE usuarios SET activo=0 WHERE id=$1', [uid]);
+    await logAction(req.user.id, req.user.nombre, 'ELIMINAR_USUARIO', `id:${uid}`);
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -3046,14 +2967,36 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
     if (!desde||!hasta) return res.status(400).json({ error: 'Falta rango de fechas' });
     const TZ = `AT TIME ZONE 'America/Argentina/Buenos_Aires'`;
 
-    const [cmdTotal, retTotal, habIngresos, habEgresos] = await Promise.all([
+    const [cmdTotal, retTotal, habIngresos, habEgresos, ocupData, totalHabsData] = await Promise.all([
       // Se excluye 'Habitación': esa plata se cobra recién en el check-out y ya se
       // contabiliza ahí — incluirla acá también la duplicaría.
       db.getAll(`SELECT metodo_pago, SUM(total_final) as total, COUNT(*) as cant FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND DATE(cerrada_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
       db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM caja_retiros WHERE DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
       db.getAll(`SELECT metodo_pago, SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='ingreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2 GROUP BY metodo_pago`, [desde,hasta]),
       db.getAll(`SELECT SUM(monto) as total, COUNT(*) as cant FROM movimientos_habitaciones WHERE tipo='egreso' AND DATE(created_at ${TZ}) BETWEEN $1 AND $2`, [desde,hasta]),
+      // Ocupación: noches-habitación efectivamente ocupadas dentro del período,
+      // recortando cada reserva al rango [desde,hasta] (no cuenta la noche de salida).
+      db.getAll(`
+        SELECT COALESCE(SUM(
+          GREATEST(0,
+            LEAST(DATE(salida), (DATE($2) + INTERVAL '1 day')::date)
+            - GREATEST(DATE(entrada), DATE($1))
+          )
+        ),0) as noches_ocupadas
+        FROM reservas
+        WHERE estado != 'cancelada'
+          AND DATE(entrada) <= $2
+          AND DATE(salida)  >= $1
+      `, [desde, hasta]),
+      db.getAll(`SELECT COUNT(*) as total FROM habitaciones`),
     ]);
+
+    // % de ocupación del período = noches ocupadas / (habitaciones totales × días del período)
+    const totalHabitaciones  = Number(totalHabsData[0]?.total||0);
+    const nochesOcupadas     = Number(ocupData[0]?.noches_ocupadas||0);
+    const diasPeriodo        = Math.max(1, Math.round((new Date(hasta) - new Date(desde))/86400000) + 1);
+    const nochesDisponibles  = totalHabitaciones * diasPeriodo;
+    const porcentajeOcupacion = nochesDisponibles > 0 ? Math.round((nochesOcupadas/nochesDisponibles)*1000)/10 : 0;
 
     // Movimientos manuales del período
     const manuales = await db.getAll(
@@ -3096,7 +3039,14 @@ app.get('/api/caja-global/reporte-periodo', auth, adminOnly, async (req, res) =>
       restaurante: { por_metodo: cmdTotal, retiros: Number(retTotal[0]?.total||0), detalle_turnos: turnosRest },
       habitaciones: { ingresos: habIngresos, egresos: Number(habEgresos[0]?.total||0), detalle_turnos: turnosHab },
       por_dia: porDia,
-      manuales
+      manuales,
+      ocupacion: {
+        porcentaje: porcentajeOcupacion,
+        noches_ocupadas: nochesOcupadas,
+        noches_disponibles: nochesDisponibles,
+        total_habitaciones: totalHabitaciones,
+        dias_periodo: diasPeriodo
+      }
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
