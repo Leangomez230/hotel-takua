@@ -1468,7 +1468,10 @@ app.delete('/api/proveedores/:id', auth, adminOnly, async (req, res) => {
 // todo o no se guarda nada.
 app.post('/api/compras', auth, adminOrRecep, async (req, res) => {
   try {
-    const { proveedor_id, numero_factura, numero_remito, fecha_emision, fecha_recepcion, observaciones, items } = req.body;
+    const { proveedor_id, numero_factura, numero_remito,
+            fecha_emision_factura, fecha_recepcion_factura,
+            fecha_emision_remito, fecha_recepcion_remito,
+            observaciones, items } = req.body;
     if (!proveedor_id) return res.status(400).json({ error: 'El proveedor es obligatorio' });
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Agregá al menos un ítem' });
     for (const it of items) {
@@ -1479,14 +1482,19 @@ app.post('/api/compras', auth, adminOrRecep, async (req, res) => {
     const proveedor = await db.getOne('SELECT * FROM proveedores WHERE id=$1', [proveedor_id]);
     if (!proveedor) return res.status(404).json({ error: 'Proveedor no encontrado' });
 
+    const hoy = new Date().toISOString().slice(0,10);
     const compraId = await db.transaction(async (tx) => {
       const total = items.reduce((s,it) => s + (Number(it.cantidad) * Number(it.costo_unitario||0)), 0);
 
       const rCompra = await tx.query(
-        `INSERT INTO compras (proveedor_id,proveedor_nombre,numero_factura,numero_remito,fecha_emision,fecha_recepcion,observaciones,total,usuario_id,usuario_nombre)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+        `INSERT INTO compras (proveedor_id,proveedor_nombre,numero_factura,numero_remito,
+           fecha_emision_factura,fecha_recepcion_factura,fecha_emision_remito,fecha_recepcion_remito,
+           fecha_recepcion,observaciones,total,usuario_id,usuario_nombre)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
         [proveedor_id, proveedor.nombre, (numero_factura||'').trim(), (numero_remito||'').trim(),
-         fecha_emision || null, fecha_recepcion || new Date().toISOString().slice(0,10),
+         fecha_emision_factura || null, fecha_recepcion_factura || null,
+         fecha_emision_remito || null, fecha_recepcion_remito || null,
+         fecha_recepcion_factura || fecha_recepcion_remito || hoy,
          (observaciones||'').trim(), total, req.user.id, req.user.nombre]
       );
       const id = rCompra.rows[0].id;
