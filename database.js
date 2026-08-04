@@ -37,7 +37,7 @@ async function run(text, params) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 // Inicializar tablas
 async function initDB() {
@@ -640,6 +640,64 @@ try {
   console.log('✅ Tabla plataformas lista');
 
   console.log('✅ Base de datos PostgreSQL lista');
+
+  // ── MÓDULO DE COMPRAS (v5) ──────────────────────────────────────────
+  // Catálogo de proveedores
+  await query(`
+    CREATE TABLE IF NOT EXISTS proveedores (
+      id SERIAL PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      cuit TEXT DEFAULT '',
+      telefono TEXT DEFAULT '',
+      email TEXT DEFAULT '',
+      notas TEXT DEFAULT '',
+      activo INTEGER DEFAULT 1,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('✅ Tabla proveedores lista');
+
+  // Compras (cabecera): registra factura/remito de mercadería recibida.
+  // proveedor_nombre queda desnormalizado a propósito — si el proveedor
+  // se edita/renombra después, los comprobantes ya emitidos no cambian.
+  await query(`
+    CREATE TABLE IF NOT EXISTS compras (
+      id SERIAL PRIMARY KEY,
+      proveedor_id INTEGER NOT NULL REFERENCES proveedores(id),
+      proveedor_nombre TEXT NOT NULL,
+      numero_factura TEXT DEFAULT '',
+      numero_remito TEXT DEFAULT '',
+      fecha_emision DATE,
+      fecha_recepcion DATE DEFAULT CURRENT_DATE,
+      observaciones TEXT DEFAULT '',
+      total REAL DEFAULT 0,
+      estado TEXT DEFAULT 'confirmada',
+      anulada_at TIMESTAMP,
+      anulada_por INTEGER,
+      motivo_anulacion TEXT DEFAULT '',
+      usuario_id INTEGER,
+      usuario_nombre TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('✅ Tabla compras lista');
+
+  // Ítems de cada compra. producto_id es NULLABLE: un ítem puede no estar
+  // vinculado al inventario (queda solo como registro documental del comprobante).
+  await query(`
+    CREATE TABLE IF NOT EXISTS compra_items (
+      id SERIAL PRIMARY KEY,
+      compra_id INTEGER NOT NULL REFERENCES compras(id),
+      producto_id INTEGER,
+      nombre TEXT NOT NULL,
+      cantidad REAL NOT NULL,
+      unidad TEXT DEFAULT 'unidad',
+      costo_unitario REAL DEFAULT 0,
+      subtotal REAL DEFAULT 0,
+      notas TEXT DEFAULT ''
+    );
+  `);
+  console.log('✅ Tabla compra_items lista');
 
   // Marcar el schema como al día para que el próximo arranque sea instantáneo
   await query(
