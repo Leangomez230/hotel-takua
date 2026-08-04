@@ -200,7 +200,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .mc-tab-btn.active{background:#fff;color:#1a2035;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .mc-tabs-viewport{overflow:hidden}
 .mc-tabs-track{display:flex;transition:transform .32s cubic-bezier(.4,0,.2,1)}
-.mc-tab-page{flex:0 0 100%;min-width:0;max-height:52vh;overflow-y:auto;padding-right:2px}
+.mc-tab-page{flex:0 0 100%;min-width:0;max-height:70vh;overflow-y:auto;padding-right:2px}
+#mc-menu-grid{max-height:none;overflow:visible} /* usa el scroll único de .mc-tab-page, sin scroll anidado */
 
 /* Panel deslizante — Gestión de Productos (pantalla dedicada) */
 .slide-panel{position:fixed;top:0;left:var(--sw);right:0;bottom:0;background:#f8fafc;z-index:150;
