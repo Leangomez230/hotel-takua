@@ -636,6 +636,10 @@ async function doLogin() {
       window.location.href = '/comandas.html';
       return;
     }
+    if (currentUser?.rol === 'cocina') {
+      window.location.href = '/cocina.html';
+      return;
+    }
     startApp();
   } else {
     document.getElementById('login-err').style.display='block';
