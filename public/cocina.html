@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"/>
+<title>TK Serrano — Cocina</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height:100vh;font-size:14px}
+button{cursor:pointer;border:none;font-family:inherit;font-size:14px;transition:all .15s}
+input,select,textarea{font-family:inherit;font-size:14px;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;outline:none;transition:border-color .2s;background:#fff;color:#1a2035}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+
+/* SIDEBAR */
+
+.main-wrap{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden}
+
+/* TOPBAR */
+.topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
+.hamburger{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;flex-shrink:0}
+.tb-left{flex:1;min-width:0;overflow:hidden}
+.tb-left h2{font-size:16px;font-weight:800;color:#1a2035;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.tb-left p{font-size:12px;color:#64748b;margin:0}
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tb-btn{background:#f0f4f8;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;color:#1a2035;cursor:pointer;font-family:inherit}
+.tb-btn:hover{background:#e2e8f0}
+.tb-btn.salon{background:#0f766e;color:#99f6e4}
+.tb-btn.salon:hover{background:#0d9488}
+.tb-btn.salir{color:#dc2626}
+.user-av-tb{width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0}
+
+/* PANTALLAS */
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+
+/* LOGIN */
+#screen-login{align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e3a5f 60%,#0f172a);padding:20px}
+.login-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:36px 32px;width:100%;max-width:360px}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo .icon{font-size:48px;margin-bottom:10px}
+.login-logo h1{color:#fff;font-size:22px;font-weight:800}
+.login-logo p{color:#94a3b8;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+.lf{margin-bottom:14px}
+.lf label{display:block;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.lf input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:11px 14px;color:#fff;font-size:14px;width:100%}
+.lf input:focus{outline:none;border-color:#3b82f6}
+.lf input::placeholder{color:#64748b}
+.login-btn{width:100%;background:#3b82f6;border:none;border-radius:12px;padding:14px;color:#fff;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;margin-top:4px}
+.login-btn:hover{background:#2563eb}
+.login-err{color:#f87171;font-size:12px;text-align:center;margin-top:8px;display:none}
+
+/* HEADER */
+
+
+
+
+
+
+
+
+
+
+/* CONTENT */
+.content{padding:clamp(12px,2vw,24px);max-width:1400px;margin:0 auto;flex:1;width:100%}
+
+/* LAYOUT DOS COLUMNAS EN DESKTOP */
+.layout-2col{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start}
+.col-side{position:sticky;top:20px}
+@media(max-width:1100px){.layout-2col{grid-template-columns:320px 1fr}}
+/* layout-2col mobile → ver @media(max-width:900px) abajo */
+
+/* PILLS ESTADO */
+.pills-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.pill-estado{display:flex;align-items:center;gap:5px;border-radius:20px;padding:5px 13px;font-size:13px;font-weight:600;border:1.5px solid}
+
+/* TARJETAS MÉTRICAS estilo habitaciones */
+.metricas-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:700px){.metricas-grid{grid-template-columns:repeat(2,1fr);gap:8px}}
+@media(max-width:400px){.metricas-grid{grid-template-columns:1fr 1fr;gap:6px}}
+.metrica-card{border-radius:16px;padding:16px 14px;color:#fff;position:relative;overflow:hidden;min-height:90px;border:none}
+.metrica-card::after{content:'';position:absolute;right:-15px;bottom:-15px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08)}
+.metrica-card .mc-lbl{font-size:9px;font-weight:700;letter-spacing:1px;opacity:.75;text-transform:uppercase}
+.metrica-card .mc-ttl{font-size:11px;font-weight:800;opacity:.9;margin-bottom:4px}
+.metrica-card .mc-val{font-size:clamp(18px,3vw,22px);font-weight:900;line-height:1.1}
+@media(max-width:700px){
+  .metrica-card{padding:10px 12px;min-height:70px;border-radius:12px}
+  .metrica-card .mc-lbl{font-size:8px}
+  .metrica-card .mc-ttl{font-size:10px;margin-bottom:2px}
+  .metrica-card .mc-val{font-size:16px}
+}
+.mc-total  {background:linear-gradient(135deg,#059669,#10b981)}
+.mc-cobradas{background:linear-gradient(135deg,#2563eb,#3b82f6)}
+.mc-comen  {background:linear-gradient(135deg,#f59e0b,#fbbf24)}
+.mc-desc   {background:linear-gradient(135deg,#ec4899,#f43f5e)}
+
+/* MAPA SALÓN */
+.mapa-wrap{background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:20px;max-width:100%}
+.mapa-inner{overflow-x:auto;padding:16px 16px 8px;max-width:100%}
+.mapa-canvas{position:relative;min-width:600px}
+.barra-ref{border-radius:10px;background:#f1f5f9;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;height:44px;margin-top:8px}
+.barra-ref span{font-weight:700;font-size:13px;color:#94a3b8;letter-spacing:3px}
+.s-mesa{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:2.5px solid;transition:box-shadow .15s,transform .1s;user-select:none;touch-action:none}
+.s-mesa:active{transform:scale(.95)}
+.s-mesa.libre  {background:#dcfce7;border-color:#16a34a}
+.s-mesa.ocupada{background:#fee2e2;border-color:#dc2626}
+.s-mesa.cuenta {background:#ffedd5;border-color:#ea580c}
+.s-mesa.reservada{background:#ede9fe;border-color:#7c3aed}
+.s-mesa.redonda{border-radius:50%}
+.s-mesa:not(.redonda){border-radius:10px}
+.s-mesa.dragging{opacity:.7;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:50;transform:scale(1.05)}
+.s-mesa.sel-unir{box-shadow:0 0 0 3px #f59e0b!important;border-color:#f59e0b!important}
+.s-mesa-num{font-size:12px;font-weight:800;line-height:1}
+.s-mesa-sub{font-size:9px;opacity:.6;margin-top:1px}
+.s-mesa-total{font-size:10px;font-weight:700;margin-top:2px}
+
+/* CARD BASE */
+.card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:16px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-weight:700;font-size:16px}
+
+/* DESPLEGABLE */
+.desplegable{background:#fff;border-radius:16px;border:1px solid #e2e8f0;margin-bottom:16px;overflow:hidden}
+.desp-btn{width:100%;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;background:none;border:none;cursor:pointer;text-align:left}
+.desp-left{display:flex;align-items:center;gap:10px}
+.desp-icon{font-size:20px}
+.desp-title{font-weight:700;font-size:15px;color:#1e293b}
+.desp-sub{font-size:12px;color:#64748b}
+.desp-arrow{width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:14px;color:#475569;transition:transform .25s;flex-shrink:0}
+.desp-arrow.open{transform:rotate(180deg)}
+.desp-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.desp-body.open{max-height:6000px}
+.desp-content{padding-bottom:16px}
+.desp-content{padding:0 16px 20px}
+
+/* CAJA */
+.caja-turno-info{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.dot-green{width:10px;height:10px;border-radius:50%;background:#22c55e;flex-shrink:0}
+.resumen-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.resumen-item{border-radius:12px;padding:12px 14px;border:1px solid}
+
+/* TABLA COMANDAS */
+.cmd-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #f1f5f9;border-radius:10px;margin-bottom:6px}
+
+/* MESAS CAJA - tarjetas de cuenta pendiente */
+.cuenta-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr));gap:10px;margin-bottom:20px}
+.cuenta-card{background:#fff;border:1.5px solid #c4b5fd;border-radius:14px;padding:16px;cursor:pointer;transition:box-shadow .15s}
+.cuenta-card:hover{box-shadow:0 4px 16px rgba(124,58,237,.15)}
+
+/* MODAL BOTTOM SHEET */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:680px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -8px 40px rgba(0,0,0,.2);animation:slideUp .22s ease;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{display:flex;justify-content:center;padding:10px 0 4px}
+.modal-handle div{width:40px;height:4px;border-radius:2px;background:#e2e8f0}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px}
+.modal-title{font-weight:700;font-size:17px}
+.modal-body{flex:1;overflow-y:auto;padding:0 20px 24px}
+.btn-close-modal{background:#f1f5f9;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;color:#64748b;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* ITEMS COMANDA */
+.item-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.item-row:last-child{border:none}
+.item-name{flex:1;font-size:14px;font-weight:500}
+.item-qty-ctrl{display:flex;align-items:center;gap:8px}
+.qty-btn{width:28px;height:28px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.qty-btn:hover{background:#e2e8f0}
+.item-precio{font-size:13px;font-weight:600;color:#475569;min-width:70px;text-align:right}
+.comanda-total-row{display:flex;justify-content:space-between;font-size:16px;font-weight:800;padding:12px 0;border-top:2px solid #f1f5f9;margin-top:4px}
+
+/* MENÚ GRID */
+.cats-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.cat-pill{padding:6px 14px;border-radius:20px;border:none;font-size:12px;font-weight:600;background:#f1f5f9;color:#64748b;cursor:pointer}
+.cat-pill.active{background:#3b82f6;color:#fff}
+#ab-coms::-webkit-outer-spin-button,#ab-coms::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#ab-coms{-moz-appearance:textfield}
+
+/* Barra de categorías del modal "Agregar ítem" (mozo) — estilo tabs claro con ícono */
+.mc-cats-row{display:flex;align-items:center;gap:2px;background:#f1f5f9;border-radius:12px;padding:6px 2px;margin-bottom:12px}
+.mc-cats-scroll{display:flex;gap:2px;overflow-x:auto;scroll-behavior:smooth;flex:1;scrollbar-width:none;-ms-overflow-style:none}
+.mc-cats-scroll::-webkit-scrollbar{display:none}
+.mc-cat-tab{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;
+  border-bottom:2px solid transparent;padding:7px 14px 6px;cursor:pointer;flex-shrink:0;
+  font-family:'Nunito',sans-serif;transition:opacity .15s}
+.mc-cat-tab-icon{font-size:16px;line-height:1;opacity:.45}
+.mc-cat-tab-label{font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.mc-cat-tab.active{border-bottom-color:#00c9b1}
+.mc-cat-tab.active .mc-cat-tab-icon{opacity:1}
+.mc-cat-tab.active .mc-cat-tab-label{color:#1a2035}
+.mc-cats-arrow{background:none;border:none;color:#94a3b8;font-size:18px;font-weight:700;cursor:pointer;
+  padding:0 8px;flex-shrink:0;align-self:stretch;display:flex;align-items:center}
+.mc-cats-arrow:hover{color:#1a2035}
+
+/* Pestañas Comanda / Productos dentro del modal de comanda, con slide */
+.mc-tabs{display:flex;background:#f1f5f9;border-radius:12px;padding:4px;margin:14px 0 12px}
+.mc-tab-btn{flex:1;padding:9px;border:none;background:none;border-radius:9px;font-size:13px;font-weight:700;
+  color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.mc-tab-btn.active{background:#fff;color:#1a2035;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.mc-tabs-viewport{overflow:hidden}
+.mc-tabs-track{display:flex;transition:transform .32s cubic-bezier(.4,0,.2,1)}
+.mc-tab-page{flex:0 0 100%;min-width:0;max-height:70vh;overflow-y:auto;padding-right:2px}
+#mc-menu-grid{max-height:none;overflow:visible} /* usa el scroll único de .mc-tab-page, sin scroll anidado */
+
+/* Panel deslizante — Gestión de Productos (pantalla dedicada) */
+.slide-panel{position:fixed;top:0;left:var(--sw);right:0;bottom:0;background:#f8fafc;z-index:150;
+  transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch}
+.slide-panel.open{transform:translateX(0)}
+.gp-header{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1.5px solid #e2e8f0;
+  padding:14px 16px;display:flex;align-items:center;gap:12px}
+.gp-back{background:#f1f5f9;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;
+  color:#475569;cursor:pointer;font-family:'Nunito',sans-serif;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.gp-back:hover{background:#e2e8f0}
+.gp-title{font-size:16px;font-weight:800;color:#1a2035}
+.gp-body{max-width:1180px;margin:0 auto;padding:18px 16px 40px}
+.gp-grid{display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;min-width:0}
+.gp-grid>.card{min-width:0}
+@media(max-width:860px){.gp-grid{grid-template-columns:1fr}}
+
+/* Panel "Comandas activas" — tarjetas estilo pantalla de cocina */
+.cda-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.cda-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:16px;
+  display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.cda-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.cda-card-id{font-size:15px;font-weight:900;color:#1a2035}
+.cda-card-nombre{font-size:13px;font-weight:700;color:#334155;margin-top:1px}
+.cda-card-sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.cda-badge-cuenta{background:#fef3c7;color:#92400e;font-size:10px;font-weight:800;border-radius:20px;
+  padding:3px 9px;white-space:nowrap}
+.cda-card-hora{font-size:11px;color:#f59e0b;font-weight:700}
+.cda-card-items{flex:1;border-top:1px solid #f1f5f9;padding-top:10px;margin-top:2px}
+.cda-item-row{margin-bottom:9px}
+.cda-item-row:last-child{margin-bottom:0}
+.cda-item-linea{font-size:13px;font-weight:800;color:#1a2035}
+.cda-item-nota{font-size:11.5px;color:#94a3b8;padding-left:14px;line-height:1.5}
+.cda-card-btn{margin-top:14px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;
+  color:#fff;font-weight:800;font-size:13px;padding:11px;cursor:pointer;font-family:'Nunito',sans-serif}
+.cda-card-btn:hover{filter:brightness(1.05)}
+.cda-empty{grid-column:1/-1;text-align:center;color:#94a3b8;padding:60px 20px;font-size:14px}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:260px;overflow-y:auto}
+.menu-item-btn{padding:12px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;text-align:left;transition:all .15s}
+.menu-item-btn:hover{border-color:#3b82f6;background:#eff6ff}
+.menu-item-nombre{font-size:13px;font-weight:600;margin-bottom:2px}
+.menu-item-precio{font-size:13px;font-weight:700;color:#3b82f6}
+
+/* ADMIN MENÚ */
+.prod-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#f8fafc;border:1px solid #f1f5f9;margin-bottom:6px}
+.prod-nombre{flex:1;font-weight:600;font-size:14px}
+.prod-precio{font-size:13px;font-weight:700;color:#475569;margin-right:4px}
+.btn-sm{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600}
+
+/* USUARIOS */
+.user-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border:1px solid #f1f5f9;border-radius:12px;margin-bottom:6px}
+.user-av{width:36px;height:36px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.user-info{flex:1}
+.user-nombre{font-weight:700;font-size:14px}
+.user-sub{font-size:12px;color:#64748b}
+
+/* ADMIN MENÚ FORM */
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+@media(max-width:400px){.form-grid-2{grid-template-columns:1fr}}
+
+/* BTN PRIMARIO */
+.btn-primary{width:100%;padding:14px;border-radius:12px;border:none;background:#3b82f6;color:#fff;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit}
+.btn-primary:hover{background:#2563eb}
+.btn-primary:disabled{background:#cbd5e1;cursor:not-allowed}
+.btn-green{background:#22c55e;color:#fff;border-radius:12px;border:none;padding:12px 20px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit}
+.btn-green:hover{background:#16a34a}
+.btn-red{background:#ef4444;color:#fff;border-radius:10px;border:none;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-ghost-light{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;font-family:inherit}
+.btn-ghost-light:hover{background:#f1f5f9}
+.btn-purple{background:#8b5cf6;color:#fff;border-radius:12px;border:none;padding:13px;font-weight:700;font-size:15px;cursor:pointer;width:100%;font-family:inherit}
+.btn-purple:hover{background:#7c3aed}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(241,245,249,.7);z-index:300;display:none;align-items:center;justify-content:center}
+.loading-overlay.active{display:flex}
+.spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:#94a3b8}
+.empty .ei{font-size:36px;margin-bottom:10px}
+
+/* VISTA CLIENTE */
+#screen-cliente{background:#f1f5f9;align-items:center;justify-content:center;padding:20px}
+.cliente-box{width:100%;max-width:400px}
+.cliente-card{background:#fff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:14px}
+.cliente-header-card{padding:20px;border-bottom:1px solid #f1f5f9;text-align:center}
+.cliente-mesa-num{font-size:36px;font-weight:800;color:#3b82f6}
+.cliente-label{font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em}
+.cliente-item{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #f8fafc}
+.cliente-item:last-child{border:none}
+.cliente-total{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:#f8fafc;border-top:2px solid #e2e8f0}
+.cliente-estado{text-align:center;padding:12px;border-radius:12px;font-size:13px;font-weight:600;border:1.5px solid}
+
+/* NOTA INPUT */
+.nota-row{display:flex;gap:8px;margin-bottom:14px;position:sticky;top:0;background:#fff;z-index:5;padding-top:4px;padding-bottom:10px;box-shadow:0 6px 8px -6px rgba(0,0,0,.15)}
+.nota-row input{flex:1;padding:9px 12px;border-radius:9px;font-size:13px}
+
+/* ABRIR TURNO FORM */
+.turno-form{display:flex;gap:10px;align-items:stretch}
+.turno-form input{flex:1;font-size:15px;padding:12px 14px}
+
+/* INFO COMANDA BAND */
+.cmd-band{margin:0 0 10px;padding:8px 14px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;display:flex;gap:16px;font-size:12px;color:#64748b;flex-wrap:wrap}
+
+/* MÉTRICAS POR MÉTODO */
+.metodo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:16px}
+.metodo-card{background:#f8fafc;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0}
+
+/* HISTORIAL */
+.hist-table{width:100%;border-collapse:collapse;font-size:13px}
+.hist-table th{text-align:left;color:#94a3b8;padding:8px 10px;border-bottom:1px solid #f1f5f9;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.hist-table td{padding:10px 10px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.hist-table tr:last-child td{border:none}
+
+@media(max-width:500px){
+  .metricas-grid{grid-template-columns:1fr 1fr}
+  .resumen-grid{grid-template-columns:1fr}
+  .form-grid-2{grid-template-columns:1fr}
+}
+
+/* ── TABS estilo caja/inventario ── */
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.tab{flex:1;min-width:80px;padding:10px 14px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.tab:hover{background:#f8fafc;color:#1a2035;border-color:#cbd5e1}
+.tab.active{background:linear-gradient(135deg,#1a2035,#2d3a5c);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(26,32,53,.25)}
+/* Contenedor de rotación del mapa */
+.mapa-mob-outer{overflow:auto;-webkit-overflow-scrolling:touch;border-radius:14px;border:1px solid #e2e8f0;background:#f8fafc;padding:12px}
+.mapa-mob-inner{display:inline-block}
+/* ── RESPONSIVE MOBILE ── */
+@media(max-width:900px){
+  :root{--sw:0px}
+  .main-wrap{margin-left:0!important}
+  .topbar{padding:10px 12px;gap:8px}
+  #hamburger{display:flex!important}
+  .tab{font-size:12px;padding:8px 10px}
+  /* Layout: 1 columna */
+  .layout-2col{grid-template-columns:1fr!important;gap:0}
+  .col-side{position:static}
+  /* Métricas: 2 columnas */
+  .metricas-grid{grid-template-columns:1fr 1fr!important;gap:8px}
+  /* Resumen: 1 columna en mobile */
+  .resumen-grid{grid-template-columns:1fr}
+  /* Formularios: 1 columna */
+  .form-grid-2{grid-template-columns:1fr}
+  /* Tablas con scroll interno */
+  .data-table-wrap,table{width:100%;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Item precio no fuerza ancho */
+  .item-precio{min-width:0}
+  /* Botones: apilados */
+  .btn-row{flex-direction:column;gap:8px}
+  /* Contenido: sin padding excesivo */
+  .content{padding:10px 8px!important}
+  /* Turno form: apilar en mobile */
+  .turno-form{flex-direction:column}
+  /* Resumen grid: 1 col en mobile */
+  .resumen-grid{grid-template-columns:1fr!important}
+  /* metodo-grid: 2 cols */
+  .metodo-grid{grid-template-columns:1fr 1fr}
+  /* Mapa: scroll interno, no desborda el layout */
+  .mapa-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+  .mapa-inner{padding:12px}
+}
+@media(max-width:600px){
+  .topbar{padding:8px 10px}
+  .tb-left p{display:none}
+  .content{padding:8px!important;max-width:100%!important}
+  .metricas-grid{grid-template-columns:1fr 1fr!important;gap:8px;margin-bottom:12px}
+  .metrica-card{padding:10px;min-height:65px;border-radius:12px}
+  .metrica-card .mc-lbl{font-size:8px;letter-spacing:.5px}
+  .metrica-card .mc-ttl{font-size:9px;margin-bottom:1px}
+  .metrica-card .mc-val{font-size:15px}
+  .modal{max-height:94vh;border-radius:16px 16px 0 0}
+  .modal-header{padding:12px 14px}
+  .modal-body{padding:12px 14px}
+  input,select,textarea{font-size:16px!important}
+  .resumen-grid{grid-template-columns:1fr}
+  .form-grid-2{grid-template-columns:1fr}
+  .card{padding:12px}
+  .caja-fila{flex-wrap:wrap}
+  .btn-row{flex-direction:column;gap:8px}
+  .btn-green,.btn-primary,.btn-ghost-light{padding:13px;font-size:14px}
+  /* Fix anchos fijos en mobile */
+  .item-precio{min-width:0;font-size:12px}
+  .cuenta-cards{grid-template-columns:1fr}
+  .metodo-grid{grid-template-columns:1fr 1fr}
+  /* Botones en fila: apilar en mobile */
+  div[style*="display:flex"][style*="gap:8px"] > button { flex:1 }
+  /* Cards del resumen: texto sin overflow */
+  .cmd-row{flex-wrap:wrap}
+  .desp-content{overflow-x:hidden}
+}
+@media(max-width:400px){
+  .metrica-card .mc-val{font-size:14px}
+  .topbar h2{font-size:14px}
+}
+@media(max-width:600px) and (orientation:landscape){
+  .modal{max-height:96vh}
+  .content{padding:8px!important}
+  .metricas-grid{grid-template-columns:repeat(4,1fr)}
+}
+
+/* ══════════════════════════════════════
+   MÓDULO COCINA — estilos propios
+   ══════════════════════════════════════ */
+.cocina-body{padding:18px 20px 60px;max-width:1500px;margin:0 auto}
+.cocina-tabs{display:inline-flex;background:#f1f5f9;border-radius:12px;padding:4px;margin-bottom:18px}
+.cocina-tab-btn{padding:10px 22px;border:none;background:none;border-radius:9px;font-size:14px;font-weight:800;
+  color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.cocina-tab-btn.active{background:#fff;color:#1a2035;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+
+.cocina-seccion-titulo{font-size:13px;font-weight:800;color:#94a3b8;text-transform:uppercase;
+  letter-spacing:.06em;margin:22px 0 12px}
+.cocina-seccion-titulo:first-child{margin-top:0}
+
+.cocina-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px}
+
+.coc-card{background:#fff;border-radius:18px;border:1.5px solid #e2e8f0;padding:18px;
+  display:flex;flex-direction:column;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.coc-card.completada{background:#f1f5f9;border-color:#e2e8f0;opacity:.75}
+.coc-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;
+  padding-bottom:12px;border-bottom:2px solid #f1f5f9}
+.coc-card-id{font-size:20px;font-weight:900;color:#1a2035;line-height:1.1}
+.coc-card-nombre{font-size:15px;font-weight:700;color:#334155;margin-top:2px}
+.coc-card-sub{font-size:12px;color:#94a3b8;margin-top:2px}
+.coc-badge-cuenta{background:#fef3c7;color:#92400e;font-size:11px;font-weight:800;border-radius:20px;
+  padding:4px 10px;white-space:nowrap;margin-bottom:6px;display:inline-block}
+.coc-cronometro{font-size:16px;font-weight:900;color:#0f4c75;display:flex;align-items:center;gap:5px;
+  justify-content:flex-end}
+.coc-card.completada .coc-cronometro{color:#94a3b8}
+
+.coc-cat-titulo{font-size:12px;font-weight:800;color:#00c9b1;text-transform:uppercase;letter-spacing:.05em;
+  margin:12px 0 6px}
+.coc-cat-titulo:first-child{margin-top:0}
+.coc-item-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f8fafc}
+.coc-item-row:last-child{border-bottom:none}
+.coc-item-check{width:24px;height:24px;border-radius:7px;border:2px solid #cbd5e1;flex-shrink:0;cursor:pointer;
+  margin-top:1px;accent-color:#16a34a}
+.coc-item-texto{flex:1;min-width:0}
+.coc-item-linea{font-size:16px;font-weight:800;color:#1a2035;line-height:1.3}
+.coc-item-row.tildado .coc-item-linea{text-decoration:line-through;color:#94a3b8}
+.coc-item-nota{font-size:13px;color:#dc2626;font-weight:700;margin-top:2px;line-height:1.4}
+.coc-item-row.tildado .coc-item-nota{color:#c4b5a5;text-decoration:line-through}
+
+.coc-card-btn{margin-top:16px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:12px;
+  color:#fff;font-weight:900;font-size:15px;padding:13px;cursor:pointer;font-family:'Nunito',sans-serif;
+  letter-spacing:.02em}
+.coc-card-btn:hover{filter:brightness(1.05)}
+.coc-card-btn.completada{background:#94a3b8;cursor:default}
+
+.cocina-empty{grid-column:1/-1;text-align:center;color:#94a3b8;padding:70px 20px}
+.cocina-empty .ei{font-size:52px;margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+
+<div class="screen active" id="screen-main">
+  <div class="main-wrap">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger">☰</button>
+      <div class="tb-left">
+        <h2>TK Serrano — Cocina</h2>
+        <p id="header-sub">—</p>
+      </div>
+      <div class="tb-right">
+        <button class="tb-btn" onclick="doLogout()">Salir</button>
+      </div>
+    </div>
+
+    <div class="cocina-body">
+      <div class="metricas-grid" id="kpis-cocina" style="grid-template-columns:repeat(3,1fr);max-width:640px"></div>
+
+      <div class="cocina-tabs">
+        <button id="tab-comandas" class="cocina-tab-btn active" onclick="cambiarVistaCocina('comandas')">📋 Comandas</button>
+        <button id="tab-salon" class="cocina-tab-btn" onclick="cambiarVistaCocina('salon')">🍽️ Salón</button>
+      </div>
+
+      <div id="vista-cocina"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+const MESA_STATUS = {
+  libre:    {label:'Libre',    color:'#16a34a',bg:'#dcfce7',border:'#16a34a'},
+  ocupada:  {label:'Ocupada',  color:'#dc2626',bg:'#fee2e2',border:'#dc2626'},
+  cuenta:   {label:'Cuenta',   color:'#ea580c',bg:'#ffedd5',border:'#ea580c'},
+  reservada:{label:'Reservada',color:'#7c3aed',bg:'#ede9fe',border:'#7c3aed'},
+};
+const SZ = {redonda:{w:70,h:70}, cuadrada:{w:70,h:70}, rectangular:{w:150,h:70}};
+
+let TOKEN = localStorage.getItem('takua_token')||'';
+let ME    = JSON.parse(localStorage.getItem('takua_user')||'null');
+let S = { mesas:[], comandas:[], huespedes:0, cocinaEstado:{} };
+let _vistaCocinaActual = 'comandas';
+
+// ════════════════════════════════════
+// UTILS (mismos que comandas.html)
+// ════════════════════════════════════
+const fmt = n => '$'+Number(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const mesaLabel = m => m.alias||`M${m.numero||m.id}`;
+const mesaDims = (tipo, alias, ancho, alto) => {
+  if(ancho && alto) return {w:ancho, h:alto};
+  return SZ[tipo]||SZ.cuadrada;
+};
+
+let _toastT;
+function toast(msg,type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = (type==='ok'?'✅ ':type==='err'?'❌ ':'ℹ️ ')+msg;
+  t.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(()=>t.classList.remove('show'),3000);
+}
+function loading(on){ document.getElementById('loading').classList.toggle('active',on); }
+
+async function api(method,path,body){
+  const opts={method,headers:{'Content-Type':'application/json','Authorization':`Bearer ${TOKEN}`}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch(API+path,opts);
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error||`Error ${r.status}`);
+  return d;
+}
+
+function doLogout(){
+  TOKEN=''; ME=null;
+  localStorage.removeItem('takua_token');
+  localStorage.removeItem('takua_user');
+  window.location.href='/portal.html';
+}
+
+// ════════════════════════════════════
+// CARGA DE DATOS
+// ════════════════════════════════════
+async function loadAll(){
+  try{
+    const [mesas, comandas, cocinaEstadoRows, dash] = await Promise.all([
+      api('GET','/api/restaurante/mesas'),
+      api('GET','/api/restaurante/comandas'),
+      api('GET','/api/cocina/estado'),
+      api('GET','/api/dashboard').catch(()=>null),
+    ]);
+    S.mesas = mesas || [];
+    S.comandas = comandas || [];
+    S.huespedes = dash?.reservas_activas || 0;
+    S.cocinaEstado = {};
+    (cocinaEstadoRows||[]).forEach(r=>{
+      let tild=[]; try{ tild = JSON.parse(r.items_tildados||'[]'); }catch(e){ tild=[]; }
+      S.cocinaEstado[r.comanda_id] = { items_tildados: tild, completada: r.completada==1 };
+    });
+  }catch(e){ toast('Error cargando datos','err'); }
+}
+
+function renderMain(){
+  renderKPIs();
+  if(_vistaCocinaActual==='comandas') renderVistaComandas();
+  else renderVistaSalon();
+}
+
+// ════════════════════════════════════
+// KPIs
+// ════════════════════════════════════
+function renderKPIs(){
+  const activas = S.comandas.filter(c=>c.estado==='abierta'||c.estado==='cuenta');
+  const comensales = activas.reduce((s,c)=>s+(c.comensales||0),0);
+  document.getElementById('kpis-cocina').innerHTML = `
+    <div class="metrica-card mc-cobradas">
+      <div class="mc-ttl">COMANDAS</div>
+      <div class="mc-val">${activas.length}</div>
+    </div>
+    <div class="metrica-card mc-comen">
+      <div class="mc-ttl">COMENSALES</div>
+      <div class="mc-val">${comensales}</div>
+    </div>
+    <div class="metrica-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8)">
+      <div class="mc-ttl">HUÉSPEDES</div>
+      <div class="mc-val">${S.huespedes||0}</div>
+    </div>`;
+}
+
+// ════════════════════════════════════
+// PESTAÑAS Comandas / Salón
+// ════════════════════════════════════
+function cambiarVistaCocina(v){
+  _vistaCocinaActual = v;
+  document.getElementById('tab-comandas').classList.toggle('active', v==='comandas');
+  document.getElementById('tab-salon').classList.toggle('active', v==='salon');
+  if(v==='comandas') renderVistaComandas();
+  else renderVistaSalon();
+}
+
+// ════════════════════════════════════
+// VISTA: COMANDAS (tarjetas grandes, agrupadas por categoría)
+// ════════════════════════════════════
+function agruparPorCategoria(items){
+  const grupos = {}; const orden = [];
+  (items||[]).forEach(it=>{
+    const cat = it.categoria || 'Otros';
+    if(!grupos[cat]){ grupos[cat]=[]; orden.push(cat); }
+    grupos[cat].push(it);
+  });
+  return orden.map(cat=>({categoria:cat, items:grupos[cat]}));
+}
+
+function formatElapsed(startIso){
+  if(!startIso) return '--:--';
+  const start = new Date(startIso).getTime();
+  const diff = Math.max(0, Date.now() - start);
+  const totalSec = Math.floor(diff/1000);
+  const h = Math.floor(totalSec/3600);
+  const m = Math.floor((totalSec%3600)/60);
+  const s = totalSec%60;
+  const mm = String(m).padStart(2,'0'), ss = String(s).padStart(2,'0');
+  return h>0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function actualizarCronometros(){
+  document.querySelectorAll('.coc-cronometro[data-abierta]').forEach(el=>{
+    el.textContent = '⏱ ' + formatElapsed(el.dataset.abierta);
+  });
+}
+
+function cocCardHTML(c){
+  const estado = S.cocinaEstado[c.id] || {items_tildados:[], completada:false};
+  const tildados = new Set(estado.items_tildados||[]);
+  const completada = !!estado.completada;
+  const m = S.mesas.find(x=>x.id===c.mesa_id);
+  const mesaTxt = m ? mesaLabel(m) : `Mesa ${c.mesa_id}`;
+  const grupos = agruparPorCategoria(c.items);
+
+  const itemsHTML = grupos.length ? grupos.map(g => `
+    <div class="coc-cat-titulo">${(g.categoria||'').replace(/</g,'&lt;')}</div>
+    ${g.items.map(it => {
+      const tild = tildados.has(it.id);
+      return `<div class="coc-item-row${tild?' tildado':''}">
+        <input type="checkbox" class="coc-item-check" ${tild?'checked':''}
+          ${completada?'disabled':''}
+          onchange="toggleItemTildado(${c.id},${it.id})">
+        <div class="coc-item-texto">
+          <div class="coc-item-linea">${it.cantidad} x ${(it.nombre||'').replace(/</g,'&lt;')}</div>
+          ${it.nota ? `<div class="coc-item-nota">📝 ${it.nota.replace(/</g,'&lt;')}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('')}`).join('') : '<div style="text-align:center;color:#94a3b8;padding:16px 0">Sin ítems</div>';
+
+  return `<div class="coc-card${completada?' completada':''}">
+    <div class="coc-card-top">
+      <div>
+        ${c.estado==='cuenta' ? '<div class="coc-badge-cuenta">Para cobrar</div>' : ''}
+        <div class="coc-card-id">#${c.id}</div>
+        <div class="coc-card-nombre">${(c.mozo_nombre||'—').replace(/</g,'&lt;')}</div>
+        <div class="coc-card-sub">${mesaTxt}</div>
+      </div>
+      <div class="coc-cronometro" data-abierta="${c.abierta_at||''}" id="cron-${c.id}">⏱ --:--</div>
+    </div>
+    <div>${itemsHTML}</div>
+    ${completada
+      ? `<button class="coc-card-btn completada" disabled>✓ Completada</button>`
+      : `<button class="coc-card-btn" onclick="marcarComandaLista(${c.id})">Marcar como Lista</button>`}
+  </div>`;
+}
+
+function renderVistaComandas(){
+  const activas = S.comandas.filter(c=>c.estado==='abierta'||c.estado==='cuenta');
+  const pendientes  = activas.filter(c=>!(S.cocinaEstado[c.id]?.completada));
+  const completadas = activas.filter(c=>S.cocinaEstado[c.id]?.completada);
+
+  let html;
+  if(!activas.length){
+    html = `<div class="cocina-grid"><div class="cocina-empty"><div class="ei">🍽️</div><p>No hay comandas activas en este momento</p></div></div>`;
+  } else {
+    html = `<div class="cocina-seccion-titulo">🔥 En curso (${pendientes.length})</div>
+      <div class="cocina-grid">${pendientes.length ? pendientes.map(cocCardHTML).join('') :
+        '<div class="cocina-empty" style="padding:30px"><p>Sin pedidos pendientes</p></div>'}</div>`;
+    if(completadas.length){
+      html += `<div class="cocina-seccion-titulo">✅ Completadas (${completadas.length})</div>
+        <div class="cocina-grid">${completadas.map(cocCardHTML).join('')}</div>`;
+    }
+  }
+  document.getElementById('vista-cocina').innerHTML = html;
+  actualizarCronometros();
+}
+
+async function toggleItemTildado(comandaId, itemId){
+  if(!S.cocinaEstado[comandaId]) S.cocinaEstado[comandaId] = {items_tildados:[], completada:false};
+  const est = S.cocinaEstado[comandaId];
+  const idx = est.items_tildados.indexOf(itemId);
+  if(idx>=0) est.items_tildados.splice(idx,1);
+  else est.items_tildados.push(itemId);
+  renderVistaComandas();
+  try{
+    await api('PUT', `/api/cocina/estado/${comandaId}`, {
+      items_tildados: est.items_tildados, completada: est.completada
+    });
+  }catch(e){ toast('No se pudo guardar','err'); }
+}
+
+async function marcarComandaLista(comandaId){
+  if(!S.cocinaEstado[comandaId]) S.cocinaEstado[comandaId] = {items_tildados:[], completada:false};
+  S.cocinaEstado[comandaId].completada = true;
+  renderVistaComandas();
+  try{
+    await api('PUT', `/api/cocina/estado/${comandaId}`, {
+      items_tildados: S.cocinaEstado[comandaId].items_tildados, completada: true
+    });
+    toast('Comanda marcada como Lista ✓','ok');
+  }catch(e){ toast('No se pudo guardar','err'); }
+}
+
+// ════════════════════════════════════
+// VISTA: SALÓN (mapa de solo lectura)
+// ════════════════════════════════════
+function renderPillsCocina(){
+  const counts={};
+  Object.keys(MESA_STATUS).forEach(k=>counts[k]=0);
+  S.mesas.forEach(m=>counts[m.status]=(counts[m.status]||0)+1);
+  return Object.entries(MESA_STATUS).map(([k,v])=>
+    `<div class="pill-estado" style="background:${v.bg};border-color:${v.border};color:${v.color}">
+      <div style="width:8px;height:8px;border-radius:50%;background:${v.color}"></div>
+      ${v.label} (${counts[k]||0})
+    </div>`
+  ).join('');
+}
+
+function renderVistaSalon(){
+  if(!S.mesas.length){
+    document.getElementById('vista-cocina').innerHTML =
+      '<div class="cocina-empty"><div class="ei">🪑</div><p>Sin mesas configuradas</p></div>';
+    return;
+  }
+  const maxX = Math.max(...S.mesas.map(m=>(m.x||50)+(mesaDims(m.tipo).w)))+30;
+  const maxY = Math.max(...S.mesas.map(m=>(m.y||50)+(mesaDims(m.tipo).h)))+70;
+  const mesasHTML = S.mesas.map(m=>{
+    const st=MESA_STATUS[m.status]||MESA_STATUS.libre;
+    const {w,h}=mesaDims(m.tipo,m.alias,m.ancho,m.alto);
+    const x=m.x||50; const y=m.y||50;
+    const cmd=S.comandas.find(c=>c.mesa_id===m.id&&c.estado!=='cerrada');
+    const br=m.tipo==='redonda'?'50%':'10px';
+    return `<div class="s-mesa ${m.status}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;
+      border-radius:${br};background:${st.bg};border-color:${st.border};cursor:default">
+      <div class="s-mesa-num" style="color:${st.color}">${mesaLabel(m)}</div>
+      ${m.tipo==='rectangular'&&!m.alias?`<div class="s-mesa-sub" style="color:${st.color}">2 mesas</div>`:''}
+      ${cmd?`<div class="s-mesa-total" style="color:${st.color}">${fmt(cmd.total||0)}</div>`:''}
+    </div>`;
+  }).join('');
+  document.getElementById('vista-cocina').innerHTML = `
+    <div class="pills-row">${renderPillsCocina()}</div>
+    <div style="overflow-x:auto">
+      <div style="position:relative;width:${maxX}px;height:${maxY}px;min-width:320px">${mesasHTML}
+        <div class="barra-ref" style="position:absolute;bottom:0;left:0;right:0"><span>BARRA</span></div>
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════
+// INIT
+// ════════════════════════════════════
+async function initApp(){
+  if(!TOKEN||!ME){window.location.href='/portal.html';return;}
+  if(!['admin','cocina'].includes(ME.rol)){window.location.href='/index.html';return;}
+
+  document.getElementById('header-sub').textContent = ME.nombre||ME.email||'';
+
+  loading(true);
+  await loadAll();
+  loading(false);
+  renderMain();
+
+  setInterval(actualizarCronometros, 1000);
+  setInterval(async()=>{
+    await loadAll();
+    renderMain();
+  }, 15000);
+}
+
+initApp();
+</script>
+<script src="/sidebar.js"></script>
+</body>
+</html>
