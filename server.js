@@ -2719,8 +2719,19 @@ app.get('/api/restaurante/turno/activo', auth, authRestaurante, async (req, res)
       "SELECT * FROM comandas WHERE estado='cerrada' AND metodo_pago != 'Habitación' AND cerrada_at >= $1 ORDER BY cerrada_at DESC",
       [turno.abierto_at]
     );
-    for (const c of cerradas) {
-      c.items = await db.getAll('SELECT * FROM comanda_items WHERE comanda_id=$1', [c.id]);
+    // 1 consulta para los ítems de TODAS las comandas cerradas del turno (antes: una por comanda)
+    if (cerradas.length) {
+      const idsCerradas = cerradas.map(c => c.id);
+      const itemsRows = await db.getAll(
+        'SELECT * FROM comanda_items WHERE comanda_id = ANY($1) ORDER BY comanda_id, id',
+        [idsCerradas]
+      );
+      const itemsPorComandaId = {};
+      itemsRows.forEach(r => {
+        if (!itemsPorComandaId[r.comanda_id]) itemsPorComandaId[r.comanda_id] = [];
+        itemsPorComandaId[r.comanda_id].push(r);
+      });
+      cerradas.forEach(c => { c.items = itemsPorComandaId[c.id] || []; });
     }
     const retiros = await db.getAll(
       "SELECT * FROM caja_retiros WHERE turno_id=$1 ORDER BY created_at DESC",
