@@ -334,7 +334,7 @@
 
     const ROLES = {
       admin:'Administrador', recepcionista:'Recepción', mucama:'Mucama',
-      cajero:'Cajero', mozo:'Mozo', mantenimiento:'Mantenimiento'
+      cajero:'Cajero', mozo:'Mozo', mantenimiento:'Mantenimiento', cocina:'Cocina'
     };
     const rolLabel = ROLES[ME.rol] || ME.rol || '';
     const inicial   = (ME.nombre || '?')[0].toUpperCase();
