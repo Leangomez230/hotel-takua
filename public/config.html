@@ -273,8 +273,8 @@ function cambiarFiltroUsuarios(f) {
   renderConfig();
 }
 
-const ROL_COLOR = { admin:'pb', recepcionista:'pg', mucama:'py', mantenimiento:'pgr', mozo:'pp', cajero:'po' };
-const ROL_LABEL = { admin:'Admin', recepcionista:'Recepción', mucama:'Mucama', mantenimiento:'Mantenimiento', mozo:'Mozo', cajero:'Cajero' };
+const ROL_COLOR = { admin:'pb', recepcionista:'pg', mucama:'py', mantenimiento:'pgr', mozo:'pp', cajero:'po', cocina:'pgr' };
+const ROL_LABEL = { admin:'Admin', recepcionista:'Recepción', mucama:'Mucama', mantenimiento:'Mantenimiento', mozo:'Mozo', cajero:'Cajero', cocina:'Cocina' };
 let TIPOS = [];
 let PLATAFORMAS = [];
 let filtroUsuarios = 'activos';
@@ -489,7 +489,7 @@ async function renderConfig() {
             <option value="recepcionista">Solo Recepción</option>
             <option value="mucama">Solo Mucamas</option>
             <option value="mantenimiento">Solo Mantenimiento</option>
-            <option value="mozo,cajero">Solo Restaurante</option>
+            <option value="mozo,cajero,cocina">Solo Restaurante</option>
             <option value="admin,recepcionista">Admin + Recepción</option>
           </select>
         </div>
@@ -643,7 +643,7 @@ async function guardarClave(habId, inputId) {
 }
 
 // ── USUARIOS ──────────────────────────────────────────────────────────
-const ROL_OPTS = ['admin','recepcionista','mucama','mantenimiento','cajero','mozo']
+const ROL_OPTS = ['admin','recepcionista','mucama','mantenimiento','cajero','mozo','cocina']
   .map(r => `<option value="${r}">${ROL_LABEL[r]}</option>`).join('');
 
 function abrirModalUsuario(u) {
