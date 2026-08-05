@@ -2255,7 +2255,7 @@ app.put('/api/notificaciones/leer-todas', auth, async (req, res) => {
 // POST: cualquier rol de restaurante crea una solicitud
 app.post('/api/mantenimiento/solicitudes', auth, async (req, res) => {
   try {
-    const rolesPermitidos = ['admin','mozo','cajero','recepcionista','mucama'];
+    const rolesPermitidos = ['admin','mozo','cajero','recepcionista','mucama','cocina'];
     if (!rolesPermitidos.includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos' });
     const { descripcion, origen } = req.body;
     if (!descripcion?.trim()) return res.status(400).json({ error: 'La descripción es requerida' });
