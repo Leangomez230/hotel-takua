@@ -2578,6 +2578,14 @@ app.put('/api/restaurante/comandas/:id/items/:itemId', auth, authRestaurante, as
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Marcar TODOS los ítems de la comanda como entregados de una vez (panel "Comandas activas")
+app.put('/api/restaurante/comandas/:id/completar', auth, authRestaurante, async (req, res) => {
+  try {
+    await db.query("UPDATE comanda_items SET entregado=1 WHERE comanda_id=$1", [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Pedir cuenta
 app.put('/api/restaurante/comandas/:id/cuenta', auth, authRestaurante, async (req, res) => {
   try {
