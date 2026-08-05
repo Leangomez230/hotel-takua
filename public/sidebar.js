@@ -44,7 +44,7 @@
     { id:'sb-restaurante',  icon:'🍽️', label:'Restaurante',
       show: ['admin','cajero','mozo','cocina'],
       children: [
-        { id:'sb-comandas', icon:'📋', label:'Comandas', href:'/comandas.html',
+        { id:'sb-comandas', icon:'📋', label:'Restaurant', href:'/comandas.html',
           show: ['admin','cajero','mozo'] },
         { id:'sb-cocina',   icon:'👨‍🍳', label:'Cocina',   href:'/cocina.html',
           show: ['admin','cocina'] },
