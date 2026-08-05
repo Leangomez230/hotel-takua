@@ -19,9 +19,9 @@
 
   const ITEMS = [
     { id:'sb-inicio',       icon:'🏠', label:'Inicio',
-      href: ['cajero','mozo'].includes(rol) ? '/comandas.html' : (enIndex ? null : '/index.html'),
+      href: ['cajero','mozo'].includes(rol) ? '/comandas.html' : (rol==='cocina' ? '/cocina.html' : (enIndex ? null : '/index.html')),
       click: enIndex ? "goTo('dashboard')" : null,
-      show: ['admin','recepcionista','mucama','mantenimiento','cajero','mozo'] },
+      show: ['admin','recepcionista','mucama','mantenimiento','cajero','mozo','cocina'] },
     { id:'sb-habitaciones', icon:'🛏️', label:'Habitaciones',
       href: indexHref('habitaciones'), click: indexClick('habitaciones'),
       show: ['admin','recepcionista','mucama','mantenimiento'] },
@@ -42,9 +42,13 @@
       show: ['admin','recepcionista'],
       active: on('caja.html') },
     { id:'sb-restaurante',  icon:'🍽️', label:'Restaurante',
-      href: '/comandas.html',
-      show: ['admin','cajero','mozo'],
-      active: on('comandas.html') },
+      show: ['admin','cajero','mozo','cocina'],
+      children: [
+        { id:'sb-comandas', icon:'📋', label:'Comandas', href:'/comandas.html',
+          show: ['admin','cajero','mozo'] },
+        { id:'sb-cocina',   icon:'👨‍🍳', label:'Cocina',   href:'/cocina.html',
+          show: ['admin','cocina'] },
+      ] },
     { id:'sb-mail',         icon:'✉️', label:'Mail',
       href: 'https://mail.hostinger.com/',
       show: ['admin'],
