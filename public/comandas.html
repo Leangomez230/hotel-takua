@@ -1481,12 +1481,20 @@ function cdaCardHTML(c){
   const m = S.mesas.find(x=>x.id===c.mesa_id);
   const mesaTxt = m ? mesaLabel(m) : `Mesa ${c.mesa_id}`;
   const hora = c.abierta_at ? new Date(c.abierta_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '';
-  const pendientes = (c.items||[]).filter(it=>!it.entregado);
-  const itemsHTML = pendientes.map(it => `
+  const itemsHTML = (c.items||[]).map(it => {
+    const prodDef = S.menu.find(m2=>m2.id===it.producto_id);
+    let bebidasHTML = '';
+    if(prodDef?.incluye_bebida==1){
+      let bebidas=[]; try{ bebidas=JSON.parse(it.bebidas_elegidas||'[]'); }catch(e){}
+      if(bebidas.length) bebidasHTML = bebidas.map(b=>`<div class="cda-item-nota">🥤 ${b.cantidad} ${(b.nombre||'').replace(/</g,'&lt;')}</div>`).join('');
+    }
+    return `
     <div class="cda-item-row">
       <div class="cda-item-linea">${it.cantidad} x ${(it.nombre||'').replace(/</g,'&lt;')}</div>
       ${it.nota ? `<div class="cda-item-nota">${it.nota.replace(/</g,'&lt;')}</div>` : ''}
-    </div>`).join('') || '<div style="text-align:center;color:#94a3b8;font-size:12px;padding:10px 0">Sin ítems pendientes</div>';
+      ${bebidasHTML}
+    </div>`;
+  }).join('') || '<div style="text-align:center;color:#94a3b8;font-size:12px;padding:10px 0">Sin ítems</div>';
 
   return `<div class="cda-card">
     <div class="cda-card-top">
@@ -1501,7 +1509,6 @@ function cdaCardHTML(c){
       </div>
     </div>
     <div class="cda-card-items">${itemsHTML}</div>
-    ${pendientes.length ? `<button class="cda-card-btn" onclick="completarComandaKDS(${c.id})">Completar comanda</button>` : ''}
   </div>`;
 }
 
@@ -1519,17 +1526,6 @@ function renderPanelComandasActivas(el){
     </div>`;
 }
 
-async function completarComandaKDS(cmdId){
-  loading(true);
-  try{
-    await api('PUT', `/api/restaurante/comandas/${cmdId}/completar`, {});
-    toast('Comanda marcada como completa ✓','ok');
-    await loadAll();
-    const panel = document.getElementById('panel-comandas-activas');
-    if(panel && panel.classList.contains('open')) renderPanelComandasActivas(panel);
-  }catch(e){toast(e.message,'err');}
-  finally{loading(false);}
-}
 
 function prodRowHTML(p){
   return `<div class="prod-row">
