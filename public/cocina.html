@@ -414,11 +414,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 /* KPIs propios de Cocina — tamaño fijo, sin depender de metrica-card/vw compartidos */
 .coc-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:640px;margin-bottom:18px}
 .coc-kpi-card{border-radius:16px;padding:16px 14px;color:#fff;min-height:90px;display:flex;
-  flex-direction:column;justify-content:center}
-.coc-kpi-ttl{font-size:11px;font-weight:800;opacity:.9;margin-bottom:4px}
-.coc-kpi-val{font-size:22px;font-weight:900;line-height:1.1}
+  flex-direction:column;justify-content:center;position:relative;overflow:hidden;border:none}
+.coc-kpi-card::after{content:'';position:absolute;right:-15px;bottom:-15px;width:80px;height:80px;
+  border-radius:50%;background:rgba(255,255,255,.08)}
+.coc-kpi-ttl{font-size:11px;font-weight:800;opacity:.9;margin-bottom:4px;position:relative}
+.coc-kpi-val{font-size:22px;font-weight:900;line-height:1.1;position:relative}
 @media(max-width:640px){
   .coc-kpis{grid-template-columns:repeat(3,1fr);max-width:none}
+  .coc-kpi-card{padding:10px 12px;min-height:70px;border-radius:12px}
   .coc-kpi-val{font-size:18px}
 }
 
@@ -483,6 +486,31 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast" id="toast"></div>
 
+<div class="overlay" id="m-sol-mant">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-handle"><div></div></div>
+    <div class="modal-header">
+      <span class="modal-title">🔧 Solicitar Mantenimiento</span>
+      <button class="btn-close-modal" onclick="cerrarModalSolMant()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px">
+        Describí el problema o tarea de mantenimiento en la cocina. El equipo de mantenimiento recibirá una alerta.
+      </p>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Descripción del problema *</label>
+        <textarea id="sol-mant-desc" rows="4" placeholder="Ej: La heladera de la cocina no enfría, pérdida de gas en la hornalla 2…"
+          style="resize:vertical;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;width:100%;font-family:inherit;font-size:14px;outline:none;color:#1a2035"
+          oninput="this.style.borderColor='#00c9b1'"></textarea>
+      </div>
+      <button id="btn-enviar-sol-mant" onclick="enviarSolMant()"
+        style="width:100%;background:#d97706;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer">
+        🔧 Enviar solicitud
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="screen active" id="screen-main">
   <div class="main-wrap">
     <div class="topbar">
@@ -492,6 +520,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <p id="header-sub">—</p>
       </div>
       <div class="tb-right">
+        <button class="tb-btn" id="btn-sol-mant" onclick="abrirModalSolMant()" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d" title="Solicitar mantenimiento">🔧 Mant.</button>
         <button class="tb-btn" onclick="doLogout()">Salir</button>
       </div>
     </div>
@@ -788,6 +817,42 @@ function renderVistaSalon(){
         </div>
       </div>
     </div>`;
+}
+
+// ════════════════════════════════════
+// SOLICITAR MANTENIMIENTO
+// ════════════════════════════════════
+function abrirModalSolMant() {
+  document.getElementById('sol-mant-desc').value = '';
+  document.getElementById('sol-mant-desc').style.borderColor = '#e2e8f0';
+  document.getElementById('m-sol-mant').classList.add('open');
+  setTimeout(() => document.getElementById('sol-mant-desc').focus(), 300);
+}
+function cerrarModalSolMant() {
+  document.getElementById('m-sol-mant').classList.remove('open');
+}
+async function enviarSolMant() {
+  const desc = document.getElementById('sol-mant-desc').value.trim();
+  if (!desc) {
+    document.getElementById('sol-mant-desc').style.borderColor = '#ef4444';
+    document.getElementById('sol-mant-desc').focus();
+    return;
+  }
+  const btn = document.getElementById('btn-enviar-sol-mant');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const r = await api('POST', '/api/mantenimiento/solicitudes', { descripcion: desc, origen: 'cocina' });
+    if (r?.ok) {
+      cerrarModalSolMant();
+      toast('Solicitud enviada a mantenimiento', 'ok');
+    } else {
+      toast(r?.error || 'Error al enviar la solicitud', 'err');
+    }
+  } catch(e) {
+    toast(e.message || 'Error al enviar la solicitud', 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = '🔧 Enviar solicitud';
+  }
 }
 
 // ════════════════════════════════════
