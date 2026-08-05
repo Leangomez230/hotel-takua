@@ -2002,22 +2002,44 @@ app.put('/api/restaurante/salon', auth, adminOnly, async (req, res) => {
 app.get('/api/restaurante/menu', auth, authRestaurante, async (req, res) => {
   try {
     const menu = await db.getAll("SELECT * FROM menu_restaurante WHERE COALESCE(activo,1)=1 ORDER BY categoria,nombre");
-    // Para cada producto, verificar stock vinculado y combo items
+
+    const idsBebidas = menu.filter(m => m.es_bebida).map(m => m.id);
+    const idsCombos  = menu.filter(m => m.es_combo).map(m => m.id);
+
+    // 1 consulta para el stock de TODAS las bebidas vinculadas (antes: una consulta por bebida)
+    const stockPorMenuId = {};
+    if (idsBebidas.length) {
+      const rows = await db.getAll(
+        'SELECT menu_id, stock FROM productos WHERE menu_id = ANY($1) AND activo=1',
+        [idsBebidas]
+      );
+      rows.forEach(r => { stockPorMenuId[r.menu_id] = Number(r.stock) || 0; });
+    }
+
+    // 1 consulta para los componentes de TODOS los combos (antes: una consulta por combo)
+    const comboItemsPorProductoId = {};
+    if (idsCombos.length) {
+      const rows = await db.getAll(
+        'SELECT * FROM menu_combo_items WHERE producto_id = ANY($1) ORDER BY producto_id, orden, id',
+        [idsCombos]
+      );
+      rows.forEach(r => {
+        if (!comboItemsPorProductoId[r.producto_id]) comboItemsPorProductoId[r.producto_id] = [];
+        comboItemsPorProductoId[r.producto_id].push(r);
+      });
+    }
+
+    // Completar cada producto en memoria — sin más idas y vueltas a la base
     for (const item of menu) {
-      if (item.es_bebida) {
-        const invProd = await db.getOne('SELECT stock FROM productos WHERE menu_id=$1 AND activo=1', [item.id]);
-        if (invProd) {
-          item.stock_inv = Number(invProd.stock)||0;
-          item.sin_stock = item.stock_inv <= 0;
-        }
+      if (item.es_bebida && stockPorMenuId[item.id] !== undefined) {
+        item.stock_inv = stockPorMenuId[item.id];
+        item.sin_stock = item.stock_inv <= 0;
       }
       if (item.es_combo) {
-        item.combo_items = await db.getAll(
-          'SELECT * FROM menu_combo_items WHERE producto_id=$1 ORDER BY orden, id',
-          [item.id]
-        );
+        item.combo_items = comboItemsPorProductoId[item.id] || [];
       }
     }
+
     res.json(menu);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
