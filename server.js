@@ -78,7 +78,7 @@ function adminRecepMucama(req, res, next) {
   next();
 }
 function authRestaurante(req, res, next) {
-  if (!['admin','mozo','cajero'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos para restaurante' });
+  if (!['admin','mozo','cajero','cocina'].includes(req.user.rol)) return res.status(403).json({ error: 'Sin permisos para restaurante' });
   next();
 }
 function authMantOrAdmin(req, res, next) {
@@ -1931,6 +1931,29 @@ app.put('/api/solicitudes/:id', auth, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════
 
 // ── MESAS RESTAURANTE ─────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// ── MÓDULO COCINA (visor informativo — nunca toca datos reales) ──────
+// ════════════════════════════════════════════════════════════════════
+app.get('/api/cocina/estado', auth, authRestaurante, async (req, res) => {
+  try {
+    res.json(await db.getAll('SELECT * FROM cocina_estado'));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/cocina/estado/:comandaId', auth, authRestaurante, async (req, res) => {
+  try {
+    const { items_tildados, completada } = req.body;
+    await db.query(
+      `INSERT INTO cocina_estado (comanda_id, items_tildados, completada, completada_en, updated_at)
+       VALUES ($1,$2,$3,$4,NOW())
+       ON CONFLICT (comanda_id) DO UPDATE SET
+         items_tildados=$2, completada=$3, completada_en=$4, updated_at=NOW()`,
+      [req.params.comandaId, JSON.stringify(items_tildados||[]), completada?1:0, completada?new Date():null]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/restaurante/mesas', auth, authRestaurante, async (req, res) => {
   try {
     res.json(await db.getAll('SELECT * FROM mesas_restaurante WHERE activo=1 ORDER BY numero, id'));
