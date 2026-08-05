@@ -2203,7 +2203,7 @@ app.post('/api/notificaciones', auth, adminOnly, async (req, res) => {
     );
     // Push a los roles correspondientes
     const rolesArr = rolesTarget === 'todos'
-      ? ['admin','recepcionista','mucama','mantenimiento','cajero','mozo']
+      ? ['admin','recepcionista','mucama','mantenimiento','cajero','mozo','cocina']
       : rolesTarget.split(',').map(r => r.trim());
     sendPushToRoles(rolesArr, {
       title: titulo.trim(),
