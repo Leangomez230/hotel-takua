@@ -61,7 +61,7 @@ async function transaction(callback) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 // Inicializar tablas
 async function initDB() {
@@ -319,6 +319,22 @@ try {
   await query("ALTER TABLE comanda_items ADD COLUMN IF NOT EXISTS bebidas_elegidas TEXT DEFAULT '[]'");
   console.log('✅ Columna bebidas_elegidas lista');
 } catch(e) { console.log('bebidas_elegidas ya existe'); }
+
+// Migración: cocina_estado — estado puramente informativo del módulo Cocina (visor de cocina).
+// Guarda qué ítems se tildaron como preparados y si la comanda se marcó "Lista", SIN tocar
+// nunca comanda_items.entregado ni ningún dato real de comandas.html — es un espejo aparte.
+try {
+  await query(`
+    CREATE TABLE IF NOT EXISTS cocina_estado (
+      comanda_id INTEGER PRIMARY KEY,
+      items_tildados TEXT DEFAULT '[]',
+      completada INTEGER DEFAULT 0,
+      completada_en TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  console.log('✅ Tabla cocina_estado lista');
+} catch(e) { console.log('cocina_estado ya existe'); }
 
 // Migración: activo en menu_restaurante (permite "borrado suave" cuando el producto tiene comandas históricas)
 try {
