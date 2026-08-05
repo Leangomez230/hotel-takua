@@ -218,6 +218,27 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .gp-grid{display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;min-width:0}
 .gp-grid>.card{min-width:0}
 @media(max-width:860px){.gp-grid{grid-template-columns:1fr}}
+
+/* Panel "Comandas activas" — tarjetas estilo pantalla de cocina */
+.cda-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.cda-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:16px;
+  display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.cda-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.cda-card-id{font-size:15px;font-weight:900;color:#1a2035}
+.cda-card-nombre{font-size:13px;font-weight:700;color:#334155;margin-top:1px}
+.cda-card-sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.cda-badge-cuenta{background:#fef3c7;color:#92400e;font-size:10px;font-weight:800;border-radius:20px;
+  padding:3px 9px;white-space:nowrap}
+.cda-card-hora{font-size:11px;color:#f59e0b;font-weight:700}
+.cda-card-items{flex:1;border-top:1px solid #f1f5f9;padding-top:10px;margin-top:2px}
+.cda-item-row{margin-bottom:9px}
+.cda-item-row:last-child{margin-bottom:0}
+.cda-item-linea{font-size:13px;font-weight:800;color:#1a2035}
+.cda-item-nota{font-size:11.5px;color:#94a3b8;padding-left:14px;line-height:1.5}
+.cda-card-btn{margin-top:14px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:10px;
+  color:#fff;font-weight:800;font-size:13px;padding:11px;cursor:pointer;font-family:'Nunito',sans-serif}
+.cda-card-btn:hover{filter:brightness(1.05)}
+.cda-empty{grid-column:1/-1;text-align:center;color:#94a3b8;padding:60px 20px;font-size:14px}
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:260px;overflow-y:auto}
 .menu-item-btn{padding:12px;border-radius:12px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;text-align:left;transition:all .15s}
 .menu-item-btn:hover{border-color:#3b82f6;background:#eff6ff}
@@ -506,6 +527,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <!-- Modal Abrir Comanda -->
 <!-- Panel deslizante: Gestión de Productos -->
 <div id="panel-productos" class="slide-panel"></div>
+<div id="panel-comandas-activas" class="slide-panel"></div>
 
 <div class="overlay" id="m-abrir">
   <div class="modal" style="max-width:500px">
@@ -966,6 +988,10 @@ function renderMain(){
   if (panelProd && panelProd.classList.contains('open')) {
     renderGestionProductos(panelProd, window._gpCatActiva);
   }
+  const panelCda = document.getElementById('panel-comandas-activas');
+  if (panelCda && panelCda.classList.contains('open')) {
+    renderPanelComandasActivas(panelCda);
+  }
 }
 
 // ── MAPA (solo lectura) ───────────────────────────────
@@ -1094,7 +1120,7 @@ function renderCajero(el){
         <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">TOTAL COBRADO</div>
         <div class="mc-val">${fmt(totalNeto)}</div>
       </div>
-      <div class="metrica-card mc-cobradas">
+      <div class="metrica-card mc-cobradas" style="cursor:pointer" onclick="abrirPanelComandasActivas()">
         <div class="mc-lbl">${hayTurno}</div><div class="mc-ttl">COMANDAS</div>
         <div class="mc-val">${abiertas.length + enCuenta.length}</div>
       </div>
@@ -1295,7 +1321,7 @@ function renderAdmin(el){
         <div class="mc-ttl">TOTAL COBRADO</div>
         <div class="mc-val">${fmt(totalNeto)}</div>
       </div>
-      <div class="metrica-card mc-cobradas">
+      <div class="metrica-card mc-cobradas" style="cursor:pointer" onclick="abrirPanelComandasActivas()">
         <div class="mc-lbl">${hayTurno}</div>
         <div class="mc-ttl">COMANDAS</div>
         <div class="mc-val">${S.comandas.filter(c=>c.estado==='abierta'||c.estado==='cuenta').length}</div>
@@ -1431,6 +1457,78 @@ function cerrarGestionProductos(){
   if(!panel) return;
   panel.classList.remove('open');
   document.body.style.overflow = '';
+}
+
+// ══════════════════════════════════════
+// PANEL: COMANDAS ACTIVAS (estilo pantalla de cocina)
+// ══════════════════════════════════════
+function abrirPanelComandasActivas(){
+  const panel = document.getElementById('panel-comandas-activas');
+  if(!panel) return;
+  renderPanelComandasActivas(panel);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(()=>panel.classList.add('open'));
+}
+
+function cerrarPanelComandasActivas(){
+  const panel = document.getElementById('panel-comandas-activas');
+  if(!panel) return;
+  panel.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function cdaCardHTML(c){
+  const m = S.mesas.find(x=>x.id===c.mesa_id);
+  const mesaTxt = m ? mesaLabel(m) : `Mesa ${c.mesa_id}`;
+  const hora = c.abierta_at ? new Date(c.abierta_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '';
+  const pendientes = (c.items||[]).filter(it=>!it.entregado);
+  const itemsHTML = pendientes.map(it => `
+    <div class="cda-item-row">
+      <div class="cda-item-linea">${it.cantidad} x ${(it.nombre||'').replace(/</g,'&lt;')}</div>
+      ${it.nota ? `<div class="cda-item-nota">${it.nota.replace(/</g,'&lt;')}</div>` : ''}
+    </div>`).join('') || '<div style="text-align:center;color:#94a3b8;font-size:12px;padding:10px 0">Sin ítems pendientes</div>';
+
+  return `<div class="cda-card">
+    <div class="cda-card-top">
+      <div>
+        <div class="cda-card-id">#${c.id}</div>
+        <div class="cda-card-nombre">${c.mozo_nombre||'—'}</div>
+        <div class="cda-card-sub">${mesaTxt}</div>
+      </div>
+      <div style="text-align:right">
+        ${c.estado==='cuenta' ? '<div class="cda-badge-cuenta">Para cobrar</div>' : ''}
+        <div class="cda-card-hora" style="margin-top:4px">${hora}</div>
+      </div>
+    </div>
+    <div class="cda-card-items">${itemsHTML}</div>
+    ${pendientes.length ? `<button class="cda-card-btn" onclick="completarComandaKDS(${c.id})">Completar comanda</button>` : ''}
+  </div>`;
+}
+
+function renderPanelComandasActivas(el){
+  const activas = (S.comandas||[]).filter(c=>c.estado==='abierta'||c.estado==='cuenta');
+  el.innerHTML = `
+    <div class="gp-header">
+      <button class="gp-back" onclick="cerrarPanelComandasActivas()">← Volver</button>
+      <div class="gp-title">📋 Comandas Activas</div>
+    </div>
+    <div class="gp-body">
+      <div class="cda-grid">
+        ${activas.length ? activas.map(cdaCardHTML).join('') : '<div class="cda-empty">No hay comandas activas en este momento</div>'}
+      </div>
+    </div>`;
+}
+
+async function completarComandaKDS(cmdId){
+  loading(true);
+  try{
+    await api('PUT', `/api/restaurante/comandas/${cmdId}/completar`, {});
+    toast('Comanda marcada como completa ✓','ok');
+    await loadAll();
+    const panel = document.getElementById('panel-comandas-activas');
+    if(panel && panel.classList.contains('open')) renderPanelComandasActivas(panel);
+  }catch(e){toast(e.message,'err');}
+  finally{loading(false);}
 }
 
 function prodRowHTML(p){
