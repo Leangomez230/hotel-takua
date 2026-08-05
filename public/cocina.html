@@ -410,6 +410,26 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
    MÓDULO COCINA — estilos propios
    ══════════════════════════════════════ */
 .cocina-body{padding:18px 20px 60px;max-width:1500px;margin:0 auto}
+
+/* KPIs propios de Cocina — tamaño fijo, sin depender de metrica-card/vw compartidos */
+.coc-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:640px;margin-bottom:18px}
+.coc-kpi-card{border-radius:16px;padding:16px 14px;color:#fff;min-height:90px;display:flex;
+  flex-direction:column;justify-content:center}
+.coc-kpi-ttl{font-size:11px;font-weight:800;opacity:.9;margin-bottom:4px}
+.coc-kpi-val{font-size:22px;font-weight:900;line-height:1.1}
+@media(max-width:640px){
+  .coc-kpis{grid-template-columns:repeat(3,1fr);max-width:none}
+  .coc-kpi-val{font-size:18px}
+}
+
+/* Track deslizante Comandas ↔ Salón */
+.coc-viewport{overflow:hidden}
+.coc-track{display:flex;transition:transform .32s cubic-bezier(.4,0,.2,1)}
+.coc-page{flex:0 0 100%;min-width:0}
+
+/* Recuadro blanco que envuelve la vista de Salón (igual look que las tarjetas de Comandas) */
+.coc-salon-box{background:#fff;border-radius:18px;border:1.5px solid #e2e8f0;padding:20px;
+  box-shadow:0 2px 6px rgba(0,0,0,.05)}
 .cocina-tabs{display:inline-flex;background:#f1f5f9;border-radius:12px;padding:4px;margin-bottom:18px}
 .cocina-tab-btn{padding:10px 22px;border:none;background:none;border-radius:9px;font-size:14px;font-weight:800;
   color:#64748b;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
@@ -477,14 +497,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     </div>
 
     <div class="cocina-body">
-      <div class="metricas-grid" id="kpis-cocina" style="grid-template-columns:repeat(3,1fr);max-width:640px"></div>
+      <div class="coc-kpis" id="kpis-cocina"></div>
 
       <div class="cocina-tabs">
         <button id="tab-comandas" class="cocina-tab-btn active" onclick="cambiarVistaCocina('comandas')">📋 Comandas</button>
         <button id="tab-salon" class="cocina-tab-btn" onclick="cambiarVistaCocina('salon')">🍽️ Salón</button>
       </div>
 
-      <div id="vista-cocina"></div>
+      <div class="coc-viewport">
+        <div class="coc-track" id="coc-track">
+          <div class="coc-page" id="vista-comandas"></div>
+          <div class="coc-page" id="vista-salon"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -564,8 +589,8 @@ async function loadAll(){
 
 function renderMain(){
   renderKPIs();
-  if(_vistaCocinaActual==='comandas') renderVistaComandas();
-  else renderVistaSalon();
+  renderVistaComandas();
+  renderVistaSalon();
 }
 
 // ════════════════════════════════════
@@ -575,17 +600,17 @@ function renderKPIs(){
   const activas = S.comandas.filter(c=>c.estado==='abierta'||c.estado==='cuenta');
   const comensales = activas.reduce((s,c)=>s+(c.comensales||0),0);
   document.getElementById('kpis-cocina').innerHTML = `
-    <div class="metrica-card mc-cobradas">
-      <div class="mc-ttl">COMANDAS</div>
-      <div class="mc-val">${activas.length}</div>
+    <div class="coc-kpi-card" style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+      <div class="coc-kpi-ttl">COMANDAS</div>
+      <div class="coc-kpi-val">${activas.length}</div>
     </div>
-    <div class="metrica-card mc-comen">
-      <div class="mc-ttl">COMENSALES</div>
-      <div class="mc-val">${comensales}</div>
+    <div class="coc-kpi-card" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">
+      <div class="coc-kpi-ttl">COMENSALES</div>
+      <div class="coc-kpi-val">${comensales}</div>
     </div>
-    <div class="metrica-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8)">
-      <div class="mc-ttl">HUÉSPEDES</div>
-      <div class="mc-val">${S.huespedes||0}</div>
+    <div class="coc-kpi-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8)">
+      <div class="coc-kpi-ttl">HUÉSPEDES</div>
+      <div class="coc-kpi-val">${S.huespedes||0}</div>
     </div>`;
 }
 
@@ -596,8 +621,8 @@ function cambiarVistaCocina(v){
   _vistaCocinaActual = v;
   document.getElementById('tab-comandas').classList.toggle('active', v==='comandas');
   document.getElementById('tab-salon').classList.toggle('active', v==='salon');
-  if(v==='comandas') renderVistaComandas();
-  else renderVistaSalon();
+  const track = document.getElementById('coc-track');
+  if(track) track.style.transform = v==='salon' ? 'translateX(-100%)' : 'translateX(0)';
 }
 
 // ════════════════════════════════════
@@ -688,7 +713,7 @@ function renderVistaComandas(){
         <div class="cocina-grid">${completadas.map(cocCardHTML).join('')}</div>`;
     }
   }
-  document.getElementById('vista-cocina').innerHTML = html;
+  document.getElementById('vista-comandas').innerHTML = html;
   actualizarCronometros();
 }
 
@@ -735,8 +760,8 @@ function renderPillsCocina(){
 
 function renderVistaSalon(){
   if(!S.mesas.length){
-    document.getElementById('vista-cocina').innerHTML =
-      '<div class="cocina-empty"><div class="ei">🪑</div><p>Sin mesas configuradas</p></div>';
+    document.getElementById('vista-salon').innerHTML =
+      '<div class="coc-salon-box"><div class="cocina-empty"><div class="ei">🪑</div><p>Sin mesas configuradas</p></div></div>';
     return;
   }
   const maxX = Math.max(...S.mesas.map(m=>(m.x||50)+(mesaDims(m.tipo).w)))+30;
@@ -754,11 +779,13 @@ function renderVistaSalon(){
       ${cmd?`<div class="s-mesa-total" style="color:${st.color}">${fmt(cmd.total||0)}</div>`:''}
     </div>`;
   }).join('');
-  document.getElementById('vista-cocina').innerHTML = `
-    <div class="pills-row">${renderPillsCocina()}</div>
-    <div style="overflow-x:auto">
-      <div style="position:relative;width:${maxX}px;height:${maxY}px;min-width:320px">${mesasHTML}
-        <div class="barra-ref" style="position:absolute;bottom:0;left:0;right:0"><span>BARRA</span></div>
+  document.getElementById('vista-salon').innerHTML = `
+    <div class="coc-salon-box">
+      <div class="pills-row">${renderPillsCocina()}</div>
+      <div style="overflow-x:auto">
+        <div style="position:relative;width:${maxX}px;height:${maxY}px;min-width:320px">${mesasHTML}
+          <div class="barra-ref" style="position:absolute;bottom:0;left:0;right:0"><span>BARRA</span></div>
+        </div>
       </div>
     </div>`;
 }
