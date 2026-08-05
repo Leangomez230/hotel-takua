@@ -2297,16 +2297,28 @@ app.get('/api/restaurante/comandas', auth, authRestaurante, async (req, res) => 
     if (wheres.length) q += ' WHERE ' + wheres.join(' AND ');
     q += ' ORDER BY c.abierta_at DESC';
     const comandas = await db.getAll(q, params);
-    for (const cmd of comandas) {
-      cmd.items = await db.getAll(
+
+    // 1 consulta para los ítems de TODAS las comandas (antes: una consulta por comanda)
+    const itemsPorComandaId = {};
+    if (comandas.length) {
+      const ids = comandas.map(c => c.id);
+      const rows = await db.getAll(
         `SELECT ci.*, ci.precio as precio_unitario,
         COALESCE(m.categoria, ci.nota, '') as categoria
         FROM comanda_items ci
         LEFT JOIN menu_restaurante m ON ci.producto_id = m.id
-        WHERE ci.comanda_id=$1 ORDER BY ci.id`,
-        [cmd.id]
+        WHERE ci.comanda_id = ANY($1) ORDER BY ci.comanda_id, ci.id`,
+        [ids]
       );
+      rows.forEach(r => {
+        if (!itemsPorComandaId[r.comanda_id]) itemsPorComandaId[r.comanda_id] = [];
+        itemsPorComandaId[r.comanda_id].push(r);
+      });
     }
+    for (const cmd of comandas) {
+      cmd.items = itemsPorComandaId[cmd.id] || [];
+    }
+
     res.json(comandas);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
