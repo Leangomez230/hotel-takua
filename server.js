@@ -56,6 +56,20 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
+// ── SITIO PÚBLICO vs PANEL DE GESTIÓN, según el dominio ──────────────
+// hoteltakua.com.ar          → carpeta public-site/ (sitio del hotel)
+// gestion.hoteltakua.com.ar  → carpeta public/      (panel, como siempre)
+// Mismo server, misma base de datos — así una reserva hecha en el sitio
+// público aparece al instante en reservas.html / comandas.html.
+const PUBLIC_SITE_HOSTS = ['hoteltakua.com.ar', 'www.hoteltakua.com.ar'];
+app.use((req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (PUBLIC_SITE_HOSTS.includes(host)) {
+    return express.static(path.join(__dirname, 'public-site'))(req, res, next);
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── MIDDLEWARES ──────────────────────────────────────────────────────
@@ -3586,7 +3600,13 @@ app.post('/api/push/desuscribir', auth, async (req, res) => {
 });
 
 // ── CATCH-ALL ────────────────────────────────────────
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('*', (req, res) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (PUBLIC_SITE_HOSTS.includes(host)) {
+    return res.sendFile(path.join(__dirname, 'public-site', 'index.html'));
+  }
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // ── RESET DIARIO 8 AM ────────────────────────────────
 // ── SINCRONIZACIÓN AUTOMÁTICA RESERVAS → HABITACIONES ───────────────
