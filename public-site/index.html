@@ -813,10 +813,10 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
       </div>
       <div class="room-copy">
         <span class="room-num">01 — Habitación Queen</span>
-        <h3>Individual</h3>
-        <p>Cama doble</p>
+        <h3>Matrimonial</h3>
+        <p>Cama doble o dos individuales</p>
         <div class="room-facts">
-          <span>1 huésped</span><span>Wi-Fi</span><span>Aire frío/calor</span>
+          <span>1–2 huéspedes</span><span>Wi-Fi</span><span>Aire frío/calor</span><span>Cuna sin costo</span>
         </div>
         <div class="room-price"><span class="amt">$ 85.000</span><span class="per">por noche</span></div>
       </div>
@@ -827,11 +827,11 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
         <img src="images/room-doble.JPG" alt="Vista habitacion con 2 camas individuales">
       </div>
       <div class="room-copy">
-        <span class="room-num">02 — Habitación Matrimonial</span>
-        <h3>1 Matrimonial</h3>
-        <p>Capacidad para 2 personas en 1 cama doble.</p>
+        <span class="room-num">02 — Habitación Twin</span>
+        <h3>2 Individuales</h3>
+        <p>Capacidad para 2 personas en 2 camas individuales.</p>
         <div class="room-facts">
-          <span>Hasta 2 huéspedes</span><span>Wi-Fi</span><span>Aire frío/calor</span><span>Cuna sin costo</span>
+          <span>Hasta 2 huéspedes</span><span>Wi-Fi</span><span>Aire frío/calor</span>
         </div>
         <div class="room-price"><span class="amt">$ 100.000</span><span class="per">por noche</span></div>
       </div>
@@ -841,8 +841,8 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
       </div>
       <div class="room-copy">
         <span class="room-num">03 — Habitación Doble</span>
-        <h3>2 Individuales</h3>
-        <p>Capacidad para 2 personas en 2 camas individuales</p>
+        <h3>Matrimonial + Individual</h3>
+        <p>Capacidad para 3 personas en una cama matrimonial + una cama individual</p>
         <div class="room-facts">
           <span>2 huéspedes</span><span>Wi-Fi</span><span>Aire frío/calor</span>
         </div>
@@ -854,8 +854,8 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
       </div>
       <div class="room-copy">
         <span class="room-num">04 — Habitación Triple</span>
-        <h3>Matrimonial +/o Individual</h3>
-        <p>Para 3 personas. Matrimonial + individual o 3 individuales</p>
+        <h3>3 Individuales</h3>
+        <p>Capacidad para 3 personas en 3 camas individuales</p>
         <div class="room-facts">
           <span>Hasta 3 huéspedes</span><span>Wi-Fi</span><span>Aire frío/calor</span>
         </div>
@@ -881,20 +881,20 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
     </div>
     <div class="dine-facts reveal text-frost in-view">
       <div class="dine-fact">
-        <h4>Desayuno · 8:00 a 12:30</h4>
-        <p></p>
+        <h4>Desayuno · 7:30 a 10:30</h4>
+        <p>Incluido en Suite Sierra, opcional en el resto de las categorías.</p>
       </div>
       <div class="dine-fact">
-        <h4>Almuerzo · 12:30 a 16:00</h4>
-        <p></p>
+        <h4>Almuerzo y cena</h4>
+        <p>Menú corto, cambia cada semana según lo que llega del campo.</p>
       </div>
       <div class="dine-fact">
-        <h4>Merienda · 16:00 a 20:30</h4>
-        <p></p>
+        <h4>Merienda · 17:00 a 19:30</h4>
+        <p>Café de especialidad y algo dulce, para cortar la tarde.</p>
       </div>
       <div class="dine-fact">
-        <h4>Cena · 20:30 a 23:30</h4>
-        <p></p>
+        <h4>Media tarde</h4>
+        <p>Capacidad para 50 personas. Cumpleaños, casamientos, cierres de temporada.</p>
       </div>
       <a href="#" id="btnReservarMesa" class="btn-stamp">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
@@ -1404,17 +1404,36 @@ window.addEventListener('scroll', onScroll, { passive:true });
 const hamburger = document.getElementById('hamburger');
 const navLinks = document.getElementById('navLinks');
 const navOverlay = document.getElementById('navOverlay');
+
+function navBlockTouch(e){
+  if (!navLinks.contains(e.target)) e.preventDefault();
+}
+function navLockScroll(){
+  document.documentElement.style.overflow = 'hidden';
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('touchmove', navBlockTouch, { passive: false });
+  document.addEventListener('wheel', navBlockTouch, { passive: false });
+}
+function navUnlockScroll(){
+  document.documentElement.style.overflow = '';
+  document.body.style.overflow = '';
+  document.removeEventListener('touchmove', navBlockTouch, { passive: false });
+  document.removeEventListener('wheel', navBlockTouch, { passive: false });
+}
+
 function closeMenu(){
   hamburger.classList.remove('open');
   navLinks.classList.remove('open');
   navOverlay.classList.remove('open');
   hamburger.setAttribute('aria-expanded','false');
+  navUnlockScroll();
 }
 hamburger.addEventListener('click', () => {
   const isOpen = navLinks.classList.toggle('open');
   hamburger.classList.toggle('open', isOpen);
   navOverlay.classList.toggle('open', isOpen);
   hamburger.setAttribute('aria-expanded', String(isOpen));
+  if (isOpen) navLockScroll(); else navUnlockScroll();
 });
 navOverlay.addEventListener('click', closeMenu);
 navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMenu));
