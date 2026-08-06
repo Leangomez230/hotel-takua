@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reservar Mesa — Restaurante Hotel Takuá Serrano, La Punta, San Luis</title>
+<meta name="description" content="Reservá tu mesa en el restaurante de Hotel Takuá Serrano, La Punta, San Luis. Cocina de estación, desayuno, almuerzo, merienda y cena. Confirmá en minutos.">
+<link rel="canonical" href="https://hoteltakua.com.ar/reservar-mesa.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,500;0,600;0,700;0,900;1,500;1,600&family=Work+Sans:wght@400;500;600;700&family=Montserrat:wght@800;900&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
+
+<!-- ============ SCHEMA.ORG — Restaurant ============ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Restaurant",
+  "name": "Restaurante Hotel Takuá Serrano",
+  "description": "Cocina de estación con proveedores de la zona, en Hotel Takuá Serrano, La Punta, San Luis. Abierto a huéspedes y a todo público.",
+  "url": "https://hoteltakua.com.ar/index.html#restaurante",
+  "telephone": "+5492664000000",
+  "servesCuisine": "Regional argentina",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "La Punta",
+    "addressRegion": "San Luis",
+    "addressCountry": "AR"
+  },
+  "acceptsReservations": "True",
+  "openingHoursSpecification": [
+    { "@type": "OpeningHoursSpecification", "opens": "07:30", "closes": "10:30", "description": "Desayuno" },
+    { "@type": "OpeningHoursSpecification", "opens": "12:00", "closes": "15:00", "description": "Almuerzo" },
+    { "@type": "OpeningHoursSpecification", "opens": "17:00", "closes": "19:30", "description": "Merienda" },
+    { "@type": "OpeningHoursSpecification", "opens": "20:00", "closes": "23:30", "description": "Cena" }
+  ]
+}
+</script>
+
+<style>
+:root{
+  --terracota:#A8471F; --terracota-deep:#7C3216; --pino:#333F2C; --pino-deep:#232B1E; --pino-light:#4B5A40;
+  --granito:#EBE1DB; --granito-deep:#DCCCC3; --ocre:#C6862B; --ocre-deep:#A66C1E;
+  --ink:#241C16; --ink-soft:#5B4C41; --paper:#FBF7F4;
+  --font-display:'Bitter', Georgia, serif; --font-body:'Work Sans', -apple-system, sans-serif;
+  --ease: cubic-bezier(0.16,1,0.3,1);
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{ font-family:var(--font-body); background:var(--paper); color:var(--ink); line-height:1.5; -webkit-font-smoothing:antialiased; }
+img{ max-width:100%; display:block; }
+a{ color:inherit; text-decoration:none; }
+button{ font-family:inherit; cursor:pointer; }
+h1,h2,h3{ font-family:var(--font-display); font-weight:700; letter-spacing:-0.01em; }
+.container{ max-width:1080px; margin:0 auto; padding:0 clamp(20px,5vw,48px); }
+.brand-script{ font-family:'Dancing Script', cursive; font-weight:700; color:var(--ocre); }
+
+.nav{ display:flex; align-items:center; justify-content:space-between; padding:20px clamp(20px,5vw,48px); background:var(--paper); border-bottom:1px solid var(--granito-deep); }
+.nav-mark{ font-family:var(--font-display); font-weight:900; font-size:20px; color:var(--ink); }
+.nav-back{ font-size:13.5px; font-weight:600; color:var(--ink-soft); display:flex; align-items:center; gap:6px; }
+.nav-back:hover{ color:var(--terracota); }
+
+.hero{ position:relative; padding: clamp(50px,8vw,90px) 0 clamp(40px,6vw,60px); background:var(--pino-deep); overflow:hidden; }
+.hero::after{ content:''; position:absolute; inset:0; background:url('images/dine-bg-restaurant.jpg') center/cover; opacity:.32; }
+.hero-inner{ position:relative; max-width:640px; }
+.hero-kicker{ font-size:13px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ocre); }
+.hero h1{ color:var(--paper); font-size:clamp(2rem,4.6vw,3.2rem); margin-top:14px; line-height:1.05; }
+.hero h1 em{ font-style:normal; }
+.hero p{ color:rgba(251,247,244,.8); font-size:1.05rem; margin-top:16px; max-width:52ch; }
+
+.pad{ padding:clamp(50px,7vw,80px) 0; }
+.section-head{ max-width:600px; margin-bottom:clamp(30px,4vw,44px); }
+.section-head h2{ font-size:clamp(1.7rem,3.4vw,2.4rem); }
+.section-head p{ color:var(--ink-soft); margin-top:10px; }
+
+.hours-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.hours-card{ background:var(--granito); border-radius:8px; padding:20px; text-align:center; }
+.hours-card h3{ font-size:1rem; }
+.hours-card .time{ font-family:var(--font-display); font-weight:700; color:var(--terracota); font-size:1.1rem; margin-top:8px; }
+.hours-card p{ color:var(--ink-soft); font-size:12.5px; margin-top:8px; line-height:1.5; }
+@media (max-width:760px){ .hours-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:460px){ .hours-grid{ grid-template-columns:1fr; } }
+
+.booking-section{ background:var(--granito); }
+.resv-card{ max-width:520px; margin:0 auto; background:var(--paper); border-radius:10px; padding:clamp(28px,4vw,42px); box-shadow:0 30px 70px -30px rgba(35,43,30,.35); }
+.resv-dots{ display:flex; gap:7px; margin-bottom:26px; }
+.resv-dot{ height:4px; flex:1; border-radius:2px; background:var(--granito-deep); transition:background .3s var(--ease); }
+.resv-dot.done, .resv-dot.active{ background:var(--terracota); }
+.resv-step h3{ font-size:1.4rem; margin-bottom:6px; }
+.resv-sub{ color:var(--ink-soft); font-size:14px; margin-bottom:22px; }
+.resv-counter{ display:flex; align-items:center; justify-content:center; gap:26px; margin:30px 0 36px; }
+.resv-counter-btn{ width:48px; height:48px; border-radius:50%; border:1.5px solid var(--granito-deep); background:var(--paper); font-size:22px; color:var(--terracota); font-weight:700; }
+.resv-counter-btn:hover{ background:var(--granito); border-color:var(--terracota); }
+.resv-counter-value{ font-family:var(--font-display); font-size:2.6rem; font-weight:700; min-width:2ch; text-align:center; font-variant-numeric:tabular-nums; }
+.resv-field{ margin-bottom:18px; }
+.resv-field label{ display:block; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:7px; }
+.resv-field input, .resv-field textarea{ width:100%; padding:12px 14px; border:1.5px solid var(--granito-deep); border-radius:5px; font-size:15px; color:var(--ink); background:var(--paper); }
+
+/* ============ CALENDARIO PROPIO (reemplaza el date picker nativo) ============ */
+.tk-date-wrap{ position:relative; }
+.tk-date-input{ padding-right:40px !important; cursor:pointer; caret-color:transparent; }
+.tk-date-input::placeholder{ color:var(--ink-soft); opacity:.7; }
+.tk-date-icon{ position:absolute; right:12px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--terracota); display:flex; align-items:center; }
+.tk-cal-pop{ position:absolute; z-index:900; background:var(--paper); border-radius:8px; box-shadow:0 24px 60px -20px rgba(35,43,30,.45); border:1px solid var(--granito-deep); padding:14px; width:284px; display:none; font-family:var(--font-body); }
+.tk-cal-pop.open{ display:block; }
+.tk-cal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding:0 2px; }
+.tk-cal-title{ font-family:var(--font-display); font-weight:700; font-size:14.5px; color:var(--ink); text-transform:capitalize; }
+.tk-cal-nav{ width:28px; height:28px; border-radius:50%; border:none; background:var(--granito); color:var(--ink); font-size:15px; display:flex; align-items:center; justify-content:center; transition:background .15s, color .15s; }
+.tk-cal-nav:hover{ background:var(--terracota); color:var(--paper); }
+.tk-cal-week{ display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:2px; }
+.tk-cal-week span{ text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; padding:4px 0; }
+.tk-cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.tk-cal-day{ aspect-ratio:1; border:none; background:transparent; border-radius:6px; font-size:13px; color:var(--ink); font-variant-numeric:tabular-nums; transition:background .15s, color .15s; }
+.tk-cal-day:hover:not([disabled]):not(.empty){ background:var(--granito); }
+.tk-cal-day.selected{ background:var(--terracota); color:var(--paper); font-weight:700; }
+.tk-cal-day.today:not(.selected){ box-shadow: inset 0 0 0 1.5px var(--ocre); }
+.tk-cal-day[disabled]{ color:var(--granito-deep); cursor:not-allowed; }
+.tk-cal-day.empty{ visibility:hidden; cursor:default; }
+.tk-cal-foot{ margin-top:10px; padding-top:10px; border-top:1px solid var(--granito-deep); font-size:11.5px; color:var(--ink-soft); text-align:center; }
+
+.resv-field input:focus, .resv-field textarea:focus{ outline:none; border-color:var(--terracota); }
+.resv-field textarea{ resize:vertical; min-height:70px; }
+.coupon-row{ display:flex; gap:8px; }
+.coupon-row input{ flex:1; }
+.coupon-apply{ flex-shrink:0; padding:0 18px; border-radius:5px; border:1.5px solid var(--terracota); background:transparent; color:var(--terracota); font-weight:700; font-size:13px; }
+.coupon-apply:hover{ background:var(--terracota); color:var(--paper); }
+.coupon-msg{ font-size:12.5px; margin-top:7px; min-height:16px; }
+.coupon-msg.ok{ color:var(--pino); font-weight:600; }
+.coupon-msg.error{ color:var(--terracota-deep); font-weight:600; }
+.resv-time-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
+.resv-time-slot{ padding:10px 4px; border-radius:5px; border:1.5px solid var(--granito-deep); background:var(--paper); font-size:13.5px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+.resv-time-slot:hover{ border-color:var(--terracota); }
+.resv-time-slot.selected{ background:var(--terracota); border-color:var(--terracota); color:var(--paper); }
+.resv-time-label{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin:16px 0 8px; }
+.resv-time-label:first-of-type{ margin-top:0; }
+.resv-summary{ background:var(--granito); border-radius:6px; padding:18px 20px; margin:20px 0; }
+.resv-summary-row{ display:flex; justify-content:space-between; font-size:14px; padding:7px 0; border-bottom:1px solid var(--granito-deep); }
+.resv-summary-row:last-child{ border-bottom:none; }
+.resv-summary-row span:first-child{ color:var(--ink-soft); }
+.resv-summary-row span:last-child{ font-weight:600; text-align:right; }
+.resv-actions{ display:flex; gap:10px; margin-top:26px; }
+.resv-btn{ flex:1; padding:13px; border-radius:5px; border:none; font-weight:700; font-size:14.5px; }
+.resv-btn.primary{ background:var(--terracota); color:var(--paper); }
+.resv-btn.primary:hover{ background:var(--terracota-deep); }
+.resv-btn.primary:disabled{ background:var(--granito-deep); color:var(--ink-soft); cursor:not-allowed; }
+.resv-btn.ghost{ background:transparent; border:1.5px solid var(--granito-deep); color:var(--ink-soft); flex:0 0 auto; padding:13px 20px; }
+.resv-success{ text-align:center; padding:10px 0 4px; }
+.resv-success-icon{ width:60px; height:60px; border-radius:50%; background:var(--pino); color:var(--paper); font-size:28px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; }
+.resv-success h3{ text-align:center; }
+.resv-success p{ text-align:center; color:var(--ink-soft); font-size:14.5px; margin-top:8px; line-height:1.6; }
+
+.faq{ max-width:720px; margin:0 auto; }
+.faq-item{ border-bottom:1px solid var(--granito-deep); padding:18px 0; }
+.faq-item h3{ font-size:1.05rem; }
+.faq-item p{ color:var(--ink-soft); font-size:14px; margin-top:8px; line-height:1.6; }
+
+footer{ background:var(--pino-deep); color:rgba(251,247,244,.7); padding:36px 0; text-align:center; font-size:13px; }
+footer a{ color:var(--ocre); }
+
+.wa-float{ position:fixed; right:22px; bottom:22px; width:56px; height:56px; border-radius:50%; background:#2f6b45; color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 26px -8px rgba(35,43,30,.5); z-index:400; }
+
+@media (max-width:420px){ .resv-time-grid{ grid-template-columns:repeat(3,1fr); } }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-mark">Takuá · <span class="brand-script" style="font-size:1.2em;">Serrano</span></a>
+  <a href="index.html" class="nav-back">← Volver al sitio</a>
+</nav>
+
+<header class="hero">
+  <div class="container hero-inner">
+    <p class="hero-kicker">Restaurante · Hotel Takuá Serrano</p>
+    <h1>Reservá tu mesa</h1>
+    <p>Cocina de estación con proveedores de la zona. Abierto a huéspedes y a todo público — desayuno, almuerzo, merienda y cena.</p>
+  </div>
+</header>
+
+<section class="pad">
+  <div class="container">
+    <div class="section-head">
+      <h2>Horarios del salón</h2>
+      <p>Elegí el turno que mejor te quede.</p>
+    </div>
+    <div class="hours-grid">
+      <div class="hours-card"><h3>Desayuno</h3><div class="time">7:30 – 10:30</div><p>Incluido en Suite Sierra, opcional en el resto.</p></div>
+      <div class="hours-card"><h3>Almuerzo</h3><div class="time">12:00 – 15:00</div><p>Menú corto, cambia cada semana.</p></div>
+      <div class="hours-card"><h3>Merienda</h3><div class="time">17:00 – 19:30</div><p>Café de especialidad y algo dulce.</p></div>
+      <div class="hours-card"><h3>Cena</h3><div class="time">20:00 – 23:30</div><p>Cocina de estación, productos de la región.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WIDGET DE RESERVA — 3 pasos ============ -->
+<section class="pad booking-section" id="reservar">
+  <div class="container">
+    <div class="resv-card">
+      <div class="resv-dots" id="resvDots">
+        <div class="resv-dot"></div><div class="resv-dot"></div><div class="resv-dot"></div>
+      </div>
+
+      <div class="resv-step" data-step="1">
+        <h3>¿Cuántos van a ser?</h3>
+        <p class="resv-sub">Elegí la cantidad de comensales.</p>
+        <div class="resv-counter">
+          <button type="button" class="resv-counter-btn" id="resvMinus">−</button>
+          <span class="resv-counter-value" id="resvDinersValue">2</span>
+          <button type="button" class="resv-counter-btn" id="resvPlus">+</button>
+        </div>
+        <div class="resv-actions"><button type="button" class="resv-btn primary" id="resvToStep2">Continuar →</button></div>
+      </div>
+
+      <div class="resv-step" data-step="2" hidden>
+        <h3>¿Cuándo venís?</h3>
+        <p class="resv-sub">Elegí fecha y horario.</p>
+        <div class="resv-field"><label for="resvDate">Fecha</label><input type="date" id="resvDate"></div>
+        <div class="resv-time-label">Desayuno</div><div class="resv-time-grid" id="resvTimeBreakfast"></div>
+        <div class="resv-time-label">Almuerzo</div><div class="resv-time-grid" id="resvTimeLunch"></div>
+        <div class="resv-time-label">Merienda</div><div class="resv-time-grid" id="resvTimeSnack"></div>
+        <div class="resv-time-label">Cena</div><div class="resv-time-grid" id="resvTimeDinner"></div>
+        <div class="resv-actions">
+          <button type="button" class="resv-btn ghost" data-back="1">← Atrás</button>
+          <button type="button" class="resv-btn primary" id="resvToStep3" disabled>Continuar →</button>
+        </div>
+      </div>
+
+      <div class="resv-step" data-step="3" hidden>
+        <h3>Tus datos</h3>
+        <p class="resv-sub">Para confirmarte la mesa.</p>
+        <div class="resv-field"><label for="resvName">Nombre y apellido</label><input type="text" id="resvName" placeholder="Tu nombre"></div>
+        <div class="resv-field"><label for="resvEmail">Email</label><input type="email" id="resvEmail" placeholder="tu@email.com"></div>
+        <div class="resv-field"><label for="resvPhone">Teléfono</label><input type="tel" id="resvPhone" placeholder="Tu número"></div>
+        <div class="resv-field"><label for="resvNotes">Notas (opcional)</label><textarea id="resvNotes" placeholder="Alergias, celebraciones, silla para bebé…"></textarea></div>
+        <div class="resv-field">
+          <label for="resvCoupon">Cupón de descuento (opcional)</label>
+          <div class="coupon-row"><input type="text" id="resvCoupon" placeholder="Ej: BIENVENIDA10"><button type="button" class="coupon-apply" id="resvCouponApply">Aplicar</button></div>
+          <p class="coupon-msg" id="resvCouponMsg"></p>
+        </div>
+        <div class="resv-summary" id="resvSummary"></div>
+        <div class="resv-actions">
+          <button type="button" class="resv-btn ghost" data-back="2">← Atrás</button>
+          <button type="button" class="resv-btn primary" id="resvSubmit" disabled>Enviar solicitud por WhatsApp</button>
+        </div>
+      </div>
+
+      <div class="resv-step" data-step="4" hidden>
+        <div class="resv-success">
+          <div class="resv-success-icon">✓</div>
+          <h3>¡Listo, te escribimos!</h3>
+          <p>Abrimos WhatsApp con tu solicitud — confirmamos la mesa por ahí. También podemos escribirte a <strong id="resvConfirmEmail"></strong> si hace falta.</p>
+        </div>
+        <div class="resv-summary" id="resvSummaryFinal"></div>
+        <div class="resv-actions">
+          <button type="button" class="resv-btn ghost" id="resvWaLink">WhatsApp</button>
+          <button type="button" class="resv-btn primary" id="resvDone">Listo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pad">
+  <div class="container faq">
+    <div class="section-head"><h2>Preguntas frecuentes</h2></div>
+    <div class="faq-item"><h3>¿Hay que reservar para desayunar?</h3><p>No es obligatorio, pero lo recomendamos en temporada alta y fines de semana.</p></div>
+    <div class="faq-item"><h3>¿El restaurante es solo para huéspedes?</h3><p>No, está abierto a todo público en los cuatro turnos.</p></div>
+    <div class="faq-item"><h3>¿Puedo cancelar mi reserva de mesa?</h3><p>Sí, sin costo — escribinos por WhatsApp con la mayor anticipación posible.</p></div>
+  </div>
+</section>
+
+<footer>
+  <p>Restaurante Hotel Takuá Serrano — La Punta, San Luis · <a href="index.html">Volver al sitio</a> · <a href="reservar-habitacion.html">Reservar habitación</a></p>
+</footer>
+
+<a href="https://wa.me/5492664000000?text=Hola%2C%20quiero%20consultar%20por%20una%20mesa" class="wa-float" aria-label="WhatsApp" target="_blank" rel="noopener">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.77.46 3.45 1.34 4.94L2 22l5.29-1.39a9.9 9.9 0 0 0 4.75 1.21h.01c5.46 0 9.9-4.45 9.9-9.91C21.96 6.45 17.5 2 12.04 2Zm0 18.02h-.01a8.15 8.15 0 0 1-4.16-1.14l-.3-.18-3.14.82.84-3.06-.19-.32a8.14 8.14 0 0 1-1.25-4.36c0-4.5 3.66-8.16 8.17-8.16 2.18 0 4.23.85 5.77 2.4a8.1 8.1 0 0 1 2.39 5.77c0 4.5-3.67 8.16-8.17 8.16Zm4.48-6.12c-.24-.12-1.45-.72-1.68-.8-.22-.08-.39-.12-.55.12-.16.24-.63.8-.78.97-.14.16-.29.18-.53.06-.24-.12-1.03-.38-1.96-1.22-.72-.65-1.21-1.44-1.35-1.68-.14-.24-.02-.37.11-.49.11-.11.24-.29.36-.43.12-.14.16-.24.24-.4.08-.16.04-.31-.02-.43-.06-.12-.55-1.34-.76-1.83-.2-.48-.4-.42-.55-.42-.14-.01-.31-.01-.47-.01-.16 0-.43.06-.65.31-.22.24-.86.84-.86 2.06 0 1.21.88 2.38 1 2.55.12.16 1.73 2.65 4.2 3.71.59.25 1.04.4 1.4.52.59.19 1.12.16 1.55.1.47-.07 1.45-.59 1.65-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.47-.28Z"></path></svg>
+</a>
+
+<script>
+function attachDatePicker(input, opts){
+  opts = opts || {};
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function getMin(){
+    if (opts.minFrom) return opts.minFrom.value || todayISO();
+    if (opts.min === 'today') return todayISO();
+    return null;
+  }
+  function formatDisplay(iso){
+    if (!iso) return '';
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short' });
+  }
+  input.type = 'text';
+  input.readOnly = true;
+  input.classList.add('tk-date-input');
+  if (!input.placeholder) input.placeholder = 'dd/mm/aaaa';
+  const wrap = document.createElement('div');
+  wrap.className = 'tk-date-wrap';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const icon = document.createElement('span');
+  icon.className = 'tk-date-icon';
+  icon.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+  wrap.appendChild(icon);
+  const pop = document.createElement('div');
+  pop.className = 'tk-cal-pop';
+  document.body.appendChild(pop);
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  let viewDate = input.value ? new Date(input.value + 'T00:00:00') : new Date();
+  function render(){
+    const y = viewDate.getFullYear(), m = viewDate.getMonth();
+    const first = new Date(y, m, 1);
+    const startDow = (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const minISO = getMin();
+    let html = `<div class="tk-cal-head">
+      <button type="button" class="tk-cal-nav" data-dir="-1" aria-label="Mes anterior">‹</button>
+      <span class="tk-cal-title">${MESES[m]} ${y}</span>
+      <button type="button" class="tk-cal-nav" data-dir="1" aria-label="Mes siguiente">›</button>
+    </div>
+    <div class="tk-cal-week"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+    <div class="tk-cal-grid">`;
+    for (let i = 0; i < startDow; i++) html += '<span class="tk-cal-day empty"></span>';
+    for (let d = 1; d <= daysInMonth; d++){
+      const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const disabled = minISO && iso < minISO;
+      const selected = iso === input.value;
+      const isToday = iso === todayISO();
+      html += `<button type="button" class="tk-cal-day${selected ? ' selected' : ''}${isToday ? ' today' : ''}" ${disabled ? 'disabled' : ''} data-iso="${iso}">${d}</button>`;
+    }
+    html += `</div><div class="tk-cal-foot">Hoy: ${formatDisplay(todayISO())}</div>`;
+    pop.innerHTML = html;
+    pop.querySelectorAll('.tk-cal-nav').forEach(btn => btn.addEventListener('click', () => {
+      viewDate.setMonth(viewDate.getMonth() + Number(btn.dataset.dir));
+      render();
+    }));
+    pop.querySelectorAll('.tk-cal-day:not(.empty):not([disabled])').forEach(btn => btn.addEventListener('click', () => {
+      input.value = btn.dataset.iso;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      close();
+    }));
+  }
+  function position(){
+    const r = input.getBoundingClientRect();
+    const popW = 284;
+    let left = window.scrollX + r.left;
+    if (left + popW > window.scrollX + document.documentElement.clientWidth - 10){
+      left = window.scrollX + r.right - popW;
+    }
+    pop.style.top = (window.scrollY + r.bottom + 8) + 'px';
+    pop.style.left = left + 'px';
+  }
+  function open(){
+    viewDate = input.value ? new Date(input.value + 'T00:00:00') : new Date();
+    render();
+    position();
+    pop.classList.add('open');
+    document.addEventListener('click', outsideClick, true);
+  }
+  function close(){
+    pop.classList.remove('open');
+    document.removeEventListener('click', outsideClick, true);
+  }
+  function outsideClick(e){
+    if (!pop.contains(e.target) && e.target !== input && e.target !== icon && !icon.contains(e.target)) close();
+  }
+  input.addEventListener('click', open);
+  icon.addEventListener('click', open);
+  window.addEventListener('resize', () => { if (pop.classList.contains('open')) position(); });
+  window.addEventListener('scroll', () => { if (pop.classList.contains('open')) position(); }, true);
+}
+attachDatePicker(document.getElementById('resvDate'), { min: 'today' });
+(function(){
+  const DEMO_COUPONS = ['BIENVENIDA10','TAKUA20'];
+  const dots = Array.from(document.querySelectorAll('#resvDots .resv-dot'));
+  const steps = Array.from(document.querySelectorAll('.resv-step'));
+  const state = { diners:2, date:'', time:'', couponCode:'' };
+
+  function goTo(step){
+    steps.forEach(s => { s.hidden = (Number(s.dataset.step) !== step); });
+    dots.forEach((d,i) => { d.classList.toggle('active', i===step-1); d.classList.toggle('done', i<step-1); });
+  }
+  function formatDate(iso){ const d=new Date(iso+'T00:00:00'); return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}); }
+
+  const dinersValue=document.getElementById('resvDinersValue');
+  document.getElementById('resvMinus').addEventListener('click', () => { state.diners=Math.max(1,state.diners-1); dinersValue.textContent=state.diners; });
+  document.getElementById('resvPlus').addEventListener('click', () => { state.diners=Math.min(20,state.diners+1); dinersValue.textContent=state.diners; });
+  document.getElementById('resvToStep2').addEventListener('click', () => goTo(2));
+
+  const dateInput=document.getElementById('resvDate');
+  const todayISO=new Date().toISOString().slice(0,10);
+  dateInput.min=todayISO; dateInput.value=todayISO; state.date=todayISO;
+
+  function buildSlots(container, startH, startM, endH, endM){
+    container.innerHTML='';
+    let h=startH, m=startM;
+    while (h<endH || (h===endH && m<=endM)){
+      const label = String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+      const btn=document.createElement('button');
+      btn.type='button'; btn.className='resv-time-slot'; btn.textContent=label;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.resv-time-slot.selected').forEach(s=>s.classList.remove('selected'));
+        btn.classList.add('selected'); state.time=label;
+        document.getElementById('resvToStep3').disabled=false;
+      });
+      container.appendChild(btn);
+      m+=30; if (m>=60){ m=0; h+=1; }
+    }
+  }
+  buildSlots(document.getElementById('resvTimeBreakfast'), 7, 30, 10, 30);
+  buildSlots(document.getElementById('resvTimeLunch'), 12, 0, 15, 0);
+  buildSlots(document.getElementById('resvTimeSnack'), 17, 0, 19, 30);
+  buildSlots(document.getElementById('resvTimeDinner'), 20, 0, 23, 30);
+  dateInput.addEventListener('change', () => { state.date=dateInput.value; });
+
+  function renderSummary(container){
+    container.innerHTML = `
+      <div class="resv-summary-row"><span>Comensales</span><span>${state.diners}</span></div>
+      <div class="resv-summary-row"><span>Fecha</span><span>${formatDate(state.date)}</span></div>
+      <div class="resv-summary-row"><span>Hora</span><span>${state.time}</span></div>`;
+  }
+  document.getElementById('resvToStep3').addEventListener('click', () => { renderSummary(document.getElementById('resvSummary')); goTo(3); });
+
+  const nameInput=document.getElementById('resvName'), emailInput=document.getElementById('resvEmail'), phoneInput=document.getElementById('resvPhone');
+  const submitBtn=document.getElementById('resvSubmit');
+  function validateStep3(){
+    submitBtn.disabled = !(nameInput.value.trim().length>1 && /\S+@\S+\.\S+/.test(emailInput.value) && phoneInput.value.trim().length>5);
+  }
+  [nameInput,emailInput,phoneInput].forEach(inp => inp.addEventListener('input', validateStep3));
+
+  document.getElementById('resvCouponApply').addEventListener('click', () => {
+    const code=document.getElementById('resvCoupon').value.trim().toUpperCase();
+    const msgEl=document.getElementById('resvCouponMsg');
+    if (!code) return;
+    if (DEMO_COUPONS.includes(code)){ state.couponCode=code; msgEl.textContent='Cupón válido — te lo aplicamos cuando llegues a la mesa.'; msgEl.className='coupon-msg ok'; }
+    else { state.couponCode=''; msgEl.textContent='Ese cupón no es válido o venció.'; msgEl.className='coupon-msg error'; }
+  });
+
+  submitBtn.addEventListener('click', () => {
+    if (submitBtn.disabled) return;
+    // TODO Leandro: cuando conectemos el backend, acá va el POST real a /api/publico/reservas-mesa.
+    console.log('[demo] solicitud de reserva de mesa:', state, nameInput.value, emailInput.value, phoneInput.value);
+    document.getElementById('resvConfirmEmail').textContent = emailInput.value.trim();
+    document.getElementById('resvSummaryFinal').innerHTML = `
+      <div class="resv-summary-row"><span>Comensales</span><span>${state.diners}</span></div>
+      <div class="resv-summary-row"><span>Fecha</span><span>${formatDate(state.date)}</span></div>
+      <div class="resv-summary-row"><span>Hora</span><span>${state.time}</span></div>
+      ${state.couponCode?`<div class="resv-summary-row"><span>Cupón</span><span>${state.couponCode}</span></div>`:''}
+      <div class="resv-summary-row"><span>A nombre de</span><span>${nameInput.value.trim()}</span></div>`;
+    const msg = `Hola, quiero reservar una mesa: ${state.diners} personas, ${formatDate(state.date)} a las ${state.time}.${state.couponCode?' Cupón: '+state.couponCode+'.':''} A nombre de ${nameInput.value.trim()}.`;
+    const waUrl = `https://wa.me/5492664000000?text=${encodeURIComponent(msg)}`;
+    document.getElementById('resvWaLink').onclick = () => window.open(waUrl, '_blank');
+    window.open(waUrl, '_blank');
+    goTo(4);
+  });
+  document.getElementById('resvDone').addEventListener('click', () => { location.href = 'index.html'; });
+})();
+</script>
+</body>
+</html>
