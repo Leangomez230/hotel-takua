@@ -2021,7 +2021,27 @@ document.getElementById('bookingForm').addEventListener('submit', (e) => {
   const sidebar = document.getElementById('reserveSidebar');
   if (!trigger || !sidebar) return;
 
+  let savedScrollY = 0;
+
+  function lockScroll(){
+    savedScrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+  }
+  function unlockScroll(){
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, savedScrollY);
+  }
+
   function open(){
+    lockScroll();
     backdrop.classList.add('open');
     sidebar.classList.add('open');
     sidebar.setAttribute('aria-hidden', 'false');
@@ -2030,6 +2050,7 @@ document.getElementById('bookingForm').addEventListener('submit', (e) => {
     backdrop.classList.remove('open');
     sidebar.classList.remove('open');
     sidebar.setAttribute('aria-hidden', 'true');
+    unlockScroll();
   }
   trigger.addEventListener('click', (e) => { e.preventDefault(); open(); });
   document.getElementById('reserveSidebarClose').addEventListener('click', close);
