@@ -314,6 +314,32 @@ section{ position:relative; }
   .room-row.flip .room-visual, .room-row.flip .room-copy{ order:initial; }
 }
 
+.rooms-scroller{ position:relative; }
+.rooms-arrow{
+  display:none; position:absolute; top:38%; transform:translateY(-50%); z-index:5;
+  width:40px; height:40px; border-radius:50%; border:none; background:rgba(35,43,30,.75); color:var(--paper);
+  align-items:center; justify-content:center; font-size:20px; cursor:pointer; transition:background .2s;
+}
+.rooms-arrow:hover{ background:var(--terracota); }
+.rooms-arrow.prev{ left:-6px; }
+.rooms-arrow.next{ right:-6px; }
+
+/* debajo de 760px: la lista de habitaciones pasa a carrusel horizontal, como Servicios */
+@media (max-width:760px){
+  .room-list{
+    display:flex; gap:16px; overflow-x:auto; scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 2px 10px;
+  }
+  .room-list::-webkit-scrollbar{ display:none; }
+  .room-row, .room-row.flip{
+    flex:0 0 88%; scroll-snap-align:start; border-bottom:none; padding:0 !important;
+  }
+  .rooms-arrow{ display:flex; }
+}
+@media (max-width:480px){
+  .room-row, .room-row.flip{ flex:0 0 92%; }
+}
+
 /* ============ RESTAURANTE — sobre la foto fija de la terraza ============ */
 .dine{ background: transparent; color: var(--paper); overflow:hidden; position:relative; min-height:88svh; display:flex; align-items:center; }
 .dine-inner{ position:relative; display:grid; grid-template-columns: 0.9fr 1.1fr; gap: clamp(30px,6vw,80px); align-items:center; }
@@ -778,7 +804,9 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
 <!-- ============ HABITACIONES — detalle ============ -->
 <section class="rooms pad" id="habitaciones-detalle">
   <div class="container">
-    <div class="room-list" id="roomsList">
+    <div class="rooms-scroller">
+      <button type="button" class="rooms-arrow prev" id="roomsPrev" aria-label="Habitación anterior">‹</button>
+      <div class="room-list" id="roomsList">
     <div class="room-row reveal in-view">
       <div class="room-visual">
         <img src="images/DSC09871.JPG" alt="Habitación matrimonial Takúa">
@@ -836,6 +864,8 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
     </div>
 
     
+    </div>
+      <button type="button" class="rooms-arrow next" id="roomsNext" aria-label="Siguiente habitación">›</button>
     </div>
   </div>
 </section>
@@ -1442,6 +1472,22 @@ if ('IntersectionObserver' in window){
     const card = strip.querySelector('.service-item');
     const gap = 16;
     const amount = card ? card.getBoundingClientRect().width + gap : 240;
+    strip.scrollBy({ left: dir * amount, behavior: 'smooth' });
+  }
+  prevBtn.addEventListener('click', () => scrollByCard(-1));
+  nextBtn.addEventListener('click', () => scrollByCard(1));
+})();
+
+/* habitaciones — flechas de desplazamiento horizontal (mobile) */
+(function(){
+  const strip = document.getElementById('roomsList');
+  const prevBtn = document.getElementById('roomsPrev');
+  const nextBtn = document.getElementById('roomsNext');
+  if (!strip || !prevBtn || !nextBtn) return;
+  function scrollByCard(dir){
+    const card = strip.querySelector('.room-row');
+    const gap = 16;
+    const amount = card ? card.getBoundingClientRect().width + gap : 300;
     strip.scrollBy({ left: dir * amount, behavior: 'smooth' });
   }
   prevBtn.addEventListener('click', () => scrollByCard(-1));
