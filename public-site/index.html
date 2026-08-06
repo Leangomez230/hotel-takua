@@ -1040,7 +1040,7 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
 <div class="lightbox" id="lightbox" aria-hidden="true">
   <button class="lightbox-close" id="lightboxClose" aria-label="Cerrar">✕</button>
   <button class="lightbox-nav prev" id="lightboxPrev" aria-label="Foto anterior">‹</button>
-  <img class="lightbox-img" id="lightboxImg" src="http://localhost:8000/Desktop/hotel-takua-preview/images/lobby-recepcion-1.jpg" alt="Recepción de Hotel Takuá">
+  <img class="lightbox-img" id="lightboxImg" src="" alt="">
   <button class="lightbox-nav next" id="lightboxNext" aria-label="Foto siguiente">›</button>
   <span class="lightbox-count" id="lightboxCount">5 / 7</span>
 </div>
@@ -2024,10 +2024,15 @@ document.getElementById('bookingForm').addEventListener('submit', (e) => {
   function lockScroll(){
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
+    document.addEventListener('touchmove', blockTouch, { passive: false });
   }
   function unlockScroll(){
     document.documentElement.style.overflow = '';
     document.body.style.overflow = '';
+    document.removeEventListener('touchmove', blockTouch, { passive: false });
+  }
+  function blockTouch(e){
+    if (!sidebar.contains(e.target)) e.preventDefault();
   }
 
   function open(){
