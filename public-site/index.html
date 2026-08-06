@@ -2021,23 +2021,13 @@ document.getElementById('bookingForm').addEventListener('submit', (e) => {
   const sidebar = document.getElementById('reserveSidebar');
   if (!trigger || !sidebar) return;
 
-  let savedScrollY = 0;
-
   function lockScroll(){
-    savedScrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${savedScrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.width = '100%';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
   }
   function unlockScroll(){
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.left = '';
-    document.body.style.right = '';
-    document.body.style.width = '';
-    window.scrollTo(0, savedScrollY);
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
   }
 
   function open(){
@@ -2056,8 +2046,17 @@ document.getElementById('bookingForm').addEventListener('submit', (e) => {
   document.getElementById('reserveSidebarClose').addEventListener('click', close);
   backdrop.addEventListener('click', close);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sidebar.classList.contains('open')) close(); });
+
+  // navegación explícita — no depender del click nativo del link dentro del panel
+  document.querySelectorAll('.reserve-option[href]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = link.getAttribute('href');
+    });
+  });
 })();
 
 </script>
+
 
 </body></html>
