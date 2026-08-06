@@ -2025,11 +2025,13 @@ document.getElementById('bookingForm').addEventListener('submit', (e) => {
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
     document.addEventListener('touchmove', blockTouch, { passive: false });
+    document.addEventListener('wheel', blockTouch, { passive: false });
   }
   function unlockScroll(){
     document.documentElement.style.overflow = '';
     document.body.style.overflow = '';
     document.removeEventListener('touchmove', blockTouch, { passive: false });
+    document.removeEventListener('wheel', blockTouch, { passive: false });
   }
   function blockTouch(e){
     if (!sidebar.contains(e.target)) e.preventDefault();
