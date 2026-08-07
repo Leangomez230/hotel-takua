@@ -716,7 +716,7 @@ const SZ = {redonda:{w:70,h:70}, cuadrada:{w:70,h:70}, rectangular:{w:150,h:70}}
 
 let TOKEN = localStorage.getItem('takua_token')||'';
 let ME    = JSON.parse(localStorage.getItem('takua_user')||'null');
-let S = { mesas:[], comandas:[], menu:[], turno:null, usuarios:[],
+let S = { mesas:[], comandas:[], menu:[], turno:null, usuarios:[], reservasMesa:[],
           selMesaId:null, selCmdId:null, destCambioId:null,
           menuEditId:null, modoUnir:false, unirSel:[], ticketData:null };
 
@@ -838,6 +838,7 @@ async function loadAll(silencioso=false){
       api('GET','/api/restaurante/menu'),
     ]);
     S.mesas=mesas; S.menu=menu;
+    S.reservasMesa = await api('GET','/api/restaurante/reservas-mesa').catch(()=>[]);
     if(ME.rol==='mozo'){
       S.comandas=await api('GET','/api/restaurante/comandas').catch(()=>[]);
     } else {
@@ -901,6 +902,7 @@ function buildTabsHTML(actual) {
   const esCA = ['admin','cajero'].includes(ME.rol);
   let h = `<div class="tabs">`;
   h += `<button class="tab ${actual==='salon'?'active':''}" onclick="snav('salon')">🗺️ Salón</button>`;
+  h += `<button class="tab ${actual==='reservas'?'active':''}" onclick="snav('reservas')">📅 Reservas${S.reservasMesa.length?` (${S.reservasMesa.length})`:''}</button>`;
   if (esCA) h += `<button class="tab ${actual==='caja'?'active':''}" onclick="snav('caja')">💰 Caja</button>`;
   if (esCA) h += `<button class="tab ${actual==='menu'?'active':''}" onclick="abrirGestionProductos()">🍽️ Menú</button>`;
   h += `</div>`;
@@ -972,11 +974,78 @@ function snav(id) {
     if (ME.rol === 'mozo') renderMozo(el);
     else if (ME.rol === 'cajero') renderCajero(el);
     else renderAdmin(el);
+  } else if (id === 'reservas') {
+    renderReservasMesa(el);
   } else if (id === 'caja') {
     renderCajero(el);
   } else if (id === 'menu') {
     renderMenuTab(el);
   }
+}
+
+// Formatea 'YYYY-MM-DD' a algo legible tipo "vie. 22 ago"
+function _fmtFechaReserva(iso) {
+  try {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short' });
+  } catch(e) { return iso; }
+}
+
+function renderReservasMesa(el) {
+  const hoyISO = new Date().toISOString().slice(0,10);
+  const lista = S.reservasMesa || [];
+
+  let bodyHTML;
+  if (!lista.length) {
+    bodyHTML = `
+      <div style="text-align:center;padding:60px 20px;color:#94a3b8">
+        <div style="font-size:40px;margin-bottom:12px">📅</div>
+        <div style="font-weight:700;font-size:15px;color:#64748b">No hay reservas de mesa cargadas</div>
+        <div style="font-size:13px;margin-top:6px">Acá van a aparecer las reservas que hagan desde la página del hotel.</div>
+      </div>`;
+  } else {
+    // Agrupar por fecha, ya vienen ordenadas por fecha/hora desde el server
+    let fechaAnterior = null;
+    let filas = '';
+    lista.forEach(r => {
+      if (r.fecha !== fechaAnterior) {
+        fechaAnterior = r.fecha;
+        const esHoy = r.fecha === hoyISO;
+        filas += `
+          <div style="margin:${filas?'22px':'0'} 0 10px;font-weight:800;font-size:13px;
+                      text-transform:uppercase;letter-spacing:.04em;color:${esHoy?'#c2410c':'#64748b'}">
+            ${esHoy ? '🔶 Hoy · ' : ''}${_fmtFechaReserva(r.fecha)}
+          </div>`;
+      }
+      filas += `
+        <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;
+                    margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:200px">
+            <div style="background:#fff7ed;color:#c2410c;font-weight:800;font-size:14px;border-radius:8px;
+                        padding:8px 10px;min-width:56px;text-align:center">${r.hora}</div>
+            <div>
+              <div style="font-weight:700;font-size:14.5px;color:#1e293b">${r.nombre_cliente}</div>
+              <div style="font-size:12.5px;color:#64748b;margin-top:2px">
+                👥 ${r.comensales} · 📞 ${r.telefono}${r.email?` · ✉️ ${r.email}`:''}
+              </div>
+              ${r.notas ? `<div style="font-size:12.5px;color:#94a3b8;margin-top:4px;font-style:italic">"${r.notas}"</div>` : ''}
+            </div>
+          </div>
+          ${r.cupon ? `<div style="background:#f0fdf4;color:#166534;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:20px">🎟️ ${r.cupon}</div>` : ''}
+        </div>`;
+    });
+    bodyHTML = filas;
+  }
+
+  el.innerHTML = `
+    ${buildTabsHTML('reservas')}
+    <div style="max-width:720px;margin:0 auto;padding:4px 4px 40px">
+      <div style="margin-bottom:16px;color:#64748b;font-size:13px">
+        Reservas hechas desde la página del hotel. Son solo informativas — no están vinculadas a ninguna mesa.
+        Se borran solas después de la fecha.
+      </div>
+      ${bodyHTML}
+    </div>`;
 }
 
 // ════════════════════════════════════
