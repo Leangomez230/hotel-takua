@@ -1088,6 +1088,47 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
   } catch(e) { console.error('RESERVA ERROR:', e); res.status(500).json({ error: 'Error al guardar reserva: ' + e.message }); }
 });
 
+// ── PÚBLICO — SITIO WEB (hoteltakua.com.ar, sin login) ────────────────
+// Solo reservas de MESA por ahora — es informativa para el personal
+// (se ve en comandas.html), no se vincula a ninguna mesa física.
+// TODO: sumar rate-limiting real (express-rate-limit) cuando se agregue
+// para /api/login — mismo pendiente, mismo momento.
+app.post('/api/publico/reservas-mesa', async (req, res) => {
+  try {
+    const { nombre_cliente, telefono, email, fecha, hora, comensales, notas, cupon } = req.body;
+    if (!nombre_cliente || !nombre_cliente.trim()) return res.status(400).json({ error: 'Falta el nombre' });
+    if (!telefono || !telefono.trim())             return res.status(400).json({ error: 'Falta el teléfono' });
+    if (!fecha)                                     return res.status(400).json({ error: 'Falta la fecha' });
+    if (!hora)                                      return res.status(400).json({ error: 'Falta la hora' });
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    if (fecha < hoy) return res.status(400).json({ error: 'La fecha no puede ser anterior a hoy' });
+
+    const comensalesNum = Math.max(1, Math.min(30, parseInt(comensales, 10) || 2));
+
+    const r = await db.query(
+      `INSERT INTO reservas_mesa (nombre_cliente,telefono,email,fecha,hora,comensales,notas,cupon,estado,origen)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pendiente','Web') RETURNING id`,
+      [
+        nombre_cliente.trim().slice(0, 120),
+        telefono.trim().slice(0, 40),
+        (email || '').trim().slice(0, 120),
+        fecha,
+        hora,
+        comensalesNum,
+        (notas || '').trim().slice(0, 500),
+        (cupon || '').trim().slice(0, 40),
+      ]
+    );
+    await logAction(null, 'Sitio web', 'RESERVA_MESA_WEB', `${nombre_cliente} · ${comensalesNum}p · ${fecha} ${hora}`);
+    res.json({ ok: true, id: r.rows[0].id });
+  } catch(e) {
+    // Público-facing: nunca devolver e.message crudo acá.
+    console.error('RESERVA MESA WEB ERROR:', e);
+    res.status(500).json({ error: 'No pudimos guardar la reserva. Probá de nuevo o escribinos por WhatsApp.' });
+  }
+});
+
 // ── CAJA HOTEL ───────────────────────────────────────────────────────
 app.get('/api/caja/activa', auth, async (req, res) => {
   try {
@@ -3634,6 +3675,20 @@ async function sincronizarReservas() {
 }
 setInterval(sincronizarReservas, 60 * 60 * 1000); // cada hora
 
+// ── LIMPIEZA AUTOMÁTICA — reservas de mesa vencidas ───────────────────
+// Son solo informativas para el personal (comandas.html). Pasada la
+// fecha, no tiene sentido seguir mostrándolas — se borran solas.
+async function limpiarReservasMesaVencidas() {
+  try {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const result = await db.query('DELETE FROM reservas_mesa WHERE fecha < $1', [hoy]);
+    if (result.rowCount > 0) {
+      console.log(`🗑️ Reservas de mesa vencidas borradas: ${result.rowCount}`);
+    }
+  } catch(e) { console.error('Error limpiando reservas_mesa:', e.message); }
+}
+setInterval(limpiarReservasMesaVencidas, 60 * 60 * 1000); // cada hora
+
 // Endpoint manual para forzar sincronización (solo admin)
 app.post('/api/admin/sync-reservas', auth, adminOnly, async (req, res) => {
   try {
@@ -3718,6 +3773,7 @@ app.listen(PORT, () => console.log(`🏨 Hotel Takuá corriendo en puerto ${PORT
 db.initDB().then(() => {
   scheduleReset();
   sincronizarReservas(); // ejecutar al arrancar también
+  limpiarReservasMesaVencidas(); // ídem
 }).catch(e => {
   console.error('FATAL: Error iniciando DB:', e);
   process.exit(1);
