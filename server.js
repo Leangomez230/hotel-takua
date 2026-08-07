@@ -2009,6 +2009,20 @@ app.put('/api/cocina/estado/:comandaId', auth, authRestaurante, async (req, res)
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Reservas de mesa hechas desde el sitio público — solo informativo para
+// el personal (no se vinculan a ninguna mesa física). Se borran solas
+// pasada la fecha (ver limpiarReservasMesaVencidas más abajo).
+app.get('/api/restaurante/reservas-mesa', auth, authRestaurante, async (req, res) => {
+  try {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const rows = await db.getAll(
+      'SELECT * FROM reservas_mesa WHERE fecha >= $1 ORDER BY fecha ASC, hora ASC',
+      [hoy]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/restaurante/mesas', auth, authRestaurante, async (req, res) => {
   try {
     res.json(await db.getAll('SELECT * FROM mesas_restaurante WHERE activo=1 ORDER BY numero, id'));
