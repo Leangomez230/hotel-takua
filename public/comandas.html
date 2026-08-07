@@ -527,6 +527,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <!-- Modal Abrir Comanda -->
 <!-- Panel deslizante: Gestión de Productos -->
 <div id="panel-productos" class="slide-panel"></div>
+<div id="panel-reservas" class="slide-panel"></div>
 <div id="panel-comandas-activas" class="slide-panel"></div>
 
 <div class="overlay" id="m-abrir">
@@ -902,7 +903,6 @@ function buildTabsHTML(actual) {
   const esCA = ['admin','cajero'].includes(ME.rol);
   let h = `<div class="tabs">`;
   h += `<button class="tab ${actual==='salon'?'active':''}" onclick="snav('salon')">🗺️ Salón</button>`;
-  h += `<button class="tab ${actual==='reservas'?'active':''}" onclick="snav('reservas')">📅 Reservas${S.reservasMesa.length?` (${S.reservasMesa.length})`:''}</button>`;
   if (esCA) h += `<button class="tab ${actual==='caja'?'active':''}" onclick="snav('caja')">💰 Caja</button>`;
   if (esCA) h += `<button class="tab ${actual==='menu'?'active':''}" onclick="abrirGestionProductos()">🍽️ Menú</button>`;
   h += `</div>`;
@@ -974,8 +974,6 @@ function snav(id) {
     if (ME.rol === 'mozo') renderMozo(el);
     else if (ME.rol === 'cajero') renderCajero(el);
     else renderAdmin(el);
-  } else if (id === 'reservas') {
-    renderReservasMesa(el);
   } else if (id === 'caja') {
     renderCajero(el);
   } else if (id === 'menu') {
@@ -991,7 +989,21 @@ function _fmtFechaReserva(iso) {
   } catch(e) { return iso; }
 }
 
-function renderReservasMesa(el) {
+function abrirReservasMesa(){
+  const panel = document.getElementById('panel-reservas');
+  if(!panel) return;
+  renderPanelReservas(panel);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(()=>panel.classList.add('open'));
+}
+function cerrarReservasMesa(){
+  const panel = document.getElementById('panel-reservas');
+  if(!panel) return;
+  panel.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderPanelReservas(el) {
   const hoyISO = new Date().toISOString().slice(0,10);
   const lista = S.reservasMesa || [];
 
@@ -1038,13 +1050,18 @@ function renderReservasMesa(el) {
   }
 
   el.innerHTML = `
-    ${buildTabsHTML('reservas')}
-    <div style="max-width:720px;margin:0 auto;padding:4px 4px 40px">
-      <div style="margin-bottom:16px;color:#64748b;font-size:13px">
-        Reservas hechas desde la página del hotel. Son solo informativas — no están vinculadas a ninguna mesa.
-        Se borran solas después de la fecha.
+    <div class="gp-header">
+      <button class="gp-back" onclick="cerrarReservasMesa()">← Volver</button>
+      <div class="gp-title">📅 Reservas de mesa</div>
+    </div>
+    <div class="gp-body">
+      <div style="max-width:720px;margin:0 auto">
+        <div style="margin-bottom:16px;color:#64748b;font-size:13px">
+          Reservas hechas desde la página del hotel. Son solo informativas — no están vinculadas a ninguna mesa.
+          Se borran solas después de la fecha.
+        </div>
+        ${bodyHTML}
       </div>
-      ${bodyHTML}
     </div>`;
 }
 
@@ -1104,7 +1121,14 @@ function renderPills(){
 // ── VISTA MOZO ───────────────────────────────────────
 function renderMozo(el){
   el.innerHTML=`
-    <p style="font-size:13px;color:#64748b;margin-bottom:12px">Tocá una mesa libre para abrir comanda · Tocá una ocupada para ver el pedido</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <p style="font-size:13px;color:#64748b;margin:0">Tocá una mesa libre para abrir comanda · Tocá una ocupada para ver el pedido</p>
+      <button onclick="abrirReservasMesa()"
+        style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:20px;padding:6px 14px;
+               font-size:12px;font-weight:700;color:#c2410c;cursor:pointer;white-space:nowrap">
+        📅 Reservas de mesa${S.reservasMesa.length?` (${S.reservasMesa.length})`:''}
+      </button>
+    </div>
     <div class="pills-row">${renderPills()}</div>
     ${mapaConRotar(false)}`;
 }
@@ -1224,6 +1248,16 @@ function renderCajero(el){
           <button class="desp-btn" onclick="abrirGestionProductos()">
             <div class="desp-left"><span class="desp-icon">🍽️</span>
               <div><div class="desp-title">Gestión de productos</div><div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div></div>
+            </div>
+            <div class="desp-arrow" style="transform:none">›</div>
+          </button>
+        </div>
+
+        <!-- Acceso a Reservas de mesa (desde el sitio público) -->
+        <div class="desplegable" style="margin-top:14px">
+          <button class="desp-btn" onclick="abrirReservasMesa()">
+            <div class="desp-left"><span class="desp-icon">📅</span>
+              <div><div class="desp-title">Reservas de mesa</div><div class="desp-sub">${S.reservasMesa.length} próximas</div></div>
             </div>
             <div class="desp-arrow" style="transform:none">›</div>
           </button>
@@ -1428,6 +1462,16 @@ function renderAdmin(el){
           <button class="desp-btn" onclick="abrirGestionProductos()">
             <div class="desp-left"><span class="desp-icon">🍽️</span>
               <div><div class="desp-title">Gestión de productos</div><div class="desp-sub">${S.menu.length} productos · ${cats.length} categorías</div></div>
+            </div>
+            <div class="desp-arrow" style="transform:none">›</div>
+          </button>
+        </div>
+
+        <!-- Acceso a Reservas de mesa (desde el sitio público) -->
+        <div class="desplegable" style="margin-top:14px">
+          <button class="desp-btn" onclick="abrirReservasMesa()">
+            <div class="desp-left"><span class="desp-icon">📅</span>
+              <div><div class="desp-title">Reservas de mesa</div><div class="desp-sub">${S.reservasMesa.length} próximas</div></div>
             </div>
             <div class="desp-arrow" style="transform:none">›</div>
           </button>
