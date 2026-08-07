@@ -61,7 +61,7 @@ async function transaction(callback) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 // Inicializar tablas
 async function initDB() {
@@ -751,6 +751,28 @@ try {
     );
   `);
   console.log('✅ Tabla compra_items lista');
+
+  // Reservas de mesa hechas desde el sitio público (hoteltakua.com.ar) — separado
+  // de "comandas" (pedidos en vivo del salón) y de "mesas" (mapa físico de mesas).
+  // origen='Web' identifica las que llegan del sitio, para distinguirlas de las
+  // que recepción/mozo carga a mano.
+  await query(`
+    CREATE TABLE IF NOT EXISTS reservas_mesa (
+      id SERIAL PRIMARY KEY,
+      nombre_cliente TEXT NOT NULL,
+      telefono TEXT DEFAULT '',
+      email TEXT DEFAULT '',
+      fecha TEXT NOT NULL,
+      hora TEXT NOT NULL,
+      comensales INTEGER NOT NULL DEFAULT 2,
+      notas TEXT DEFAULT '',
+      cupon TEXT DEFAULT '',
+      estado TEXT DEFAULT 'pendiente',
+      origen TEXT DEFAULT 'Web',
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('✅ Tabla reservas_mesa lista');
 
   // Marcar el schema como al día para que el próximo arranque sea instantáneo
   await query(
