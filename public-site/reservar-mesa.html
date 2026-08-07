@@ -28,10 +28,10 @@
   },
   "acceptsReservations": "True",
   "openingHoursSpecification": [
-    { "@type": "OpeningHoursSpecification", "opens": "07:30", "closes": "10:30", "description": "Desayuno" },
-    { "@type": "OpeningHoursSpecification", "opens": "12:00", "closes": "15:00", "description": "Almuerzo" },
-    { "@type": "OpeningHoursSpecification", "opens": "17:00", "closes": "19:30", "description": "Merienda" },
-    { "@type": "OpeningHoursSpecification", "opens": "20:00", "closes": "23:30", "description": "Cena" }
+    { "@type": "OpeningHoursSpecification", "opens": "08:00", "closes": "12:30", "description": "Desayuno" },
+    { "@type": "OpeningHoursSpecification", "opens": "12:30", "closes": "16:00", "description": "Almuerzo" },
+    { "@type": "OpeningHoursSpecification", "opens": "16:00", "closes": "20:30", "description": "Merienda" },
+    { "@type": "OpeningHoursSpecification", "opens": "20:30", "closes": "23:30", "description": "Cena" }
   ]
 }
 </script>
@@ -182,10 +182,10 @@ footer a{ color:var(--ocre); }
       <p>Elegí el turno que mejor te quede.</p>
     </div>
     <div class="hours-grid">
-      <div class="hours-card"><h3>Desayuno</h3><div class="time">7:30 – 10:30</div><p>Incluido en Suite Sierra, opcional en el resto.</p></div>
-      <div class="hours-card"><h3>Almuerzo</h3><div class="time">12:00 – 15:00</div><p>Menú corto, cambia cada semana.</p></div>
-      <div class="hours-card"><h3>Merienda</h3><div class="time">17:00 – 19:30</div><p>Café de especialidad y algo dulce.</p></div>
-      <div class="hours-card"><h3>Cena</h3><div class="time">20:00 – 23:30</div><p>Cocina de estación, productos de la región.</p></div>
+      <div class="hours-card"><h3>Desayuno</h3><div class="time">8:00 – 12:30</div><p>Incluido en Suite Sierra, opcional en el resto.</p></div>
+      <div class="hours-card"><h3>Almuerzo</h3><div class="time">12:30 – 16:00</div><p>Menú corto, cambia cada semana.</p></div>
+      <div class="hours-card"><h3>Merienda</h3><div class="time">16:00 – 20:30</div><p>Café de especialidad y algo dulce.</p></div>
+      <div class="hours-card"><h3>Cena</h3><div class="time">20:30 – 23:30</div><p>Cocina de estación, productos de la región.</p></div>
     </div>
   </div>
 </section>
@@ -236,17 +236,18 @@ footer a{ color:var(--ocre); }
           <p class="coupon-msg" id="resvCouponMsg"></p>
         </div>
         <div class="resv-summary" id="resvSummary"></div>
+        <p class="coupon-msg error" id="resvSubmitError"></p>
         <div class="resv-actions">
           <button type="button" class="resv-btn ghost" data-back="2">← Atrás</button>
-          <button type="button" class="resv-btn primary" id="resvSubmit" disabled>Enviar solicitud por WhatsApp</button>
+          <button type="button" class="resv-btn primary" id="resvSubmit" disabled>Confirmar reserva</button>
         </div>
       </div>
 
       <div class="resv-step" data-step="4" hidden>
         <div class="resv-success">
           <div class="resv-success-icon">✓</div>
-          <h3>¡Listo, te escribimos!</h3>
-          <p>Abrimos WhatsApp con tu solicitud — confirmamos la mesa por ahí. También podemos escribirte a <strong id="resvConfirmEmail"></strong> si hace falta.</p>
+          <h3>¡Mesa reservada!</h3>
+          <p>Ya quedó anotada. Si necesitás cambiar algo, escribinos por WhatsApp — mencioná el nombre <strong id="resvConfirmEmail"></strong> para que te encontremos rápido.</p>
         </div>
         <div class="resv-summary" id="resvSummaryFinal"></div>
         <div class="resv-actions">
@@ -406,10 +407,10 @@ attachDatePicker(document.getElementById('resvDate'), { min: 'today' });
       m+=30; if (m>=60){ m=0; h+=1; }
     }
   }
-  buildSlots(document.getElementById('resvTimeBreakfast'), 7, 30, 10, 30);
-  buildSlots(document.getElementById('resvTimeLunch'), 12, 0, 15, 0);
-  buildSlots(document.getElementById('resvTimeSnack'), 17, 0, 19, 30);
-  buildSlots(document.getElementById('resvTimeDinner'), 20, 0, 23, 30);
+  buildSlots(document.getElementById('resvTimeBreakfast'), 8, 0, 12, 30);
+  buildSlots(document.getElementById('resvTimeLunch'), 12, 30, 16, 0);
+  buildSlots(document.getElementById('resvTimeSnack'), 16, 0, 20, 30);
+  buildSlots(document.getElementById('resvTimeDinner'), 20, 30, 23, 30);
   dateInput.addEventListener('change', () => { state.date=dateInput.value; });
 
   function renderSummary(container){
@@ -435,22 +436,56 @@ attachDatePicker(document.getElementById('resvDate'), { min: 'today' });
     else { state.couponCode=''; msgEl.textContent='Ese cupón no es válido o venció.'; msgEl.className='coupon-msg error'; }
   });
 
-  submitBtn.addEventListener('click', () => {
+  submitBtn.addEventListener('click', async () => {
     if (submitBtn.disabled) return;
-    // TODO Leandro: cuando conectemos el backend, acá va el POST real a /api/publico/reservas-mesa.
-    console.log('[demo] solicitud de reserva de mesa:', state, nameInput.value, emailInput.value, phoneInput.value);
-    document.getElementById('resvConfirmEmail').textContent = emailInput.value.trim();
-    document.getElementById('resvSummaryFinal').innerHTML = `
-      <div class="resv-summary-row"><span>Comensales</span><span>${state.diners}</span></div>
-      <div class="resv-summary-row"><span>Fecha</span><span>${formatDate(state.date)}</span></div>
-      <div class="resv-summary-row"><span>Hora</span><span>${state.time}</span></div>
-      ${state.couponCode?`<div class="resv-summary-row"><span>Cupón</span><span>${state.couponCode}</span></div>`:''}
-      <div class="resv-summary-row"><span>A nombre de</span><span>${nameInput.value.trim()}</span></div>`;
-    const msg = `Hola, quiero reservar una mesa: ${state.diners} personas, ${formatDate(state.date)} a las ${state.time}.${state.couponCode?' Cupón: '+state.couponCode+'.':''} A nombre de ${nameInput.value.trim()}.`;
-    const waUrl = `https://wa.me/5492664000000?text=${encodeURIComponent(msg)}`;
+    const errorEl = document.getElementById('resvSubmitError');
+    errorEl.textContent = '';
+    const nombre = nameInput.value.trim();
+    const telefono = phoneInput.value.trim();
+    const email = emailInput.value.trim();
+    const notas = document.getElementById('resvNotes').value.trim();
+
+    const originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Enviando…';
+
+    const waMsg = `Hola, quiero reservar una mesa: ${state.diners} personas, ${formatDate(state.date)} a las ${state.time}.${state.couponCode?' Cupón: '+state.couponCode+'.':''} A nombre de ${nombre}.`;
+    const waUrl = `https://wa.me/5492664000000?text=${encodeURIComponent(waMsg)}`;
     document.getElementById('resvWaLink').onclick = () => window.open(waUrl, '_blank');
-    window.open(waUrl, '_blank');
-    goTo(4);
+
+    try {
+      const resp = await fetch('/api/publico/reservas-mesa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre_cliente: nombre,
+          telefono: telefono,
+          email: email,
+          fecha: state.date,
+          hora: state.time,
+          comensales: state.diners,
+          notas: notas,
+          cupon: state.couponCode || '',
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar la reserva.');
+
+      document.getElementById('resvConfirmEmail').textContent = nombre;
+      document.getElementById('resvSummaryFinal').innerHTML = `
+        <div class="resv-summary-row"><span>Comensales</span><span>${state.diners}</span></div>
+        <div class="resv-summary-row"><span>Fecha</span><span>${formatDate(state.date)}</span></div>
+        <div class="resv-summary-row"><span>Hora</span><span>${state.time}</span></div>
+        ${state.couponCode?`<div class="resv-summary-row"><span>Cupón</span><span>${state.couponCode}</span></div>`:''}
+        <div class="resv-summary-row"><span>A nombre de</span><span>${nombre}</span></div>`;
+      goTo(4);
+    } catch (err) {
+      console.error('Error reservando mesa:', err);
+      errorEl.textContent = 'No pudimos guardar la reserva (' + err.message + '). Probá de nuevo, o escribinos directo por WhatsApp.';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
   });
   document.getElementById('resvDone').addEventListener('click', () => { location.href = 'index.html'; });
 })();
