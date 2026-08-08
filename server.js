@@ -531,6 +531,44 @@ app.post('/api/config/tarifas', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── MERCADO PAGO — token para la seña de reservas web ─────────────────
+// Nunca devolvemos el token completo al frontend, solo si está cargado
+// (y los últimos 4 caracteres, para que el admin confirme que es el que
+// piensa que es sin tener que volver a pegarlo entero).
+app.get('/api/config/mercadopago', auth, adminOnly, async (req, res) => {
+  try {
+    const row = await db.getOne("SELECT valor FROM config_hotel WHERE clave='mp_access_token'");
+    const token = row ? row.valor : '';
+    res.json({
+      configurado: !!token,
+      ultimos4: token ? token.slice(-4) : '',
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/config/mercadopago', auth, adminOnly, async (req, res) => {
+  try {
+    const { mp_access_token } = req.body;
+    if (!mp_access_token || !mp_access_token.trim()) {
+      return res.status(400).json({ error: 'Falta el token' });
+    }
+    await db.query(
+      `INSERT INTO config_hotel (clave,valor,updated_at) VALUES ('mp_access_token',$1,NOW())
+       ON CONFLICT (clave) DO UPDATE SET valor=$1, updated_at=NOW()`,
+      [mp_access_token.trim()]
+    );
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_MERCADOPAGO', 'Token actualizado');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/config/mercadopago', auth, adminOnly, async (req, res) => {
+  try {
+    await db.query("DELETE FROM config_hotel WHERE clave='mp_access_token'");
+    await logAction(req.user.id, req.user.nombre, 'CONFIG_MERCADOPAGO', 'Token eliminado');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── TIPOS DE HABITACIÓN ──────────────────────────────────────────────
 app.get('/api/config/tipos-habitacion', auth, async (req, res) => {
   try {
