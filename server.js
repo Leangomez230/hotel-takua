@@ -1167,6 +1167,95 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
   } catch(e) { console.error('RESERVA ERROR:', e); res.status(500).json({ error: 'Error al guardar reserva: ' + e.message }); }
 });
 
+// ── RESERVAS DE HABITACIÓN WEB — pendientes de asignar ────────────────
+// Vienen de reservas_web_pendientes (sin habitación, sin confirmar).
+// Recepción/admin confirma el pago a mano y asigna una habitación real —
+// recién ahí se crea la fila en "reservas" (misma lógica que la reserva manual).
+app.get('/api/reservas-habitacion-pendientes', auth, adminOrRecep, async (req, res) => {
+  try {
+    const rows = await db.getAll(
+      `SELECT * FROM reservas_web_pendientes WHERE estado='pendiente' ORDER BY entrada ASC, id ASC`
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/reservas-habitacion-pendientes/:id/asignar', auth, adminOrRecep, async (req, res) => {
+  try {
+    const { habitacion_id, pago_confirmado, metodo_pago } = req.body;
+    if (!pago_confirmado) return res.status(400).json({ error: 'Falta confirmar que la seña se pagó de verdad.' });
+    if (!habitacion_id) return res.status(400).json({ error: 'Falta elegir una habitación.' });
+
+    const pend = await db.getOne('SELECT * FROM reservas_web_pendientes WHERE id=$1', [req.params.id]);
+    if (!pend) return res.status(404).json({ error: 'Esa reserva pendiente no existe.' });
+    if (pend.estado !== 'pendiente') return res.status(400).json({ error: 'Esta reserva ya fue procesada antes.' });
+
+    const hab = await db.getOne('SELECT * FROM habitaciones WHERE id=$1', [habitacion_id]);
+    if (!hab) return res.status(404).json({ error: 'Habitación no encontrada: ' + habitacion_id });
+    if (['ocupada','mantenimiento'].includes(hab.status))
+      return res.status(400).json({ error: `La habitación está actualmente ${hab.status} y no se puede reservar.` });
+
+    const solapamiento = await db.getOne(
+      `SELECT id, nombre_huesped, entrada, salida FROM reservas
+       WHERE habitacion_id=$1 AND estado IN ('futura','activa') AND entrada < $3 AND salida > $2`,
+      [habitacion_id, pend.entrada, pend.salida]
+    );
+    if (solapamiento) {
+      const entStr = new Date(solapamiento.entrada).toLocaleDateString('es-AR');
+      const salStr = new Date(solapamiento.salida).toLocaleDateString('es-AR');
+      return res.status(400).json({
+        error: `Esa habitación ya tiene una reserva de ${solapamiento.nombre_huesped} del ${entStr} al ${salStr}. Elegí otra.`
+      });
+    }
+
+    const precioTotal = Number(pend.precio_estimado) || 0;
+    const senia = Number(pend.monto_senia) || 0;
+    const saldo = precioTotal - senia;
+    const notasFinal = (pend.tipo_solicitado ? `Categoría solicitada: ${pend.tipo_solicitado}. ` : '')
+      + (pend.cupon ? `Cupón: ${pend.cupon}. ` : '')
+      + (pend.notas || '');
+
+    const r = await db.query(
+      `INSERT INTO reservas (habitacion_id,nombre_huesped,entrada,salida,noches,precio_total,metodo_pago,notas,estado,monto_senia,saldo_pendiente,plataforma)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'futura',$9,$10,'Web') RETURNING id`,
+      [habitacion_id, pend.nombre_huesped, pend.entrada, pend.salida, pend.noches,
+       precioTotal, metodo_pago || 'Mercado Pago', notasFinal, senia, saldo]
+    );
+    const nuevaId = r.rows[0].id;
+
+    if (['libre','lista','limpieza'].includes(hab.status)) {
+      await db.query("UPDATE habitaciones SET status='reservada',nota=$1,updated_at=NOW() WHERE id=$2", [pend.nombre_huesped, habitacion_id]);
+    }
+
+    let aviso = null;
+    if (senia > 0) {
+      const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
+      if (turnoHab) {
+        await db.query(
+          `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
+           VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [turnoHab.id, `Seña Reserva Web Hab. ${hab.numero} — ${pend.nombre_huesped}`, senia,
+           metodo_pago || 'Mercado Pago', `Reserva #${nuevaId}`,
+           req.user.id, req.user.nombre, habitacion_id, hab.numero]
+        );
+      } else {
+        aviso = `⚠️ Seña de $${senia} guardada en la reserva pero NO registrada en caja — no hay turno de habitaciones abierto.`;
+      }
+    }
+
+    await db.query(
+      `UPDATE reservas_web_pendientes SET estado='asignada', estado_pago='confirmado', reserva_id=$1 WHERE id=$2`,
+      [nuevaId, req.params.id]
+    );
+
+    await logAction(req.user.id, req.user.nombre, 'RESERVA_WEB_ASIGNADA', `${pend.nombre_huesped} → Hab ${hab.numero}${senia?` · Seña $${senia}`:''}`);
+    res.json({ ok: true, reserva_id: nuevaId, aviso });
+  } catch(e) {
+    console.error('ASIGNAR RESERVA WEB ERROR:', e);
+    res.status(500).json({ error: 'Error al asignar la habitación: ' + e.message });
+  }
+});
+
 // ── PÚBLICO — SITIO WEB (hoteltakua.com.ar, sin login) ────────────────
 // Solo reservas de MESA por ahora — es informativa para el personal
 // (se ve en comandas.html), no se vincula a ninguna mesa física.
