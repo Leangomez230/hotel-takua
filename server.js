@@ -1170,6 +1170,92 @@ app.post('/api/publico/reservas-mesa', async (req, res) => {
   }
 });
 
+// Disponibilidad por CANTIDAD, no por categoría — una habitación se prepara
+// según lo que pida el huésped, así que alcanza con saber si hay lugar.
+app.get('/api/publico/disponibilidad-habitacion', async (req, res) => {
+  try {
+    const { entrada, salida } = req.query;
+    if (!entrada || !salida) return res.status(400).json({ error: 'Faltan fechas' });
+    if (salida <= entrada) return res.status(400).json({ error: 'La salida debe ser posterior a la llegada' });
+
+    const row = await db.getOne(
+      `SELECT COUNT(*)::int AS libres FROM habitaciones h
+       WHERE h.status != 'mantenimiento'
+       AND h.id NOT IN (
+         SELECT habitacion_id FROM reservas
+         WHERE estado IN ('futura','activa') AND entrada < $2 AND salida > $1
+       )`,
+      [entrada, salida]
+    );
+    const libres = row ? row.libres : 0;
+    res.json({ disponible: libres > 0, libres });
+  } catch(e) {
+    console.error('DISPONIBILIDAD HABITACIÓN ERROR:', e);
+    res.status(500).json({ error: 'No pudimos consultar disponibilidad. Probá de nuevo.' });
+  }
+});
+
+// Guarda la reserva SIN vincularla a ninguna habitación — recepción la
+// confirma y le asigna habitación real desde reservas.html.
+app.post('/api/publico/reservas-habitacion', async (req, res) => {
+  try {
+    const {
+      nombre_huesped, telefono, email, entrada, salida,
+      cantidad_personas, tipo_solicitado, precio_estimado, monto_senia, notas, cupon
+    } = req.body;
+
+    if (!nombre_huesped || !nombre_huesped.trim()) return res.status(400).json({ error: 'Falta el nombre' });
+    if (!telefono || !telefono.trim())             return res.status(400).json({ error: 'Falta el teléfono' });
+    if (!entrada)                                   return res.status(400).json({ error: 'Falta la fecha de llegada' });
+    if (!salida)                                     return res.status(400).json({ error: 'Falta la fecha de salida' });
+    if (salida <= entrada)                           return res.status(400).json({ error: 'La salida debe ser posterior a la llegada' });
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    if (entrada < hoy) return res.status(400).json({ error: 'La fecha no puede ser anterior a hoy' });
+
+    const noches = Math.max(1, Math.round((new Date(salida + 'T00:00:00') - new Date(entrada + 'T00:00:00')) / 86400000));
+    const personas = Math.max(1, Math.min(10, parseInt(cantidad_personas, 10) || 2));
+
+    // Link de pago de Mercado Pago — solo si el hotel ya cargó su token en config_hotel.
+    // Mientras no exista, la reserva se guarda igual, sin link (el sitio ofrece WhatsApp).
+    const tokenRow = await db.getOne(`SELECT valor FROM config_hotel WHERE clave='mp_access_token'`);
+    const mpToken = tokenRow ? tokenRow.valor : '';
+    let mpLink = '';
+    if (mpToken) {
+      // TODO: crear acá la preferencia real de pago con la API de Mercado Pago
+      // usando mpToken, cuando el dueño del hotel cargue su clave en config.html.
+    }
+
+    const r = await db.query(
+      `INSERT INTO reservas_web_pendientes
+        (nombre_huesped,telefono,email,entrada,salida,noches,cantidad_personas,tipo_solicitado,
+         precio_estimado,monto_senia,notas,cupon,mp_link,estado_pago,estado,origen)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pendiente','pendiente','Web')
+       RETURNING id`,
+      [
+        nombre_huesped.trim().slice(0, 120),
+        telefono.trim().slice(0, 40),
+        (email || '').trim().slice(0, 120),
+        entrada,
+        salida,
+        noches,
+        personas,
+        (tipo_solicitado || '').trim().slice(0, 60),
+        Number(precio_estimado) || 0,
+        Number(monto_senia) || 0,
+        (notas || '').trim().slice(0, 500),
+        (cupon || '').trim().slice(0, 40),
+        mpLink,
+      ]
+    );
+    await logAction(null, 'Sitio web', 'RESERVA_HABITACION_WEB', `${nombre_huesped} · ${entrada} a ${salida} · ${tipo_solicitado || 'sin categoría'}`);
+    res.json({ ok: true, id: r.rows[0].id, mp_link: mpLink });
+  } catch(e) {
+    console.error('RESERVA HABITACIÓN WEB ERROR:', e);
+    res.status(500).json({ error: 'No pudimos guardar la reserva. Probá de nuevo, o escribinos por WhatsApp.' });
+  }
+});
+
 // ── CAJA HOTEL ───────────────────────────────────────────────────────
 app.get('/api/caja/activa', auth, async (req, res) => {
   try {
