@@ -61,7 +61,7 @@ async function transaction(callback) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 // Inicializar tablas
 async function initDB() {
@@ -773,6 +773,38 @@ try {
     );
   `);
   console.log('✅ Tabla reservas_mesa lista');
+
+  // Reservas de HABITACIÓN hechas desde el sitio público — quedan acá,
+  // sin tocar la tabla "reservas" real, hasta que el personal:
+  //   1) confirme a mano en su cuenta de Mercado Pago que la seña llegó
+  //   2) asigne una habitación real (recién ahí se crea la fila en "reservas")
+  // tipo_solicitado es solo orientativo (qué categoría pidió el huésped) —
+  // no se usa para chequear disponibilidad ni para elegir la habitación,
+  // porque una habitación se prepara según lo que pida el huésped al llegar.
+  await query(`
+    CREATE TABLE IF NOT EXISTS reservas_web_pendientes (
+      id SERIAL PRIMARY KEY,
+      nombre_huesped TEXT NOT NULL,
+      telefono TEXT DEFAULT '',
+      email TEXT DEFAULT '',
+      entrada TEXT NOT NULL,
+      salida TEXT NOT NULL,
+      noches INTEGER NOT NULL DEFAULT 1,
+      cantidad_personas INTEGER DEFAULT 2,
+      tipo_solicitado TEXT DEFAULT '',
+      precio_estimado REAL DEFAULT 0,
+      monto_senia REAL DEFAULT 0,
+      notas TEXT DEFAULT '',
+      cupon TEXT DEFAULT '',
+      estado_pago TEXT DEFAULT 'pendiente',
+      estado TEXT DEFAULT 'pendiente',
+      reserva_id INTEGER,
+      mp_link TEXT DEFAULT '',
+      origen TEXT DEFAULT 'Web',
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('✅ Tabla reservas_web_pendientes lista');
 
   // Marcar el schema como al día para que el próximo arranque sea instantáneo
   await query(
