@@ -225,6 +225,17 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
   </div>
 </div>
 
+<!-- Modal asignar habitación — reservas web pendientes -->
+<div class="overlay hidden" id="modal-asignar-web">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-hd">
+      <h3 id="maw-titulo">🏨 Asignar habitación</h3>
+      <button class="modal-close" onclick="cerrarAsignarHabitacionWeb()">✕</button>
+    </div>
+    <div id="maw-body"></div>
+  </div>
+</div>
+
 <!-- Modal editar reserva -->
 <div class="overlay hidden" id="modal-editar">
   <div class="modal">
@@ -623,6 +634,112 @@ function cerrarCambioHab() {
   document.getElementById('modal-cambio-hab').classList.add('hidden');
 }
 
+// ── Asignar habitación a una reserva web pendiente ────────────────────
+async function abrirAsignarHabitacionWeb(pendId) {
+  const r = (G.pendientesWebData || []).find(x => x.id === pendId);
+  if (!r) return;
+
+  document.getElementById('maw-titulo').textContent = `🏨 Asignar habitación — ${r.nombre_huesped}`;
+
+  const disponibles = G.habitaciones.filter(h => ['libre','lista','libre_limpia'].includes(h.status));
+  const fmtDtCorto = dt => new Date(dt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+
+  document.getElementById('maw-body').innerHTML = `
+    <div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+      <div style="font-weight:700;color:#1d4ed8">👤 ${r.nombre_huesped} · ${r.cantidad_personas||1} huésped${(r.cantidad_personas||1)===1?'':'es'}</div>
+      <div style="color:#1d4ed8;font-size:12px;margin-top:2px">
+        ${fmtDtCorto(r.entrada)} → ${fmtDtCorto(r.salida)} · ${r.noches} noche${r.noches===1?'':'s'} · Categoría preferida: ${r.tipo_solicitado||'sin preferencia'}
+      </div>
+      ${r.notas ? `<div style="color:#1d4ed8;font-size:12px;margin-top:4px;font-style:italic">"${r.notas}"</div>` : ''}
+    </div>
+
+    <div style="background:#fef3c7;border:1.5px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+        <input type="checkbox" id="maw-pago-confirmado" style="margin-top:3px;width:16px;height:16px;flex-shrink:0">
+        <span style="font-size:13px;color:#92400e">
+          <strong>Confirmo que revisé mi cuenta de Mercado Pago</strong> y la seña de <strong>${fmt(r.monto_senia)}</strong> se acreditó de verdad.
+        </span>
+      </label>
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Elegí la habitación</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:8px" id="maw-grid">
+        ${disponibles.length === 0
+          ? '<div style="color:#94a3b8;font-size:13px;grid-column:1/-1;text-align:center;padding:16px">No hay habitaciones libres ahora mismo</div>'
+          : disponibles.map(h=>`
+          <button data-hid="${h.id}"
+            style="padding:12px 8px;border-radius:10px;border:2px solid #e2e8f0;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:700;text-align:center;transition:all .15s">
+            <div style="font-size:16px;font-weight:800">${h.numero}</div>
+            <div style="font-size:10px;color:#94a3b8">${h.ala} · ${h.tipo||''}</div>
+          </button>`).join('')}
+      </div>
+    </div>
+
+    <p id="maw-error" style="color:#dc2626;font-size:12.5px;margin:0 0 10px;min-height:16px"></p>
+
+    <button id="maw-confirm" disabled
+      style="width:100%;padding:14px;border-radius:12px;border:none;background:#6d28d9;opacity:.4;color:#fff;font-size:15px;font-weight:800;cursor:not-allowed">
+      ✓ Confirmar y crear reserva
+    </button>
+  `;
+
+  document.getElementById('modal-asignar-web').classList.remove('hidden');
+
+  let habId = null;
+  const confirmBtn = document.getElementById('maw-confirm');
+  const pagoCheck = document.getElementById('maw-pago-confirmado');
+
+  function actualizarBoton() {
+    const listo = !!habId && pagoCheck.checked;
+    confirmBtn.disabled = !listo;
+    confirmBtn.style.opacity = listo ? '1' : '.4';
+    confirmBtn.style.cursor = listo ? 'pointer' : 'not-allowed';
+  }
+  pagoCheck.addEventListener('change', actualizarBoton);
+
+  document.querySelectorAll('#maw-grid button[data-hid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#maw-grid button[data-hid]').forEach(b => {
+        b.style.borderColor = '#e2e8f0'; b.style.background = '#f8fafc';
+      });
+      btn.style.borderColor = '#6d28d9'; btn.style.background = '#faf5ff';
+      habId = btn.dataset.hid;
+      actualizarBoton();
+    });
+  });
+
+  confirmBtn.addEventListener('click', async () => {
+    const errorEl = document.getElementById('maw-error');
+    errorEl.textContent = '';
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Guardando…';
+
+    const data = await api('POST', `/reservas-habitacion-pendientes/${r.id}/asignar`, {
+      habitacion_id: habId,
+      pago_confirmado: true,
+    });
+
+    if (data?.ok) {
+      cerrarAsignarHabitacionWeb();
+      if (data.aviso) alert(data.aviso);
+      alert(`✅ Reserva creada — ${r.nombre_huesped} ya figura en Confirmadas.`);
+      G.pendientesWebData = (G.pendientesWebData||[]).filter(x => x.id !== r.id);
+      await cargarContadores();
+      pintarTabs();
+      cambiarTabLista('futura');
+    } else {
+      errorEl.textContent = data?.error || 'Error al asignar la habitación.';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '✓ Confirmar y crear reserva';
+    }
+  });
+}
+
+function cerrarAsignarHabitacionWeb() {
+  document.getElementById('modal-asignar-web').classList.add('hidden');
+}
+
 function cerrarModal() {
   document.getElementById('modal-info').classList.add('hidden');
 }
@@ -761,10 +878,11 @@ function irANuevaReserva() {
 
 // ── RENDER LISTA (cards) ────────────────────────────────
 const TABS_LISTA = [
-  { id:'futura',     label:'Confirmadas' },
-  { id:'activa',     label:'Activas' },
-  { id:'finalizada', label:'Completadas' },
-  { id:'cancelada',  label:'Canceladas' },
+  { id:'futura',        label:'Confirmadas' },
+  { id:'pendiente-web', label:'Pendientes' },
+  { id:'activa',        label:'Activas' },
+  { id:'finalizada',    label:'Completadas' },
+  { id:'cancelada',     label:'Canceladas' },
 ];
 
 let _listaSearchTimer = null;
@@ -812,12 +930,14 @@ async function renderLista() {
 
 async function cargarContadores() {
   G.listaContadores = await api('GET', '/reservas/contadores') || G.listaContadores;
+  const pendientesWeb = await api('GET', '/reservas-habitacion-pendientes') || [];
+  G.pendientesWebCount = pendientesWeb.length;
 }
 
 function pintarTabs() {
   document.getElementById('lista-tabs').innerHTML = TABS_LISTA.map(t => `
     <button class="lista-tab${G.listaEstado===t.id?' activo':''}" onclick="cambiarTabLista('${t.id}')">
-      ${t.label} <span class="cnt">${G.listaContadores[t.id]||0}</span>
+      ${t.label} <span class="cnt">${t.id==='pendiente-web' ? (G.pendientesWebCount||0) : (G.listaContadores[t.id]||0)}</span>
     </button>`).join('');
 }
 
@@ -830,6 +950,13 @@ function cambiarTabLista(estado) {
 async function cargarLista() {
   const cont = document.getElementById('res-cards');
   cont.innerHTML = '<div style="text-align:center;padding:32px;color:#94a3b8">Cargando...</div>';
+
+  if (G.listaEstado === 'pendiente-web') {
+    G.pendientesWebData = await api('GET', '/reservas-habitacion-pendientes') || [];
+    pintarCards();
+    return;
+  }
+
   const qs = new URLSearchParams({ estado: G.listaEstado });
   if (G.listaSearch) qs.set('search', G.listaSearch);
   G.listaData = await api('GET', `/reservas/lista?${qs.toString()}`) || [];
@@ -840,6 +967,19 @@ async function cargarLista() {
 
 function pintarCards() {
   const cont = document.getElementById('res-cards');
+
+  if (G.listaEstado === 'pendiente-web') {
+    const datos = G.pendientesWebData || [];
+    const countEl = document.getElementById('lista-count');
+    if (countEl) countEl.textContent = `${datos.length} reserva${datos.length===1?'':'s'}`;
+    if (!datos.length) {
+      cont.innerHTML = `<div class="res-cards-empty">No hay reservas web esperando asignación</div>`;
+      return;
+    }
+    cont.innerHTML = datos.map(cardReservaWebPendienteHTML).join('');
+    return;
+  }
+
   let datos = G.listaData;
   if (G.listaPlataforma) datos = datos.filter(r => (r.plataforma||'Directo') === G.listaPlataforma);
   if (G.listaPago) {
@@ -859,6 +999,56 @@ function pintarCards() {
   }
   const isAdminOrRecep = ['admin','recepcionista'].includes(ME?.rol);
   cont.innerHTML = datos.map(r => cardReservaHTML(r, isAdminOrRecep)).join('');
+}
+
+function cardReservaWebPendienteHTML(r) {
+  const creada = r.created_at ? fmtDateCorta(r.created_at) : '—';
+  return `<div class="res-card">
+    <div class="rc-top">
+      <div>
+        <div class="rc-nombre-row">
+          <span class="rc-nombre">${r.nombre_huesped}</span>
+          <span class="rc-badge" style="background:#fef3c7;color:#b45309">⏳ Sin asignar</span>
+        </div>
+        <div class="rc-sub">
+          <span>🌐 Desde la web</span>
+          <span>· Creada el ${creada}</span>
+        </div>
+      </div>
+      <div class="rc-actions">
+        <button class="rc-btn-text" style="background:#ede9fe;border-color:#ddd6fe;color:#6d28d9" onclick="abrirAsignarHabitacionWeb(${r.id})">🏨 Asignar Habitación</button>
+      </div>
+    </div>
+    <div class="rc-divider"></div>
+    <div class="rc-body">
+      <div>
+        <div class="rc-field-lbl">Categoría preferida</div>
+        <div class="rc-field-val">${r.tipo_solicitado || 'Sin preferencia'}</div>
+        <div class="rc-field-sub">${r.cantidad_personas||1} huésped${(r.cantidad_personas||1)===1?'':'es'}</div>
+      </div>
+      <div>
+        <div class="rc-field-lbl">Entrada / Salida</div>
+        <div class="rc-field-val" style="font-weight:700">${fmtDateCorta(r.entrada)}</div>
+        <div class="rc-field-sub">→ ${fmtDateCorta(r.salida)} · ${r.noches} noche${r.noches===1?'':'s'}</div>
+      </div>
+      <div>
+        <div class="rc-field-lbl">Precio estimado</div>
+        <div class="rc-total">${fmt(r.precio_estimado)}</div>
+        <div class="rc-field-sub">Seña: ${fmt(r.monto_senia)}</div>
+      </div>
+    </div>
+    <div class="rc-body2">
+      <div>
+        <div class="rc-field-lbl">Contacto</div>
+        <div class="rc-field-val">📞 ${r.telefono||'—'}</div>
+        <div class="rc-field-sub">${r.email||''}</div>
+      </div>
+      <div>
+        <div class="rc-field-lbl">Notas</div>
+        <div class="rc-field-val" style="font-weight:400;font-size:12.5px">${r.notas || '—'}${r.cupon?` · Cupón: ${r.cupon}`:''}</div>
+      </div>
+    </div>
+  </div>`;
 }
 
 function fmtDateCorta(iso) {
