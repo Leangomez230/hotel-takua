@@ -294,12 +294,13 @@ footer a{ color:var(--ocre); }
           <span class="resv-counter-value" id="rrGuestsValue">2</span>
           <button type="button" class="resv-counter-btn" id="rrGuestsPlus">+</button>
         </div>
-        <div class="resv-actions"><button type="button" class="resv-btn primary" id="rrToStep2" disabled>Ver habitaciones →</button></div>
+        <p class="coupon-msg error" id="rrDispoError"></p>
+        <div class="resv-actions"><button type="button" class="resv-btn primary" id="rrToStep2" disabled>Consultar disponibilidad →</button></div>
       </div>
 
       <div class="resv-step" data-step="2" hidden>
-        <h3>Elegí tu habitación</h3>
-        <p class="resv-sub" id="rrNightsLabel">Habitaciones disponibles para tus fechas.</p>
+        <h3>¡Hay lugar! Elegí tu categoría</h3>
+        <p class="resv-sub" id="rrNightsLabel">La preparamos según lo que elijas para tu llegada.</p>
         <div class="room-select-list" id="rrRoomList"></div>
         <div class="resv-actions">
           <button type="button" class="resv-btn ghost" data-rr-back="1">← Atrás</button>
@@ -322,7 +323,7 @@ footer a{ color:var(--ocre); }
 
       <div class="resv-step" data-step="4" hidden>
         <h3>Último paso</h3>
-        <p class="resv-sub">Revisá el resumen y enviamos tu solicitud por WhatsApp — ahí coordinamos la seña y confirmamos disponibilidad.</p>
+        <p class="resv-sub">Revisá el resumen y confirmá — la seña se coordina con el link de pago o por WhatsApp.</p>
         <div class="resv-field">
           <label for="rrCoupon">Cupón de descuento (opcional)</label>
           <div class="coupon-row"><input type="text" id="rrCoupon" placeholder="Ej: BIENVENIDA10"><button type="button" class="coupon-apply" id="rrCouponApply">Aplicar</button></div>
@@ -330,17 +331,18 @@ footer a{ color:var(--ocre); }
         </div>
         <div class="deposit-box" id="rrDepositBox"></div>
         <p class="deposit-note" id="rrDepositNote"></p>
+        <p class="coupon-msg error" id="rrSubmitError"></p>
         <div class="resv-actions">
           <button type="button" class="resv-btn ghost" data-rr-back="3">← Atrás</button>
-          <button type="button" class="resv-btn primary" id="rrPay">Enviar solicitud por WhatsApp</button>
+          <button type="button" class="resv-btn primary" id="rrPay">Confirmar reserva</button>
         </div>
       </div>
 
       <div class="resv-step" data-step="5" hidden>
         <div class="resv-success">
           <div class="resv-success-icon">✓</div>
-          <h3>¡Listo, te escribimos!</h3>
-          <p>Abrimos WhatsApp con tu solicitud — confirmamos disponibilidad y coordinamos la seña por ahí. También te contactamos a <strong id="rrConfirmEmail"></strong> si hace falta.</p>
+          <h3 id="rrSuccessTitle">¡Reserva registrada!</h3>
+          <p id="rrSuccessText">Te contactamos a <strong id="rrConfirmEmail"></strong> para coordinar la seña y confirmar la habitación.</p>
         </div>
         <div class="resv-summary" id="rrSummaryFinal"></div>
         <div class="resv-actions">
@@ -496,6 +498,7 @@ attachDatePicker(document.getElementById('rrCheckout'), { minFrom: document.getE
   ciInput.min=todayISO; ciInput.value=todayISO; coInput.min=todayISO;
   const guestsValue=document.getElementById('rrGuestsValue');
   const toStep2Btn=document.getElementById('rrToStep2');
+  const dispoErrorEl=document.getElementById('rrDispoError');
   function validateStep1(){
     state.checkin=ciInput.value; state.checkout=coInput.value;
     toStep2Btn.disabled = !(state.checkin && state.checkout && nights()>0);
@@ -505,11 +508,23 @@ attachDatePicker(document.getElementById('rrCheckout'), { minFrom: document.getE
   document.getElementById('rrGuestsMinus').addEventListener('click', () => { state.guests=Math.max(1,state.guests-1); guestsValue.textContent=state.guests; });
   document.getElementById('rrGuestsPlus').addEventListener('click', () => { state.guests=Math.min(12,state.guests+1); guestsValue.textContent=state.guests; });
 
+  async function consultarDisponibilidad(entrada, salida){
+    try {
+      const resp = await fetch(`/api/publico/disponibilidad-habitacion?entrada=${entrada}&salida=${salida}`);
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'No pudimos consultar disponibilidad.');
+      return { ok:true, disponible: !!data.disponible };
+    } catch(err) {
+      console.error('Error consultando disponibilidad:', err);
+      return { ok:false, error: err.message || 'No pudimos consultar disponibilidad. Probá de nuevo.' };
+    }
+  }
+
   const roomListEl=document.getElementById('rrRoomList');
   const toStep3Btn=document.getElementById('rrToStep3');
   function renderRoomList(){
     const n=nights();
-    document.getElementById('rrNightsLabel').textContent = n>0 ? `${n} noche${n===1?'':'s'} · ${formatDate(state.checkin)} → ${formatDate(state.checkout)}` : 'Elegí fechas para ver precios.';
+    document.getElementById('rrNightsLabel').textContent = n>0 ? `${n} noche${n===1?'':'s'} · ${formatDate(state.checkin)} → ${formatDate(state.checkout)}` : 'La preparamos según lo que elijas para tu llegada.';
     roomListEl.innerHTML='';
     ROOMS.forEach(room => {
       const card=document.createElement('button');
@@ -524,7 +539,19 @@ attachDatePicker(document.getElementById('rrCheckout'), { minFrom: document.getE
       roomListEl.appendChild(card);
     });
   }
-  toStep2Btn.addEventListener('click', () => { renderRoomList(); goTo(2); });
+  toStep2Btn.addEventListener('click', async () => {
+    dispoErrorEl.textContent = '';
+    const originalLabel = toStep2Btn.textContent;
+    toStep2Btn.disabled = true;
+    toStep2Btn.textContent = 'Consultando…';
+    const r = await consultarDisponibilidad(state.checkin, state.checkout);
+    toStep2Btn.disabled = false;
+    toStep2Btn.textContent = originalLabel;
+    if (!r.ok){ dispoErrorEl.textContent = r.error; return; }
+    if (!r.disponible){ dispoErrorEl.textContent = 'No hay disponibilidad para esas fechas. Probá con otras.'; return; }
+    renderRoomList();
+    goTo(2);
+  });
   document.querySelectorAll('[data-rr-back]').forEach(btn => btn.addEventListener('click', () => goTo(Number(btn.dataset.rrBack))));
   toStep3Btn.addEventListener('click', () => goTo(3));
 
@@ -534,7 +561,14 @@ attachDatePicker(document.getElementById('rrCheckout'), { minFrom: document.getE
     toStep4Btn.disabled = !(rrName.value.trim().length>1 && /\S+@\S+\.\S+/.test(rrEmail.value) && rrPhone.value.trim().length>5);
   }
   [rrName,rrEmail,rrPhone].forEach(inp => inp.addEventListener('input', validateStep3));
-  toStep4Btn.addEventListener('click', () => { renderDeposit(); goTo(4); });
+  toStep4Btn.addEventListener('click', () => {
+    state.name = rrName.value.trim();
+    state.email = rrEmail.value.trim();
+    state.phone = rrPhone.value.trim();
+    state.notes = document.getElementById('rrNotes').value.trim();
+    renderDeposit();
+    goTo(4);
+  });
 
   function renderDeposit(){
     const n=nights();
@@ -545,11 +579,11 @@ attachDatePicker(document.getElementById('rrCheckout'), { minFrom: document.getE
     const depositFinal = deposit - discount;
     document.getElementById('rrDepositBox').innerHTML = `
       <div class="deposit-row"><span>${state.room?state.room.name:''}</span><span>${n} noche${n===1?'':'s'}</span></div>
-      <div class="deposit-row"><span>Subtotal estadía</span><span>${money(subtotal)}</span></div>
+      <div class="deposit-row"><span>Subtotal estadía (estimado)</span><span>${money(subtotal)}</span></div>
       <div class="deposit-row"><span>Seña estimada (30%)</span><span>${money(deposit)}</span></div>
       ${rate?`<div class="deposit-row discount"><span>Cupón ${state.couponCode} (-${Math.round(rate*100)}%)</span><span>-${money(discount)}</span></div>`:''}
       <div class="deposit-row total"><span>Total estimado a coordinar</span><span>${money(depositFinal)}</span></div>`;
-    document.getElementById('rrDepositNote').textContent = `Valores de referencia. Confirmamos el monto exacto y la forma de pago de la seña por WhatsApp.`;
+    document.getElementById('rrDepositNote').textContent = `Valores de referencia. Confirmamos el monto exacto y la forma de pago de la seña por WhatsApp o por el link de pago, según corresponda.`;
     state.subtotal=subtotal; state.deposit=depositFinal;
   }
   document.getElementById('rrCouponApply').addEventListener('click', () => {
@@ -561,23 +595,67 @@ attachDatePicker(document.getElementById('rrCheckout'), { minFrom: document.getE
     renderDeposit();
   });
 
-  document.getElementById('rrPay').addEventListener('click', () => {
-    // TODO Leandro: cuando conectemos el backend, acá va el POST real a /api/publico/reservas-habitacion
-    // (y más adelante la integración de Mercado Pago para la seña). Hoy solo deriva a WhatsApp.
-    console.log('[demo] solicitud de reserva de habitación:', state);
-    document.getElementById('rrConfirmEmail').textContent = rrEmail.value.trim();
-    document.getElementById('rrSummaryFinal').innerHTML = `
-      <div class="resv-summary-row"><span>Habitación</span><span>${state.room?state.room.name:''}</span></div>
-      <div class="resv-summary-row"><span>Llegada</span><span>${formatDate(state.checkin)}</span></div>
-      <div class="resv-summary-row"><span>Salida</span><span>${formatDate(state.checkout)}</span></div>
-      <div class="resv-summary-row"><span>Huéspedes</span><span>${state.guests}</span></div>
-      ${state.couponRate?`<div class="resv-summary-row"><span>Cupón</span><span>${state.couponCode}</span></div>`:''}
-      <div class="resv-summary-row"><span>A nombre de</span><span>${rrName.value.trim()}</span></div>`;
-    const msg = `Hola, quiero reservar: ${state.room?state.room.name:''}, ${nights()} noche(s) del ${formatDate(state.checkin)} al ${formatDate(state.checkout)}, ${state.guests} huéspedes. A nombre de ${rrName.value.trim()}.`;
-    const waUrl = `https://wa.me/5492664000000?text=${encodeURIComponent(msg)}`;
-    document.getElementById('rrWaLink').onclick = () => window.open(waUrl, '_blank');
-    window.open(waUrl, '_blank');
-    goTo(5);
+  /* confirmar reserva — POST real, sin asignar habitación todavía */
+  const submitBtn = document.getElementById('rrPay');
+  submitBtn.addEventListener('click', async () => {
+    const errorEl = document.getElementById('rrSubmitError');
+    errorEl.textContent = '';
+    const originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Enviando…';
+
+    try {
+      const resp = await fetch('/api/publico/reservas-habitacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre_huesped: rrName.value.trim(),
+          telefono: rrPhone.value.trim(),
+          email: rrEmail.value.trim(),
+          entrada: state.checkin,
+          salida: state.checkout,
+          cantidad_personas: state.guests,
+          tipo_solicitado: state.room ? state.room.name : '',
+          precio_estimado: state.subtotal || 0,
+          monto_senia: state.deposit || 0,
+          notas: state.notes,
+          cupon: state.couponCode || '',
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar la reserva.');
+
+      const nombre = rrName.value.trim();
+      document.getElementById('rrConfirmEmail').textContent = nombre;
+      document.getElementById('rrSummaryFinal').innerHTML = `
+        <div class="resv-summary-row"><span>Categoría preferida</span><span>${state.room?state.room.name:''}</span></div>
+        <div class="resv-summary-row"><span>Llegada</span><span>${formatDate(state.checkin)}</span></div>
+        <div class="resv-summary-row"><span>Salida</span><span>${formatDate(state.checkout)}</span></div>
+        <div class="resv-summary-row"><span>Huéspedes</span><span>${state.guests}</span></div>
+        ${state.couponRate?`<div class="resv-summary-row"><span>Cupón</span><span>${state.couponCode}</span></div>`:''}
+        <div class="resv-summary-row"><span>Seña estimada</span><span>${money(state.deposit||0)}</span></div>
+        <div class="resv-summary-row"><span>A nombre de</span><span>${nombre}</span></div>`;
+
+      const waMsg = `Hola, quiero reservar: ${state.room?state.room.name:''}, ${nights()} noche(s) del ${formatDate(state.checkin)} al ${formatDate(state.checkout)}, ${state.guests} huéspedes. A nombre de ${nombre}.`;
+      const waUrl = `https://wa.me/5492664000000?text=${encodeURIComponent(waMsg)}`;
+      document.getElementById('rrWaLink').onclick = () => window.open(waUrl, '_blank');
+
+      if (data.mp_link){
+        document.getElementById('rrSuccessTitle').textContent = '¡Ya casi! Falta la seña';
+        document.getElementById('rrSuccessText').innerHTML = `Te llevamos a Mercado Pago para pagar la seña. Cualquier duda, escribinos por WhatsApp — nombre <strong>${nombre}</strong>.`;
+        window.open(data.mp_link, '_blank');
+      } else {
+        document.getElementById('rrSuccessTitle').textContent = '¡Reserva registrada!';
+        document.getElementById('rrSuccessText').innerHTML = `Te contactamos a <strong>${rrEmail.value.trim() || nombre}</strong> para coordinar la seña por WhatsApp y confirmar la habitación.`;
+      }
+      goTo(5);
+    } catch(err) {
+      console.error('Error reservando habitación:', err);
+      errorEl.textContent = 'No pudimos guardar la reserva (' + err.message + '). Probá de nuevo, o escribinos directo por WhatsApp.';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
   });
   document.getElementById('rrDone').addEventListener('click', () => { location.href = 'index.html'; });
 })();
