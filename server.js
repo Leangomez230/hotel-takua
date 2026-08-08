@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const db = require('./database');
 const webpush = require('web-push');
 
@@ -63,6 +64,46 @@ app.use(express.json());
 // Mismo server, misma base de datos — así una reserva hecha en el sitio
 // público aparece al instante en reservas.html / comandas.html.
 const PUBLIC_SITE_HOSTS = ['hoteltakua.com.ar', 'www.hoteltakua.com.ar'];
+
+// ── PRECIOS EN VIVO — reemplaza {{PRECIO_X}} en el HTML por la tarifa
+// real de tipos_habitacion antes de mandarlo al navegador. El archivo
+// en sí (con los placeholders) sigue viviendo en GitHub, versionado —
+// esto no lo reescribe en disco, solo lo arma al vuelo en cada visita.
+async function renderPaginaConPrecios(filePath, res) {
+  try {
+    let html = fs.readFileSync(filePath, 'utf8');
+    const tipos = await db.getAll('SELECT nombre, tarifa_base FROM tipos_habitacion ORDER BY orden ASC');
+    const fmt = (n) => Math.round(n).toLocaleString('es-AR');
+
+    tipos.forEach(t => {
+      const clave = (t.nombre || '').trim().toUpperCase().replace(/\s+/g, '_');
+      html = html.split(`{{PRECIO_${clave}}}`).join(fmt(t.tarifa_base));
+      html = html.split(`{{PRECIO_${clave}_RAW}}`).join(String(Math.round(t.tarifa_base)));
+    });
+    if (tipos.length) {
+      const valores = tipos.map(t => Number(t.tarifa_base) || 0);
+      const min = Math.min(...valores), max = Math.max(...valores);
+      html = html.split('{{PRICE_RANGE}}').join(`$${Math.round(min)} - $${Math.round(max)}`);
+      html = html.split('{{PRECIO_MIN}}').join(fmt(min));
+    }
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch(e) {
+    console.error('Error armando página con precios en vivo:', e.message);
+    res.sendFile(filePath); // si algo falla, mejor mostrar el archivo tal cual que romper la página
+  }
+}
+app.get(['/', '/index.html'], (req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (!PUBLIC_SITE_HOSTS.includes(host)) return next();
+  renderPaginaConPrecios(path.join(__dirname, 'public-site', 'index.html'), res);
+});
+app.get('/reservar-habitacion.html', (req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (!PUBLIC_SITE_HOSTS.includes(host)) return next();
+  renderPaginaConPrecios(path.join(__dirname, 'public-site', 'reservar-habitacion.html'), res);
+});
+
 app.use((req, res, next) => {
   const host = (req.hostname || '').toLowerCase();
   if (PUBLIC_SITE_HOSTS.includes(host)) {
@@ -3658,7 +3699,7 @@ app.post('/api/push/desuscribir', auth, async (req, res) => {
 app.get('*', (req, res) => {
   const host = (req.hostname || '').toLowerCase();
   if (PUBLIC_SITE_HOSTS.includes(host)) {
-    return res.sendFile(path.join(__dirname, 'public-site', 'index.html'));
+    return renderPaginaConPrecios(path.join(__dirname, 'public-site', 'index.html'), res);
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
