@@ -511,6 +511,24 @@ async function renderConfig() {
       </div>
 
       <div class="section-card">
+        <div class="sc-head">
+          <h2>💳 Mercado Pago</h2>
+          <div style="font-size:12px;color:#94a3b8">Para el link de seña en las reservas de habitación desde la web</div>
+        </div>
+        <div id="cfg-mp-estado" style="font-size:13px;color:#64748b;margin-bottom:12px">Cargando…</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="password" id="cfg-mp-token" placeholder="Pegá acá el Access Token de Mercado Pago"
+            style="flex:1;min-width:260px;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit">
+          <button id="btn-guardar-mp" class="confirm-btn" style="max-width:160px">💾 Guardar</button>
+          <button id="btn-borrar-mp" style="background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer">Quitar token</button>
+        </div>
+        <div style="font-size:11.5px;color:#94a3b8;margin-top:10px">
+          Lo encontrás en tu cuenta de Mercado Pago → Tu negocio → Configuración → Credenciales → Access Token de producción.
+          Mientras no esté cargado, el sitio sigue funcionando: la reserva se guarda igual y se ofrece coordinar por WhatsApp.
+        </div>
+      </div>
+
+      <div class="section-card">
         <div class="sc-head"><h2>🏨 Hotel Takuá</h2></div>
         <div class="info-grid">
           <div><span>Habitaciones:</span> <strong>28</strong></div>
@@ -552,6 +570,41 @@ async function renderConfig() {
 
   // Listeners
   document.getElementById('btn-nuser').addEventListener('click', () => abrirModalUsuario(null));
+
+  // Mercado Pago — cargar estado actual y conectar guardar/quitar
+  (async () => {
+    const estadoEl = document.getElementById('cfg-mp-estado');
+    const mp = await apiFetch('GET', '/config/mercadopago');
+    if (mp?.configurado) {
+      estadoEl.innerHTML = `✅ <strong style="color:#16a34a">Token cargado</strong> (termina en …${mp.ultimos4})`;
+    } else {
+      estadoEl.innerHTML = `⚠️ <strong style="color:#c2410c">Sin token cargado</strong> — las reservas web funcionan igual, solo que sin link de pago automático`;
+    }
+  })();
+
+  document.getElementById('btn-guardar-mp').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const input = document.getElementById('cfg-mp-token');
+    const mp_access_token = input.value.trim();
+    if (!mp_access_token) { toast('Pegá el token antes de guardar', false); return; }
+    btn.disabled = true;
+    const r = await apiFetch('POST', '/config/mercadopago', { mp_access_token });
+    btn.disabled = false;
+    if (r?.ok) {
+      toast('Token de Mercado Pago guardado ✓');
+      input.value = '';
+      renderConfig();
+    } else {
+      toast(r?.error || 'Error al guardar', false);
+    }
+  });
+
+  document.getElementById('btn-borrar-mp').addEventListener('click', async () => {
+    if (!confirm('¿Quitar el token de Mercado Pago? Las reservas web van a dejar de generar link de pago hasta que cargues uno nuevo.')) return;
+    const r = await apiFetch('DELETE', '/config/mercadopago');
+    if (r?.ok) { toast('Token eliminado'); renderConfig(); }
+    else toast(r?.error || 'Error al eliminar', false);
+  });
 
   document.getElementById('btn-guardar-tarifas').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
