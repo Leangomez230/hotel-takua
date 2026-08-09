@@ -103,11 +103,6 @@ textarea{resize:vertical;line-height:1.5}
 .icon-btn.del:hover{background:#ffe4e6}
 .campo-row textarea{font-size:13.5px}
 .campo-meta{font-size:10.5px;color:var(--faint);margin-top:6px}
-.suggest-box{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px;padding:16px;margin-bottom:16px}
-.suggest-box h4{font-size:13px;font-weight:800;color:#92400e;margin-bottom:6px;display:flex;align-items:center;gap:6px}
-.suggest-box p{font-size:12px;color:#78350f;line-height:1.6;margin-bottom:12px}
-.suggest-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.suggest-tag{font-family:'SFMono-Regular',Consolas,monospace;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;padding:3px 9px;border-radius:6px;border:1px solid #fcd34d}
 
 /* ══════════════ IMÁGENES ══════════════ */
 .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
@@ -282,13 +277,77 @@ const PAGINAS_SEO = [
 ];
 const DOMINIO_SITIO = 'hoteltakua.com.ar';
 
-// Campos sugeridos para arrancar (prueba de concepto: hero de Inicio) —
-// son solo un punto de partida editable, no una lista cerrada.
-const CAMPOS_SUGERIDOS = {
+// Contenido REAL tomado del index.html actual (public-site/) — sirve como
+// punto de partida editable. IMPORTANTE: esto todavía no está conectado al
+// sitio público (a diferencia de los precios, que sí usan {{PRECIO_X}}) —
+// falta el paso de plantillas del traspaso. Hasta entonces, lo que se
+// guarda acá queda en la base como borrador, sin efecto en hoteltakua.com.ar.
+const SEED_CONTENIDO = {
   inicio: [
-    { campo:'hero_titulo',    ejemplo:'Un refugio de piedra y silencio en La Punta' },
-    { campo:'hero_subtitulo', ejemplo:'Hotel boutique frente a las sierras puntanas' },
-    { campo:'hero_cta_texto', ejemplo:'Reservar ahora' },
+    { campo:'hero_titulo',    valor:'TK Serrano.' },
+    { campo:'hero_texto',     valor:'Hotel Takuá abre sus puertas en La Punta con una idea simple: Que nuestros huéspedes vivan la experiencia del descanso, la gastronomía y el confort.' },
+    { campo:'hero_cta_texto', valor:'Ver disponibilidad' },
+  ],
+  habitaciones: [
+    { campo:'intro_kicker', valor:'Habitaciones' },
+    { campo:'intro_titulo', valor:'Cuatro categorías, mismo confort.' },
+  ],
+  restaurante: [
+    { campo:'kicker',      valor:'Restaurant' },
+    { campo:'titulo_script', valor:'Sabor Serrano' },
+    { campo:'titulo',      valor:'"es venir a descubrir el sabor de San Luis."' },
+    { campo:'texto',       valor:'Cocina de estación con proveedores de la zona — Nuestro menú pone en valor los productos y sabores de la región.' },
+    { campo:'texto_secundario', valor:'El salón abre a huéspedes y a todo público.' },
+    { campo:'cta_texto',   valor:'Reservar mesa' },
+  ],
+  servicios: [
+    { campo:'titulo',    valor:'Servicios' },
+    { campo:'subtitulo', valor:'Un hotel con aires de resort, pensado para que tu estadía sea única.' },
+    { campo:'servicio_spa_nombre',       valor:'Spa' },
+    { campo:'servicio_spa_texto',        valor:'Circuito de relax y sauna.' },
+    { campo:'servicio_gimnasio_nombre',  valor:'Gimnasio' },
+    { campo:'servicio_gimnasio_texto',   valor:'Equipado, abierto todo el día para huéspedes.' },
+    { campo:'servicio_piscina_nombre',   valor:'Piscina' },
+    { campo:'servicio_piscina_texto',    valor:'Al aire libre, con reposeras y vista a la sierra.' },
+    { campo:'servicio_quincho_nombre',   valor:'Quincho' },
+    { campo:'servicio_quincho_texto',    valor:'Parrilla y mesas largas, ideal para grupos.' },
+    { campo:'servicio_cava_nombre',      valor:'Cava' },
+    { campo:'servicio_cava_texto',       valor:'Selección de vinos de la región.' },
+  ],
+  ubicacion: [
+    { campo:'titulo',      valor:'Distancias' },
+    { campo:'subtitulo',   valor:'Un punto estratégico para recorrer San Luis.' },
+    { campo:'distancias',  valor:'5 min al centro de La Punta\n25 min a Potrero de los Funes\n25 min al Autódromo Rosendo Hernández\n30 min a Villa de La Quebrada' },
+  ],
+};
+
+// Imágenes REALES ya publicadas en public-site/images/ (mismo criterio que
+// el contenido: son el punto de partida, todavía no se piden en vivo desde
+// el sitio público — eso es parte del paso de plantillas pendiente).
+const SEED_IMAGENES = {
+  inicio: [
+    { clave:'hero_poster',  url:`https://${DOMINIO_SITIO}/images/_DSC0028-HDR.jpg`, alt_text:'Hotel Takuá — portada del video del hero' },
+    { clave:'galeria_1',    url:`https://${DOMINIO_SITIO}/images/hero-entrada.jpg`, alt_text:'Entrada de Hotel Takuá' },
+    { clave:'galeria_2',    url:`https://${DOMINIO_SITIO}/images/rooms-bg-habitacion.jpg`, alt_text:'Habitación de Hotel Takuá' },
+    { clave:'galeria_3',    url:`https://${DOMINIO_SITIO}/images/room-clasica-detalle.jpg`, alt_text:'Detalle de cama y toallas' },
+    { clave:'galeria_4',    url:`https://${DOMINIO_SITIO}/images/dine-bg-restaurant.jpg`, alt_text:'Salón del restaurante de Hotel Takuá' },
+    { clave:'galeria_5',    url:`https://${DOMINIO_SITIO}/images/location-bg-vista-sierra.jpg`, alt_text:'Vista a las sierras de San Luis' },
+  ],
+  habitaciones: [
+    { clave:'escena_fondo',    url:`https://${DOMINIO_SITIO}/images/rooms-bg-habitacion.jpg`, alt_text:'Fondo de la escena de habitaciones' },
+    { clave:'foto_queen',       url:`https://${DOMINIO_SITIO}/images/DSC09871.JPG`, alt_text:'Habitación matrimonial Takuá' },
+    { clave:'foto_twin',        url:`https://${DOMINIO_SITIO}/images/room-doble.JPG`, alt_text:'Vista habitación con 2 camas individuales' },
+    { clave:'foto_matrimonial', url:`https://${DOMINIO_SITIO}/images/DSC09913-HDR.JPG`, alt_text:'Habitación doble' },
+    { clave:'foto_triple',      url:`https://${DOMINIO_SITIO}/images/DSC09800.JPG`, alt_text:'Vista habitación con 3 camas individuales' },
+  ],
+  restaurante: [
+    { clave:'escena_fondo', url:`https://${DOMINIO_SITIO}/images/dine-bg-restaurant.jpg`, alt_text:'Salón del restaurante de Hotel Takuá' },
+  ],
+  servicios: [
+    { clave:'escena_fondo', url:`https://${DOMINIO_SITIO}/images/services-bg-sauna.jpg`, alt_text:'Fondo de la escena de servicios' },
+  ],
+  ubicacion: [
+    { clave:'escena_fondo', url:`https://${DOMINIO_SITIO}/images/location-bg-vista-sierra.jpg`, alt_text:'Vista a las sierras de San Luis' },
   ],
 };
 
@@ -432,32 +491,29 @@ async function renderPaneContenido() {
   const campos = await apiFetch('GET', '/sitio-web/contenido/' + paginaActual);
   if (campos && campos.__error) { pane.innerHTML = `<div class="empty-state">Error al cargar: ${esc(campos.__error)}</div>`; return; }
 
-  const sugeridos = CAMPOS_SUGERIDOS[paginaActual] || [];
-  const sugeridosFaltantes = sugeridos.filter(s => !campos.some(c => c.campo === s.campo));
+  // Combina lo guardado en la base con el contenido real del sitio (seed) —
+  // así el panel siempre muestra lo mismo que ve el público, esté guardado o no.
+  const seed = SEED_CONTENIDO[paginaActual] || [];
+  const porCampo = {};
+  seed.forEach(s => { porCampo[s.campo] = { campo: s.campo, valor: s.valor, guardado: false }; });
+  campos.forEach(c => { porCampo[c.campo] = { campo: c.campo, valor: c.valor, guardado: true, updated_at: c.updated_at }; });
+  const filas = Object.values(porCampo);
 
   pane.innerHTML = `
     <div class="section-card">
       <div class="sc-head">
         <div>
           <h2>📝 Contenido — ${pagina.icon} ${pagina.label}</h2>
-          <p class="sc-sub">Estos textos se combinan con la plantilla del sitio al vuelo, en cada visita — no hace falta re-deployar.</p>
+          <p class="sc-sub">Es un borrador editable: todavía no está conectado al sitio público (a diferencia de las tarifas). Guardar acá no cambia lo que ve el público hasta terminar de conectar las plantillas.</p>
         </div>
         <button class="btn-primary" onclick="abrirModalCampo()">+ Agregar campo</button>
       </div>
 
-      ${sugeridosFaltantes.length ? `
-        <div class="suggest-box">
-          <h4>💡 Campos sugeridos para arrancar</h4>
-          <p>Todavía no cargaste contenido para "${pagina.label}". Como prueba de concepto podés arrancar por estos campos del hero — después se pueden sumar los que hagan falta.</p>
-          <div class="suggest-tags">${sugeridosFaltantes.map(s => `<span class="suggest-tag">${s.campo}</span>`).join('')}</div>
-          <button class="btn-secondary" onclick="cargarCamposSugeridos()">Cargar campos sugeridos</button>
-        </div>` : ''}
-
-      ${campos.length ? campos.map(c => renderCampoRow(c)).join('') : (sugeridosFaltantes.length ? '' : `
+      ${filas.length ? filas.map(c => renderCampoRow(c)).join('') : `
         <div class="empty-state">
           <div class="es-icon">📝</div>
-          Todavía no hay contenido cargado para esta página.<br>Usá "+ Agregar campo" para empezar.
-        </div>`)}
+          No hay contenido de referencia cargado para esta sección todavía.<br>Usá "+ Agregar campo" para empezar.
+        </div>`}
     </div>
   `;
 }
@@ -470,21 +526,14 @@ function renderCampoRow(c) {
         <span class="campo-key">${esc(c.campo)}</span>
         <div class="campo-actions">
           <button class="icon-btn save" onclick="guardarCampo('${escAttr(c.campo)}','${idSafe}')">💾 Guardar</button>
-          <button class="icon-btn del" onclick="eliminarCampo('${escAttr(c.campo)}')">🗑️</button>
+          ${c.guardado ? `<button class="icon-btn del" onclick="eliminarCampo('${escAttr(c.campo)}')">🗑️</button>` : ''}
         </div>
       </div>
       <textarea id="${idSafe}" rows="2">${esc(c.valor)}</textarea>
-      ${c.updated_at ? `<div class="campo-meta">Actualizado: ${new Date(c.updated_at).toLocaleString('es-AR')}</div>` : ''}
+      ${c.guardado
+        ? `<div class="campo-meta">Guardado en la base ${c.updated_at ? '· ' + new Date(c.updated_at).toLocaleString('es-AR') : ''}</div>`
+        : `<div class="campo-meta">📎 Este es el texto que hoy se ve en el sitio — todavía no se guardó acá. Tocá "Guardar" para empezar a versionarlo.</div>`}
     </div>`;
-}
-
-async function cargarCamposSugeridos() {
-  const sugeridos = CAMPOS_SUGERIDOS[paginaActual] || [];
-  for (const s of sugeridos) {
-    await apiFetch('PUT', `/sitio-web/contenido/${paginaActual}/${encodeURIComponent(s.campo)}`, { valor: s.ejemplo });
-  }
-  toast('Campos sugeridos cargados ✓');
-  renderPaneContenido();
 }
 
 async function guardarCampo(campo, idSafe) {
@@ -492,10 +541,11 @@ async function guardarCampo(campo, idSafe) {
   const r = await apiFetch('PUT', `/sitio-web/contenido/${paginaActual}/${encodeURIComponent(campo)}`, { valor });
   if (r && r.__error) { toast(r.__error, false); return; }
   toast('Campo guardado ✓');
+  renderPaneContenido();
 }
 
 async function eliminarCampo(campo) {
-  if (!confirm(`¿Eliminar el campo "${campo}"? Esto puede dejar un {{marcador}} sin reemplazar en la página pública si todavía se usa.`)) return;
+  if (!confirm(`¿Eliminar el campo "${campo}"? Se pierde lo guardado — al recargar va a volver a mostrar el texto de referencia del sitio, si existe.`)) return;
   const r = await apiFetch('DELETE', `/sitio-web/contenido/${paginaActual}/${encodeURIComponent(campo)}`);
   if (r && r.__error) { toast(r.__error, false); return; }
   toast('Campo eliminado');
@@ -508,7 +558,7 @@ function abrirModalCampo() {
     <div class="field">
       <label>Nombre del campo</label>
       <input type="text" id="nc-campo" placeholder="ej: hero_titulo" autocomplete="off">
-      <p class="field-hint">Se recomienda minúsculas y guiones bajos — tiene que coincidir con el marcador <code>{{campo}}</code> usado en la plantilla del sitio.</p>
+      <p class="field-hint">Se recomienda minúsculas y guiones bajos.</p>
     </div>
     <div class="field">
       <label>Valor</label>
@@ -538,16 +588,24 @@ async function renderPaneImagenes() {
   const imgs = await apiFetch('GET', '/sitio-web/imagenes/' + paginaActual);
   if (imgs && imgs.__error) { pane.innerHTML = `<div class="empty-state">Error al cargar: ${esc(imgs.__error)}</div>`; return; }
 
+  // Combina lo guardado en la base con las imágenes que ya están publicadas
+  // hoy en public-site/images/ — mismo criterio que la pestaña Contenido.
+  const seed = SEED_IMAGENES[paginaActual] || [];
+  const porClave = {};
+  seed.forEach(s => { porClave[s.clave] = { clave: s.clave, url: s.url, alt_text: s.alt_text, guardado: false }; });
+  imgs.forEach(i => { porClave[i.clave] = { clave: i.clave, url: i.url, alt_text: i.alt_text, guardado: true }; });
+  const tarjetas = Object.values(porClave);
+
   pane.innerHTML = `
     <div class="section-card">
       <div class="sc-head">
         <div>
           <h2>🖼️ Imágenes — ${pagina.icon} ${pagina.label}</h2>
-          <p class="sc-sub">El sitio público las pide en vivo al cargar la página — reemplazar una acá no requiere deploy.</p>
+          <p class="sc-sub">Es un borrador editable: son las imágenes ya publicadas en public-site/images/, como punto de partida. Reemplazarlas acá todavía no cambia el sitio público hasta conectar este módulo.</p>
         </div>
       </div>
       <div class="img-grid">
-        ${imgs.map(i => renderImgCard(i)).join('')}
+        ${tarjetas.map(i => renderImgCard(i)).join('')}
         <button class="add-img-card" onclick="abrirModalImagen()"><span class="plus">+</span><span>Agregar imagen</span></button>
       </div>
     </div>
@@ -561,9 +619,12 @@ function renderImgCard(i) {
       <div class="body">
         <span class="clave">${esc(i.clave)}</span>
         <div class="alt">${i.alt_text ? esc(i.alt_text) : '<span style="color:var(--faint)">Sin texto alternativo</span>'}</div>
+        ${i.guardado
+          ? `<div class="campo-meta" style="margin:6px 0 10px">Guardada en la base</div>`
+          : `<div class="campo-meta" style="margin:6px 0 10px">📎 Ya está publicada en el sitio — todavía no se guardó acá.</div>`}
         <div class="row-actions">
           <button class="icon-btn save" onclick="abrirModalImagen('${escAttr(i.clave)}','${escAttr(i.url)}','${escAttr(i.alt_text)}')">🔄 Reemplazar</button>
-          <button class="icon-btn del" onclick="eliminarImagen('${escAttr(i.clave)}')">🗑️</button>
+          ${i.guardado ? `<button class="icon-btn del" onclick="eliminarImagen('${escAttr(i.clave)}')">🗑️</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -646,7 +707,7 @@ async function renderPaneSeo() {
         <div class="sc-head">
           <div>
             <h2>🔍 SEO — ${pagina.icon} ${pagina.label}</h2>
-            <p class="sc-sub">Se aplica al <code>&lt;head&gt;</code> de la página en cada visita, igual que las tarifas en vivo.</p>
+            <p class="sc-sub">Es un borrador editable: por ahora se guarda acá, pero el <code>&lt;head&gt;</code> real de la página todavía no lee estos valores — falta conectar este módulo (a diferencia de las tarifas, que ya son en vivo).</p>
           </div>
         </div>
 
