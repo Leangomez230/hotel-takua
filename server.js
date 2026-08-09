@@ -671,6 +671,147 @@ app.post('/api/config/plataformas/reordenar', auth, adminOnly, async (req, res) 
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── SITIO WEB (config-web.html) — Contenido / Imágenes / SEO ────────
+// Arquitectura híbrida: estos endpoints alimentan el panel de gestión.
+// El texto/SEO se combina con la plantilla al vuelo (mismo patrón que
+// renderPaginaConPrecios), las imágenes se piden en vivo por JS público.
+const PAGINAS_SITIO_WEB = ['inicio','habitaciones','restaurante','servicios','ubicacion','reservar-habitacion','reservar-mesa'];
+function validarPaginaSitioWeb(pagina) {
+  return typeof pagina === 'string' && PAGINAS_SITIO_WEB.includes(pagina);
+}
+// El sitio público es de una sola página (index.html) con anclas internas
+// (#habitaciones, #restaurante, #servicios, #ubicacion) — esas secciones NO
+// tienen <head> propio, así que no tiene sentido darles title/meta/canonical
+// independientes. Solo 3 documentos reales tienen su propio <head>: el
+// index (que cubre inicio + todas las anclas) y las 2 páginas de reserva.
+const PAGINAS_SEO = ['inicio','reservar-habitacion','reservar-mesa'];
+function validarPaginaSeo(pagina) {
+  return typeof pagina === 'string' && PAGINAS_SEO.includes(pagina);
+}
+
+// -- Contenido --
+app.get('/api/sitio-web/contenido/:pagina', auth, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const rows = await db.getAll(
+      'SELECT campo, valor, updated_at FROM sitio_web_contenido WHERE pagina=$1 ORDER BY campo',
+      [req.params.pagina]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Guarda de a un campo por vez (permite loguear cuál cambió sin pisar los demás)
+app.put('/api/sitio-web/contenido/:pagina/:campo', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const campo = (req.params.campo || '').trim();
+    if (!campo) return res.status(400).json({ error: 'Falta el campo' });
+    const valor = req.body.valor ?? '';
+    await db.query(
+      `INSERT INTO sitio_web_contenido (pagina,campo,valor,updated_at,updated_by) VALUES ($1,$2,$3,NOW(),$4)
+       ON CONFLICT (pagina,campo) DO UPDATE SET valor=$3, updated_at=NOW(), updated_by=$4`,
+      [req.params.pagina, campo, valor, req.user.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_CONTENIDO', `${req.params.pagina}.${campo}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/sitio-web/contenido/:pagina/:campo', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    await db.query('DELETE FROM sitio_web_contenido WHERE pagina=$1 AND campo=$2', [req.params.pagina, req.params.campo]);
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_CONTENIDO_ELIMINAR', `${req.params.pagina}.${req.params.campo}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// -- Imágenes --
+app.get('/api/sitio-web/imagenes/:pagina', auth, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const rows = await db.getAll(
+      'SELECT clave, url, alt_text, updated_at FROM sitio_web_imagenes WHERE pagina=$1 ORDER BY clave',
+      [req.params.pagina]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/sitio-web/imagenes/:pagina/:clave', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const clave = (req.params.clave || '').trim();
+    if (!clave) return res.status(400).json({ error: 'Falta la clave' });
+    const { url, alt_text } = req.body;
+    if (!url || !url.trim()) return res.status(400).json({ error: 'Falta la URL de la imagen' });
+    await db.query(
+      `INSERT INTO sitio_web_imagenes (pagina,clave,url,alt_text,updated_at,updated_by) VALUES ($1,$2,$3,$4,NOW(),$5)
+       ON CONFLICT (pagina,clave) DO UPDATE SET url=$3, alt_text=$4, updated_at=NOW(), updated_by=$5`,
+      [req.params.pagina, clave, url.trim(), (alt_text||'').trim(), req.user.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_IMAGEN', `${req.params.pagina}.${clave}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/sitio-web/imagenes/:pagina/:clave', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    await db.query('DELETE FROM sitio_web_imagenes WHERE pagina=$1 AND clave=$2', [req.params.pagina, req.params.clave]);
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_IMAGEN_ELIMINAR', `${req.params.pagina}.${req.params.clave}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// -- SEO --
+// Listado completo (para el panel de resumen/score por página) — no requiere admin,
+// cualquier usuario logueado del panel puede ver el estado, solo admin edita.
+app.get('/api/sitio-web/seo', auth, async (req, res) => {
+  try {
+    const rows = await db.getAll('SELECT * FROM sitio_web_seo');
+    const porPagina = {};
+    rows.forEach(r => { porPagina[r.pagina] = r; });
+    res.json(porPagina);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sitio-web/seo/:pagina', auth, async (req, res) => {
+  try {
+    if (!validarPaginaSeo(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const row = await db.getOne('SELECT * FROM sitio_web_seo WHERE pagina=$1', [req.params.pagina]);
+    res.json(row || { pagina: req.params.pagina, title: '', meta_description: '', canonical_url: '', og_image: '', schema_json: null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/sitio-web/seo/:pagina', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSeo(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const { title, meta_description, canonical_url, og_image, schema_json } = req.body;
+
+    let schemaVal = null;
+    if (schema_json !== undefined && schema_json !== null && schema_json !== '') {
+      if (typeof schema_json === 'string') {
+        try { schemaVal = JSON.parse(schema_json); }
+        catch(e) { return res.status(400).json({ error: 'El schema.org no es un JSON válido: ' + e.message }); }
+      } else {
+        schemaVal = schema_json;
+      }
+    }
+
+    await db.query(
+      `INSERT INTO sitio_web_seo (pagina,title,meta_description,canonical_url,og_image,schema_json,updated_at,updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7)
+       ON CONFLICT (pagina) DO UPDATE SET
+         title=$2, meta_description=$3, canonical_url=$4, og_image=$5, schema_json=$6, updated_at=NOW(), updated_by=$7`,
+      [req.params.pagina, title||'', meta_description||'', canonical_url||'', og_image||'', schemaVal ? JSON.stringify(schemaVal) : null, req.user.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_SEO', req.params.pagina);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── CAMBIAR HABITACIÓN DE RESERVA (futura o activa) ─────────────────
 app.post('/api/reservas/:id/cambiar-habitacion', auth, async (req, res) => {
   if (!['admin','recepcionista','mucama'].includes(req.user.rol))
