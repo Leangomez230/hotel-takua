@@ -61,7 +61,7 @@ async function transaction(callback) {
 // Versionado de schema: subir este número cada vez que se agregue una migración nueva.
 // Si la versión guardada en la DB ya es >= a esta, initDB() se salta TODAS las migraciones
 // y arranca al instante — evita repetir 60+ queries en cada deploy.
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 // Inicializar tablas
 async function initDB() {
@@ -805,6 +805,54 @@ try {
     );
   `);
   console.log('✅ Tabla reservas_web_pendientes lista');
+
+  // ── MÓDULO SITIO WEB (config-web.html) — arquitectura híbrida: el texto/SEO
+  // se arma server-side combinando la plantilla versionada en GitHub con estas
+  // filas (mismo patrón que renderPaginaConPrecios), las imágenes se piden
+  // en vivo por JS al cargar la página pública.
+  // campo/valor son genéricos a propósito: el set de campos por página no está
+  // cerrado todavía (arranca como prueba de concepto en el hero de Inicio).
+  await query(`
+    CREATE TABLE IF NOT EXISTS sitio_web_contenido (
+      id SERIAL PRIMARY KEY,
+      pagina TEXT NOT NULL,
+      campo TEXT NOT NULL,
+      valor TEXT DEFAULT '',
+      updated_at TIMESTAMP DEFAULT NOW(),
+      updated_by INTEGER,
+      UNIQUE(pagina, campo)
+    );
+  `);
+  console.log('✅ Tabla sitio_web_contenido lista');
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS sitio_web_imagenes (
+      id SERIAL PRIMARY KEY,
+      pagina TEXT NOT NULL,
+      clave TEXT NOT NULL,
+      url TEXT DEFAULT '',
+      alt_text TEXT DEFAULT '',
+      updated_at TIMESTAMP DEFAULT NOW(),
+      updated_by INTEGER,
+      UNIQUE(pagina, clave)
+    );
+  `);
+  console.log('✅ Tabla sitio_web_imagenes lista');
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS sitio_web_seo (
+      id SERIAL PRIMARY KEY,
+      pagina TEXT UNIQUE NOT NULL,
+      title TEXT DEFAULT '',
+      meta_description TEXT DEFAULT '',
+      canonical_url TEXT DEFAULT '',
+      og_image TEXT DEFAULT '',
+      schema_json JSONB,
+      updated_at TIMESTAMP DEFAULT NOW(),
+      updated_by INTEGER
+    );
+  `);
+  console.log('✅ Tabla sitio_web_seo lista');
 
   // Marcar el schema como al día para que el próximo arranque sea instantáneo
   await query(
