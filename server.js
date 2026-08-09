@@ -672,9 +672,10 @@ app.post('/api/config/plataformas/reordenar', auth, adminOnly, async (req, res) 
 });
 
 // ── SITIO WEB (config-web.html) — Contenido / Imágenes / SEO ────────
-// Arquitectura híbrida: estos endpoints alimentan el panel de gestión.
-// El texto/SEO se combina con la plantilla al vuelo (mismo patrón que
-// renderPaginaConPrecios), las imágenes se piden en vivo por JS público.
+// Guarda el contenido/imágenes/SEO editable desde el panel. TODAVÍA NO
+// está conectado al sitio público — ni renderPaginaConPrecios ni el HTML
+// de public-site/ leen de estas tablas por ahora. Es la base de datos
+// para el paso pendiente del traspaso (conectar plantillas + JS del sitio).
 const PAGINAS_SITIO_WEB = ['inicio','habitaciones','restaurante','servicios','ubicacion','reservar-habitacion','reservar-mesa'];
 function validarPaginaSitioWeb(pagina) {
   return typeof pagina === 'string' && PAGINAS_SITIO_WEB.includes(pagina);
