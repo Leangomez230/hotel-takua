@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Sitio Web — Hotel Takuá</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00c9b1">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--accent2:#0094ff;
+  --ink:#1a2035;--muted:#64748b;--faint:#94a3b8;--line:#e8edf3;--bg:#f0f4f8;
+  --ok:#16a34a;--warn:#d97706;--danger:#dc2626;
+}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;overflow-x:hidden}
+.main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
+
+/* ── Topbar ───────────────────────────────────────────────── */
+.topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:100}
+.hamburger{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:18px;cursor:pointer;flex-shrink:0}
+.tb-left{flex:1;min-width:0}
+.tb-left h2{font-size:16px;font-weight:800;color:var(--ink);margin:0;display:flex;align-items:center;gap:8px}
+.tb-left p{font-size:11px;color:var(--faint);margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.user-av{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:9px 16px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-primary:hover{filter:brightness(1.05)}
+.btn-primary:disabled{opacity:.6;cursor:default}
+.btn-secondary{background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 14px;color:var(--ink);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-secondary:hover{background:#e2e8f0}
+
+.content{padding:20px 24px;max-width:1080px}
+
+/* ── Selector de página (aplica a las 3 pestañas) ────────────── */
+.page-select{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.page-pill{padding:9px 15px;border-radius:11px;border:1.5px solid #e2e8f0;background:#fff;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;white-space:nowrap}
+.page-pill:hover{border-color:var(--accent);color:var(--ink)}
+.page-pill.activo{background:var(--ink);border-color:var(--ink);color:#fff}
+.page-pill .pp-score{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:800;background:rgba(255,255,255,.18)}
+.page-pill:not(.activo) .pp-score.s-ok{background:#dcfce7;color:#166534}
+.page-pill:not(.activo) .pp-score.s-warn{background:#fef9c3;color:#a16207}
+.page-pill:not(.activo) .pp-score.s-bad{background:#fee2e2;color:#b91c1c}
+.page-pill.activo .pp-score{background:rgba(255,255,255,.22);color:#fff}
+
+/* ── Section tabs (mismo lenguaje visual que config.html) ────── */
+.cfg-tabs{display:inline-flex;gap:2px;margin-bottom:18px;background:#eef1f5;border-radius:12px;padding:4px;flex-wrap:wrap}
+.cfg-tab{padding:9px 18px;border-radius:9px;border:1.5px solid transparent;background:rgba(255,255,255,.55);font-family:inherit;font-weight:700;font-size:13px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s}
+.cfg-tab:hover{color:var(--ink);background:rgba(255,255,255,.9);border-color:#e2e8f0}
+.cfg-tab.activo{background:#fff;color:var(--ink);border-color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.cfg-pane{display:none}
+.cfg-pane.activo{display:block;animation:fadein .15s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Cards ────────────────────────────────────────────────── */
+.section-card{background:#fff;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.sc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.sc-head h2{font-size:16px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px}
+.sc-sub{font-size:12px;color:var(--faint);margin-top:2px}
+.info-box{background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:#0369a1;line-height:1.7}
+.empty-state{text-align:center;padding:44px 20px;color:var(--faint)}
+.empty-state .es-icon{font-size:30px;margin-bottom:8px}
+
+/* ── Formularios ──────────────────────────────────────────── */
+label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+input,select,textarea{width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;color:var(--ink);outline:none;transition:border-color .15s;background:#fff}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;line-height:1.5}
+.field{margin-bottom:16px}
+.field-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px}
+.field-head label{margin-bottom:0}
+.char-counter{font-size:11px;font-weight:800;font-variant-numeric:tabular-nums}
+.char-counter.cnt-ok{color:var(--ok)}
+.char-counter.cnt-warn{color:var(--warn)}
+.char-counter.cnt-bad{color:var(--danger)}
+.field-hint{font-size:11px;color:var(--faint);margin-top:5px;line-height:1.5}
+
+/* ── Modal ────────────────────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px}
+.overlay.hidden{display:none}
+.modal{background:#fff;border-radius:18px;padding:22px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-hd h3{font-size:17px;font-weight:800;color:var(--ink)}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--faint);line-height:1;padding:4px}
+.confirm-btn{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px}
+.confirm-btn:disabled{opacity:.6;cursor:default}
+
+/* ── Toast ────────────────────────────────────────────────── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;opacity:0;transition:all .3s;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--danger)}
+
+/* ══════════════ CONTENIDO ══════════════ */
+.campo-row{background:#f8fafc;border:1.5px solid #eef1f5;border-radius:12px;padding:14px;margin-bottom:10px}
+.campo-row-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.campo-key{font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;font-weight:800;color:var(--accent2);background:#eaf6ff;padding:3px 9px;border-radius:6px}
+.campo-actions{display:flex;gap:6px;flex-shrink:0}
+.icon-btn{border-radius:7px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid transparent;background:none}
+.icon-btn.save{background:#f0fdfa;border-color:#99f6e4;color:#0f766e}
+.icon-btn.save:hover{background:#ccfbf1}
+.icon-btn.del{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+.icon-btn.del:hover{background:#ffe4e6}
+.campo-row textarea{font-size:13.5px}
+.campo-meta{font-size:10.5px;color:var(--faint);margin-top:6px}
+.suggest-box{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px;padding:16px;margin-bottom:16px}
+.suggest-box h4{font-size:13px;font-weight:800;color:#92400e;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.suggest-box p{font-size:12px;color:#78350f;line-height:1.6;margin-bottom:12px}
+.suggest-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.suggest-tag{font-family:'SFMono-Regular',Consolas,monospace;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;padding:3px 9px;border-radius:6px;border:1px solid #fcd34d}
+
+/* ══════════════ IMÁGENES ══════════════ */
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.img-card{background:#f8fafc;border:1.5px solid #eef1f5;border-radius:14px;overflow:hidden}
+.img-card .thumb{width:100%;aspect-ratio:16/10;background:#e2e8f0 center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:26px}
+.img-card .body{padding:12px}
+.img-card .clave{font-family:'SFMono-Regular',Consolas,monospace;font-size:11.5px;font-weight:800;color:var(--accent2);display:block;margin-bottom:4px}
+.img-card .alt{font-size:11.5px;color:var(--muted);margin-bottom:10px;min-height:15px}
+.img-card .row-actions{display:flex;gap:6px}
+.img-card .row-actions button{flex:1;justify-content:center}
+.add-img-card{border:2px dashed #cbd5e1;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--faint);cursor:pointer;min-height:180px;background:none;font-family:inherit;transition:all .15s}
+.add-img-card:hover{border-color:var(--accent);color:var(--accent)}
+.add-img-card .plus{font-size:26px}
+.add-img-card span{font-size:12.5px;font-weight:700}
+
+/* ══════════════ SEO ══════════════ */
+.seo-layout{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start}
+@media(max-width:900px){.seo-layout{grid-template-columns:1fr}}
+
+.serp-preview{background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 18px;font-family:arial,sans-serif}
+.serp-favrow{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.serp-fav{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.serp-domain{font-size:13px;color:#202124}
+.serp-url{font-size:12px;color:#4d5156}
+.serp-title{color:#1a0dab;font-size:19px;line-height:1.3;margin:2px 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default}
+.serp-desc{color:#4d5156;font-size:13.5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.serp-label{font-size:10.5px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+
+.og-preview{border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-top:14px}
+.og-preview .og-img{width:100%;aspect-ratio:1.91/1;background:#eef1f5 center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:24px}
+.og-preview .og-body{padding:10px 12px;background:#f8fafc}
+.og-preview .og-domain{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.03em}
+.og-preview .og-title{font-size:13px;font-weight:700;color:var(--ink);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.score-card{display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:14px}
+.score-circle{width:58px;height:58px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;color:#fff}
+.score-circle .num{font-size:18px;line-height:1}
+.score-circle .den{font-size:9px;opacity:.85}
+.score-circle.sc-good{background:linear-gradient(135deg,#16a34a,#22c55e)}
+.score-circle.sc-mid{background:linear-gradient(135deg,#d97706,#f59e0b)}
+.score-circle.sc-bad{background:linear-gradient(135deg,#dc2626,#ef4444)}
+.score-card-txt strong{font-size:14px;color:var(--ink);display:block}
+.score-card-txt span{font-size:12px;color:var(--faint)}
+
+.seo-checklist{list-style:none;display:flex;flex-direction:column;gap:9px}
+.seo-checklist li{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;line-height:1.5;color:var(--muted)}
+.seo-checklist .chk-icon{flex-shrink:0;font-size:14px;line-height:1.4}
+.seo-checklist li.chk-ok .chk-icon{color:var(--ok)}
+.seo-checklist li.chk-warn .chk-icon{color:var(--warn)}
+.seo-checklist li.chk-bad .chk-icon{color:var(--danger)}
+.seo-checklist li strong{color:var(--ink)}
+
+.json-toolbar{display:flex;gap:8px;margin-bottom:8px}
+.json-toolbar button{flex:none}
+.json-error{background:#fff1f2;border:1.5px solid #fecdd3;color:#be123c;font-size:12px;padding:9px 12px;border-radius:8px;margin-top:8px;font-family:'SFMono-Regular',Consolas,monospace;white-space:pre-wrap}
+.json-ok{background:#f0fdfa;border:1.5px solid #99f6e4;color:#0f766e;font-size:12px;padding:9px 12px;border-radius:8px;margin-top:8px}
+textarea.schema-input{font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;min-height:160px}
+
+.save-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);margin:20px -20px -20px;padding:14px 20px;display:flex;justify-content:flex-end;gap:10px;box-shadow:0 -4px 12px rgba(0,0,0,.04)}
+
+.empty-state{text-align:center;padding:60px;color:var(--faint)}
+
+@media(max-width:700px){
+  .main{margin-left:0}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .cfg-tabs{overflow-x:auto;max-width:100%}
+  .page-select{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}
+}
+</style>
+</head>
+<body>
+<div id="sidebar-container"></div>
+<div class="main">
+  <div class="topbar">
+    <button class="hamburger" id="hamburger">☰</button>
+    <div class="tb-left">
+      <h2>🌐 Sitio Web</h2>
+      <p id="tb-sub">Solo administradores</p>
+    </div>
+    <div class="tb-right">
+      <div class="user-av" id="user-av">?</div>
+    </div>
+  </div>
+  <div class="content" id="content">
+    <div class="empty-state">Cargando...</div>
+  </div>
+</div>
+
+<!-- Modal genérico -->
+<div class="overlay hidden" id="modal-overlay">
+  <div class="modal" id="modal-box"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="/sidebar.js"></script>
+<script>
+const TOKEN_KEY = 'takua_token';
+let currentUser = null;
+
+// ── Auth ──────────────────────────────────────────────────────────────
+function init() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  currentUser = JSON.parse(localStorage.getItem('takua_user') || 'null');
+  if (!token || !currentUser) { location.href = '/portal.html'; return; }
+  if (currentUser.rol !== 'admin') { location.href = '/index.html'; return; }
+  document.getElementById('user-av').textContent = (currentUser.nombre?.[0] || 'A').toUpperCase();
+  document.getElementById('tb-sub').textContent = currentUser.nombre + ' · ' + currentUser.rol;
+  renderShell();
+}
+
+async function apiFetch(method, path, body) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const opts = { method, headers: { 'Content-Type':'application/json', Authorization:'Bearer '+token } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch('/api' + path, opts);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { __error: data?.error || 'Error de servidor' };
+    return data;
+  } catch(e) { return { __error: 'Error de conexión' }; }
+}
+
+function toast(msg, ok=true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (ok ? '' : ' err');
+  setTimeout(() => el.className = 'toast', 2800);
+}
+
+function openModal(html) {
+  document.getElementById('modal-box').innerHTML = html;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+document.getElementById('hamburger').addEventListener('click', () => {
+  document.getElementById('sidebar-container').classList.toggle('open');
+});
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s) { return esc(s).replace(/`/g,'&#96;'); }
+
+// ── Secciones del sitio público (para Contenido / Imágenes) ──────────
+// El sitio es de una sola página (index.html) con anclas internas para
+// habitaciones/restaurante/servicios/ubicación, más 2 páginas de reserva
+// aparte. Estas 7 "secciones" organizan el CONTENIDO editable — no son
+// necesariamente URLs propias (ver PAGINAS_SEO más abajo para eso).
+const SECCIONES = [
+  { id:'inicio',               label:'Inicio',               icon:'🏠', url:'/' },
+  { id:'habitaciones',         label:'Habitaciones',         icon:'🛏️', url:'/#habitaciones' },
+  { id:'restaurante',          label:'Restaurante',          icon:'🍽️', url:'/#restaurante' },
+  { id:'servicios',            label:'Servicios',            icon:'✨', url:'/#servicios' },
+  { id:'ubicacion',            label:'Ubicación',            icon:'📍', url:'/#ubicacion' },
+  { id:'reservar-habitacion',  label:'Reservar Habitación',  icon:'🛎️', url:'/reservar-habitacion.html' },
+  { id:'reservar-mesa',        label:'Reservar Mesa',        icon:'🍴', url:'/reservar-mesa.html' },
+];
+
+// ── Páginas SEO (para la pestaña SEO) ─────────────────────────────────
+// Solo 3 documentos HTML reales tienen su propio <head>: el index (que
+// cubre Inicio + todas las anclas) y las 2 páginas de reserva. Las
+// secciones con ancla NO tienen title/meta/canonical independientes.
+const PAGINAS_SEO = [
+  { id:'inicio',               label:'Inicio (index.html)',  icon:'🏠', url:'/' },
+  { id:'reservar-habitacion',  label:'Reservar Habitación',  icon:'🛎️', url:'/reservar-habitacion.html' },
+  { id:'reservar-mesa',        label:'Reservar Mesa',        icon:'🍴', url:'/reservar-mesa.html' },
+];
+const DOMINIO_SITIO = 'hoteltakua.com.ar';
+
+// Campos sugeridos para arrancar (prueba de concepto: hero de Inicio) —
+// son solo un punto de partida editable, no una lista cerrada.
+const CAMPOS_SUGERIDOS = {
+  inicio: [
+    { campo:'hero_titulo',    ejemplo:'Un refugio de piedra y silencio en La Punta' },
+    { campo:'hero_subtitulo', ejemplo:'Hotel boutique frente a las sierras puntanas' },
+    { campo:'hero_cta_texto', ejemplo:'Reservar ahora' },
+  ],
+};
+
+let paginaActual = 'inicio';    // sección activa (Contenido / Imágenes)
+let seoPaginaActual = 'inicio'; // página activa (SEO)
+let cfgTabActiva = 'contenido';
+let SEO_INDEX = {}; // pagina -> fila de sitio_web_seo (para los badges de score)
+
+const CFG_TABS = [
+  { id:'contenido', label:'Contenido', icon:'📝' },
+  { id:'imagenes',  label:'Imágenes',  icon:'🖼️' },
+  { id:'seo',       label:'SEO',       icon:'🔍' },
+];
+
+// ── SEO scoring — compartido entre la pestaña SEO y los badges del selector
+function evaluarSeo(seo) {
+  seo = seo || {};
+  const title = (seo.title || '').trim();
+  const desc  = (seo.meta_description || '').trim();
+  const canon = (seo.canonical_url || '').trim();
+  const og    = (seo.og_image || '').trim();
+  let schemaOk = false, schemaTiene = false;
+  const rawSchema = seo.schema_json;
+  if (rawSchema !== undefined && rawSchema !== null && rawSchema !== '' && JSON.stringify(rawSchema) !== '{}') {
+    schemaTiene = true;
+    schemaOk = typeof rawSchema === 'object';
+  }
+
+  const checks = [];
+
+  if (!title) checks.push({ id:'title', status:'bad', label:'Título', msg:'Falta el título SEO.' });
+  else if (title.length < 30) checks.push({ id:'title', status:'warn', label:'Título', msg:`Un poco corto (${title.length} car.) — apuntá a 30–60.` });
+  else if (title.length > 60) checks.push({ id:'title', status:'warn', label:'Título', msg:`Se pasa de largo (${title.length} car.) — Google lo puede cortar en el buscador.` });
+  else checks.push({ id:'title', status:'ok', label:'Título', msg:`Longitud ideal (${title.length} car.).` });
+
+  if (!desc) checks.push({ id:'desc', status:'bad', label:'Meta description', msg:'Falta la meta description.' });
+  else if (desc.length < 120) checks.push({ id:'desc', status:'warn', label:'Meta description', msg:`Corta (${desc.length} car.) — apuntá a 120–160.` });
+  else if (desc.length > 160) checks.push({ id:'desc', status:'warn', label:'Meta description', msg:`Se pasa de largo (${desc.length} car.) — se puede cortar en el buscador.` });
+  else checks.push({ id:'desc', status:'ok', label:'Meta description', msg:`Longitud ideal (${desc.length} car.).` });
+
+  if (!canon) checks.push({ id:'canon', status:'bad', label:'URL canónica', msg:'No está configurada.' });
+  else if (!canon.startsWith('https://' + DOMINIO_SITIO) && !canon.startsWith('https://www.' + DOMINIO_SITIO))
+    checks.push({ id:'canon', status:'warn', label:'URL canónica', msg:'No apunta a ' + DOMINIO_SITIO + ' — revisá que sea correcta.' });
+  else checks.push({ id:'canon', status:'ok', label:'URL canónica', msg:'Configurada correctamente.' });
+
+  if (!og) checks.push({ id:'og', status:'bad', label:'Imagen para redes', msg:'Sin og:image — al compartir el link no se va a ver imagen.' });
+  else checks.push({ id:'og', status:'ok', label:'Imagen para redes', msg:'Configurada.' });
+
+  if (!schemaTiene) checks.push({ id:'schema', status:'warn', label:'Schema.org', msg:'No hay datos estructurados cargados (recomendado, no obligatorio).' });
+  else if (!schemaOk) checks.push({ id:'schema', status:'bad', label:'Schema.org', msg:'El JSON guardado no es válido.' });
+  else checks.push({ id:'schema', status:'ok', label:'Schema.org', msg:'JSON válido cargado.' });
+
+  const score = checks.filter(c => c.status === 'ok').length;
+  return { checks, score, max: checks.length };
+}
+
+function scoreClase(score, max) {
+  if (score >= max - 1) return 's-ok';
+  if (score >= Math.ceil(max/2)) return 's-warn';
+  return 's-bad';
+}
+function scoreCircleClase(score, max) {
+  if (score >= max - 1) return 'sc-good';
+  if (score >= Math.ceil(max/2)) return 'sc-mid';
+  return 'sc-bad';
+}
+
+// ── SHELL: selector de página + tabs ──────────────────────────────────
+async function renderShell() {
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="page-select" id="page-select"></div>
+    <div class="cfg-tabs" id="cfg-tabs">
+      ${CFG_TABS.map(t => `<button class="cfg-tab ${t.id===cfgTabActiva?'activo':''}" data-tab="${t.id}" onclick="cambiarCfgTab('${t.id}')">${t.icon} ${t.label}</button>`).join('')}
+    </div>
+    <div class="cfg-pane activo" id="pane-contenido"></div>
+    <div class="cfg-pane" id="pane-imagenes"></div>
+    <div class="cfg-pane" id="pane-seo"></div>
+  `;
+  document.querySelectorAll('.cfg-pane').forEach(p => p.classList.toggle('activo', p.id === 'pane-' + cfgTabActiva));
+
+  const seoData = await apiFetch('GET', '/sitio-web/seo');
+  SEO_INDEX = seoData && !seoData.__error ? seoData : {};
+  renderPageSelect();
+  cargarTabActiva();
+}
+
+// El selector de arriba cambia según la pestaña: en Contenido/Imágenes
+// elige una SECCIÓN (7, pueden ser anclas); en SEO elige una PÁGINA real
+// (solo 3, cada una con su propio <head>) — por eso también muestra el
+// score ahí, que no aplica a las secciones-ancla.
+function renderPageSelect() {
+  const el = document.getElementById('page-select');
+  if (!el) return;
+  if (cfgTabActiva === 'seo') {
+    el.innerHTML = PAGINAS_SEO.map(p => {
+      const ev = evaluarSeo(SEO_INDEX[p.id]);
+      return `<button class="page-pill ${p.id===seoPaginaActual?'activo':''}" onclick="cambiarPaginaSeo('${p.id}')">
+        ${p.icon} ${p.label} <span class="pp-score ${scoreClase(ev.score, ev.max)}">${ev.score}/${ev.max}</span>
+      </button>`;
+    }).join('');
+  } else {
+    el.innerHTML = SECCIONES.map(s =>
+      `<button class="page-pill ${s.id===paginaActual?'activo':''}" onclick="cambiarPagina('${s.id}')">${s.icon} ${s.label}</button>`
+    ).join('');
+  }
+}
+
+function cambiarPagina(id) {
+  paginaActual = id;
+  renderPageSelect();
+  cargarTabActiva();
+}
+
+function cambiarPaginaSeo(id) {
+  seoPaginaActual = id;
+  renderPageSelect();
+  cargarTabActiva();
+}
+
+function cambiarCfgTab(id) {
+  cfgTabActiva = id;
+  document.querySelectorAll('.cfg-tab').forEach(b => b.classList.toggle('activo', b.dataset.tab === id));
+  document.querySelectorAll('.cfg-pane').forEach(p => p.classList.toggle('activo', p.id === 'pane-' + id));
+  renderPageSelect();
+  cargarTabActiva();
+}
+
+function cargarTabActiva() {
+  if (cfgTabActiva === 'contenido') renderPaneContenido();
+  else if (cfgTabActiva === 'imagenes') renderPaneImagenes();
+  else if (cfgTabActiva === 'seo') renderPaneSeo();
+}
+
+// ══════════════════════ CONTENIDO ══════════════════════
+async function renderPaneContenido() {
+  const pane = document.getElementById('pane-contenido');
+  const pagina = SECCIONES.find(p => p.id === paginaActual);
+  pane.innerHTML = `<div class="empty-state">Cargando...</div>`;
+
+  const campos = await apiFetch('GET', '/sitio-web/contenido/' + paginaActual);
+  if (campos && campos.__error) { pane.innerHTML = `<div class="empty-state">Error al cargar: ${esc(campos.__error)}</div>`; return; }
+
+  const sugeridos = CAMPOS_SUGERIDOS[paginaActual] || [];
+  const sugeridosFaltantes = sugeridos.filter(s => !campos.some(c => c.campo === s.campo));
+
+  pane.innerHTML = `
+    <div class="section-card">
+      <div class="sc-head">
+        <div>
+          <h2>📝 Contenido — ${pagina.icon} ${pagina.label}</h2>
+          <p class="sc-sub">Estos textos se combinan con la plantilla del sitio al vuelo, en cada visita — no hace falta re-deployar.</p>
+        </div>
+        <button class="btn-primary" onclick="abrirModalCampo()">+ Agregar campo</button>
+      </div>
+
+      ${sugeridosFaltantes.length ? `
+        <div class="suggest-box">
+          <h4>💡 Campos sugeridos para arrancar</h4>
+          <p>Todavía no cargaste contenido para "${pagina.label}". Como prueba de concepto podés arrancar por estos campos del hero — después se pueden sumar los que hagan falta.</p>
+          <div class="suggest-tags">${sugeridosFaltantes.map(s => `<span class="suggest-tag">${s.campo}</span>`).join('')}</div>
+          <button class="btn-secondary" onclick="cargarCamposSugeridos()">Cargar campos sugeridos</button>
+        </div>` : ''}
+
+      ${campos.length ? campos.map(c => renderCampoRow(c)).join('') : (sugeridosFaltantes.length ? '' : `
+        <div class="empty-state">
+          <div class="es-icon">📝</div>
+          Todavía no hay contenido cargado para esta página.<br>Usá "+ Agregar campo" para empezar.
+        </div>`)}
+    </div>
+  `;
+}
+
+function renderCampoRow(c) {
+  const idSafe = 'campo_' + btoa(unescape(encodeURIComponent(c.campo))).replace(/[^a-zA-Z0-9]/g,'');
+  return `
+    <div class="campo-row">
+      <div class="campo-row-hd">
+        <span class="campo-key">${esc(c.campo)}</span>
+        <div class="campo-actions">
+          <button class="icon-btn save" onclick="guardarCampo('${escAttr(c.campo)}','${idSafe}')">💾 Guardar</button>
+          <button class="icon-btn del" onclick="eliminarCampo('${escAttr(c.campo)}')">🗑️</button>
+        </div>
+      </div>
+      <textarea id="${idSafe}" rows="2">${esc(c.valor)}</textarea>
+      ${c.updated_at ? `<div class="campo-meta">Actualizado: ${new Date(c.updated_at).toLocaleString('es-AR')}</div>` : ''}
+    </div>`;
+}
+
+async function cargarCamposSugeridos() {
+  const sugeridos = CAMPOS_SUGERIDOS[paginaActual] || [];
+  for (const s of sugeridos) {
+    await apiFetch('PUT', `/sitio-web/contenido/${paginaActual}/${encodeURIComponent(s.campo)}`, { valor: s.ejemplo });
+  }
+  toast('Campos sugeridos cargados ✓');
+  renderPaneContenido();
+}
+
+async function guardarCampo(campo, idSafe) {
+  const valor = document.getElementById(idSafe).value;
+  const r = await apiFetch('PUT', `/sitio-web/contenido/${paginaActual}/${encodeURIComponent(campo)}`, { valor });
+  if (r && r.__error) { toast(r.__error, false); return; }
+  toast('Campo guardado ✓');
+}
+
+async function eliminarCampo(campo) {
+  if (!confirm(`¿Eliminar el campo "${campo}"? Esto puede dejar un {{marcador}} sin reemplazar en la página pública si todavía se usa.`)) return;
+  const r = await apiFetch('DELETE', `/sitio-web/contenido/${paginaActual}/${encodeURIComponent(campo)}`);
+  if (r && r.__error) { toast(r.__error, false); return; }
+  toast('Campo eliminado');
+  renderPaneContenido();
+}
+
+function abrirModalCampo() {
+  openModal(`
+    <div class="modal-hd"><h3>+ Agregar campo</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="field">
+      <label>Nombre del campo</label>
+      <input type="text" id="nc-campo" placeholder="ej: hero_titulo" autocomplete="off">
+      <p class="field-hint">Se recomienda minúsculas y guiones bajos — tiene que coincidir con el marcador <code>{{campo}}</code> usado en la plantilla del sitio.</p>
+    </div>
+    <div class="field">
+      <label>Valor</label>
+      <textarea id="nc-valor" rows="3" placeholder="Texto que va a mostrarse en el sitio"></textarea>
+    </div>
+    <button class="confirm-btn" onclick="crearCampo()">Agregar campo</button>
+  `);
+}
+
+async function crearCampo() {
+  const campo = document.getElementById('nc-campo').value.trim();
+  const valor = document.getElementById('nc-valor').value;
+  if (!campo) { toast('Falta el nombre del campo', false); return; }
+  const r = await apiFetch('PUT', `/sitio-web/contenido/${paginaActual}/${encodeURIComponent(campo)}`, { valor });
+  if (r && r.__error) { toast(r.__error, false); return; }
+  closeModal();
+  toast('Campo agregado ✓');
+  renderPaneContenido();
+}
+
+// ══════════════════════ IMÁGENES ══════════════════════
+async function renderPaneImagenes() {
+  const pane = document.getElementById('pane-imagenes');
+  const pagina = SECCIONES.find(p => p.id === paginaActual);
+  pane.innerHTML = `<div class="empty-state">Cargando...</div>`;
+
+  const imgs = await apiFetch('GET', '/sitio-web/imagenes/' + paginaActual);
+  if (imgs && imgs.__error) { pane.innerHTML = `<div class="empty-state">Error al cargar: ${esc(imgs.__error)}</div>`; return; }
+
+  pane.innerHTML = `
+    <div class="section-card">
+      <div class="sc-head">
+        <div>
+          <h2>🖼️ Imágenes — ${pagina.icon} ${pagina.label}</h2>
+          <p class="sc-sub">El sitio público las pide en vivo al cargar la página — reemplazar una acá no requiere deploy.</p>
+        </div>
+      </div>
+      <div class="img-grid">
+        ${imgs.map(i => renderImgCard(i)).join('')}
+        <button class="add-img-card" onclick="abrirModalImagen()"><span class="plus">+</span><span>Agregar imagen</span></button>
+      </div>
+    </div>
+  `;
+}
+
+function renderImgCard(i) {
+  return `
+    <div class="img-card">
+      <div class="thumb" style="${i.url ? `background-image:url('${escAttr(i.url)}')` : ''}">${i.url ? '' : '🖼️'}</div>
+      <div class="body">
+        <span class="clave">${esc(i.clave)}</span>
+        <div class="alt">${i.alt_text ? esc(i.alt_text) : '<span style="color:var(--faint)">Sin texto alternativo</span>'}</div>
+        <div class="row-actions">
+          <button class="icon-btn save" onclick="abrirModalImagen('${escAttr(i.clave)}','${escAttr(i.url)}','${escAttr(i.alt_text)}')">🔄 Reemplazar</button>
+          <button class="icon-btn del" onclick="eliminarImagen('${escAttr(i.clave)}')">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function abrirModalImagen(clave, url, alt) {
+  const editando = !!clave;
+  openModal(`
+    <div class="modal-hd"><h3>${editando ? '🔄 Reemplazar imagen' : '+ Agregar imagen'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="field">
+      <label>Clave</label>
+      <input type="text" id="ni-clave" placeholder="ej: hero_fondo" value="${editando ? escAttr(clave) : ''}" ${editando ? 'readonly style="background:#f1f5f9;color:var(--muted)"' : ''} autocomplete="off">
+      ${!editando ? '<p class="field-hint">Identifica la imagen dentro de la página — tiene que coincidir con lo que pida el sitio público por JavaScript.</p>' : ''}
+    </div>
+    <div class="field">
+      <label>URL de la imagen</label>
+      <input type="text" id="ni-url" placeholder="https://..." value="${editando ? escAttr(url) : ''}" oninput="previsualizarImagen()">
+      <div id="ni-preview" style="margin-top:8px;border-radius:10px;overflow:hidden;aspect-ratio:16/9;background:#eef1f5;display:${editando && url ? 'block' : 'none'};background-image:url('${editando ? escAttr(url) : ''}');background-size:cover;background-position:center"></div>
+    </div>
+    <div class="field">
+      <label>Texto alternativo (alt)</label>
+      <input type="text" id="ni-alt" placeholder="Descripción breve para accesibilidad y SEO" value="${editando ? escAttr(alt) : ''}">
+    </div>
+    <button class="confirm-btn" onclick="guardarImagen('${editando ? escAttr(clave) : ''}')">${editando ? 'Guardar cambios' : 'Agregar imagen'}</button>
+  `);
+}
+
+function previsualizarImagen() {
+  const url = document.getElementById('ni-url').value.trim();
+  const prev = document.getElementById('ni-preview');
+  if (url) { prev.style.backgroundImage = `url('${url.replace(/'/g,"\\'")}')`; prev.style.display = 'block'; }
+  else prev.style.display = 'none';
+}
+
+async function guardarImagen(claveExistente) {
+  const clave = claveExistente || document.getElementById('ni-clave').value.trim();
+  const url = document.getElementById('ni-url').value.trim();
+  const alt_text = document.getElementById('ni-alt').value.trim();
+  if (!clave) { toast('Falta la clave', false); return; }
+  if (!url) { toast('Falta la URL de la imagen', false); return; }
+  const r = await apiFetch('PUT', `/sitio-web/imagenes/${paginaActual}/${encodeURIComponent(clave)}`, { url, alt_text });
+  if (r && r.__error) { toast(r.__error, false); return; }
+  closeModal();
+  toast('Imagen guardada ✓');
+  renderPaneImagenes();
+}
+
+async function eliminarImagen(clave) {
+  if (!confirm(`¿Eliminar la imagen "${clave}"? Puede dejar un hueco en el sitio público si todavía se está usando.`)) return;
+  const r = await apiFetch('DELETE', `/sitio-web/imagenes/${paginaActual}/${encodeURIComponent(clave)}`);
+  if (r && r.__error) { toast(r.__error, false); return; }
+  toast('Imagen eliminada');
+  renderPaneImagenes();
+}
+
+// ══════════════════════ SEO ══════════════════════
+let seoDraft = {};
+
+async function renderPaneSeo() {
+  const pane = document.getElementById('pane-seo');
+  const pagina = PAGINAS_SEO.find(p => p.id === seoPaginaActual);
+  pane.innerHTML = `<div class="empty-state">Cargando...</div>`;
+
+  const seo = await apiFetch('GET', '/sitio-web/seo/' + seoPaginaActual);
+  if (seo && seo.__error) { pane.innerHTML = `<div class="empty-state">Error al cargar: ${esc(seo.__error)}</div>`; return; }
+
+  seoDraft = {
+    title: seo.title || '',
+    meta_description: seo.meta_description || '',
+    canonical_url: seo.canonical_url || ('https://' + DOMINIO_SITIO + pagina.url),
+    og_image: seo.og_image || '',
+    schema_json: seo.schema_json ? JSON.stringify(seo.schema_json, null, 2) : '',
+  };
+
+  pane.innerHTML = `
+    <div class="score-card" id="score-card"></div>
+
+    <div class="seo-layout">
+      <div class="section-card">
+        <div class="sc-head">
+          <div>
+            <h2>🔍 SEO — ${pagina.icon} ${pagina.label}</h2>
+            <p class="sc-sub">Se aplica al <code>&lt;head&gt;</code> de la página en cada visita, igual que las tarifas en vivo.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><label>Title</label><span class="char-counter" id="cnt-title"></span></div>
+          <input type="text" id="seo-title" maxlength="200" oninput="onSeoInput()" value="${escAttr(seoDraft.title)}" placeholder="Hotel Takuá Serrano — Hotel boutique en La Punta, San Luis">
+          <p class="field-hint">Ideal: 30–60 caracteres. Es lo primero que se ve en el resultado de búsqueda.</p>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><label>Meta description</label><span class="char-counter" id="cnt-desc"></span></div>
+          <textarea id="seo-desc" rows="3" maxlength="400" oninput="onSeoInput()" placeholder="Describí la página en una o dos frases que inviten a hacer clic.">${esc(seoDraft.meta_description)}</textarea>
+          <p class="field-hint">Ideal: 120–160 caracteres.</p>
+        </div>
+
+        <div class="field">
+          <label>URL canónica</label>
+          <input type="text" id="seo-canon" oninput="onSeoInput()" value="${escAttr(seoDraft.canonical_url)}" placeholder="https://${DOMINIO_SITIO}${pagina.url}">
+          <p class="field-hint">Le dice a Google cuál es la versión "oficial" de esta página.</p>
+        </div>
+
+        <div class="field">
+          <label>Imagen para redes sociales (og:image)</label>
+          <input type="text" id="seo-og" oninput="onSeoInput()" value="${escAttr(seoDraft.og_image)}" placeholder="https://...">
+          <p class="field-hint">Se usa al compartir el link en WhatsApp, Facebook e Instagram. Recomendado 1200×630px.</p>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><label>Datos estructurados (schema.org)</label></div>
+          <div class="json-toolbar">
+            <button class="btn-secondary" onclick="formatearSchema()">🧹 Formatear / Validar</button>
+          </div>
+          <textarea id="seo-schema" class="schema-input" oninput="onSeoInput()" placeholder='{ "@context": "https://schema.org", "@type": "Hotel", "name": "Hotel Takuá Serrano" }'>${esc(seoDraft.schema_json)}</textarea>
+          <div id="schema-feedback"></div>
+          <p class="field-hint">Opcional pero recomendado — ayuda a que Google muestre resultados enriquecidos (rich snippets).</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-card">
+          <div class="serp-label">👁️ Así se ve en Google</div>
+          <div class="serp-preview">
+            <div class="serp-favrow">
+              <div class="serp-fav">T</div>
+              <div>
+                <div class="serp-domain">Hotel Takuá</div>
+                <div class="serp-url" id="serp-url"></div>
+              </div>
+            </div>
+            <div class="serp-title" id="serp-title"></div>
+            <div class="serp-desc" id="serp-desc"></div>
+          </div>
+
+          <div class="serp-label" style="margin-top:18px">📱 Así se ve al compartir</div>
+          <div class="og-preview">
+            <div class="og-img" id="og-preview-img">🖼️</div>
+            <div class="og-body">
+              <div class="og-domain">${DOMINIO_SITIO}</div>
+              <div class="og-title" id="og-preview-title"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="sc-head"><h2>✅ Checklist</h2></div>
+          <ul class="seo-checklist" id="seo-checklist"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="save-bar">
+      <button class="btn-secondary" onclick="renderPaneSeo()">Descartar cambios</button>
+      <button class="btn-primary" onclick="guardarSeo()">💾 Guardar SEO de "${pagina.label}"</button>
+    </div>
+  `;
+  onSeoInput();
+}
+
+function leerSeoForm() {
+  return {
+    title: document.getElementById('seo-title').value,
+    meta_description: document.getElementById('seo-desc').value,
+    canonical_url: document.getElementById('seo-canon').value,
+    og_image: document.getElementById('seo-og').value,
+    schema_json: document.getElementById('seo-schema').value,
+  };
+}
+
+function contarClase(len, min, max) {
+  if (len === 0) return 'cnt-bad';
+  if (len < min || len > max) return 'cnt-warn';
+  return 'cnt-ok';
+}
+
+function onSeoInput() {
+  const f = leerSeoForm();
+
+  // Contadores
+  const cTitle = document.getElementById('cnt-title');
+  cTitle.textContent = `${f.title.length}/60`;
+  cTitle.className = 'char-counter ' + contarClase(f.title.length, 30, 60);
+  const cDesc = document.getElementById('cnt-desc');
+  cDesc.textContent = `${f.meta_description.length}/160`;
+  cDesc.className = 'char-counter ' + contarClase(f.meta_description.length, 120, 160);
+
+  // Preview SERP
+  const pagina = PAGINAS_SEO.find(p => p.id === seoPaginaActual);
+  document.getElementById('serp-url').textContent = (f.canonical_url || ('https://' + DOMINIO_SITIO + pagina.url)).replace(/^https?:\/\//,'').replace(/\/$/,'') || DOMINIO_SITIO;
+  document.getElementById('serp-title').textContent = f.title || '(sin título — se va a mostrar el nombre del sitio)';
+  document.getElementById('serp-desc').textContent = f.meta_description || '(sin descripción — Google va a elegir un fragmento de la página automáticamente)';
+
+  // Preview OG
+  const ogImgEl = document.getElementById('og-preview-img');
+  if (f.og_image.trim()) { ogImgEl.style.backgroundImage = `url('${f.og_image.trim().replace(/'/g,"\\'")}')`; ogImgEl.textContent = ''; }
+  else { ogImgEl.style.backgroundImage = ''; ogImgEl.textContent = '🖼️'; }
+  document.getElementById('og-preview-title').textContent = f.title || pagina.label + ' — Hotel Takuá';
+
+  // Schema: intentar parsear silenciosamente para el checklist (sin mostrar error mientras se escribe)
+  let schemaObj = null;
+  if (f.schema_json.trim()) { try { schemaObj = JSON.parse(f.schema_json); } catch(e) { schemaObj = '__invalid__'; } }
+
+  const ev = evaluarSeo({
+    title: f.title, meta_description: f.meta_description, canonical_url: f.canonical_url,
+    og_image: f.og_image, schema_json: schemaObj === '__invalid__' ? {} : schemaObj,
+  });
+  // Si el schema es inválido, forzar ese check a "bad" con mensaje claro
+  if (schemaObj === '__invalid__') {
+    const chk = ev.checks.find(c => c.id === 'schema');
+    chk.status = 'bad'; chk.msg = 'El JSON tiene un error de sintaxis — usá "Formatear / Validar" para ubicarlo.';
+    ev.score = ev.checks.filter(c => c.status === 'ok').length;
+  }
+
+  renderScoreCard(ev);
+  renderChecklist(ev);
+}
+
+function renderScoreCard(ev) {
+  const el = document.getElementById('score-card');
+  const clase = scoreCircleClase(ev.score, ev.max);
+  const msg = ev.score === ev.max ? '¡Excelente! Esta página está optimizada.' :
+              ev.score >= Math.ceil(ev.max/2) ? 'Bien encaminado — todavía hay margen para mejorar.' :
+              'Esta página necesita atención en SEO.';
+  el.innerHTML = `
+    <div class="score-circle ${clase}"><span class="num">${ev.score}/${ev.max}</span><span class="den">puntos</span></div>
+    <div class="score-card-txt"><strong>${msg}</strong><span>Puntaje calculado en base al título, la descripción, la URL canónica, la imagen para redes y el schema.org.</span></div>
+  `;
+}
+
+function renderChecklist(ev) {
+  const el = document.getElementById('seo-checklist');
+  const iconos = { ok:'✅', warn:'⚠️', bad:'❌' };
+  el.innerHTML = ev.checks.map(c => `
+    <li class="chk-${c.status}">
+      <span class="chk-icon">${iconos[c.status]}</span>
+      <span><strong>${esc(c.label)}:</strong> ${esc(c.msg)}</span>
+    </li>`).join('');
+}
+
+function formatearSchema() {
+  const el = document.getElementById('seo-schema');
+  const fb = document.getElementById('schema-feedback');
+  const raw = el.value.trim();
+  if (!raw) { fb.innerHTML = ''; return; }
+  try {
+    const parsed = JSON.parse(raw);
+    el.value = JSON.stringify(parsed, null, 2);
+    fb.innerHTML = `<div class="json-ok">✓ JSON válido — se formateó automáticamente.</div>`;
+  } catch(e) {
+    fb.innerHTML = `<div class="json-error">✕ JSON inválido: ${esc(e.message)}</div>`;
+  }
+  onSeoInput();
+}
+
+async function guardarSeo() {
+  const f = leerSeoForm();
+  if (f.schema_json.trim()) {
+    try { JSON.parse(f.schema_json); }
+    catch(e) { toast('El schema.org tiene un JSON inválido — corregilo antes de guardar', false); return; }
+  }
+  const r = await apiFetch('PUT', '/sitio-web/seo/' + seoPaginaActual, f);
+  if (r && r.__error) { toast(r.__error, false); return; }
+  toast('SEO guardado ✓');
+  // refrescar el índice para que el badge del selector de página se actualice
+  const seo = await apiFetch('GET', '/sitio-web/seo/' + seoPaginaActual);
+  if (seo && !seo.__error) { SEO_INDEX[seoPaginaActual] = seo; renderPageSelect(); }
+}
+
+init();
+</script>
+</body>
+</html>
