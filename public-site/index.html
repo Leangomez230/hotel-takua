@@ -2,8 +2,15 @@
 <html lang="es" class="js"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hotel Takuá — La Punta, San Luis</title>
-<meta name="description" content="Hotel Takuá, La Punta, San Luis. 28 habitaciones al pie de la sierra, cocina de estación y hospitalidad puntana. Reservá tu estadía.">
+<title>{{SEO_TITLE}}</title>
+<meta name="description" content="{{SEO_DESCRIPTION}}">
+<link rel="canonical" href="{{SEO_CANONICAL}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{SEO_TITLE}}">
+<meta property="og:description" content="{{SEO_DESCRIPTION}}">
+<meta property="og:image" content="{{SEO_OG_IMAGE}}">
+<meta property="og:url" content="{{SEO_CANONICAL}}">
+{{SEO_SCHEMA_BLOCK}}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,500;0,600;0,700;0,900;1,500;1,600&amp;family=Work+Sans:wght@400;500;600;700&amp;family=Montserrat:wght@800;900&amp;family=Dancing+Script:wght@600;700&amp;display=swap" rel="stylesheet">
@@ -759,7 +766,7 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
   <div class="container hero-content">
     <div class="text-frost">
       <h1><span class="brand-sans">TK</span><br><em>Serrano.</em></h1>
-      <p class="lede">Hotel Takuá abre sus puertas en La Punta con una idea simple: Que nuestros huéspedes vivan la experiencia del descanso, la gastronomía y el confort.</p>
+      <p class="lede">{{inicio_hero_texto}}</p>
     </div>
 
     <form class="ticket reveal in-view" id="bookingForm">
@@ -783,7 +790,7 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
           </select>
         </div>
         <button type="submit" class="ticket-cta">
-          Ver disponibilidad
+          {{inicio_hero_cta_texto}}
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
         </button>
       </div>
@@ -795,8 +802,8 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
 <section class="rooms-intro" id="habitaciones">
   <div class="container reveal in-view">
     <div class="text-frost">
-      <p class="hero-kicker">Habitaciones</p>
-      <h2>Cuatro categorías, mismo confort.</h2>
+      <p class="hero-kicker">{{habitaciones_intro_kicker}}</p>
+      <h2>{{habitaciones_intro_titulo}}</h2>
     </div>
   </div>
 </section>
@@ -876,10 +883,10 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
 <section class="dine pad" id="restaurante">
   <div class="container dine-inner">
     <div class="reveal text-frost in-view">
-      <span class="dine-kicker">Restaurant</span>
+      <span class="dine-kicker">{{restaurante_kicker}}</span>
       <p class="dine-title">Sabor <em class="brand-script">Serrano</em></p>
-      <h2>"es venir a descubrir el sabor de San Luis."</h2>
-      <p class="body-copy">Cocina de estación con proveedores de la zona — Nuestro menú pone en valor los productos y sabores de la región.</p><div>El salón abre a huéspedes y a todo público.</div><p></p>
+      <h2>{{restaurante_titulo}}</h2>
+      <p class="body-copy">{{restaurante_texto}}</p><div>{{restaurante_texto_secundario}}</div><p></p>
     </div>
     <div class="dine-facts reveal text-frost in-view">
       <div class="dine-fact">
@@ -900,7 +907,7 @@ footer{ background: var(--pino-deep); color: rgba(251,247,244,.7); padding: 56px
       </div>
       <a href="#" id="btnReservarMesa" class="btn-stamp">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
-        Reservar mesa
+        {{restaurante_cta_texto}}
       </a>
     </div>
   </div>
