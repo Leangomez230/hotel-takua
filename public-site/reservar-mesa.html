@@ -55,9 +55,12 @@ button{ font-family:inherit; cursor:pointer; }
 h1,h2,h3{ font-family:var(--font-display); font-weight:700; letter-spacing:-0.01em; }
 .container{ max-width:1080px; margin:0 auto; padding:0 clamp(20px,5vw,48px); }
 .brand-script{ font-family:'Dancing Script', cursive; font-weight:700; color:var(--ocre); }
+.brand-sans{ font-family:'Montserrat', sans-serif; font-weight:900; letter-spacing:-0.01em; }
 
 .nav{ display:flex; align-items:center; justify-content:space-between; padding:20px clamp(20px,5vw,48px); background:var(--paper); border-bottom:1px solid var(--granito-deep); }
 .nav-mark{ font-family:var(--font-display); font-weight:900; font-size:20px; color:var(--ink); }
+.nav-mark span{ color:var(--ocre); }
+.nav-mark .brand-script{ font-size:1.2em; }
 .nav-back{ font-size:13.5px; font-weight:600; color:var(--ink-soft); display:flex; align-items:center; gap:6px; }
 .nav-back:hover{ color:var(--terracota); }
 
@@ -166,7 +169,7 @@ footer a{ color:var(--ocre); }
 <body>
 
 <nav class="nav">
-  <a href="index.html" class="nav-mark">TAKUÁ · <span class="brand-script" style="font-size:1.2em;">Serrano</span></a>
+  <a href="index.html" class="nav-mark"><span class="brand-sans">TAKUÁ</span> <span>·</span> Sabor <em class="brand-script">Serrano</em></a>
   <a href="index.html" class="nav-back">← Volver al sitio</a>
 </nav>
 
