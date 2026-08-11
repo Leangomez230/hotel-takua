@@ -1377,12 +1377,13 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
     if (senia > 0) {
       const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
       if (turnoHab) {
+        const hab_id_int = isNaN(Number(habitacion_id)) ? null : Number(habitacion_id);
         await db.query(
           `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
           [turnoHab.id, `Seña Reserva Hab. ${hab.numero} — ${nombre_huesped}`, senia,
            metodo_pago||'Efectivo', `Reserva #${r.rows[0].id}`,
-           req.user.id, req.user.nombre, habitacion_id, hab.numero]
+           req.user.id, req.user.nombre, hab_id_int, hab.numero]
         );
       } else {
         // Sin turno abierto: la reserva se guarda igual pero se advierte
@@ -1461,12 +1462,13 @@ app.post('/api/reservas-habitacion-pendientes/:id/asignar', auth, adminOrRecep, 
     if (senia > 0) {
       const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
       if (turnoHab) {
+        const hab_id_int = isNaN(Number(habitacion_id)) ? null : Number(habitacion_id);
         await db.query(
           `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
           [turnoHab.id, `Seña Reserva Web Hab. ${hab.numero} — ${pend.nombre_huesped}`, senia,
            metodo_pago || 'Mercado Pago', `Reserva #${nuevaId}`,
-           req.user.id, req.user.nombre, habitacion_id, hab.numero]
+           req.user.id, req.user.nombre, hab_id_int, hab.numero]
         );
       } else {
         aviso = `⚠️ Seña de $${senia} guardada en la reserva pero NO registrada en caja — no hay turno de habitaciones abierto.`;
