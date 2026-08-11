@@ -1349,7 +1349,7 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
     // Verificar solapamiento de fechas con reservas existentes
     const solapamiento = await db.getOne(
       `SELECT id, nombre_huesped, entrada, salida FROM reservas
-       WHERE habitacion_id=$1
+       WHERE habitacion_id::text=$1::text
        AND estado IN ('futura','activa')
        AND entrada < $3 AND salida > $2`,
       [habitacion_id, entrada, salida]
