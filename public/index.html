@@ -2961,11 +2961,10 @@ async function showReservaModal(habId) {
   const now = new Date(), tom = new Date(now); tom.setDate(tom.getDate()+1);
   const iso = d => d.toISOString().slice(0,16);
 
-  // Cargar tarifas globales
-  const tarifasCfg = await apiFetch('GET', '/config/tarifas') || {};
-  const tfNoche = tarifasCfg.precio_noche || hab?.precio_noche || 50000;
-  const tfHora  = tarifasCfg.precio_hora  || 20000;
-  const tfDia   = tarifasCfg.precio_dia   || 75000;
+  // Cargar tipos de habitación con tarifas desde config
+  const tiposHab = await apiFetch('GET', '/config/tipos-habitacion') || [];
+  const tipoActual = tiposHab.find(t => t.nombre.toLowerCase() === (hab?.tipo||'queen').toLowerCase()) || tiposHab[0] || { nombre:'Queen', tarifa_base:50000 };
+  const tarifaInicial = Number(tipoActual?.tarifa_base) || 50000;
 
   openModal(`
     <div class="modal-hd">
@@ -3001,30 +3000,28 @@ async function showReservaModal(habId) {
       </div>
     </div>
 
-    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px">💰 Tipo de Tarifa</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
-      <button class="res-tarifa-btn" data-tipo="noche" data-monto="${tfNoche}" style="border:2px solid #7c3aed;border-radius:10px;padding:10px 6px;background:#faf5ff;cursor:pointer;text-align:left">
-        <div style="font-size:10px;color:#64748b;font-weight:600">🌙 Por Noche</div>
-        <div style="font-size:14px;font-weight:800;color:#7c3aed">${fmt(tfNoche)}</div>
-      </button>
-      <button class="res-tarifa-btn" data-tipo="hora" data-monto="${tfHora}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 6px;background:#f8fafc;cursor:pointer;text-align:left">
-        <div style="font-size:10px;color:#64748b;font-weight:600">⏱ Por Horas</div>
-        <div style="font-size:14px;font-weight:800;color:#374151">${fmt(tfHora)}</div>
-      </button>
-      <button class="res-tarifa-btn" data-tipo="dia" data-monto="${tfDia}" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 6px;background:#f8fafc;cursor:pointer;text-align:left">
-        <div style="font-size:10px;color:#64748b;font-weight:600">📅 Por Día (24h)</div>
-        <div style="font-size:14px;font-weight:800;color:#374151">${fmt(tfDia)}</div>
-      </button>
-      <button class="res-tarifa-btn" data-tipo="personalizado" data-monto="0" style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 6px;background:#f8fafc;cursor:pointer;text-align:left">
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px">💰 Tarifa por tipo de habitación</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:10px">
+      ${tiposHab.map((t,i) => `
+        <button class="res-tarifa-btn" data-tipo="${t.nombre.toLowerCase()}" data-monto="${t.tarifa_base}"
+          style="border:2px solid ${i===0?'#7c3aed':'#e2e8f0'};border-radius:10px;padding:10px 6px;background:${i===0?'#faf5ff':'#f8fafc'};cursor:pointer;text-align:left">
+          <div style="font-size:10px;color:#64748b;font-weight:600">${t.nombre}</div>
+          <div style="font-size:13px;font-weight:800;color:${i===0?'#7c3aed':'#374151'}">${fmt(t.tarifa_base)}</div>
+        </button>`).join('')}
+      <button class="res-tarifa-btn" data-tipo="personalizado" data-monto="0"
+        style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 6px;background:#f8fafc;cursor:pointer;text-align:left">
         <div style="font-size:10px;color:#64748b;font-weight:600">✏️ Personalizado</div>
         <div style="font-size:11px;color:#94a3b8">Monto manual</div>
       </button>
     </div>
     <div id="res-monto-manual" style="display:none;margin-bottom:10px">
       <label>Monto personalizado ($)</label>
-      <input type="number" id="res-tarifa" value="${tfNoche}" placeholder="0">
+      <input type="number" id="res-tarifa" value="${tarifaInicial}" placeholder="0">
     </div>
-    <input type="hidden" id="res-tarifa-val" value="${tfNoche}">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <input type="checkbox" id="res-iva" style="width:16px;height:16px;cursor:pointer;accent-color:#7c3aed">
+      <label for="res-iva" style="font-size:13px;font-weight:700;color:#374151;cursor:pointer;margin:0">Agregar IVA 21%</label>
+    </div>
 
     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px">🛏 Tipo de Habitación</div>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
@@ -3058,7 +3055,8 @@ async function showReservaModal(habId) {
 
     <div class="total-box">
       <div class="total-row"><span>Noches / Unidades:</span><span id="res-n">1</span></div>
-      <div class="total-row big"><span>Total estimado:</span><span id="res-tot">${fmt(tfNoche)}</span></div>
+      <div class="total-row" id="res-iva-monto" style="display:none;color:#7c3aed"><span>IVA 21%:</span><span></span></div>
+      <div class="total-row big"><span>Total estimado:</span><span id="res-tot">${fmt(tarifaInicial)}</span></div>
     </div>
 
     <div class="stitle">Seña (opcional)</div>
@@ -3086,8 +3084,9 @@ async function showReservaModal(habId) {
   const resFpIn  = flatpickr('#res-in',  { ...resFpConfig, defaultDate: now, defaultHour:15, defaultMinute:0, onChange: () => recalc() });
   const resFpOut = flatpickr('#res-out', { ...resFpConfig, defaultDate: tom, defaultHour:11, defaultMinute:0, onChange: () => recalc() });
 
-  let resTipoTarifa = 'noche';
-  let resTarifaMonto = tfNoche;
+  let resTipoTarifa = tipoActual?.nombre?.toLowerCase() || 'queen';
+  let resTarifaMonto = tarifaInicial;
+  let resIVA = false;
 
   const recalc = () => {
     const inn = resFpIn?.selectedDates?.[0]?.toISOString().slice(0,16) || resFpIn?.input?.value;
@@ -3095,21 +3094,34 @@ async function showReservaModal(habId) {
     if (!inn || !out) return;
     let n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
     if (resTipoTarifa === 'hora' || resTipoTarifa === 'dia') n = 1;
+    const baseTotal = n * resTarifaMonto;
+    const totalFinal = resIVA ? Math.round(baseTotal * 1.21) : baseTotal;
     document.getElementById('res-n').textContent   = n;
-    document.getElementById('res-tot').textContent = fmtExacto(n * resTarifaMonto);
+    document.getElementById('res-tot').textContent = fmtExacto(totalFinal);
+    const ivaEl = document.getElementById('res-iva-monto');
+    if (ivaEl) {
+      ivaEl.style.display = resIVA ? 'flex' : 'none';
+      const span = ivaEl.querySelector('span:last-child');
+      if (span) span.textContent = fmtExacto(Math.round(baseTotal * 0.21));
+    }
   };
 
-  // Botones tarifa
+  // IVA
+  document.getElementById('res-iva')?.addEventListener('change', function() {
+    resIVA = this.checked; recalc();
+  });
+
+  // Botones tipos de habitación/tarifa
   document.querySelectorAll('.res-tarifa-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       resTipoTarifa  = btn.dataset.tipo;
       resTarifaMonto = Number(btn.dataset.monto);
       document.querySelectorAll('.res-tarifa-btn').forEach(b => {
         b.style.borderColor = '#e2e8f0'; b.style.background = '#f8fafc';
-        b.querySelector('div:last-child').style.color = '#374151';
+        const lbl = b.querySelector('div:last-child'); if(lbl) lbl.style.color = '#374151';
       });
       btn.style.borderColor = '#7c3aed'; btn.style.background = '#faf5ff';
-      btn.querySelector('div:last-child').style.color = '#7c3aed';
+      const lbl = btn.querySelector('div:last-child'); if(lbl) lbl.style.color = '#7c3aed';
       const wrap = document.getElementById('res-monto-manual');
       const inp  = document.getElementById('res-tarifa');
       if (resTipoTarifa === 'personalizado') {
@@ -3159,7 +3171,8 @@ async function showReservaModal(habId) {
     const _out = resFpOut?.selectedDates?.[0] || new Date(resFpOut?.input?.value);
     let n = Math.max(1, Math.ceil((_out - _inn)/86400000));
     if (resTipoTarifa === 'hora' || resTipoTarifa === 'dia') n = 1;
-    const total = n * resTarifaMonto;
+    const baseTotal = n * resTarifaMonto;
+    const total = resIVA ? Math.round(baseTotal * 1.21) : baseTotal;
     const r = await apiFetch('POST', '/reservas', {
       habitacion_id:   habIdReal,
       nombre_huesped:  nombre,
