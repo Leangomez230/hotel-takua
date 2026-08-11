@@ -2308,22 +2308,21 @@ async function showCheckinModal(habId) {
   const iso = d => d.toISOString().slice(0,16);
   const pn = hab?.precio_noche || 50000;
 
-  const [reservasVinculadas, tarifasCfg] = await Promise.all([
+  const [reservasVinculadas, tiposHab] = await Promise.all([
     apiFetch('GET', `/habitaciones/${habIdReal}/reservas`),
-    apiFetch('GET', '/config/tarifas')
+    apiFetch('GET', '/config/tipos-habitacion')
   ]);
   const reservas = reservasVinculadas || [];
-  const tfNoche = tarifasCfg?.precio_noche || pn;
-  const tfHora  = tarifasCfg?.precio_hora  || 20000;
-  const tfDia   = tarifasCfg?.precio_dia   || Math.round(pn * 1.5);
+  const tfNoche = Number(tiposHab?.[0]?.tarifa_base) || pn;
 
   // Estado compartido entre pasos
   let ciStep = reservas.length > 0 ? 1 : 2;
   let reserva = null;
   let senia0 = 0;
   let ciPersonas = 1;
-  let ciTipoTarifa = 'noche';
-  let ciTarifaMonto = tfNoche;
+  let ciTipoTarifa = tiposHab[0]?.nombre?.toLowerCase() || 'queen';
+  let ciTarifaMonto = Number(tiposHab[0]?.tarifa_base) || tfNoche;
+  let ciIVA = false;
   let ciMomentoCobro = 'ahora';
   let acompanantes = [];
 
@@ -2511,34 +2510,27 @@ async function showCheckinModal(habId) {
 
           <!-- PASO 4: Tarifa -->
           <div class="ci-slide" id="ci-slide-4">
-            <div id="ci-tarifa-aviso-wrap"></div>
-            <div class="ci-tf-grid">
-              <button class="ci-tf-btn active" data-tipo="noche" data-monto="${tfNoche}">
-                <div class="ci-tf-label">🌙 Por Noche</div>
-                <div class="ci-tf-price">${fmt(tfNoche)}</div>
-              </button>
-              <button class="ci-tf-btn" data-tipo="hora" data-monto="${tfHora}">
-                <div class="ci-tf-label">⏱ Por Horas <span style="font-weight:400;font-size:9px">hasta 6h</span></div>
-                <div class="ci-tf-price">${fmt(tfHora)}</div>
-              </button>
-              <button class="ci-tf-btn" data-tipo="dia" data-monto="${tfDia}">
-                <div class="ci-tf-label">📅 Por Día (24h)</div>
-                <div class="ci-tf-price">${fmt(tfDia)}</div>
-              </button>
-              <button class="ci-tf-btn" data-tipo="personalizado" data-monto="0">
-                <div class="ci-tf-label">✏️ Personalizado</div>
-                <div class="ci-tf-price" style="font-size:13px;color:#94a3b8">Monto manual</div>
-              </button>
+            <!-- Tarifa: aviso con precio de reserva o precio por noche + botón editar -->
+            <div id="ci-tarifa-aviso-wrap" style="margin-bottom:14px"></div>
+
+            <div id="ci-monto-manual" style="display:none;margin-bottom:14px">
+              <label>Monto personalizado ($)</label>
+              <input type="number" id="ci-tarifa" placeholder="0"
+                style="font-size:28px;font-weight:900;text-align:center;letter-spacing:2px;border:2px solid #00c9b1;border-radius:12px;padding:14px;width:100%">
             </div>
-            <div id="ci-monto-manual" style="display:none;margin-bottom:12px">
-              <label>Monto ($)</label>
-              <input type="number" id="ci-tarifa" placeholder="0" style="font-size:18px;font-weight:800">
-            </div>
+
             <div class="ci-resumen">
-              <div class="ci-resumen-row"><span>Habitación:</span><span id="ci-tot">${fmt(tfNoche)}</span></div>
+              <div class="ci-resumen-row"><span>Habitación:</span><span id="ci-tot">—</span></div>
               <div class="ci-resumen-row"><span>Noches / Unidades:</span><span id="ci-n">1</span></div>
+              <div class="ci-resumen-row" style="margin-top:4px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#374151">
+                  <input type="checkbox" id="ci-iva" style="width:15px;height:15px;cursor:pointer;accent-color:#00c9b1">
+                  Agregar IVA 21%
+                </label>
+              </div>
+              <div class="ci-resumen-row" id="ci-iva-monto" style="display:none;color:#00c9b1"><span>IVA 21%:</span><span id="ci-iva-val"></span></div>
               <div class="ci-resumen-row" id="ci-senia-row" style="display:none;color:#16a34a"><span>Seña cobrada:</span><span id="ci-senia-val"></span></div>
-              <div class="ci-resumen-total"><span>TOTAL</span><span id="ci-saldo">${fmt(tfNoche)}</span></div>
+              <div class="ci-resumen-total"><span>TOTAL</span><span id="ci-saldo">—</span></div>
             </div>
           </div>
 
@@ -2628,11 +2620,16 @@ async function showCheckinModal(habId) {
     if (!inn || !out) return;
     let n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
     if (ciTipoTarifa === 'hora' || ciTipoTarifa === 'dia') n = 1;
-    const total = n * ciTarifaMonto;
+    const baseTotal = n * ciTarifaMonto;
+    const total = ciIVA ? Math.round(baseTotal * 1.21) : baseTotal;
     const saldo = ciMomentoCobro === 'ahora' ? Math.max(0, total - senia0) : 0;
     ['ci-n'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=n; });
     ['ci-tot','ci-tot-final'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=fmtExacto(total); });
     ['ci-saldo','ci-saldo-final'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=ciMomentoCobro==='ahora'?fmtExacto(saldo):'$ 0 (paga al salir)'; });
+    const ivaEl = document.getElementById('ci-iva-monto');
+    const ivaVal = document.getElementById('ci-iva-val');
+    if (ivaEl) ivaEl.style.display = ciIVA ? 'flex' : 'none';
+    if (ivaVal) ivaVal.textContent = fmtExacto(Math.round(baseTotal * 0.21));
     if (senia0 > 0) {
       ['ci-senia-row','ci-senia-row-final'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='flex'; });
       ['ci-senia-val','ci-senia-val-final'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='- '+fmt(senia0); });
@@ -2681,6 +2678,7 @@ async function showCheckinModal(habId) {
     }
     updateStepBar();
     recalc();
+    if (step === 4) setTimeout(mostrarAvisoPaso4, 50);
   };
 
   // ── Validar paso actual ───────────────────────────────────────────
@@ -2824,24 +2822,34 @@ async function showCheckinModal(habId) {
     if (empty) empty.style.display = 'none';
   });
 
-  // ── PASO 4: Tarifa ────────────────────────────────────────────────
-  document.querySelectorAll('.ci-tf-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.disabled) return;
-      ciTipoTarifa = btn.dataset.tipo;
-      ciTarifaMonto = Number(btn.dataset.monto);
-      document.querySelectorAll('.ci-tf-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+  // ── PASO 4: Tarifa ─────────────────────────────────────────────────
+  const mostrarAvisoPaso4 = () => {
+    const avisoCont = document.getElementById('ci-tarifa-aviso-wrap');
+    if (!avisoCont || avisoCont.innerHTML) return;
+    avisoCont.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdf9;border:1.5px solid #6ee7d6;border-radius:10px;padding:12px 14px;font-weight:700;color:#0f766e">
+      <span style="font-size:16px">💰 Tarifa: <span id="ci-tarifa-display">${fmtExacto(ciTarifaMonto)}</span></span>
+      <button id="ci-editar-tarifa-btn" style="background:#00c9b1;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif">✏️ Editar</button>
+    </div>`;
+    document.getElementById('ci-editar-tarifa-btn')?.addEventListener('click', () => {
       const wrap = document.getElementById('ci-monto-manual');
-      if (ciTipoTarifa === 'personalizado') {
-        wrap.style.display = 'block';
-        const inp = document.getElementById('ci-tarifa');
-        if (inp) inp.addEventListener('input', () => { ciTarifaMonto=parseMonto(inp.value)||0; recalc(); });
-      } else {
-        wrap.style.display = 'none';
-      }
-      recalc();
+      if (wrap) { wrap.style.display = 'block'; document.getElementById('ci-tarifa')?.focus(); }
+      ciTipoTarifa = 'personalizado';
+      avisoCont.innerHTML = `<div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:8px">
+        ✏️ Ingresá el monto personalizado</div>`;
     });
+  };
+
+  // Campo personalizado
+  document.getElementById('ci-tarifa')?.addEventListener('input', function() {
+    ciTarifaMonto = parseMonto(this.value) || 0;
+    const display = document.getElementById('ci-tarifa-display');
+    if (display) display.textContent = fmtExacto(ciTarifaMonto);
+    recalc();
+  });
+
+  // IVA checkin
+  document.getElementById('ci-iva')?.addEventListener('change', function() {
+    ciIVA = this.checked; recalc();
   });
 
   // ── PASO 5: Cobro ─────────────────────────────────────────────────
@@ -2871,7 +2879,8 @@ async function showCheckinModal(habId) {
     const { inn, out } = getInnOut();
     let noches = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
     if (ciTipoTarifa==='hora'||ciTipoTarifa==='dia') noches=1;
-    const total = noches * ciTarifaMonto;
+    const baseTotal = noches * ciTarifaMonto;
+    const total = ciIVA ? Math.round(baseTotal * 1.21) : baseTotal;
     const saldo = ciMomentoCobro==='ahora' ? Math.max(0, total-senia0) : 0;
     const btn = document.getElementById('ci-next');
     if (btn) { btn.disabled=true; btn.textContent='Procesando...'; }
