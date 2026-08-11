@@ -3090,8 +3090,8 @@ async function showReservaModal(habId) {
   let resTarifaMonto = tfNoche;
 
   const recalc = () => {
-    const inn = resFpIn?.input?.value;
-    const out = resFpOut?.input?.value;
+    const inn = resFpIn?.selectedDates?.[0]?.toISOString().slice(0,16) || resFpIn?.input?.value;
+    const out = resFpOut?.selectedDates?.[0]?.toISOString().slice(0,16) || resFpOut?.input?.value;
     if (!inn || !out) return;
     let n = Math.max(1, Math.ceil((new Date(out)-new Date(inn))/86400000));
     if (resTipoTarifa === 'hora' || resTipoTarifa === 'dia') n = 1;
@@ -3155,7 +3155,9 @@ async function showReservaModal(habId) {
   document.getElementById('res-confirm').addEventListener('click', async () => {
     const nombre = document.getElementById('res-nombre').value.trim();
     if (!nombre) { toast('Ingresá el nombre', false); return; }
-    let n = Math.max(1, Math.ceil((new Date(resFpOut?.input?.value) - new Date(resFpIn?.input?.value))/86400000));
+    const _inn = resFpIn?.selectedDates?.[0] || new Date(resFpIn?.input?.value);
+    const _out = resFpOut?.selectedDates?.[0] || new Date(resFpOut?.input?.value);
+    let n = Math.max(1, Math.ceil((_out - _inn)/86400000));
     if (resTipoTarifa === 'hora' || resTipoTarifa === 'dia') n = 1;
     const total = n * resTarifaMonto;
     const r = await apiFetch('POST', '/reservas', {
@@ -3166,8 +3168,8 @@ async function showReservaModal(habId) {
       acompanantes:    getAcompRes(),
       documento:      document.getElementById('res-doc').value,
       plataforma:     document.getElementById('res-plataforma').value,
-      entrada:        resFpIn?.input?.value,
-      salida:         resFpOut?.input?.value,
+      entrada:        resFpIn?.selectedDates?.[0]?.toISOString().slice(0,16) || resFpIn?.input?.value,
+      salida:         resFpOut?.selectedDates?.[0]?.toISOString().slice(0,16) || resFpOut?.input?.value,
       noches:         n,
       precio_total:   total,
       metodo_pago:    'A definir en check-in',
