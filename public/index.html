@@ -3000,20 +3000,6 @@ async function showReservaModal(habId) {
       </div>
     </div>
 
-    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px">💰 Tarifa por tipo de habitación</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:10px">
-      ${tiposHab.map((t,i) => `
-        <button class="res-tarifa-btn" data-tipo="${t.nombre.toLowerCase()}" data-monto="${t.tarifa_base}"
-          style="border:2px solid ${i===0?'#7c3aed':'#e2e8f0'};border-radius:10px;padding:10px 6px;background:${i===0?'#faf5ff':'#f8fafc'};cursor:pointer;text-align:left">
-          <div style="font-size:10px;color:#64748b;font-weight:600">${t.nombre}</div>
-          <div style="font-size:13px;font-weight:800;color:${i===0?'#7c3aed':'#374151'}">${fmt(t.tarifa_base)}</div>
-        </button>`).join('')}
-      <button class="res-tarifa-btn" data-tipo="personalizado" data-monto="0"
-        style="border:2px solid #e2e8f0;border-radius:10px;padding:10px 6px;background:#f8fafc;cursor:pointer;text-align:left">
-        <div style="font-size:10px;color:#64748b;font-weight:600">✏️ Personalizado</div>
-        <div style="font-size:11px;color:#94a3b8">Monto manual</div>
-      </button>
-    </div>
     <div id="res-monto-manual" style="display:none;margin-bottom:10px">
       <label>Monto personalizado ($)</label>
       <input type="number" id="res-tarifa" value="${tarifaInicial}" placeholder="0">
@@ -3029,6 +3015,7 @@ async function showReservaModal(habId) {
       <button class="res-tipo-btn" data-tipo="twin"   style="flex:1;padding:10px 6px;border:2px solid #e0e6ef;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:12px;font-weight:700;color:#374151">🛏🛏 Twin</button>
       <button class="res-tipo-btn" data-tipo="triple" style="flex:1;padding:10px 6px;border:2px solid #e0e6ef;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:12px;font-weight:700;color:#374151">🛏🛏🛏 Triple</button>
       <button class="res-tipo-btn" data-tipo="doble"  style="flex:1;padding:10px 6px;border:2px solid #e0e6ef;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:12px;font-weight:700;color:#374151">🛏+🛏 Doble</button>
+      <button class="res-tipo-btn" data-tipo="personalizado" style="flex:1;padding:10px 6px;border:2px solid #e0e6ef;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:12px;font-weight:700;color:#374151">✏️ Personalizado</button>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:start">
@@ -3111,30 +3098,20 @@ async function showReservaModal(habId) {
     resIVA = this.checked; recalc();
   });
 
-  // Botones tipos de habitación/tarifa
-  document.querySelectorAll('.res-tarifa-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      resTipoTarifa  = btn.dataset.tipo;
-      resTarifaMonto = Number(btn.dataset.monto);
-      document.querySelectorAll('.res-tarifa-btn').forEach(b => {
-        b.style.borderColor = '#e2e8f0'; b.style.background = '#f8fafc';
-        const lbl = b.querySelector('div:last-child'); if(lbl) lbl.style.color = '#374151';
-      });
-      btn.style.borderColor = '#7c3aed'; btn.style.background = '#faf5ff';
-      const lbl = btn.querySelector('div:last-child'); if(lbl) lbl.style.color = '#7c3aed';
-      const wrap = document.getElementById('res-monto-manual');
-      const inp  = document.getElementById('res-tarifa');
-      if (resTipoTarifa === 'personalizado') {
-        wrap.style.display = 'block';
-        inp?.addEventListener('input', () => { resTarifaMonto = parseMonto(inp.value)||0; recalc(); });
-      } else {
-        wrap.style.display = 'none';
-      }
-      recalc();
-    });
+  // Campo personalizado
+  document.getElementById('res-tarifa')?.addEventListener('input', function() {
+    if (resTipoTarifa === 'personalizado') { resTarifaMonto = parseMonto(this.value)||0; recalc(); }
   });
 
   // Botones tipo habitación
+  // Mapa de tipos de habitación → nombre en config (para buscar la tarifa)
+  const tipoAConfig = { queen:'queen', twin:'twin', doble:'matrimonial', triple:'triple' };
+  const getTarifaTipo = (tipo) => {
+    const nombre = tipoAConfig[tipo] || tipo;
+    const match = tiposHab.find(t => t.nombre.toLowerCase() === nombre.toLowerCase());
+    return Number(match?.tarifa_base) || resTarifaMonto;
+  };
+
   document.querySelectorAll('.res-tipo-btn').forEach(btn => {
     // Marcar el tipo actual de la hab
     if (btn.dataset.tipo === resTipoHab) {
@@ -3146,6 +3123,16 @@ async function showReservaModal(habId) {
         b.style.borderColor = '#e0e6ef'; b.style.background = '#f8fafc'; b.style.color = '#374151';
       });
       btn.style.borderColor = '#7c3aed'; btn.style.background = '#faf5ff'; btn.style.color = '#7c3aed';
+      const manual = document.getElementById('res-monto-manual');
+      if (resTipoHab === 'personalizado') {
+        resTarifaMonto = 0;
+        if (manual) manual.style.display = 'block';
+      } else {
+        resTarifaMonto = getTarifaTipo(resTipoHab);
+        if (manual) manual.style.display = 'none';
+      }
+      resTipoTarifa = resTipoHab;
+      recalc();
     });
   });
 
