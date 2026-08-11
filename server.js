@@ -69,9 +69,83 @@ const PUBLIC_SITE_HOSTS = ['hoteltakua.com.ar', 'www.hoteltakua.com.ar'];
 // real de tipos_habitacion antes de mandarlo al navegador. El archivo
 // en sí (con los placeholders) sigue viviendo en GitHub, versionado —
 // esto no lo reescribe en disco, solo lo arma al vuelo en cada visita.
-async function renderPaginaConPrecios(filePath, res) {
+//
+// CONTENIDO Y SEO EN VIVO — mismo patrón, ahora también para los campos
+// de sitio_web_contenido y sitio_web_seo. Los marcadores de contenido van
+// namespaced por sección para no pisarse entre sí dentro del mismo archivo
+// (ej: {{restaurante_titulo}} vs {{servicios_titulo}} — index.html junta
+// varias "páginas" lógicas en un solo documento).
+//
+// Orden de las 3 pasadas (importa): 1) contenido, 2) SEO, 3) precios al
+// final — así, si un fallback de SEO trae embebido un {{PRECIO_X}} (como
+// la meta description de reservar-habitacion), la pasada de precios lo
+// termina de resolver.
+const SEO_FALLBACKS = {
+  inicio: {
+    title: 'Hotel Takuá — La Punta, San Luis',
+    description: 'Hotel Takuá, La Punta, San Luis. 28 habitaciones al pie de la sierra, cocina de estación y hospitalidad puntana. Reservá tu estadía.',
+    canonical: 'https://hoteltakua.com.ar/',
+    ogImage: '',
+  },
+  'reservar-habitacion': {
+    title: 'Reservar Habitación — Takuá Hotel Serrano, La Punta, San Luis',
+    description: 'Reservá tu habitación en Hotel Takuá Serrano, La Punta, San Luis. 4 categorías, desde ${{PRECIO_MIN}} la noche. Confirmación con seña, sin llamadas ni esperas.',
+    canonical: 'https://hoteltakua.com.ar/reservar-habitacion.html',
+    ogImage: '',
+  },
+  'reservar-mesa': {
+    title: 'Reservar Mesa — Restaurante Hotel Takuá Serrano, La Punta, San Luis',
+    description: 'Reservá tu mesa en el restaurante de Hotel Takuá Serrano, La Punta, San Luis. Desayuno, almuerzo, merienda y cena. Confirmá en minutos.',
+    canonical: 'https://hoteltakua.com.ar/reservar-mesa.html',
+    ogImage: '',
+  },
+};
+// reservar-habitacion.html y reservar-mesa.html ya traen su propio
+// schema.org armado a mano (Hotel+Offers, FAQPage, Restaurant) con los
+// {{PRECIO_X}} ya integrados — no se tocan. El bloque {{SEO_SCHEMA_BLOCK}}
+// editable desde el panel solo aplica a "inicio", que hoy no tiene ninguno.
+function escHtmlAttr(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function renderPaginaPublica(filePath, res, { paginaSeo, paginasContenido = [] }) {
   try {
     let html = fs.readFileSync(filePath, 'utf8');
+
+    // 1) Contenido — un marcador {{pagina_campo}} por fila guardada.
+    if (paginasContenido.length) {
+      const filas = await db.getAll(
+        'SELECT pagina, campo, valor FROM sitio_web_contenido WHERE pagina = ANY($1)',
+        [paginasContenido]
+      );
+      filas.forEach(f => {
+        html = html.split(`{{${f.pagina}_${f.campo}}}`).join(f.valor ?? '');
+      });
+    }
+
+    // 2) SEO — con fallback al valor que ya tenía la página hoy, para que
+    // no guardar nada en el panel no deje title/description en blanco.
+    if (paginaSeo) {
+      const fallback = SEO_FALLBACKS[paginaSeo] || { title:'', description:'', canonical:'', ogImage:'' };
+      const seo = await db.getOne('SELECT * FROM sitio_web_seo WHERE pagina=$1', [paginaSeo]);
+      const title = (seo && seo.title) || fallback.title;
+      const description = (seo && seo.meta_description) || fallback.description;
+      const canonical = (seo && seo.canonical_url) || fallback.canonical;
+      const ogImage = (seo && seo.og_image) || fallback.ogImage;
+      const schemaJson = seo && seo.schema_json ? seo.schema_json : null;
+
+      html = html.split('{{SEO_TITLE}}').join(escHtmlAttr(title));
+      html = html.split('{{SEO_DESCRIPTION}}').join(escHtmlAttr(description));
+      html = html.split('{{SEO_CANONICAL}}').join(escHtmlAttr(canonical));
+      html = html.split('{{SEO_OG_IMAGE}}').join(escHtmlAttr(ogImage));
+      const bloqueSchema = schemaJson
+        ? `<script type="application/ld+json">\n${JSON.stringify(schemaJson, null, 2)}\n</script>`
+        : '';
+      html = html.split('{{SEO_SCHEMA_BLOCK}}').join(bloqueSchema);
+    }
+
+    // 3) Precios — al final, así resuelve también los {{PRECIO_X}} que
+    // hayan quedado embebidos en un fallback de SEO recién insertado.
     const tipos = await db.getAll('SELECT nombre, tarifa_base FROM tipos_habitacion ORDER BY orden ASC');
     const fmt = (n) => Math.round(n).toLocaleString('es-AR');
 
@@ -89,19 +163,33 @@ async function renderPaginaConPrecios(filePath, res) {
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch(e) {
-    console.error('Error armando página con precios en vivo:', e.message);
+    console.error('Error armando página pública en vivo:', e.message);
     res.sendFile(filePath); // si algo falla, mejor mostrar el archivo tal cual que romper la página
   }
 }
 app.get(['/', '/index.html'], (req, res, next) => {
   const host = (req.hostname || '').toLowerCase();
   if (!PUBLIC_SITE_HOSTS.includes(host)) return next();
-  renderPaginaConPrecios(path.join(__dirname, 'public-site', 'index.html'), res);
+  renderPaginaPublica(path.join(__dirname, 'public-site', 'index.html'), res, {
+    paginaSeo: 'inicio',
+    paginasContenido: ['inicio','habitaciones','restaurante','servicios','ubicacion'],
+  });
 });
 app.get('/reservar-habitacion.html', (req, res, next) => {
   const host = (req.hostname || '').toLowerCase();
   if (!PUBLIC_SITE_HOSTS.includes(host)) return next();
-  renderPaginaConPrecios(path.join(__dirname, 'public-site', 'reservar-habitacion.html'), res);
+  renderPaginaPublica(path.join(__dirname, 'public-site', 'reservar-habitacion.html'), res, {
+    paginaSeo: 'reservar-habitacion',
+    paginasContenido: [],
+  });
+});
+app.get('/reservar-mesa.html', (req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (!PUBLIC_SITE_HOSTS.includes(host)) return next();
+  renderPaginaPublica(path.join(__dirname, 'public-site', 'reservar-mesa.html'), res, {
+    paginaSeo: 'reservar-mesa',
+    paginasContenido: [],
+  });
 });
 
 app.use((req, res, next) => {
@@ -671,6 +759,148 @@ app.post('/api/config/plataformas/reordenar', auth, adminOnly, async (req, res) 
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── SITIO WEB (config-web.html) — Contenido / Imágenes / SEO ────────
+// Guarda el contenido/SEO editable desde el panel. Contenido y SEO YA están
+// conectados al sitio público vía renderPaginaPublica() (ver más arriba,
+// junto a los precios en vivo). Imágenes es la única pata que sigue sin
+// conectar — el sitio no las pide dinámicamente todavía (paso pendiente).
+const PAGINAS_SITIO_WEB = ['inicio','habitaciones','restaurante','servicios','ubicacion','reservar-habitacion','reservar-mesa'];
+function validarPaginaSitioWeb(pagina) {
+  return typeof pagina === 'string' && PAGINAS_SITIO_WEB.includes(pagina);
+}
+// El sitio público es de una sola página (index.html) con anclas internas
+// (#habitaciones, #restaurante, #servicios, #ubicacion) — esas secciones NO
+// tienen <head> propio, así que no tiene sentido darles title/meta/canonical
+// independientes. Solo 3 documentos reales tienen su propio <head>: el
+// index (que cubre inicio + todas las anclas) y las 2 páginas de reserva.
+const PAGINAS_SEO = ['inicio','reservar-habitacion','reservar-mesa'];
+function validarPaginaSeo(pagina) {
+  return typeof pagina === 'string' && PAGINAS_SEO.includes(pagina);
+}
+
+// -- Contenido --
+app.get('/api/sitio-web/contenido/:pagina', auth, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const rows = await db.getAll(
+      'SELECT campo, valor, updated_at FROM sitio_web_contenido WHERE pagina=$1 ORDER BY campo',
+      [req.params.pagina]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Guarda de a un campo por vez (permite loguear cuál cambió sin pisar los demás)
+app.put('/api/sitio-web/contenido/:pagina/:campo', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const campo = (req.params.campo || '').trim();
+    if (!campo) return res.status(400).json({ error: 'Falta el campo' });
+    const valor = req.body.valor ?? '';
+    await db.query(
+      `INSERT INTO sitio_web_contenido (pagina,campo,valor,updated_at,updated_by) VALUES ($1,$2,$3,NOW(),$4)
+       ON CONFLICT (pagina,campo) DO UPDATE SET valor=$3, updated_at=NOW(), updated_by=$4`,
+      [req.params.pagina, campo, valor, req.user.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_CONTENIDO', `${req.params.pagina}.${campo}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/sitio-web/contenido/:pagina/:campo', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    await db.query('DELETE FROM sitio_web_contenido WHERE pagina=$1 AND campo=$2', [req.params.pagina, req.params.campo]);
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_CONTENIDO_ELIMINAR', `${req.params.pagina}.${req.params.campo}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// -- Imágenes --
+app.get('/api/sitio-web/imagenes/:pagina', auth, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const rows = await db.getAll(
+      'SELECT clave, url, alt_text, updated_at FROM sitio_web_imagenes WHERE pagina=$1 ORDER BY clave',
+      [req.params.pagina]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/sitio-web/imagenes/:pagina/:clave', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const clave = (req.params.clave || '').trim();
+    if (!clave) return res.status(400).json({ error: 'Falta la clave' });
+    const { url, alt_text } = req.body;
+    if (!url || !url.trim()) return res.status(400).json({ error: 'Falta la URL de la imagen' });
+    await db.query(
+      `INSERT INTO sitio_web_imagenes (pagina,clave,url,alt_text,updated_at,updated_by) VALUES ($1,$2,$3,$4,NOW(),$5)
+       ON CONFLICT (pagina,clave) DO UPDATE SET url=$3, alt_text=$4, updated_at=NOW(), updated_by=$5`,
+      [req.params.pagina, clave, url.trim(), (alt_text||'').trim(), req.user.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_IMAGEN', `${req.params.pagina}.${clave}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/sitio-web/imagenes/:pagina/:clave', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSitioWeb(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    await db.query('DELETE FROM sitio_web_imagenes WHERE pagina=$1 AND clave=$2', [req.params.pagina, req.params.clave]);
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_IMAGEN_ELIMINAR', `${req.params.pagina}.${req.params.clave}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// -- SEO --
+// Listado completo (para el panel de resumen/score por página) — no requiere admin,
+// cualquier usuario logueado del panel puede ver el estado, solo admin edita.
+app.get('/api/sitio-web/seo', auth, async (req, res) => {
+  try {
+    const rows = await db.getAll('SELECT * FROM sitio_web_seo');
+    const porPagina = {};
+    rows.forEach(r => { porPagina[r.pagina] = r; });
+    res.json(porPagina);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sitio-web/seo/:pagina', auth, async (req, res) => {
+  try {
+    if (!validarPaginaSeo(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const row = await db.getOne('SELECT * FROM sitio_web_seo WHERE pagina=$1', [req.params.pagina]);
+    res.json(row || { pagina: req.params.pagina, title: '', meta_description: '', canonical_url: '', og_image: '', schema_json: null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/sitio-web/seo/:pagina', auth, adminOnly, async (req, res) => {
+  try {
+    if (!validarPaginaSeo(req.params.pagina)) return res.status(400).json({ error: 'Página inválida' });
+    const { title, meta_description, canonical_url, og_image, schema_json } = req.body;
+
+    let schemaVal = null;
+    if (schema_json !== undefined && schema_json !== null && schema_json !== '') {
+      if (typeof schema_json === 'string') {
+        try { schemaVal = JSON.parse(schema_json); }
+        catch(e) { return res.status(400).json({ error: 'El schema.org no es un JSON válido: ' + e.message }); }
+      } else {
+        schemaVal = schema_json;
+      }
+    }
+
+    await db.query(
+      `INSERT INTO sitio_web_seo (pagina,title,meta_description,canonical_url,og_image,schema_json,updated_at,updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7)
+       ON CONFLICT (pagina) DO UPDATE SET
+         title=$2, meta_description=$3, canonical_url=$4, og_image=$5, schema_json=$6, updated_at=NOW(), updated_by=$7`,
+      [req.params.pagina, title||'', meta_description||'', canonical_url||'', og_image||'', schemaVal ? JSON.stringify(schemaVal) : null, req.user.id]
+    );
+    await logAction(req.user.id, req.user.nombre, 'SITIO_WEB_SEO', req.params.pagina);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── CAMBIAR HABITACIÓN DE RESERVA (futura o activa) ─────────────────
 app.post('/api/reservas/:id/cambiar-habitacion', auth, async (req, res) => {
   if (!['admin','recepcionista','mucama'].includes(req.user.rol))
@@ -1119,7 +1349,7 @@ app.post('/api/reservas', auth, adminOrRecep, async (req, res) => {
     // Verificar solapamiento de fechas con reservas existentes
     const solapamiento = await db.getOne(
       `SELECT id, nombre_huesped, entrada, salida FROM reservas
-       WHERE habitacion_id=$1
+       WHERE habitacion_id::text=$1::text
        AND estado IN ('futura','activa')
        AND entrada < $3 AND salida > $2`,
       [habitacion_id, entrada, salida]
@@ -1231,13 +1461,12 @@ app.post('/api/reservas-habitacion-pendientes/:id/asignar', auth, adminOrRecep, 
     if (senia > 0) {
       const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
       if (turnoHab) {
-        const hab_id_int = isNaN(Number(habitacion_id)) ? null : Number(habitacion_id);
         await db.query(
           `INSERT INTO movimientos_habitaciones (turno_id,tipo,concepto,monto,metodo_pago,referencia,usuario_id,usuario_nombre,habitacion_id,habitacion_numero)
            VALUES ($1,'ingreso',$2,$3,$4,$5,$6,$7,$8,$9)`,
           [turnoHab.id, `Seña Reserva Web Hab. ${hab.numero} — ${pend.nombre_huesped}`, senia,
            metodo_pago || 'Mercado Pago', `Reserva #${nuevaId}`,
-           req.user.id, req.user.nombre, hab_id_int, hab.numero]
+           req.user.id, req.user.nombre, habitacion_id, hab.numero]
         );
       } else {
         aviso = `⚠️ Seña de $${senia} guardada en la reserva pero NO registrada en caja — no hay turno de habitaciones abierto.`;
@@ -1323,37 +1552,6 @@ app.get('/api/publico/disponibilidad-habitacion', async (req, res) => {
   }
 });
 
-// Crea una preferencia de pago en Mercado Pago y devuelve la URL de pago.
-// Funciona igual con credenciales de PRODUCCIÓN o de PRUEBA (sandbox) —
-// la diferencia la pone el token, no el código.
-async function crearPreferenciaMercadoPago(token, { titulo, monto, nombreHuesped, reservaId }) {
-  const body = {
-    items: [{
-      title: titulo,
-      quantity: 1,
-      unit_price: Number(monto),
-      currency_id: 'ARS',
-    }],
-    payer: { name: nombreHuesped },
-    external_reference: String(reservaId),
-    back_urls: {
-      success: 'https://hoteltakua.com.ar/reservar-habitacion.html',
-      failure: 'https://hoteltakua.com.ar/reservar-habitacion.html',
-      pending: 'https://hoteltakua.com.ar/reservar-habitacion.html',
-    },
-    auto_return: 'approved',
-  };
-  const resp = await fetch('https://api.mercadopago.com/checkout/preferences', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await resp.json();
-  if (!resp.ok) throw new Error(data.message || `Mercado Pago devolvió un error (${resp.status})`);
-  // init_point = link de producción. sandbox_init_point = link de pruebas (con token TEST-).
-  return data.sandbox_init_point || data.init_point;
-}
-
 // Guarda la reserva SIN vincularla a ninguna habitación — recepción la
 // confirma y le asigna habitación real desde reservas.html.
 app.post('/api/publico/reservas-habitacion', async (req, res) => {
@@ -1375,11 +1573,21 @@ app.post('/api/publico/reservas-habitacion', async (req, res) => {
     const noches = Math.max(1, Math.round((new Date(salida + 'T00:00:00') - new Date(entrada + 'T00:00:00')) / 86400000));
     const personas = Math.max(1, Math.min(10, parseInt(cantidad_personas, 10) || 2));
 
+    // Link de pago de Mercado Pago — solo si el hotel ya cargó su token en config_hotel.
+    // Mientras no exista, la reserva se guarda igual, sin link (el sitio ofrece WhatsApp).
+    const tokenRow = await db.getOne(`SELECT valor FROM config_hotel WHERE clave='mp_access_token'`);
+    const mpToken = tokenRow ? tokenRow.valor : '';
+    let mpLink = '';
+    if (mpToken) {
+      // TODO: crear acá la preferencia real de pago con la API de Mercado Pago
+      // usando mpToken, cuando el dueño del hotel cargue su clave en config.html.
+    }
+
     const r = await db.query(
       `INSERT INTO reservas_web_pendientes
         (nombre_huesped,telefono,email,entrada,salida,noches,cantidad_personas,tipo_solicitado,
          precio_estimado,monto_senia,notas,cupon,mp_link,estado_pago,estado,origen)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'','pendiente','pendiente','Web')
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pendiente','pendiente','Web')
        RETURNING id`,
       [
         nombre_huesped.trim().slice(0, 120),
@@ -1394,36 +1602,11 @@ app.post('/api/publico/reservas-habitacion', async (req, res) => {
         Number(monto_senia) || 0,
         (notas || '').trim().slice(0, 500),
         (cupon || '').trim().slice(0, 40),
+        mpLink,
       ]
     );
-    const nuevaId = r.rows[0].id;
-
-    // Link de pago de Mercado Pago — solo si el hotel ya cargó su token en config_hotel.
-    // Mientras no exista, la reserva se guarda igual, sin link (el sitio ofrece WhatsApp).
-    // Funciona igual con token de PRODUCCIÓN o de PRUEBA (sandbox) — Mercado Pago
-    // usa la misma API para los dos, solo cambia qué credencial le pases.
-    let mpLink = '';
-    const tokenRow = await db.getOne(`SELECT valor FROM config_hotel WHERE clave='mp_access_token'`);
-    const mpToken = tokenRow ? tokenRow.valor : '';
-    const senia = Number(monto_senia) || 0;
-    if (mpToken && senia > 0) {
-      try {
-        mpLink = await crearPreferenciaMercadoPago(mpToken, {
-          titulo: `Seña reserva de habitación — Hotel Takuá (${tipo_solicitado || 'sin categoría'})`,
-          monto: senia,
-          nombreHuesped: nombre_huesped.trim(),
-          reservaId: nuevaId,
-        });
-        await db.query(`UPDATE reservas_web_pendientes SET mp_link=$1 WHERE id=$2`, [mpLink, nuevaId]);
-      } catch(mpErr) {
-        // Si Mercado Pago falla (token inválido, etc.), la reserva queda guardada
-        // igual — el sitio ofrece WhatsApp como respaldo, nada se rompe para el huésped.
-        console.error('Error creando preferencia de Mercado Pago:', mpErr.message);
-      }
-    }
-
     await logAction(null, 'Sitio web', 'RESERVA_HABITACION_WEB', `${nombre_huesped} · ${entrada} a ${salida} · ${tipo_solicitado || 'sin categoría'}`);
-    res.json({ ok: true, id: nuevaId, mp_link: mpLink });
+    res.json({ ok: true, id: r.rows[0].id, mp_link: mpLink });
   } catch(e) {
     console.error('RESERVA HABITACIÓN WEB ERROR:', e);
     res.status(500).json({ error: 'No pudimos guardar la reserva. Probá de nuevo, o escribinos por WhatsApp.' });
@@ -3959,7 +4142,10 @@ app.post('/api/push/desuscribir', auth, async (req, res) => {
 app.get('*', (req, res) => {
   const host = (req.hostname || '').toLowerCase();
   if (PUBLIC_SITE_HOSTS.includes(host)) {
-    return renderPaginaConPrecios(path.join(__dirname, 'public-site', 'index.html'), res);
+    return renderPaginaPublica(path.join(__dirname, 'public-site', 'index.html'), res, {
+      paginaSeo: 'inicio',
+      paginasContenido: ['inicio','habitaciones','restaurante','servicios','ubicacion'],
+    });
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
