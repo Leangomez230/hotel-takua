@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--topbar-h:61px}
+:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1}
 body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px;overflow-x:hidden}
 .main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
 .topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
@@ -23,15 +23,19 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .btn-primary{background:linear-gradient(135deg,var(--accent),#0094ff);border:none;border-radius:10px;padding:9px 16px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif}
 
 /* ── CALENDARIO ── */
-.cal-wrap{padding:16px 20px;overflow-x:auto}
+.cal-wrap{padding:16px 20px}
 .cal-nav{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .cal-nav h2{font-size:20px;font-weight:900;color:#1a2035;min-width:180px}
 .cal-nav-btn{background:#fff;border:1.5px solid #e2e8f0;border-radius:9px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .15s}
 .cal-nav-btn:hover{background:#f1f5f9;border-color:#cbd5e1}
 .cal-today-btn{background:#1a2035;color:#fff;border:none;border-radius:9px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif}
 
-.gantt{border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-.gantt-head{display:grid;background:#1a2035;position:sticky;top:var(--topbar-h);z-index:10}
+/* Contenedor con scroll propio para la grilla: acá vive el scroll tanto
+   horizontal (muchos días) como vertical (muchas habitaciones), para que
+   la fila de días (sticky top:0) tenga una única referencia clara y no
+   compita con el topbar ni con el scroll de la página. */
+.gantt-scroll{border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:auto}
+.gantt-head{display:grid;background:#1a2035;position:sticky;top:0;z-index:10}
 .gh-room{background:#0f1628;padding:10px 14px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;border-right:1px solid rgba(255,255,255,.08);display:flex;align-items:center;width:130px;flex-shrink:0}
 .gh-days{display:flex;flex:1}
 .gh-day{flex:1;text-align:center;padding:6px 2px;border-right:1px solid rgba(255,255,255,.06);cursor:pointer}
@@ -364,19 +368,21 @@ async function init() {
   if (!esMucama) {
     document.getElementById('btn-vista-lista').style.display = 'inline-block';
   }
-  ajustarTopbarH();
-  window.addEventListener('resize', ajustarTopbarH);
+  window.addEventListener('resize', ajustarAlturaGrid);
   G.habitaciones = await api('GET', '/habitaciones') || [];
   await cargarYRenderizar();
 }
 
-// Mide la altura real del topbar y la expone como variable CSS,
-// para que la fila de días del calendario quede pegada justo debajo
-// (y no tapada detrás del topbar al hacer scroll).
-function ajustarTopbarH() {
-  const tb = document.querySelector('.topbar');
-  if (!tb) return;
-  document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px');
+// Le da a la grilla del calendario (fila de días + habitaciones) toda la
+// altura que quede disponible en la pantalla, para que tenga scroll propio
+// y la fila de días (sticky top:0 dentro de ese contenedor) quede fija
+// mientras se recorren las habitaciones, sin superponerse con el topbar.
+function ajustarAlturaGrid() {
+  const wrap = document.getElementById('gantt-scroll');
+  if (!wrap || wrap.offsetParent === null) return;
+  const top = wrap.getBoundingClientRect().top;
+  const disponible = window.innerHeight - top - 16; // 16px de margen inferior
+  wrap.style.maxHeight = Math.max(280, disponible) + 'px';
 }
 
 async function cargarYRenderizar() {
@@ -485,15 +491,18 @@ function renderGantt() {
   const roomColW = window.innerWidth <= 900 ? 90 : 130;
   const ganttMinW = roomColW + diasEnMes * 32;
   container.innerHTML = `
-    <div class="gantt" style="min-width:${ganttMinW}px">
-      <div class="gantt-head" style="display:flex">
-        <div class="gh-room">Hab.</div>
-        <div class="gh-days" style="display:grid;grid-template-columns:repeat(${diasEnMes},1fr);flex:1">
-          ${headDays}
+    <div class="gantt-scroll" id="gantt-scroll">
+      <div class="gantt" style="min-width:${ganttMinW}px">
+        <div class="gantt-head" style="display:flex">
+          <div class="gh-room">Hab.</div>
+          <div class="gh-days" style="display:grid;grid-template-columns:repeat(${diasEnMes},1fr);flex:1">
+            ${headDays}
+          </div>
         </div>
+        ${filas}
       </div>
-      ${filas}
     </div>`;
+  ajustarAlturaGrid();
 }
 
 // ── MODAL INFO ────────────────────────────────────────
@@ -882,6 +891,7 @@ function setVista(v) {
   document.getElementById('leyenda-cal').style.display= esCal ? 'flex' : 'none';
   document.getElementById('btn-nueva-res').style.display = !esCal && ['admin','recepcionista'].includes(ME?.rol) ? 'inline-block' : 'none';
   if (!esCal) renderLista();
+  else ajustarAlturaGrid();
 }
 
 function irANuevaReserva() {
