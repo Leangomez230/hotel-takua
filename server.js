@@ -1411,6 +1411,19 @@ app.get('/api/reservas-habitacion-pendientes', auth, adminOrRecep, async (req, r
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/reservas-habitacion-pendientes/:id/cancelar', auth, adminOrRecep, async (req, res) => {
+  try {
+    const pend = await db.getOne('SELECT * FROM reservas_web_pendientes WHERE id=$1', [req.params.id]);
+    if (!pend) return res.status(404).json({ error: 'Esa reserva pendiente no existe.' });
+    if (pend.estado !== 'pendiente') return res.status(400).json({ error: 'Esta reserva ya fue procesada antes.' });
+
+    await db.query("UPDATE reservas_web_pendientes SET estado='cancelada' WHERE id=$1", [req.params.id]);
+    await logAction(req.user.id, req.user.nombre, 'RESERVA_WEB_CANCELADA',
+      `Reserva web pendiente #${pend.id} - ${pend.nombre_huesped}`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/reservas-habitacion-pendientes/:id/asignar', auth, adminOrRecep, async (req, res) => {
   try {
     const { habitacion_id, pago_confirmado, metodo_pago } = req.body;
