@@ -569,8 +569,16 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
 }
 // Click fuera cierra
+let _mousedownTarget = null;
+document.getElementById('modal-overlay').addEventListener('mousedown', function(e) {
+  _mousedownTarget = e.target;
+});
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
+  if (e.target === this && _mousedownTarget === this) closeModal();
+});
+// Cerrar modal con Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
 });
  
 // ── ZOOM ──
@@ -871,7 +879,7 @@ function buildCard(h) {
       const mostrarPastilla = diasParaCheckin !== null && diasParaCheckin <= 7;
       body = `
         <div class="ravail"><div class="ravail-circle"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L11.5 20L22 9" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="ravail-label" style="color:#16a34a">Disponible</div></div>
-        ${mostrarPastilla ? `<div style="margin-top:6px;background:#ede9fe;border-radius:7px;padding:5px 8px;font-size:10px;color:#6d28d9;font-weight:700;display:flex;align-items:center;gap:4px">
+        ${mostrarPastilla ? `<div style="margin-top:6px;background:#ede9fe;border-radius:7px;padding:5px 8px;font-size:12px;color:#6d28d9;font-weight:700;display:flex;align-items:center;gap:4px">
           📅 ${fechaEnt}${nombreCorto?' · '+nombreCorto:''}
         </div>` : ''}`;
     } else {
