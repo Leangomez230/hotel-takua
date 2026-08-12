@@ -176,8 +176,21 @@ function openModal(html) {
   document.getElementById('overlay').classList.add('open');
 }
 function closeModal() { document.getElementById('overlay').classList.remove('open'); }
-document.getElementById('overlay').addEventListener('click', e => {
-  if (e.target.id === 'overlay') closeModal();
+
+// Cerrar el modal solo si el click "empezó y terminó" en el fondo (overlay),
+// no cuando el mousedown arrancó adentro del modal (ej. seleccionando texto)
+// y el mouseup terminó afuera al arrastrar — eso no debería cerrar el modal.
+let _overlayMouseDownFuera = false;
+const _overlayEl = document.getElementById('overlay');
+_overlayEl.addEventListener('mousedown', e => { _overlayMouseDownFuera = (e.target.id === 'overlay'); });
+_overlayEl.addEventListener('click', e => {
+  if (e.target.id === 'overlay' && _overlayMouseDownFuera) closeModal();
+  _overlayMouseDownFuera = false;
+});
+
+// Cerrar el modal abierto con la tecla ESC
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && _overlayEl.classList.contains('open')) closeModal();
 });
 
 // ── ESTADO ────────────────────────────────────────────
@@ -238,6 +251,7 @@ async function render() {
     +G.alertas.length+' producto'+(G.alertas.length>1?'s':'')+' con stock bajo o agotado</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn-secondary" onclick="imprimirAlertas()" style="background:#1e293b;color:#fff;border-color:#1e293b;padding:5px 12px;font-size:12px">🖨️ Imprimir listado</button>'
+    +'<button class="btn-secondary" onclick="descargarPDFAlertas()" style="background:#dc2626;color:#fff;border-color:#dc2626;padding:5px 12px;font-size:12px">📄 Descargar PDF</button>'
     +'<button class="btn-secondary" onclick="toggleAlertas()" style="padding:5px 12px;font-size:12px">✕ Cerrar</button>'
     +'</div></div>'
     +G.alertas.map(a=>'<div class="alert-row"><span>'
@@ -795,7 +809,94 @@ function imprimirAlertas() {
   frame.onload = () => { frame.contentWindow.focus(); frame.contentWindow.print(); };
 }
 
-// ── IMPRIMIR INVENTARIO ───────────────────────────────
+// ── DESCARGAR PDF DE ALERTAS ──────────────────────────
+async function descargarPDFAlertas() {
+  if (!G.alertas.length) { toast('No hay productos con stock bajo o agotado', false); return; }
+
+  toast('Generando PDF...', true);
+
+  if (!window.jspdf) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const fecha = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
+  const hora  = new Date().toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+  const margenL = 14, ancho = 182;
+  let y = 28;
+
+  // Encabezado
+  doc.setFillColor(220, 38, 38);
+  doc.rect(0, 0, 210, 22, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.text('Hotel Takua - Alertas de stock', margenL, 10);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.text(`${fecha} ${hora}  |  ${G.alertas.length} producto${G.alertas.length>1?'s':''} con stock bajo o agotado`, margenL, 17);
+
+  // Encabezado de columnas
+  doc.setFillColor(226, 232, 240);
+  doc.rect(margenL, y-3, ancho, 6, 'F');
+  doc.setTextColor(100,116,139);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8);
+  doc.text('PRODUCTO', margenL+2, y+1);
+  doc.text('MÓDULO', margenL+82, y+1);
+  doc.text('STOCK', margenL+122, y+1);
+  doc.text('MÍNIMO', margenL+152, y+1);
+  y += 7;
+
+  const MOD_ICON_TXT = {bebidas:'Bebidas',frigobar:'Frigobar',cocina:'Cocina',limpieza:'Limpieza',general:'General'};
+
+  G.alertas.forEach((a, i) => {
+    if (y > 270) { doc.addPage(); y = 15; }
+    const agotado = Number(a.stock) <= 0;
+    if (i % 2 === 0) {
+      doc.setFillColor(254, 242, 242);
+      doc.rect(margenL, y-3.5, ancho, 7, 'F');
+    }
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(26,32,53);
+    const nombre = a.nombre.length > 42 ? a.nombre.substring(0,40)+'...' : a.nombre;
+    doc.text(nombre, margenL+2, y+1);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100,116,139);
+    doc.text(MOD_ICON_TXT[a.modulo]||a.modulo||'—', margenL+82, y+1);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(agotado?220:217, agotado?38:119, agotado?38:6);
+    doc.text(`${a.stock} ${a.unidad||'u'}`, margenL+122, y+1);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(148,163,184);
+    doc.text(`${a.stock_minimo} ${a.unidad||'u'}`, margenL+152, y+1);
+    y += 7;
+  });
+
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setTextColor(148,163,184);
+    doc.setFontSize(8);
+    doc.setFont('helvetica','normal');
+    doc.text(`Hotel Takua | ${fecha}`, margenL, 290);
+    doc.text(`Pag. ${i}/${totalPages}`, 196, 290, { align:'right' });
+  }
+
+  doc.save(`alertas_stock_${fecha.replace(/\//g,'-')}.pdf`);
+  toast('PDF descargado ✓');
+}
+
+
 function imprimirInventario() {
   const rows = document.querySelectorAll('#inv-tbody tr[data-nombre]:not([style*="display: none"]):not([style*="display:none"])');
   if (!rows.length) { toast('No hay productos para imprimir', false); return; }
