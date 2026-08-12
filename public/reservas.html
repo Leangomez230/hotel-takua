@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1}
+:root{--sidebar:#1a2035;--sw:72px;--accent:#00c9b1;--topbar-h:61px}
 body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:14px;overflow-x:hidden}
 .main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh}
 .topbar{background:#fff;padding:12px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf3;position:sticky;top:0;z-index:100}
@@ -31,7 +31,7 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 .cal-today-btn{background:#1a2035;color:#fff;border:none;border-radius:9px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif}
 
 .gantt{border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-.gantt-head{display:grid;background:#1a2035;position:sticky;top:0;z-index:10}
+.gantt-head{display:grid;background:#1a2035;position:sticky;top:var(--topbar-h);z-index:10}
 .gh-room{background:#0f1628;padding:10px 14px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;border-right:1px solid rgba(255,255,255,.08);display:flex;align-items:center;width:130px;flex-shrink:0}
 .gh-days{display:flex;flex:1}
 .gh-day{flex:1;text-align:center;padding:6px 2px;border-right:1px solid rgba(255,255,255,.06);cursor:pointer}
@@ -94,17 +94,18 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;font-size:
 
 /* Botones de vista (Calendario / Lista) */
 .vista-switcher{display:flex;gap:4px;background:#e2e8f0;border-radius:10px;padding:3px}
-.btn-vista{padding:6px 14px;border-radius:8px;border:1.5px solid transparent;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:none;color:#64748b}
+.btn-vista{padding:6px 14px;border-radius:8px;border:1.5px solid #fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:#fff;color:#64748b}
 .btn-vista.activo{background:#1a2035;color:#fff;border-color:#1a2035;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .btn-vista:not(.activo):hover{background:#fff;border-color:#cbd5e1;color:#1a2035}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2035;color:#fff;padding:12px 22px;border-radius:12px;font-weight:700;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);pointer-events:none}
 
 /* ── LISTA (cards) ── */
 .lista-tabs{display:inline-flex;gap:2px;margin-bottom:16px;background:#eef1f5;border-radius:12px;padding:4px}
-.lista-tab{padding:8px 16px;border-radius:9px;border:none;background:transparent;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s}
-.lista-tab:hover{color:#1a2035}
+.lista-tab{padding:8px 16px;border-radius:9px;border:1.5px solid #e0e5ec;background:#fff;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s}
+.lista-tab:hover{color:#1a2035;border-color:#cbd5e1;background:#f8fafc}
 .lista-tab .cnt{background:#dcfce7;color:#16a34a;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:800;min-width:18px;text-align:center}
-.lista-tab.activo{background:#fff;color:#1a2035;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.lista-tab.activo{background:#1a2035;color:#fff;border-color:#1a2035;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.lista-tab.activo .cnt{background:rgba(255,255,255,.18);color:#fff}
 
 .lista-filtros{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
 .lista-search{flex:1;min-width:220px;position:relative}
@@ -363,8 +364,19 @@ async function init() {
   if (!esMucama) {
     document.getElementById('btn-vista-lista').style.display = 'inline-block';
   }
+  ajustarTopbarH();
+  window.addEventListener('resize', ajustarTopbarH);
   G.habitaciones = await api('GET', '/habitaciones') || [];
   await cargarYRenderizar();
+}
+
+// Mide la altura real del topbar y la expone como variable CSS,
+// para que la fila de días del calendario quede pegada justo debajo
+// (y no tapada detrás del topbar al hacer scroll).
+function ajustarTopbarH() {
+  const tb = document.querySelector('.topbar');
+  if (!tb) return;
+  document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px');
 }
 
 async function cargarYRenderizar() {
@@ -1017,6 +1029,7 @@ function cardReservaWebPendienteHTML(r) {
       </div>
       <div class="rc-actions">
         <button class="rc-btn-text" style="background:#ede9fe;border-color:#ddd6fe;color:#6d28d9" onclick="abrirAsignarHabitacionWeb(${r.id})">🏨 Asignar Habitación</button>
+        <button class="rc-icon-btn danger" onclick="cancelarReservaWeb(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Cancelar reserva">✕</button>
       </div>
     </div>
     <div class="rc-divider"></div>
@@ -1156,6 +1169,14 @@ function entradaDesdeCard(habitacionId) {
 async function cancelarReserva(id, nombre) {
   if (!confirm(`¿Cancelar la reserva de ${nombre}? La habitación quedará libre si no tiene otra reserva vigente.`)) return;
   const r = await api('POST', `/reservas/${id}/cancelar`);
+  if (r?.ok) { toast('Reserva cancelada'); await cargarContadores(); pintarTabs(); cargarLista(); }
+  else toast(r?.error||'Error', false);
+}
+
+// Cancela una reserva web todavía sin habitación asignada (pestaña "Pendientes")
+async function cancelarReservaWeb(id, nombre) {
+  if (!confirm(`¿Cancelar la reserva web de ${nombre}? Todavía no tiene habitación asignada.`)) return;
+  const r = await api('POST', `/reservas-habitacion-pendientes/${id}/cancelar`);
   if (r?.ok) { toast('Reserva cancelada'); await cargarContadores(); pintarTabs(); cargarLista(); }
   else toast(r?.error||'Error', false);
 }
