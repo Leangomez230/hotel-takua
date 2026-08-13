@@ -1106,6 +1106,9 @@ function cardReservaHTML(r, isAdminOrRecep) {
       acciones.push(`<button class="rc-btn-text" style="background:#dcfce7;border-color:#bbf7d0;color:#166534" onclick="reactivarReserva(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Reactivar reserva">↺ Reactivar</button>`);
       acciones.push(`<button class="rc-icon-btn danger" onclick="eliminarReserva(${r.id},'${(r.nombre_huesped||'').replace(/'/g,"\\'")}')" title="Eliminar definitivamente">🗑️</button>`);
     }
+    if (r.estado === 'finalizada') {
+      acciones.push(`<button class="rc-icon-btn" onclick="reimprimirCheckout(${r.id})" title="Reimprimir checkout">🖨️</button>`);
+    }
   } else {
     acciones.push(`<button class="rc-btn-text" onclick="verReservaLista(${r.id})" title="Ver detalle">👁 Ver</button>`);
     if (r.estado === 'finalizada') {
