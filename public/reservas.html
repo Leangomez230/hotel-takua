@@ -1219,10 +1219,10 @@ init();
 // REIMPRIMIR CHECKOUT
 // ══════════════════════════════════════
 async function reimprimirCheckout(id) {
-  // Buscar la reserva en G.reservas
-  const r = G.reservas.find(x => x.id === id);
+  // Buscar la reserva en G.listaData (lista) o G.reservas (calendario)
+  const r = (G.listaData || []).find(x => x.id === id) || (G.reservas || []).find(x => x.id === id);
   if (!r) { alert('No se encontraron los datos de la reserva'); return; }
-  const hab = G.habitaciones.find(h => String(h.id) === String(r.habitacion_id));
+  const hab = (G.habitaciones || []).find(h => String(h.id) === String(r.habitacion_id));
 
   // Construir datos compatibles con imprimirCheckout
   const datos = {
