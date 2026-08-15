@@ -2466,8 +2466,8 @@ app.put('/api/habitaciones/:id/password', auth, adminOnly, async (req, res) => {
 app.get('/api/solicitudes', auth, async (req, res) => {
   try {
     const sols = await db.getAll(`
-      SELECT s.*, h.numero, h.ala FROM solicitudes_huesped s
-      LEFT JOIN habitaciones h ON s.habitacion_id = h.id
+      SELECT s.*, h.numero, h.ala, h.id as hab_id FROM solicitudes_huesped s
+      LEFT JOIN habitaciones h ON s.habitacion_id::text = h.id
       ORDER BY s.created_at DESC LIMIT 50
     `);
     res.json(sols);
