@@ -4128,7 +4128,7 @@ async function loadSolicitudesAll() {
 }
  
 function applyMapAlerts(pendientes) {
-  const habsConSol = new Set(pendientes.map(s => s.habitacion_id));
+  const habsConSol = new Set(pendientes.map(s => s.hab_id || String(s.habitacion_id)));
   document.querySelectorAll('.rcard[data-hid]').forEach(card => {
     const hid = card.dataset.hid;
     if (habsConSol.has(hid)) {
