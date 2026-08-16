@@ -1223,7 +1223,16 @@ async function reimprimirCheckout(id) {
   if (!r) { alert('No se encontraron los datos de la reserva'); return; }
   const hab = (G.habitaciones || []).find(h => String(h.id) === String(r.habitacion_id));
 
-  // Construir datos compatibles con imprimirCheckout
+  // Cargar cargos del restaurante
+  let cargosRest = [];
+  try {
+    cargosRest = await api('GET', `/reservas/${id}/cargos-restaurante`) || [];
+  } catch(e) { cargosRest = []; }
+  const totalCargosRest = cargosRest.reduce((s,c) => s + Number(c.monto||0), 0);
+
+  const totalBase = (r.precio_total || 0) + totalCargosRest;
+  const totalCobrado = Math.max(0, totalBase - (r.monto_senia || 0));
+
   const datos = {
     hab:             hab?.numero || r.habitacion_id,
     ala:             hab?.ala || '',
@@ -1236,9 +1245,9 @@ async function reimprimirCheckout(id) {
     extra:           0,
     conceptoExtra:   '',
     metodo:          r.metodo_pago || '—',
-    totalCobrado:    Math.max(0, (r.precio_total||0) - (r.monto_senia||0)),
-    cargosRest:      [],
-    totalCargosRest: 0,
+    totalCobrado,
+    cargosRest,
+    totalCargosRest,
   };
 
   imprimirCheckout(datos);
