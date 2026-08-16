@@ -2273,7 +2273,7 @@ async function showCheckoutModal(hab) {
         extra,
         conceptoExtra: concepto,
         metodo: extra > 0 ? document.getElementById('co-pago-extra')?.value : document.getElementById('co-pago')?.value,
-        totalCobrado: cobrado,
+        totalCobrado: cobrado + totalCargosRest,
       });
     } else toast(r?.error||'Error en check-out', false);
   });
