@@ -425,6 +425,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   .coc-kpi-val{font-size:18px}
 }
 
+/* Panel expandible: huéspedes por día (para calcular desayunos) */
+#huespedes-panel{display:none;background:#fff;border-radius:16px;border:1.5px solid #e2e8f0;
+  padding:20px;margin:-4px 0 18px;box-shadow:0 2px 6px rgba(0,0,0,.05);max-width:640px}
+.hux-titulo{font-size:14px;font-weight:800;color:#0f4c75}
+.hux-sub{font-size:12px;color:#94a3b8;margin:2px 0 20px}
+.hux-bars{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;height:170px}
+.hux-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%}
+.hux-bar-val{font-size:13px;font-weight:900;color:#1a2035;margin-bottom:6px}
+.hux-bar-track{flex:1;width:100%;max-width:38px;display:flex;align-items:flex-end;
+  background:#f1f5f9;border-radius:8px;overflow:hidden}
+.hux-bar-fill{width:100%;background:linear-gradient(180deg,#1b6ca8,#0f4c75);border-radius:8px 8px 0 0;
+  transition:height .5s ease;min-height:4px}
+.hux-bar-fill.hoy{background:linear-gradient(180deg,#22c55e,#16a34a)}
+.hux-bar-day{font-size:11px;color:#64748b;text-align:center;margin-top:9px;text-transform:capitalize;line-height:1.35}
+.hux-bar-day.hoy{color:#16a34a;font-weight:800}
+
 /* Track deslizante Comandas ↔ Salón */
 .coc-viewport{overflow:hidden}
 .coc-track{display:flex;transition:transform .32s cubic-bezier(.4,0,.2,1)}
@@ -568,6 +584,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <div class="cocina-body">
       <div class="coc-kpis" id="kpis-cocina"></div>
 
+      <div id="huespedes-panel">
+        <div class="hux-titulo">🍳 Huéspedes por día — próximos 7 días</div>
+        <div class="hux-sub">Incluye el día de salida (desayunan antes de hacer check-out)</div>
+        <div id="huespedes-chart"></div>
+      </div>
+
       <div class="cocina-tabs">
         <button id="tab-comandas" class="cocina-tab-btn active" onclick="cambiarVistaCocina('comandas')">📋 Comandas</button>
         <button id="tab-salon" class="cocina-tab-btn" onclick="cambiarVistaCocina('salon')">🍽️ Salón</button>
@@ -677,10 +699,69 @@ function renderKPIs(){
       <div class="coc-kpi-ttl">COMENSALES</div>
       <div class="coc-kpi-val">${comensales}</div>
     </div>
-    <div class="coc-kpi-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8)">
-      <div class="coc-kpi-ttl">HUÉSPEDES</div>
+    <div class="coc-kpi-card" style="background:linear-gradient(135deg,#0f4c75,#1b6ca8);cursor:pointer" onclick="toggleHuespedesPanel()">
+      <div class="coc-kpi-ttl">HUÉSPEDES <span id="hux-chevron" style="font-size:10px">${_huespedesPanelAbierto?'▴':'▾'}</span></div>
       <div class="coc-kpi-val">${S.huespedes||0}</div>
     </div>`;
+}
+
+// ════════════════════════════════════
+// PANEL: HUÉSPEDES POR DÍA (para calcular desayunos)
+// ════════════════════════════════════
+let _huespedesPanelAbierto = false;
+
+async function toggleHuespedesPanel(){
+  _huespedesPanelAbierto = !_huespedesPanelAbierto;
+  const panel = document.getElementById('huespedes-panel');
+  const chevron = document.getElementById('hux-chevron');
+  if(!panel) return;
+  if(_huespedesPanelAbierto){
+    panel.style.display = 'block';
+    if(chevron) chevron.textContent = '▴';
+    await cargarHuespedesSemana();
+  } else {
+    panel.style.display = 'none';
+    if(chevron) chevron.textContent = '▾';
+  }
+}
+
+async function cargarHuespedesSemana(){
+  const cont = document.getElementById('huespedes-chart');
+  if(!cont) return;
+  cont.innerHTML = '<div style="text-align:center;padding:30px 0;color:#94a3b8;font-size:13px">Cargando…</div>';
+  try{
+    const data = await api('GET', '/api/cocina/huespedes-semana');
+    renderHuespedesChart(data||[]);
+  }catch(e){
+    cont.innerHTML = '<div style="text-align:center;padding:30px 0;color:#dc2626;font-size:13px">No se pudo cargar</div>';
+  }
+}
+
+function renderHuespedesChart(data){
+  const cont = document.getElementById('huespedes-chart');
+  if(!cont) return;
+  if(!data.length){
+    cont.innerHTML = '<div style="text-align:center;padding:30px 0;color:#94a3b8;font-size:13px">Sin datos</div>';
+    return;
+  }
+  const max = Math.max(1, ...data.map(d=>Number(d.huespedes)||0));
+  const hoyStr = new Date().toISOString().split('T')[0];
+  cont.innerHTML = `<div class="hux-bars">
+    ${data.map(d=>{
+      const fechaStr = String(d.fecha).split('T')[0];
+      const fecha = new Date(fechaStr+'T12:00:00');
+      const esHoy = fechaStr === hoyStr;
+      const diaLabel = fecha.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');
+      const numLabel = fecha.getDate();
+      const cant = Number(d.huespedes)||0;
+      const alturaPct = Math.max(Math.round((cant/max)*100), cant>0?6:2);
+      return `<div class="hux-bar-col">
+        <div class="hux-bar-val">${cant}</div>
+        <div class="hux-bar-track"><div class="hux-bar-fill${esHoy?' hoy':''}" style="height:${alturaPct}%"></div></div>
+        <div class="hux-bar-day${esHoy?' hoy':''}">${esHoy?'Hoy':diaLabel}<br>${numLabel}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 // ════════════════════════════════════
