@@ -2166,9 +2166,14 @@ async function showCheckoutModal(hab) {
   }
 
   const bannerSaldo = saldo > 0
-    ? `<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:14px">
-        <div style="font-size:12px;color:#64748b">Saldo pendiente de la reserva</div>
-        <div style="font-size:22px;font-weight:900;color:#dc2626">${fmt(saldo)}</div>
+    ? `<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:6px">Saldo pendiente de la reserva</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px;color:#94a3b8;font-weight:700">$</span>
+          <input type="number" id="co-saldo-editable" value="${saldo}" min="0"
+            style="font-size:22px;font-weight:900;color:#dc2626;border:none;border-bottom:2px solid #fca5a5;background:transparent;width:100%;outline:none;font-family:'Nunito',sans-serif">
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px">✏️ Editar monto</div>
        </div>`
     : `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px">
         <div style="font-size:13px;color:#16a34a;font-weight:700">✅ Reserva ya saldada</div>
@@ -2240,20 +2245,27 @@ async function showCheckoutModal(hab) {
   `);
 
   const recalc = () => {
+    const saldoEditado = parseMonto(document.getElementById('co-saldo-editable')?.value||'0');
     const extra = parseMonto(document.getElementById('co-extra')?.value||'0');
     document.getElementById('co-tot-extra').textContent   = fmtExacto(extra);
-    document.getElementById('co-tot-cobrar').textContent  = fmtExacto(saldo + extra);
+    document.getElementById('co-tot-cobrar').textContent  = fmtExacto(saldoEditado + extra);
+    // Mostrar/ocultar método de pago si saldo es 0
+    const metodoRow = document.getElementById('co-metodo-row');
+    if (metodoRow) metodoRow.style.display = (saldoEditado + extra) === 0 ? 'none' : '';
   };
+  document.getElementById('co-saldo-editable')?.addEventListener('input', recalc);
   document.getElementById('co-extra')?.addEventListener('input', recalc);
   document.getElementById('co-close')?.addEventListener('click', closeModal);
 
   document.getElementById('co-confirm')?.addEventListener('click', async () => {
     const extra    = parseMonto(document.getElementById('co-extra')?.value||'0');
     const concepto = document.getElementById('co-concepto')?.value.trim();
+    const saldoEditado = parseMonto(document.getElementById('co-saldo-editable')?.value||String(saldo));
     const body = {
       metodo_pago_extra:  document.getElementById('co-pago')?.value,
       monto_extra:        extra,
       concepto_extra:     concepto,
+      saldo_override:     saldoEditado,  // saldo ajustado por descuento
     };
     if (extra > 0) body.metodo_pago_extra = document.getElementById('co-pago-extra')?.value;
 
