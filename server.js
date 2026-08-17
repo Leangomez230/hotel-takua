@@ -522,13 +522,16 @@ app.post('/api/checkin', auth, adminRecepMucama, async (req, res) => {
       // ── Checkin desde reserva existente ──────────────────
       // Actualizar la reserva existente a estado 'activa'
       const saldo = Number(saldo_cobrado)||0;
+      const nuevoPrecio = Number(precio_total||0);
+      // Calcular saldo_pendiente desde el nuevo precio_total, no desde el saldo anterior
+      // Esto evita el saldo fantasma cuando se cambia la tarifa en el check-in
       await db.query(
         `UPDATE reservas SET estado='activa', nombre_huesped=$1, documento=$2, entrada=$3, salida=$4,
          noches=$5, precio_total=$6, metodo_pago=$7, notas=$8, huesped_id=$9,
          cantidad_personas=$10, acompanantes=$11,
-         saldo_pendiente=GREATEST(0, saldo_pendiente-$12)
+         saldo_pendiente=GREATEST(0, $6::numeric - $12)
          WHERE id=$13`,
-        [nombre, documento||'', entrada, salida, noches||1, precio_total||0,
+        [nombre, documento||'', entrada, salida, noches||1, nuevoPrecio,
          metodo_pago||'Efectivo', notas||'', huespedId,
          cantidad_personas||1, JSON.stringify(acompanantes||[]),
          saldo, reserva_id]
