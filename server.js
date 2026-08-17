@@ -2494,6 +2494,25 @@ app.get('/api/cocina/estado', auth, authRestaurante, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Huéspedes por día (próximos 7 días) — para calcular desayunos. Cuenta también
+// el día de salida: hacen check-out después de desayunar, así que ese día también comen.
+app.get('/api/cocina/huespedes-semana', auth, authRestaurante, async (req, res) => {
+  try {
+    const rows = await db.getAll(`
+      SELECT d::date as fecha,
+        COALESCE(SUM(r.cantidad_personas), 0)::int as huespedes
+      FROM generate_series(CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', INTERVAL '1 day') d
+      LEFT JOIN reservas r
+        ON r.estado IN ('activa','futura','confirmada')
+        AND DATE(r.entrada) <= d::date
+        AND DATE(r.salida) >= d::date
+      GROUP BY d
+      ORDER BY d
+    `);
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.put('/api/cocina/estado/:comandaId', auth, authRestaurante, async (req, res) => {
   try {
     const { items_tildados, completada } = req.body;
