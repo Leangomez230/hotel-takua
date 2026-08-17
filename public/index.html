@@ -2230,7 +2230,9 @@ async function showCheckoutModal(hab) {
       </div>
     </div>
     <div class="total-box">
-      ${saldo>0?`<div class="total-row"><span>Saldo pendiente:</span><span>${fmt(saldo)}</span></div>`:''}
+      ${total0>0?`<div class="total-row"><span>Total estadía:</span><span>${fmt(total0)}</span></div>`:''}
+      ${senia0>0?`<div class="total-row" style="color:#16a34a"><span>Seña cobrada:</span><span>- ${fmt(senia0)}</span></div>`:''}
+      ${totalCargosRest>0?`<div class="total-row"><span>Consumos restaurante:</span><span>${fmt(totalCargosRest)}</span></div>`:''}
       <div class="total-row"><span>Extra:</span><span id="co-tot-extra">${fmt(0)}</span></div>
       <div class="total-row big"><span>Total a cobrar:</span><span id="co-tot-cobrar">${fmt(saldo)}</span></div>
     </div>
@@ -2273,7 +2275,7 @@ async function showCheckoutModal(hab) {
         extra,
         conceptoExtra: concepto,
         metodo: extra > 0 ? document.getElementById('co-pago-extra')?.value : document.getElementById('co-pago')?.value,
-        totalCobrado: cobrado + totalCargosRest,
+        totalCobrado: cobrado,
       });
     } else toast(r?.error||'Error en check-out', false);
   });
