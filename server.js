@@ -982,10 +982,16 @@ app.post('/api/checkout/:habitacion_id', auth, adminRecepMucama, async (req, res
       "SELECT * FROM reservas WHERE habitacion_id=$1 AND estado='activa' ORDER BY id DESC LIMIT 1", [id]
     );
 
-    // Cobrar saldo pendiente si existe
-    const saldo = Number(reserva?.saldo_pendiente||0);
+    // Cobrar saldo pendiente si existe (con posible ajuste por descuento)
+    const saldoOriginal = Number(reserva?.saldo_pendiente||0);
+    const { saldo_override } = req.body;
+    const saldo = saldo_override !== undefined ? Number(saldo_override) : saldoOriginal;
     const extra = Number(monto_extra||0);
     const totalCobrar = saldo + extra;
+    // Si se ajustó el saldo, actualizar en la reserva
+    if (saldo_override !== undefined && saldo !== saldoOriginal && reserva) {
+      await db.query('UPDATE reservas SET saldo_pendiente=$1 WHERE id=$2', [saldo, reserva.id]);
+    }
 
     if (totalCobrar > 0) {
       const turnoHab = await db.getOne("SELECT id FROM turnos_habitaciones WHERE estado='abierto' ORDER BY id DESC LIMIT 1");
