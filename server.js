@@ -529,7 +529,7 @@ app.post('/api/checkin', auth, adminRecepMucama, async (req, res) => {
         `UPDATE reservas SET estado='activa', nombre_huesped=$1, documento=$2, entrada=$3, salida=$4,
          noches=$5, precio_total=$6, metodo_pago=$7, notas=$8, huesped_id=$9,
          cantidad_personas=$10, acompanantes=$11,
-         saldo_pendiente=GREATEST(0, $14 - $12)
+         saldo_pendiente=GREATEST(0, $14::numeric - $12::numeric)
          WHERE id=$13`,
         [nombre, documento||'', entrada, salida, noches||1, nuevoPrecio,
          metodo_pago||'Efectivo', notas||'', huespedId,
