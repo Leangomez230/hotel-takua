@@ -56,6 +56,19 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
 .dnd-switch.on{background:#dc2626}
 .dnd-switch.on .dnd-knob{transform:translateX(22px)}
 
+/* BANNER WEB OFICIAL */
+.web-banner{display:block;border-radius:16px;overflow:hidden;text-decoration:none;background:#1a2035;position:relative;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.web-banner img{width:100%;display:block;height:120px;object-fit:cover;object-position:center;opacity:.92}
+.web-banner .web-banner-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(0deg,rgba(15,20,35,.55),rgba(15,20,35,.15));color:#fff;font-weight:800;font-size:16px;letter-spacing:.2px;text-align:center;padding:0 16px}
+
+/* BANNER GOOGLE REVIEWS */
+.google-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1.5px solid #e0e6ef;border-radius:16px;padding:14px 16px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.google-banner-left{display:flex;align-items:center;gap:12px}
+.google-g{width:38px;height:38px;flex-shrink:0}
+.google-banner-title{font-size:14px;font-weight:800;color:#1a2035}
+.google-banner-stars{font-size:13px;color:#f59e0b;letter-spacing:1px;margin-top:2px}
+.google-banner-cta{font-size:12px;font-weight:800;color:#fff;background:#4285F4;padding:8px 14px;border-radius:10px;white-space:nowrap;flex-shrink:0}
+
 /* BOTONES PRINCIPALES */
 .main-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
 .main-btn{border:none;border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;font-family:'Nunito',sans-serif;text-align:left;transition:transform .12s}
@@ -131,21 +144,16 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
   </div>
 
   <div class="section">
-    <!-- Clave de habitación -->
-    <div class="card" id="clave-card" style="display:none">
-      <div class="card-title">🔑 Tu clave de habitación</div>
-      <div style="text-align:center;padding:6px 0">
-        <div id="g-clave" style="font-size:34px;font-weight:900;letter-spacing:8px;color:#0f4c75;font-family:'Nunito',sans-serif">••••</div>
-      </div>
-      <div style="font-size:12px;color:#94a3b8;text-align:center;margin-top:2px">Es la misma clave del picaporte y con la que ingresaste a esta página</div>
-    </div>
-
     <!-- Reserva info -->
     <div class="card" id="reserva-card" style="display:none">
       <div class="card-title">Tu estadía</div>
       <div class="info-row"><span class="lbl">Entrada</span><span class="val" id="g-entrada">—</span></div>
       <div class="info-row"><span class="lbl">Salida</span><span class="val" id="g-salida">—</span></div>
       <div class="info-row"><span class="lbl">Noches</span><span class="val" id="g-noches">—</span></div>
+      <div class="info-row" id="clave-row" style="display:none">
+        <span class="lbl">🔑 Clave habitación</span>
+        <span class="val" id="g-clave" style="font-size:20px;font-weight:900;letter-spacing:5px;color:#0f4c75">••••</span>
+      </div>
     </div>
 
     <!-- Estado de pago -->
@@ -196,6 +204,29 @@ body{font-family:'Nunito',sans-serif;background:#f0f4f8;color:#1a2035;min-height
       <div class="card-title">Mis solicitudes</div>
       <div id="sols-list"></div>
     </div>
+
+    <!-- Banner Web Oficial -->
+    <a class="web-banner" href="https://hoteltakua.com.ar" target="_blank" rel="noopener">
+      <img src="/images/logo-takua.png" alt="Hotel Takuá">
+      <div class="web-banner-text">Visitá nuestra web oficial</div>
+    </a>
+
+    <!-- Banner Google Reviews -->
+    <a class="google-banner" href="https://search.google.com/local/writereview?placeid=ChIJG-A3WwBB1JURJxefSrM67Jc" target="_blank" rel="noopener">
+      <div class="google-banner-left">
+        <svg class="google-g" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/>
+          <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/>
+          <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88z"/>
+          <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/>
+        </svg>
+        <div>
+          <div class="google-banner-title">Calificanos en Google</div>
+          <div class="google-banner-stars">★★★★★</div>
+        </div>
+      </div>
+      <div class="google-banner-cta">Calificar</div>
+    </a>
 
     <button class="logout-btn" id="btn-logout">Cerrar sesión</button>
   </div>
@@ -289,7 +320,7 @@ function renderInfo(data) {
   document.getElementById('g-info').textContent = `Ala ${hab.ala} · ${tipos[hab.tipo]||hab.tipo}`;
   if (hab.password_puerta) {
     document.getElementById('g-clave').textContent = hab.password_puerta;
-    document.getElementById('clave-card').style.display = 'block';
+    document.getElementById('clave-row').style.display = 'flex';
   }
   if (data.reserva) {
     document.getElementById('g-name').textContent = '👤 ' + data.reserva.nombre_huesped;
