@@ -95,7 +95,7 @@
     .sb-btn.active { background:rgba(0,201,177,.18); color:#00c9b1; }
     .sb-btn .ni { font-size:20px; line-height:1; flex-shrink:0; width:24px; text-align:center; }
     .sb-btn .nl {
-      font-size:13px; font-weight:600; letter-spacing:.1px; color:inherit; line-height:1;
+      font-size:15px; font-weight:600; letter-spacing:.1px; color:inherit; line-height:1;
       opacity:0; transition:opacity .15s .05s;
     }
     .sb-sidebar:hover .sb-btn .nl { opacity:1; }
@@ -303,15 +303,11 @@
       if (submenu.classList.contains('open')) { closeSubmenu(); return; }
       document.querySelectorAll('.sb-submenu.open').forEach(s => s.classList.remove('open'));
       const r = btn.getBoundingClientRect();
-      if (window.innerWidth <= 900) {
-        submenu.style.top = (r.bottom + 4) + 'px';
-        submenu.style.left = r.left + 'px';
-        submenu.style.width = r.width + 'px';
-      } else {
-        submenu.style.top = r.top + 'px';
-        submenu.style.left = (r.right + 8) + 'px';
-        submenu.style.width = '';
-      }
+      // Siempre se despliega hacia abajo (desktop y mobile)
+      submenu.style.top = (r.bottom + 4) + 'px';
+      submenu.style.left = r.left + 'px';
+      submenu.style.width = Math.max(r.width, 200) + 'px';
+      submenu.style.right = '';
       submenu.classList.add('open');
       btn.classList.add('submenu-open');
     }
