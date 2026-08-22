@@ -189,23 +189,41 @@
     .sbu-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     .sbu-toast.err { background:#dc2626; }
 
-    /* ── SUBMENÚ (ej: Compras → Cargar Compra / Inventario) ────────── */
+    /* ── SUBMENÚ INLINE ACCORDION ────────────────────────────────────── */
+    .sb-submenu-wrap {
+      overflow:hidden;
+      max-height:0;
+      transition:max-height .25s cubic-bezier(.4,0,.2,1);
+    }
+    .sb-submenu-wrap.open { max-height:400px; }
     .sb-submenu {
-      position:fixed; min-width:210px; background:#232a45; border-radius:14px;
-      box-shadow:0 12px 32px rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.08);
-      padding:6px; z-index:250; display:none;
+      padding:2px 0 4px 0;
     }
-    .sb-submenu.open { display:block; }
     .sb-submenu-item {
-      display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px;
-      border-radius:10px; color:#cbd5e1; font-size:13.5px; font-weight:700;
+      display:flex; align-items:center; gap:14px; width:100%; padding:0 13px 0 13px;
+      height:44px; border-radius:10px; color:#94a3b8; font-size:14px; font-weight:600;
       cursor:pointer; font-family:'Nunito',sans-serif; text-decoration:none;
+      white-space:nowrap; transition:background .15s, color .15s; box-sizing:border-box;
     }
-    .sb-submenu-item:hover { background:rgba(255,255,255,.08); color:#fff; }
-    .sb-submenu-item.active { background:rgba(0,201,177,.18); color:#00c9b1; }
-    .sb-submenu-item .ni { font-size:16px; flex-shrink:0; }
-    .sb-btn[data-submenu-trigger] .ni { transition:transform .15s; }
-    .sb-btn[data-submenu-trigger].submenu-open .ni { transform:scale(1.1); }
+    .sb-submenu-item:hover { background:rgba(255,255,255,.07); color:#cbd5e1; }
+    .sb-submenu-item.active { background:rgba(0,201,177,.14); color:#00c9b1; }
+    .sb-submenu-item .ni { font-size:16px; flex-shrink:0; width:24px; text-align:center; }
+    .sb-submenu-item .nl {
+      font-size:14px; font-weight:600; color:inherit; opacity:0; transition:opacity .15s .05s;
+    }
+    .sb-sidebar:hover .sb-submenu-item .nl { opacity:1; }
+    /* Flecha indicadora en el botón trigger */
+    .sb-btn[data-submenu-trigger] .sb-arrow {
+      margin-left:auto; font-size:10px; opacity:0; transition:opacity .15s .05s, transform .2s;
+      flex-shrink:0;
+    }
+    .sb-sidebar:hover .sb-btn[data-submenu-trigger] .sb-arrow { opacity:.6; }
+    .sb-btn[data-submenu-trigger].submenu-open .sb-arrow { transform:rotate(180deg); opacity:.9; }
+    /* En mobile, labels del submenú siempre visibles */
+    @media(max-width:900px) {
+      .sb-submenu-item .nl { opacity:1; transition:none; }
+      .sb-btn[data-submenu-trigger] .sb-arrow { opacity:.6; }
+    }
   `;
   document.head.appendChild(css);
 
@@ -275,49 +293,47 @@
     }
   });
 
-  // Ítem con submenú (ej: Compras → Cargar Compra / Inventario): un botón que
-  // despliega un flyout flotante con los accesos, en vez de navegar directo.
+  // Ítem con submenú inline — se expande hacia abajo dentro del sidebar
   function renderSubmenuItem(item, children, activo) {
+    const wrap = document.createElement('div');
+
     const btn = document.createElement('button');
     btn.className = 'sb-btn' + (activo ? ' active' : '') + (item.bottom ? ' bottom' : '');
     btn.title = item.label;
     btn.setAttribute('data-submenu-trigger', '1');
-    btn.innerHTML = '<span class="ni">' + item.icon + '</span><span class="nl">' + item.label + '</span>';
+    btn.innerHTML = '<span class="ni">' + item.icon + '</span>'
+      + '<span class="nl">' + item.label + '</span>'
+      + '<span class="sb-arrow">▼</span>';
+
+    const submenuWrap = document.createElement('div');
+    submenuWrap.className = 'sb-submenu-wrap';
 
     const submenu = document.createElement('div');
     submenu.className = 'sb-submenu';
     submenu.innerHTML = children.map(c => {
       const childActive = on(c.href.replace(/^\//,''));
-      return '<a class="sb-submenu-item' + (childActive?' active':'') + '" href="' + c.href + '">'
-        + '<span class="ni">' + c.icon + '</span>' + c.label + '</a>';
+      return '<a class="sb-submenu-item' + (childActive ? ' active' : '') + '" href="' + c.href + '">'
+        + '<span class="ni">' + c.icon + '</span>'
+        + '<span class="nl">' + c.label + '</span></a>';
     }).join('');
-    document.body.appendChild(submenu);
 
-    function closeSubmenu() {
-      submenu.classList.remove('open');
-      btn.classList.remove('submenu-open');
-    }
-    function toggleSubmenu(e) {
+    submenuWrap.appendChild(submenu);
+    wrap.appendChild(btn);
+    wrap.appendChild(submenuWrap);
+
+    btn.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation();
-      if (submenu.classList.contains('open')) { closeSubmenu(); return; }
-      document.querySelectorAll('.sb-submenu.open').forEach(s => s.classList.remove('open'));
-      const r = btn.getBoundingClientRect();
-      // Siempre se despliega hacia abajo (desktop y mobile)
-      submenu.style.top = (r.bottom + 4) + 'px';
-      submenu.style.left = r.left + 'px';
-      submenu.style.width = Math.max(r.width, 200) + 'px';
-      submenu.style.right = '';
-      submenu.classList.add('open');
-      btn.classList.add('submenu-open');
-    }
-    btn.addEventListener('click', toggleSubmenu);
-    document.addEventListener('click', (e) => {
-      if (!submenu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) closeSubmenu();
+      const isOpen = submenuWrap.classList.contains('open');
+      document.querySelectorAll('.sb-submenu-wrap.open').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.sb-btn.submenu-open').forEach(b => b.classList.remove('submenu-open'));
+      if (!isOpen) {
+        submenuWrap.classList.add('open');
+        btn.classList.add('submenu-open');
+      }
     });
-    window.addEventListener('resize', closeSubmenu);
 
-    if (item.bottom) drawerFooter.appendChild(btn); else drawerNav.appendChild(btn);
+    if (item.bottom) drawerFooter.appendChild(wrap);
+    else drawerNav.appendChild(wrap);
   }
 
 
